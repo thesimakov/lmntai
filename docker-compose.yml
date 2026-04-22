@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: lemnity
+      POSTGRES_PASSWORD: lemnity
+      POSTGRES_DB: lemnity
+    ports:
+      - "5432:5432"
+    volumes:
+      - lemnity_pg:/var/lib/postgresql/data
+
+volumes:
+  lemnity_pg:
