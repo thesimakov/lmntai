@@ -36,10 +36,13 @@ export function PreviewFrame({ previewUrl, sandboxId }: PreviewFrameProps) {
     setIsExporting(true);
     try {
       const response = await fetch(`/api/sandbox/${sandboxId}?format=json`);
+      if (!response.ok) {
+        throw new Error(`Export failed: ${response.status}`);
+      }
       const payload = (await response.json()) as { files: Record<string, string> };
       const zip = new JSZip();
 
-      Object.entries(payload.files).forEach(([path, content]) => {
+      Object.entries(payload.files ?? {}).forEach(([path, content]) => {
         zip.file(path, content);
       });
 

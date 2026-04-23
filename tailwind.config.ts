@@ -10,6 +10,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-rubik)", "ui-sans-serif", "system-ui", "sans-serif"]
+      },
       colors: {
         border: "hsl(var(--border) / <alpha-value>)",
         input: "hsl(var(--input) / <alpha-value>)",
@@ -49,12 +52,15 @@ const config: Config = {
         accentTo: "#ec4899"
       },
       borderRadius: {
+        DEFAULT: "15px",
+        none: "0",
+        sm: "15px",
+        md: "15px",
         lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
-        xl: "1rem",
-        "2xl": "1.25rem",
-        "3xl": "1.5rem"
+        xl: "15px",
+        "2xl": "15px",
+        "3xl": "15px",
+        full: "9999px"
       },
       boxShadow: {
         xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)"
@@ -79,6 +85,15 @@ const config: Config = {
         "accordion-up": {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" }
+        },
+        /** Изометрический build-loader (CodePen-стиль, правый панель «сборка») */
+        "cp-iso-yaw": {
+          from: { transform: "rotateX(-22deg) rotateY(0deg)" },
+          to: { transform: "rotateX(-22deg) rotateY(360deg)" }
+        },
+        "cp-iso-pulse": {
+          "0%, 100%": { opacity: "0.45", filter: "brightness(0.9)" },
+          "50%": { opacity: "1", filter: "brightness(1.12)" }
         }
       },
       animation: {
@@ -86,7 +101,9 @@ const config: Config = {
         shimmer: "shimmer 2s linear infinite",
         pulsegrid: "pulsegrid 1.6s ease-in-out infinite",
         "accordion-down": "accordion-down 0.2s ease-out",
-        "accordion-up": "accordion-up 0.2s ease-out"
+        "accordion-up": "accordion-up 0.2s ease-out",
+        "cp-iso-yaw": "cp-iso-yaw 14s linear infinite",
+        "cp-iso-pulse": "cp-iso-pulse 2.2s ease-in-out infinite"
       }
     }
   },

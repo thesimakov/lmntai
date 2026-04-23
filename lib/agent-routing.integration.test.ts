@@ -1,0 +1,45 @@
+import { describe, expect, it } from "vitest";
+
+import { resolveAgentForTask } from "@/lib/agent-models";
+
+describe("agent routing integration", () => {
+  it("routes website/presentation/resume to distinct pro agents", () => {
+    const website = resolveAgentForTask({
+      plan: "PRO",
+      projectKind: "website",
+      task: "generate-stream"
+    });
+    const presentation = resolveAgentForTask({
+      plan: "PRO",
+      projectKind: "presentation",
+      task: "generate-stream"
+    });
+    const resume = resolveAgentForTask({
+      plan: "PRO",
+      projectKind: "resume",
+      task: "generate-stream"
+    });
+
+    expect(website.modelId).not.toBe(presentation.modelId);
+    expect(presentation.modelId).not.toBe(resume.modelId);
+    expect(website.modelId).toBe("anthropic/claude-sonnet-4.6");
+    expect(presentation.modelId).toBe("google/gemini-3.1-pro-preview");
+    expect(resume.modelId).toBe("openai/gpt-4.1");
+  });
+
+  it("keeps prompt-builder questions on lightweight model", () => {
+    const freeQuestions = resolveAgentForTask({
+      plan: "FREE",
+      projectKind: "website",
+      task: "prompt-questions"
+    });
+    const proQuestions = resolveAgentForTask({
+      plan: "PRO",
+      projectKind: "website",
+      task: "prompt-questions"
+    });
+
+    expect(freeQuestions.modelId).toBe("openai/gpt-4.1");
+    expect(proQuestions.modelId).toBe("openai/gpt-4.1");
+  });
+});

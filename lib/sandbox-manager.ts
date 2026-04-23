@@ -17,12 +17,14 @@ type SandboxMode = "memory" | "docker";
 
 type MemoryState = {
   id: string;
+  ownerId: string;
   html: string;
   files: Record<string, string>;
 };
 
 type DockerRecord = {
   sandboxId: string;
+  ownerId: string;
   containerId: string;
   ip: string;
   /** Docker container name (for dockerode.getContainer) */
@@ -144,7 +146,7 @@ function toHtml(code: string) {
     <style>
       body {
         margin: 0;
-        font-family: Inter, system-ui, sans-serif;
+        font-family: Rubik, system-ui, sans-serif;
         background: #0a0a0a;
         color: #fafafa;
       }
@@ -190,7 +192,7 @@ async function destroyDockerSandbox(sandboxId: string): Promise<void> {
   }
 }
 
-async function createDockerSandbox(seed: string): Promise<{ sandboxId: string }> {
+async function createDockerSandbox(seed: string, ownerId: string): Promise<{ sandboxId: string }> {
   const docker = getDocker();
   const sandboxId = crypto.randomUUID();
   const short = sandboxId.replace(/-/g, "").slice(0, 12);
@@ -237,6 +239,7 @@ async function createDockerSandbox(seed: string): Promise<{ sandboxId: string }>
 
   const record: DockerRecord = {
     sandboxId,
+    ownerId,
     containerId: inspect.Id,
     ip,
     containerName
@@ -340,14 +343,15 @@ export function getSandboxMode(): SandboxMode {
 }
 
 export const sandboxManager = {
-  async createSandbox(seed = "new-project") {
+  async createSandbox(seed = "new-project", ownerId: string) {
     if (isManusDockerEnabled()) {
-      return createDockerSandbox(seed);
+      return createDockerSandbox(seed, ownerId);
     }
     const id = crypto.randomUUID();
     memoryStore.set(id, {
       id,
-      html: `<html><body style="font-family:Inter,sans-serif;background:#0A0A0A;color:white;padding:24px">Создаю проект: ${seed}</body></html>`,
+      ownerId,
+      html: `<html><body style="font-family:Rubik,system-ui,sans-serif;background:#0A0A0A;color:white;padding:24px">Создаю проект: ${seed}</body></html>`,
       files: {}
     });
     return { sandboxId: id };
@@ -357,9 +361,14 @@ export const sandboxManager = {
     if (isManusDockerEnabled()) {
       return applyDockerCode(sandboxId, code);
     }
+    const previous = memoryStore.get(sandboxId);
+    if (!previous) {
+      throw new Error("Песочница не найдена.");
+    }
     const html = toHtml(code);
     const next: MemoryState = {
       id: sandboxId,
+      ownerId: previous.ownerId,
       html,
       files: {
         "index.html": html,
@@ -384,5 +393,23 @@ export const sandboxManager = {
       return exportDockerFiles(sandboxId);
     }
     return memoryStore.get(sandboxId)?.files ?? {};
+  },
+
+  async canAccess(sandboxId: string, ownerId: string) {
+    if (isManusDockerEnabled()) {
+      const rec = dockerRegistry.get(sandboxId);
+      if (!rec) return false;
+      return rec.ownerId === ownerId;
+    }
+    const rec = memoryStore.get(sandboxId);
+    if (!rec) return false;
+    return rec.ownerId === ownerId;
+  },
+
+  hasSandbox(sandboxId: string): boolean {
+    if (isManusDockerEnabled()) {
+      return dockerRegistry.has(sandboxId);
+    }
+    return memoryStore.has(sandboxId);
   }
 };

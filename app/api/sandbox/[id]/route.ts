@@ -1,23 +1,13 @@
 import type { NextRequest } from "next/server";
 
+import { requireDbUser } from "@/lib/auth-guards";
+import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
 
-async function getSandbox(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
-  const url = new URL(req.url);
-  const format = url.searchParams.get("format");
-  const sandboxId = params.id;
-
-  if (format === "json") {
-    const files = await sandboxManager.exportFiles(sandboxId);
-    return Response.json({ files });
-  }
-
+async function respondWithHtml(sandboxId: string) {
   const previewUrl = await sandboxManager.getPreviewUrl(sandboxId);
   if (!previewUrl) {
     return new Response("Not found", { status: 404 });
@@ -34,5 +24,43 @@ async function getSandbox(
   });
 }
 
-export const GET = withApiLogging("/api/sandbox/[id]", getSandbox);
+async function getSandbox(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const url = new URL(req.url);
+  const format = url.searchParams.get("format");
+  const sandboxId = params.id;
 
+  const guard = await requireDbUser();
+  if (guard.ok) {
+    const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
+    if (allowed) {
+      if (format === "json") {
+        const files = await sandboxManager.exportFiles(sandboxId);
+        return Response.json({ files });
+      }
+      return respondWithHtml(sandboxId);
+    }
+  }
+
+  // Экспорт файлов — только владелец (авторизованный)
+  if (format === "json") {
+    return new Response("Not found", { status: 404 });
+  }
+
+  // HTML превью без входа — если песочница опубликована (как /share/:id в ai-manus)
+  let publicOk = false;
+  try {
+    publicOk = (await isSandboxLinkPublic(sandboxId)) && sandboxManager.hasSandbox(sandboxId);
+  } catch {
+    publicOk = false;
+  }
+  if (!publicOk) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  return respondWithHtml(sandboxId);
+}
+
+export const GET = withApiLogging("/api/sandbox/[id]", getSandbox);

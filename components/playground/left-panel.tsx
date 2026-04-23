@@ -7,10 +7,9 @@ import { LogViewer } from "@/components/playground/log-viewer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { PromptQA } from "@/types/prompt-builder";
 
 const chips = ["Интернет-магазин", "Портфолио", "Блог", "Корпоративный сайт"];
-
-export type PromptQA = { q: string; a: string };
 
 type LeftPanelProps = {
   idea: string;

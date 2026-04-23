@@ -16,6 +16,13 @@ import { useI18n } from "@/components/i18n-provider"
 
 type UiLanguage = "ru" | "en" | "tg"
 
+type SettingsFieldCopy = {
+  label: string
+  description: string
+  options?: string[]
+  placeholder?: string
+}
+
 const i18n = {
   ru: {
     settingsTitle: "Настройки",
@@ -185,7 +192,7 @@ const i18n = {
       deleteAccount: "Ҳазфи ҳисоб",
     },
   },
-} satisfies Record<UiLanguage, any>
+}
 
 const ruTimezones: Array<{ id: string; label: string }> = [
   { id: "Europe/Moscow", label: "Москва" },
@@ -212,6 +219,8 @@ const ruTimezones: Array<{ id: string; label: string }> = [
   { id: "UTC", label: "UTC" },
 ]
 
+const DEFAULT_TZ_IDS = ruTimezones.map((z) => z.id)
+
 function pad2(n: number) {
   return String(Math.abs(n)).padStart(2, "0")
 }
@@ -221,7 +230,7 @@ function offsetMinutesForTimeZone(tz: string, date = new Date()): number | null 
     const dtf = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       timeZoneName: "shortOffset",
-    } as any)
+    } as Intl.DateTimeFormatOptions)
     const parts = dtf.formatToParts(date)
     const off = parts.find((p) => p.type === "timeZoneName")?.value ?? ""
     // e.g. "GMT+3", "GMT+03:00", "GMT-04:00"
@@ -355,21 +364,27 @@ export function Settings() {
     setIsApplyingLanguage(false)
   }, [lang])
 
-  const timezoneOptions = useMemo(() => {
-    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone
-    const set = new Set<string>(ruTimezones.map((z) => z.id))
-    if (resolved) set.add(resolved)
-    return Array.from(set)
-  }, [])
+  /** server + 1st client paint: stable list (no `Intl`/`localStorage` split across Node vs browser) */
+  const [isClient, setIsClient] = useState(false)
+  const [timezoneOptions, setTimezoneOptions] = useState<string[]>(() => [...DEFAULT_TZ_IDS])
+  const [timezone, setTimezone] = useState("")
 
-  const [timezone, setTimezone] = useState(() => {
-    if (typeof window === "undefined") return ""
-    return (
-      window.localStorage.getItem("lmnt_timezone") ??
-      Intl.DateTimeFormat().resolvedOptions().timeZone ??
-      ""
-    )
-  })
+  useEffect(() => {
+    setIsClient(true)
+    const resolved = Intl.DateTimeFormat().resolvedOptions().timeZone
+    let fromStorage = ""
+    try {
+      fromStorage = window.localStorage.getItem("lmnt_timezone") ?? ""
+    } catch {
+      // ignore
+    }
+    const set = new Set<string>(DEFAULT_TZ_IDS)
+    if (resolved) set.add(resolved)
+    if (fromStorage) set.add(fromStorage)
+    setTimezoneOptions(Array.from(set))
+    const pick = fromStorage || resolved || ""
+    if (pick) setTimezone(pick)
+  }, [])
 
   function onTimezoneChange(next: string) {
     setTimezone(next)
@@ -398,6 +413,9 @@ export function Settings() {
   const t = i18n[language]
 
   const timezoneLabels = useMemo(() => {
+    if (!isClient) {
+      return timezoneOptions.map((id) => ({ id, label: id }))
+    }
     const date = new Date()
     const ruMap = new Map(ruTimezones.map((z) => [z.id, z.label] as const))
     const entries = timezoneOptions.map((tz) => {
@@ -419,7 +437,7 @@ export function Settings() {
     })
     entries.sort((a, b) => a.label.localeCompare(b.label, "ru"))
     return entries
-  }, [timezoneOptions, language])
+  }, [timezoneOptions, language, isClient])
 
   return (
     <motion.div
@@ -458,9 +476,9 @@ export function Settings() {
                 {group.settings.map((setting) => {
                   const isTimezone = group.id === "localization" && setting.id === "timezone"
                   const isLanguage = group.id === "localization" && setting.id === "language"
-                  const settingText = (t.settings as any)[setting.id] as
-                    | { label: string; description: string; options?: string[]; placeholder?: string }
-                    | undefined
+                  const settingText = (t.settings as Record<string, SettingsFieldCopy | undefined>)[
+                    setting.id
+                  ]
                   const selectOptions = isTimezone
                     ? timezoneLabels.map((z) => z.id)
                     : isLanguage
@@ -483,10 +501,10 @@ export function Settings() {
                     >
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
-                          {settingText?.label ?? (setting as any).label ?? setting.id}
+                          {settingText?.label ?? setting.id}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {settingText?.description ?? (setting as any).description ?? ""}
+                          {settingText?.description ?? ""}
                         </p>
                       </div>
                       {setting.type === "switch" ? (

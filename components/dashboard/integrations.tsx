@@ -1,13 +1,49 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState, type ReactNode } from "react"
 import { motion } from "framer-motion"
-import { Settings } from "lucide-react"
+import { ExternalLink, Settings, Sparkles } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
+import type { MessageKey, UiLanguage } from "@/lib/i18n"
 
-const integrations = [
+type IntegrationItem =
+  | {
+      id: string
+      name: string
+      descriptionKey: MessageKey
+      icon: ReactNode
+      connected: boolean
+    }
+  | {
+      id: string
+      nameKey: MessageKey
+      descriptionKey: MessageKey
+      icon: ReactNode
+      connected: boolean
+    }
+
+type IntegrationSettingsField = {
+  key: string
+  label: string
+  placeholder: string
+  help: string
+  inputType?: "text" | "password"
+}
+
+type IntegrationSettingsConfig = {
+  title: string
+  description: string
+  docsUrl: string
+  fields: IntegrationSettingsField[]
+}
+
+const integrations: IntegrationItem[] = [
   {
     id: "github",
     name: "GitHub",
@@ -77,8 +113,249 @@ const integrations = [
   },
 ]
 
+// Temporary hide requested integrations from UI.
+const TEMP_HIDDEN_INTEGRATION_IDS = new Set(["vercel", "supabase", "stripe"])
+
+const WIDGET_BUILDER_URL = "https://app.lemnity.ru"
+const INTEGRATION_SETTINGS_STORAGE_KEY = "lemnity.integration.settings.v1"
+const DEFAULT_WIDGET_SCRIPT = `<script
+  async
+  src="https://app.lemnity.ru/widgets/embed.js"
+  data-lmnt-widget="YOUR_WIDGET_ID"
+></script>`
+const PRO_REQUIRED_INTEGRATION_IDS = new Set(["telegram", "yandex-metrika"])
+
+function readStoredIntegrationSettings(): Record<string, Record<string, string>> {
+  if (typeof window === "undefined") return {}
+  try {
+    const raw = window.localStorage.getItem(INTEGRATION_SETTINGS_STORAGE_KEY)
+    if (!raw) return {}
+    const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
+    return parsed && typeof parsed === "object" ? parsed : {}
+  } catch {
+    return {}
+  }
+}
+
+function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettingsConfig> {
+  if (lang === "en") {
+    return {
+      github: {
+        title: "GitHub integration settings",
+        description: "Connect repository access for deploy workflow.",
+        docsUrl: "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+        fields: [
+          {
+            key: "owner",
+            label: "Repository owner",
+            placeholder: "your-org-or-username",
+            help: "GitHub org/user that owns the repository."
+          },
+          {
+            key: "repo",
+            label: "Repository name",
+            placeholder: "project-repo",
+            help: "Repository name where generated project is published."
+          },
+          {
+            key: "branch",
+            label: "Deploy branch",
+            placeholder: "gh-pages",
+            help: "Branch used for Pages/preview deploy."
+          },
+          {
+            key: "token",
+            label: "Personal access token",
+            placeholder: "ghp_xxxxxxxxxxxxx",
+            help: "Use PAT with at least repo/workflow permissions.",
+            inputType: "password"
+          }
+        ]
+      },
+      telegram: {
+        title: "Telegram integration settings",
+        description: "Notifications and bot messaging settings.",
+        docsUrl: "https://core.telegram.org/bots#6-botfather",
+        fields: [
+          {
+            key: "botToken",
+            label: "Bot token",
+            placeholder: "123456789:AA...",
+            help: "Create bot via @BotFather and paste token here.",
+            inputType: "password"
+          },
+          {
+            key: "chatId",
+            label: "Chat ID",
+            placeholder: "-1001234567890",
+            help: "Target group/channel/user chat id for notifications."
+          }
+        ]
+      },
+      "yandex-metrika": {
+        title: "Yandex Metrika settings",
+        description: "Counter for visit/event/webvisor analytics.",
+        docsUrl: "https://yandex.com/support/metrica/general/counter-code.html",
+        fields: [
+          {
+            key: "counterId",
+            label: "Counter ID",
+            placeholder: "12345678",
+            help: "Use the numeric counter id (NEXT_PUBLIC_YANDEX_METRIKA_ID)."
+          }
+        ]
+      }
+    }
+  }
+
+  if (lang === "tg") {
+    return {
+      github: {
+        title: "Танзимоти интегратсияи GitHub",
+        description: "Дастрасӣ ба репозиторий барои деплой пайваст кунед.",
+        docsUrl: "https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+        fields: [
+          {
+            key: "owner",
+            label: "Соҳиби репозиторий",
+            placeholder: "org-ё-user",
+            help: "Ташкилот ё корбари GitHub, ки соҳиби репозиторий аст."
+          },
+          {
+            key: "repo",
+            label: "Номи репозиторий",
+            placeholder: "project-repo",
+            help: "Номи репозиторий барои нашри лоиҳа."
+          },
+          {
+            key: "branch",
+            label: "Шохаи деплой",
+            placeholder: "gh-pages",
+            help: "Шоха барои Pages/preview."
+          },
+          {
+            key: "token",
+            label: "Токени дастрасӣ (PAT)",
+            placeholder: "ghp_xxxxxxxxxxxxx",
+            help: "PAT бо дастрасии repo/workflow лозим аст.",
+            inputType: "password"
+          }
+        ]
+      },
+      telegram: {
+        title: "Танзимоти интегратсияи Telegram",
+        description: "Танзими огоҳинома ва паёмҳои бот.",
+        docsUrl: "https://core.telegram.org/bots#6-botfather",
+        fields: [
+          {
+            key: "botToken",
+            label: "Токени бот",
+            placeholder: "123456789:AA...",
+            help: "Ботро дар @BotFather созед ва токенро гузоред.",
+            inputType: "password"
+          },
+          {
+            key: "chatId",
+            label: "Chat ID",
+            placeholder: "-1001234567890",
+            help: "ID-и чат/канал/гурӯҳ барои огоҳиномаҳо."
+          }
+        ]
+      },
+      "yandex-metrika": {
+        title: "Танзимоти Yandex Metrika",
+        description: "Счётчик барои аналитикаи боздид ва рӯйдодҳо.",
+        docsUrl: "https://yandex.com/support/metrica/general/counter-code.html",
+        fields: [
+          {
+            key: "counterId",
+            label: "ID-и счётчик",
+            placeholder: "12345678",
+            help: "ID-и рақамӣ (NEXT_PUBLIC_YANDEX_METRIKA_ID) ворид кунед."
+          }
+        ]
+      }
+    }
+  }
+
+  return {
+    github: {
+      title: "Настройки интеграции GitHub",
+      description: "Подключите доступ к репозиторию для деплой-цепочки.",
+      docsUrl: "https://docs.github.com/ru/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens",
+      fields: [
+        {
+          key: "owner",
+          label: "Владелец репозитория",
+          placeholder: "org-или-username",
+          help: "Организация или пользователь GitHub, владеющий репозиторием."
+        },
+        {
+          key: "repo",
+          label: "Название репозитория",
+          placeholder: "project-repo",
+          help: "Куда публиковать сгенерированный проект."
+        },
+        {
+          key: "branch",
+          label: "Ветка деплоя",
+          placeholder: "gh-pages",
+          help: "Ветка для Pages/preview деплоя."
+        },
+        {
+          key: "token",
+          label: "Персональный токен (PAT)",
+          placeholder: "ghp_xxxxxxxxxxxxx",
+          help: "Нужен PAT с правами минимум repo/workflow.",
+          inputType: "password"
+        }
+      ]
+    },
+    telegram: {
+      title: "Настройки интеграции Telegram",
+      description: "Уведомления и бот-интеграция.",
+      docsUrl: "https://core.telegram.org/bots#6-botfather",
+      fields: [
+        {
+          key: "botToken",
+          label: "Токен бота",
+          placeholder: "123456789:AA...",
+          help: "Создайте бота через @BotFather и вставьте токен.",
+          inputType: "password"
+        },
+        {
+          key: "chatId",
+          label: "ID чата",
+          placeholder: "-1001234567890",
+          help: "ID группы/канала/пользователя для уведомлений."
+        }
+      ]
+    },
+    "yandex-metrika": {
+      title: "Настройки Яндекс Метрики",
+      description: "Счетчик аналитики визитов, событий и webvisor.",
+      docsUrl: "https://yandex.ru/support/metrica/general/counter-code.html",
+      fields: [
+        {
+          key: "counterId",
+          label: "ID счетчика",
+          placeholder: "12345678",
+          help: "Укажите числовой ID счетчика (NEXT_PUBLIC_YANDEX_METRIKA_ID)."
+        }
+      ]
+    }
+  }
+}
+
 export function Integrations() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const { data: session } = useSession()
+  const visibleIntegrations = useMemo(
+    () => integrations.filter((integration) => !TEMP_HIDDEN_INTEGRATION_IDS.has(integration.id)),
+    []
+  )
+  const settingsConfig = useMemo(() => buildSettingsConfig(lang), [lang])
+  const hasProAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM"
   const ymEnabledByEnv = useMemo(() => {
     const raw = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
     return !!raw && Number.isFinite(Number(raw))
@@ -90,9 +367,100 @@ export function Integrations() {
       return { ...acc, [int.id]: connected }
     }, {})
   )
+  const [activeSettingsId, setActiveSettingsId] = useState<string | null>(null)
+  const [integrationSettings, setIntegrationSettings] = useState<Record<string, Record<string, string>>>(() =>
+    readStoredIntegrationSettings()
+  )
+  const [widgetEnabled, setWidgetEnabled] = useState(false)
+  const [widgetScriptOpen, setWidgetScriptOpen] = useState(false)
+  const [widgetScript, setWidgetScript] = useState(DEFAULT_WIDGET_SCRIPT)
 
   const toggleConnection = (id: string) => {
     setConnections((prev) => ({ ...prev, [id]: !prev[id] }))
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    try {
+      window.localStorage.setItem(
+        INTEGRATION_SETTINGS_STORAGE_KEY,
+        JSON.stringify(integrationSettings)
+      )
+    } catch {
+      // ignore
+    }
+  }, [integrationSettings])
+
+  useEffect(() => {
+    const counterId = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
+    if (!counterId) return
+    setIntegrationSettings((prev) => {
+      const current = prev["yandex-metrika"]?.counterId?.trim()
+      if (current) return prev
+      return {
+        ...prev,
+        "yandex-metrika": {
+          ...prev["yandex-metrika"],
+          counterId
+        }
+      }
+    })
+  }, [])
+
+  function openPricing() {
+    if (typeof window === "undefined") return
+    window.location.href = "/pricing"
+  }
+
+  function openWidgetBuilder() {
+    if (typeof window === "undefined") return
+    window.open(WIDGET_BUILDER_URL, "_blank", "noopener,noreferrer")
+  }
+
+  function onWidgetEnabledChange(next: boolean) {
+    setWidgetEnabled(next)
+    if (next) {
+      openWidgetBuilder()
+    }
+  }
+
+  async function copyWidgetScript() {
+    try {
+      await navigator.clipboard.writeText(widgetScript.trim())
+      toast.success(t("integrations_widgets_script_copied"))
+    } catch {
+      toast.error(t("playground_toast_copy_failed"))
+    }
+  }
+
+  function updateIntegrationField(
+    integrationId: string,
+    fieldKey: string,
+    value: string
+  ) {
+    setIntegrationSettings((prev) => ({
+      ...prev,
+      [integrationId]: {
+        ...prev[integrationId],
+        [fieldKey]: value
+      }
+    }))
+  }
+
+  function saveIntegrationSettings(integrationId: string) {
+    const values = integrationSettings[integrationId] ?? {}
+    const hasValue = Object.values(values).some((v) => String(v ?? "").trim().length > 0)
+    if (!hasValue) {
+      toast.error(lang === "en" ? "Fill at least one field." : lang === "tg" ? "Ақаллан як майдонро пур кунед." : "Заполните хотя бы одно поле.")
+      return
+    }
+    toast.success(
+      lang === "en"
+        ? "Settings saved locally."
+        : lang === "tg"
+          ? "Танзимот дар браузер нигоҳ дошта шуд."
+          : "Настройки сохранены локально в браузере."
+    )
   }
 
   return (
@@ -109,46 +477,193 @@ export function Integrations() {
         </p>
       </div>
 
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="glass mb-6 rounded-2xl border border-primary/20 p-5"
+      >
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div className="flex items-start gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Sparkles className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-lg font-semibold text-foreground">{t("integrations_widgets_title")}</h2>
+              <p className="text-sm font-medium text-foreground/90">{t("integrations_widgets_subtitle")}</p>
+              <p className="text-sm text-muted-foreground">{t("integrations_widgets_description")}</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Switch checked={widgetEnabled} onCheckedChange={onWidgetEnabledChange} />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-9 w-9 text-muted-foreground hover:text-foreground"
+              aria-label={t("integrations_widgets_script_toggle_aria")}
+              onClick={() => setWidgetScriptOpen((prev) => !prev)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Button onClick={openWidgetBuilder} className="rounded-xl">
+            {t("integrations_widgets_open_builder")}
+            <ExternalLink className="ml-2 h-4 w-4" />
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            {widgetEnabled
+              ? t("integrations_widgets_status_enabled")
+              : t("integrations_widgets_status_disabled")}
+          </span>
+        </div>
+
+        {widgetScriptOpen ? (
+          <div className="mt-4 rounded-xl border border-border/70 bg-background/60 p-4">
+            <p className="mb-2 text-sm font-medium text-foreground">{t("integrations_widgets_script_label")}</p>
+            <Textarea
+              value={widgetScript}
+              onChange={(event) => setWidgetScript(event.target.value)}
+              className="min-h-28 font-mono text-xs"
+            />
+            <p className="mt-2 text-xs text-muted-foreground">{t("integrations_widgets_script_help")}</p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={copyWidgetScript}>
+                {t("integrations_widgets_copy_script")}
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={openWidgetBuilder}>
+                {t("integrations_widgets_open_builder")}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+      </motion.div>
+
       {/* Integrations Grid */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {integrations.map((integration, index) => (
+        {visibleIntegrations.map((integration, index) => {
+          const lockedByPlan =
+            PRO_REQUIRED_INTEGRATION_IDS.has(integration.id) && !hasProAccess
+          const config = settingsConfig[integration.id]
+          const expanded = activeSettingsId === integration.id
+          return (
           <motion.div
             key={integration.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.1 }}
             whileHover={{ y: -2 }}
-            className="glass glass-hover flex items-center justify-between rounded-2xl p-5 transition-all duration-300"
+            className="glass glass-hover rounded-2xl p-5 transition-all duration-300"
           >
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/60 text-foreground">
-                {integration.icon}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/60 text-foreground">
+                  {integration.icon}
+                </div>
+                <div>
+                  <h3 className="font-medium text-foreground">
+                    {"nameKey" in integration ? t(integration.nameKey) : integration.name}
+                  </h3>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {t(integration.descriptionKey)}
+                  </p>
+                  {lockedByPlan ? (
+                    <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      {t("integrations_pro_required")}
+                    </p>
+                  ) : null}
+                </div>
               </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  {"nameKey" in integration ? t((integration as any).nameKey) : integration.name}
-                </h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">
-                  {t(integration.descriptionKey as any)}
-                </p>
+
+              <div className="flex items-center gap-3">
+                <Switch
+                  checked={lockedByPlan ? false : connections[integration.id]}
+                  disabled={lockedByPlan}
+                  onCheckedChange={() => {
+                    if (!lockedByPlan) {
+                      toggleConnection(integration.id)
+                    }
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                  aria-label={
+                    lockedByPlan ? t("integrations_pro_required_aria") : t("nav_settings")
+                  }
+                  aria-expanded={expanded}
+                  onClick={() => {
+                    if (lockedByPlan) {
+                      openPricing()
+                      return
+                    }
+                    if (!config) return
+                    setActiveSettingsId((prev) =>
+                      prev === integration.id ? null : integration.id
+                    )
+                  }}
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={connections[integration.id]}
-                onCheckedChange={() => toggleConnection(integration.id)}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 text-muted-foreground hover:text-foreground"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
+            {expanded && config ? (
+              <div className="mt-4 rounded-xl border border-border/70 bg-background/60 p-4">
+                <p className="text-sm font-semibold text-foreground">{config.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{config.description}</p>
+
+                <div className="mt-3 space-y-3">
+                  {config.fields.map((field) => (
+                    <div key={`${integration.id}-${field.key}`} className="space-y-1.5">
+                      <label className="text-xs font-medium text-foreground">
+                        {field.label}
+                      </label>
+                      <Input
+                        type={field.inputType ?? "text"}
+                        value={integrationSettings[integration.id]?.[field.key] ?? ""}
+                        onChange={(event) =>
+                          updateIntegrationField(
+                            integration.id,
+                            field.key,
+                            event.target.value
+                          )
+                        }
+                        placeholder={field.placeholder}
+                      />
+                      <p className="text-xs text-muted-foreground">{field.help}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => saveIntegrationSettings(integration.id)}
+                  >
+                    {lang === "en" ? "Save" : lang === "tg" ? "Нигоҳ доштан" : "Сохранить"}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => window.open(config.docsUrl, "_blank", "noopener,noreferrer")}
+                  >
+                    {lang === "en" ? "Open docs" : lang === "tg" ? "Кушодани дастур" : "Открыть инструкцию"}
+                    <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </motion.div>
-        ))}
+          )
+        })}
       </div>
 
       {/* Coming Soon */}

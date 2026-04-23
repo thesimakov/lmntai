@@ -1,15 +1,50 @@
 import type { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
+import type { Session } from "next-auth";
 
-import { authOptions } from "@/lib/auth";
+import { getSafeServerSession } from "@/lib/auth";
+import { OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
+import { MONTHLY_TOKEN_ALLOWANCE } from "@/lib/plan-config";
 import { prisma } from "@/lib/prisma";
-import { generateApiKey } from "@/lib/utils";
+import { generateApiKey } from "@/lib/api-keys";
+import { ensureUserReferralCode } from "@/lib/referrals";
+import { REFERRAL_BONUS_TOKENS } from "@/lib/referrals-constants";
 import { withApiLogging } from "@/lib/with-api-logging";
 
-async function getProfile(_req: NextRequest) {
-  const session = await getServerSession(authOptions);
+function offlineDemoUser(session: Session) {
+  const u = session.user;
+  if (!u?.email) {
+    throw new Error("Offline demo session requires user email");
+  }
+  return {
+    id: OFFLINE_DEMO_USER_ID,
+    email: u.email,
+    name: u.name ?? null,
+    company: null,
+    avatar: null,
+    apiKey: null,
+    tokenBalance: MONTHLY_TOKEN_ALLOWANCE.FREE,
+    tokenLimit: MONTHLY_TOKEN_ALLOWANCE.FREE,
+    plan: "FREE",
+    role: "USER",
+    isPartner: false,
+    partnerApprovedAt: null,
+    referralCode: "DEMOREF",
+    referralCount: 0,
+    referralRewardPerSignup: REFERRAL_BONUS_TOKENS,
+    projectsCount: 0,
+    tokensUsedToday: 0
+  };
+}
+
+async function getProfile(req: NextRequest) {
+  void req;
+  const session = await getSafeServerSession();
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  if (session.user.demoOffline) {
+    return Response.json({ user: offlineDemoUser(session) });
   }
 
   const user = await prisma.user.findUnique({
@@ -24,19 +59,61 @@ async function getProfile(_req: NextRequest) {
       tokenBalance: true,
       tokenLimit: true,
       plan: true,
-      role: true
+      role: true,
+      referralCode: true,
+      isPartner: true,
+      partnerApprovedAt: true
     }
   });
 
-  return Response.json({ user });
+  if (!user) {
+    return new Response("User not found", { status: 404 });
+  }
+
+  const referralCode = user.referralCode ?? (await ensureUserReferralCode(user.id));
+  const referralCount = await prisma.user.count({
+    where: { referredById: user.id }
+  });
+  const projectsCount = await prisma.tokenUsageLog.count({
+    where: { userId: user.id }
+  });
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todayUsage = await prisma.tokenUsageLog.aggregate({
+    where: {
+      userId: user.id,
+      createdAt: { gte: startOfToday }
+    },
+    _sum: { totalTokens: true }
+  });
+  const tokensUsedToday = todayUsage._sum.totalTokens ?? 0;
+
+  return Response.json({
+    user: {
+      ...user,
+      referralCode,
+      referralCount,
+      referralRewardPerSignup: REFERRAL_BONUS_TOKENS,
+      isPartner: user.isPartner,
+      partnerApprovedAt: user.partnerApprovedAt,
+      projectsCount,
+      tokensUsedToday
+    }
+  });
 }
 
 export const GET = withApiLogging("/api/profile", getProfile);
 
 async function patchProfile(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getSafeServerSession();
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  if (session.user.demoOffline) {
+    return new Response("Профиль без базы данных недоступен для сохранения. Запустите PostgreSQL.", {
+      status: 503
+    });
   }
 
   const body = (await req.json().catch(() => null)) as
@@ -66,9 +143,13 @@ async function patchProfile(req: NextRequest) {
 export const PATCH = withApiLogging("/api/profile", patchProfile);
 
 async function postProfile(req: NextRequest) {
-  const session = await getServerSession(authOptions);
+  const session = await getSafeServerSession();
   if (!session?.user?.email) {
     return new Response("Unauthorized", { status: 401 });
+  }
+
+  if (session.user.demoOffline) {
+    return new Response("API-ключ без базы данных недоступен. Запустите PostgreSQL.", { status: 503 });
   }
 
   const url = new URL(req.url);

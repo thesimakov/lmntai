@@ -24,10 +24,10 @@ export function UsageChart({ data }: UsageChartProps) {
               contentStyle={{
                 background: "#111111",
                 border: "1px solid rgba(255,255,255,0.1)",
-                borderRadius: 14
+                borderRadius: 15
               }}
             />
-            <Bar dataKey="projects" radius={[10, 10, 4, 4]} fill="url(#usageGradient)" animationDuration={900} />
+            <Bar dataKey="projects" radius={[15, 15, 0, 0]} fill="url(#usageGradient)" animationDuration={900} />
             <defs>
               <linearGradient id="usageGradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#a855f7" stopOpacity={1} />

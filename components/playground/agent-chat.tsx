@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
+  ArrowUp,
   ChevronDown,
   Copy,
   Film,
   Image as ImageIcon,
-  Mic,
   MoreHorizontal,
   Paperclip,
+  Send as PlaneSendIcon,
   SendHorizontal,
   Sparkles,
   Square,
@@ -22,6 +23,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import {
+  getAgentOptionsForUi,
+  parseAgentUiLabel,
+  type AgentTask,
+  type AgentUiLabel
+} from "@/lib/agent-models";
 import { cn } from "@/lib/utils";
 
 export type ChatMessage = {
@@ -29,8 +37,6 @@ export type ChatMessage = {
   role: "assistant" | "user" | "system";
   content: string;
 };
-
-type ChatModel = "Gemini 3 Pro" | "GPT-4.1" | "Claude Sonnet";
 
 type AgentChatProps = {
   title: string;
@@ -45,6 +51,19 @@ type AgentChatProps = {
   variant?: "default" | "studio";
   /** Над полем ввода — прогресс / статус */
   footerSlot?: React.ReactNode;
+  /** Многострочный режим ввода; при передаче `onIsEditorChange` состояние контролируется снаружи */
+  isEditor?: boolean;
+  onIsEditorChange?: (value: boolean) => void;
+  /** Скрыть переключатель «Редактор» в панели чата (например, когда он в шапке превью) */
+  hideEditorToggle?: boolean;
+  /** Текущий план пользователя для ограничений trial/pro */
+  plan?: string | null;
+  /** Тип проекта для подбора рекомендованного агента */
+  projectKind?: ProjectKind | null;
+  /** Режим резолва в матрице агентов */
+  agentTask?: AgentTask;
+  /** Отдать выбранный агент как hint в родительский компонент */
+  onModelHintChange?: (value: AgentUiLabel) => void;
 };
 
 export function AgentChat({
@@ -56,7 +75,14 @@ export function AgentChat({
   disabled,
   onSend,
   variant = "default",
-  footerSlot
+  footerSlot,
+  isEditor: isEditorProp,
+  onIsEditorChange,
+  hideEditorToggle = false,
+  plan = null,
+  projectKind = null,
+  agentTask = "generate-stream",
+  onModelHintChange
 }: AgentChatProps) {
   const [value, setValue] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -66,10 +92,28 @@ export function AgentChat({
   const fileInputAnyRef = useRef<HTMLInputElement | null>(null);
 
   const [attachments, setAttachments] = useState<Array<{ id: string; name: string; type: "image" | "video" | "file" }>>([]);
-  const [isEditor, setIsEditor] = useState(false);
-  const [model, setModel] = useState<ChatModel>("Gemini 3 Pro");
+  const [internalEditor, setInternalEditor] = useState(false);
+  const editorControlled = onIsEditorChange != null;
+  const isEditor = editorControlled ? Boolean(isEditorProp) : internalEditor;
+  const setEditor = (next: boolean) => {
+    if (editorControlled) onIsEditorChange(next);
+    else setInternalEditor(next);
+  };
+  const [model, setModel] = useState<AgentUiLabel>("GPT-4.1");
   const [modelOpen, setModelOpen] = useState(false);
-  const [modelMenuPos, setModelMenuPos] = useState<{ left: number; top: number } | null>(null);
+  const [modelMenuPos, setModelMenuPos] = useState<{
+    left: number;
+    top: number;
+    place: "above" | "below";
+  } | null>(null);
+  const modelStarGradientId = `agentchat-model-star-${useId().replace(/:/g, "")}`;
+  const modelOptions = useMemo(
+    () => getAgentOptionsForUi({ plan, projectKind, task: agentTask }),
+    [plan, projectKind, agentTask]
+  );
+  const recommendedModel = useMemo<AgentUiLabel>(() => {
+    return modelOptions.find((x) => x.recommended && x.available)?.label ?? "GPT-4.1";
+  }, [modelOptions]);
 
   const visible = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
 
@@ -79,12 +123,19 @@ export function AgentChat({
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem("lemnity.chat.model") as ChatModel | null;
-      if (stored) setModel(stored);
+      const stored = parseAgentUiLabel(localStorage.getItem("lemnity.chat.model"));
+      const isStoredAvailable = Boolean(stored && modelOptions.some((x) => x.label === stored && x.available));
+      setModel(isStoredAvailable && stored ? stored : recommendedModel);
     } catch {
-      // ignore
+      setModel(recommendedModel);
     }
-  }, []);
+  }, [modelOptions, recommendedModel]);
+
+  useEffect(() => {
+    if (!modelOptions.some((x) => x.label === model && x.available)) {
+      setModel(recommendedModel);
+    }
+  }, [model, modelOptions, recommendedModel]);
 
   useEffect(() => {
     try {
@@ -95,14 +146,32 @@ export function AgentChat({
   }, [model]);
 
   useEffect(() => {
+    onModelHintChange?.(model);
+  }, [model, onModelHintChange]);
+
+  useEffect(() => {
     if (!modelOpen) return;
 
     function reposition() {
       const el = modelAnchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      // open upward: menu bottom aligns with anchor top - 8px gap
-      setModelMenuPos({ left: Math.round(r.left), top: Math.round(r.top - 8) });
+      const gap = 8;
+      const menuW = 224; // w-56
+      const margin = 8;
+      const estimatedH = 120;
+      const left = Math.round(
+        Math.min(Math.max(r.left, margin), window.innerWidth - menuW - margin)
+      );
+      const spaceAbove = r.top;
+      const spaceBelow = window.innerHeight - r.bottom;
+      const preferAbove = spaceAbove >= estimatedH + gap || spaceAbove > spaceBelow;
+
+      if (preferAbove) {
+        setModelMenuPos({ left, top: Math.round(r.top - gap), place: "above" });
+      } else {
+        setModelMenuPos({ left, top: Math.round(r.bottom + gap), place: "below" });
+      }
     }
 
     reposition();
@@ -150,24 +219,39 @@ export function AgentChat({
     >
       {modelOpen && modelMenuPos ? (
         <div
-          className="fixed z-[9999] w-56 -translate-y-full rounded-2xl border bg-popover text-popover-foreground p-1 shadow-xl"
-          style={{ left: modelMenuPos.left, top: modelMenuPos.top }}
+          className="fixed z-[9999] w-56 rounded-2xl border bg-popover text-popover-foreground p-1 shadow-xl"
+          style={{
+            left: modelMenuPos.left,
+            top: modelMenuPos.top,
+            transform: modelMenuPos.place === "above" ? "translateY(-100%)" : undefined
+          }}
         >
-          {(["Gemini 3 Pro", "GPT-4.1", "Claude Sonnet"] as ChatModel[]).map((m) => (
+          {modelOptions.map((m) => (
             <button
-              key={m}
+              key={m.label}
               type="button"
               className={cn(
                 "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                m === model && "bg-accent text-accent-foreground"
+                m.label === model && "bg-accent text-accent-foreground",
+                !m.available && "cursor-not-allowed opacity-60 hover:bg-transparent hover:text-muted-foreground"
               )}
+              disabled={!m.available}
               onClick={() => {
-                setModel(m);
+                if (!m.available) return;
+                setModel(m.label);
                 setModelOpen(false);
               }}
             >
-              <span className="truncate">{m}</span>
-              {m === model ? <span className="text-xs text-muted-foreground">выбрано</span> : null}
+              <span className="truncate">{m.label}</span>
+              {m.label === model ? (
+                <span className="text-xs text-muted-foreground">выбрано</span>
+              ) : !m.available || m.proOnly ? (
+                <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-purple-400">
+                  Pro
+                </span>
+              ) : m.recommended ? (
+                <span className="text-[10px] uppercase tracking-wide text-emerald-500">рекомендуем</span>
+              ) : null}
             </button>
           ))}
         </div>
@@ -177,19 +261,6 @@ export function AgentChat({
         {headerSlot ? <div className={cn(isStudio ? "mb-2" : "mb-3")}>{headerSlot}</div> : null}
         {isStudio ? (
           <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <button
-                ref={modelAnchorRef}
-                type="button"
-                className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-1.5 text-sm font-medium text-foreground hover:bg-muted/60"
-                aria-label="Версия агента"
-                onClick={() => setModelOpen((v) => !v)}
-              >
-                <span>Lemnity</span>
-                <span className="text-muted-foreground">Lite</span>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
             <h2 className="truncate text-xs font-medium text-muted-foreground">{subtitle ?? title}</h2>
           </div>
         ) : (
@@ -245,7 +316,7 @@ export function AgentChat({
         </AnimatePresence>
       </div>
 
-      <div className={cn("border-t", isStudio ? "border-border bg-background p-3" : "p-2")}>
+      <div className={cn("border-t", isStudio ? "border-0 bg-background p-0" : "p-2")}>
         {footerSlot ? <div className="mb-2">{footerSlot}</div> : null}
         <div className={cn(!isStudio && "p-1")}>
           <input
@@ -282,45 +353,167 @@ export function AgentChat({
           />
 
           {isStudio ? (
-            <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/30 p-1.5 pl-2">
-              <div className="flex shrink-0 items-center gap-0.5">
+            <div className="flex h-full min-h-full flex-col bg-background px-4 pb-3 pt-3.5">
+              {isEditor ? (
+                <Textarea
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
+                  placeholder={placeholder}
+                  className="min-h-[96px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  disabled={disabled}
+                />
+              ) : (
+                <Textarea
+                  value={value}
+                  onChange={(e) => setValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submit();
+                    }
+                  }}
+                  placeholder={placeholder}
+                  rows={2}
+                  className="min-h-[72px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  disabled={disabled}
+                />
+              )}
+
+              {attachments.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {attachments.map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex max-w-full items-center gap-2 rounded-xl border border-border/80 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
+                    >
+                      <span className="truncate">
+                        {a.type}: {a.name}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-md p-0.5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        aria-label="Убрать вложение"
+                        onClick={() => setAttachments((prev) => prev.filter((x) => x.id !== a.id))}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="mt-3 flex min-h-10 items-center gap-0.5 border-t border-border/60 pt-3">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="h-9 w-9 rounded-xl text-muted-foreground"
-                  aria-label="Вложения"
+                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  aria-label="Добавить изображение"
+                  onClick={() => fileInputImageRef.current?.click()}
+                >
+                  <ImageIcon className="h-5 w-5 stroke-[1.5]" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  aria-label="Добавить видео"
+                  onClick={() => fileInputVideoRef.current?.click()}
+                >
+                  <Film className="h-5 w-5 stroke-[1.5]" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  aria-label="Прикрепить файл"
                   onClick={() => fileInputAnyRef.current?.click()}
                 >
-                  <Paperclip className="h-5 w-5" />
+                  <Paperclip className="h-5 w-5 stroke-[1.5]" />
                 </Button>
-                <Button type="button" size="icon" variant="ghost" className="h-9 w-9 rounded-xl text-muted-foreground" disabled aria-label="Голос">
-                  <Mic className="h-5 w-5" />
+
+                <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+
+                <button
+                  ref={modelAnchorRef}
+                  type="button"
+                  className="inline-flex max-w-[min(200px,46%)] shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50"
+                  aria-label="Выбор модели"
+                  onClick={() => setModelOpen((v) => !v)}
+                >
+                  <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <defs>
+                        <linearGradient
+                          id={modelStarGradientId}
+                          x1="4"
+                          y1="3"
+                          x2="20"
+                          y2="21"
+                          gradientUnits="userSpaceOnUse"
+                        >
+                          <stop stopColor="#a855f7" />
+                          <stop offset="0.45" stopColor="#3b82f6" />
+                          <stop offset="1" stopColor="#10b981" />
+                        </linearGradient>
+                      </defs>
+                      <path
+                        d="M12 2.25 13.55 9.45 20.75 12 13.55 14.55 12 21.75 10.45 14.55 3.25 12 10.45 9.45 12 2.25Z"
+                        fill={`url(#${modelStarGradientId})`}
+                        stroke={`url(#${modelStarGradientId})`}
+                        strokeWidth="1.1"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <span className="truncate">{model}</span>
+                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </button>
+
+                {hideEditorToggle ? (
+                  <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+                ) : (
+                  <>
+                    <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+                    <button
+                      type="button"
+                      className={cn(
+                        "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-medium hover:bg-muted/50",
+                        isEditor ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      aria-label="Редактор"
+                      onClick={() => setEditor(!isEditor)}
+                    >
+                      <PlaneSendIcon className="h-4 w-4 shrink-0" />
+                      Редактор
+                    </button>
+                  </>
+                )}
+
+                <span className="min-w-2 flex-1" />
+
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-full bg-foreground text-background shadow-sm hover:bg-foreground/90"
+                  onClick={() => {
+                    if (disabled) return;
+                    submit();
+                  }}
+                  disabled={!disabled && !value.trim()}
+                  aria-label={disabled ? "Остановить (скоро)" : "Отправить"}
+                >
+                  {disabled ? <Square className="h-4 w-4 fill-current" /> : <ArrowUp className="h-5 w-5 stroke-[2.5]" />}
                 </Button>
               </div>
-              <Input
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) submit();
-                }}
-                placeholder={placeholder}
-                className="h-10 min-w-0 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
-                disabled={disabled}
-              />
-              <Button
-                type="button"
-                size="icon"
-                className="h-9 w-9 shrink-0 rounded-xl"
-                onClick={() => {
-                  if (disabled) return;
-                  submit();
-                }}
-                disabled={!disabled && !value.trim()}
-                aria-label={disabled ? "Остановить (скоро)" : "Отправить"}
-              >
-                {disabled ? <Square className="h-4 w-4 fill-current" /> : <SendHorizontal className="h-5 w-5" />}
-              </Button>
             </div>
           ) : (
             <div className="flex items-end gap-2">
@@ -432,19 +625,23 @@ export function AgentChat({
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </div>
-                <div className="h-6 w-px bg-border" />
-                <button
-                  type="button"
-                  className={cn(
-                    "flex items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium hover:bg-accent",
-                    isEditor ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  aria-label="Редактор"
-                  onClick={() => setIsEditor((v) => !v)}
-                >
-                  <TriangleRight className="h-4 w-4" />
-                  Редактор
-                </button>
+                {hideEditorToggle ? null : (
+                  <>
+                    <div className="h-6 w-px bg-border" />
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium hover:bg-accent",
+                        isEditor ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      aria-label="Редактор"
+                      onClick={() => setEditor(!isEditor)}
+                    >
+                      <TriangleRight className="h-4 w-4" />
+                      Редактор
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : null}

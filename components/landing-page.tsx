@@ -1,0 +1,380 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowUp, FileText, LayoutTemplate, Palette, Plus, Presentation } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { useSession } from "next-auth/react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useI18n } from "@/components/i18n-provider";
+import { Button } from "@/components/ui/button";
+import { saveBuilderHandoff } from "@/lib/landing-handoff";
+import {
+  getShowcaseCardHref,
+  LANDING_SHOWCASE_ITEMS,
+  type LandingShowcaseCategory
+} from "@/lib/landing-showcase";
+import { MarketingSiteHeader } from "@/components/marketing/marketing-site-header";
+import { setPostLoginRedirect } from "@/lib/post-login-redirect";
+import { cn } from "@/lib/utils";
+import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { MessageKey } from "@/lib/i18n";
+
+const SHOWCASE_FILTER_ORDER: LandingShowcaseCategory[] = ["website", "resume", "presentation", "other"];
+
+const SHOWCASE_FILTER_LABEL: Record<LandingShowcaseCategory, MessageKey> = {
+  website: "landing_showcase_filter_website",
+  resume: "landing_showcase_filter_resume",
+  presentation: "landing_showcase_filter_presentation",
+  other: "landing_showcase_filter_other"
+};
+
+/** Подписи совпадают с типами в Playground; в поле вставляется полноценный стартовый промпт. */
+const LANDING_HERO_CHIPS: Array<{
+  labelKey: MessageKey;
+  promptKey: MessageKey;
+  icon: typeof Presentation;
+  projectKind: ProjectKind;
+}> = [
+  {
+    labelKey: "playground_home_cat_presentation",
+    promptKey: "playground_home_val_presentation",
+    icon: Presentation,
+    projectKind: "presentation"
+  },
+  {
+    labelKey: "landing_simple_quick_website",
+    promptKey: "playground_home_val_website",
+    icon: LayoutTemplate,
+    projectKind: "website"
+  },
+  { labelKey: "playground_home_cat_design", promptKey: "playground_home_val_design", icon: Palette, projectKind: "design" },
+  { labelKey: "playground_home_cat_resume", promptKey: "playground_home_val_resume", icon: FileText, projectKind: "resume" }
+];
+
+export function LandingPage() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const { data: session, status } = useSession();
+  const authed = status === "authenticated" && Boolean(session);
+  const [prompt, setPrompt] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [showcaseFilter, setShowcaseFilter] = useState<"all" | LandingShowcaseCategory>("all");
+  const [heroProjectKind, setHeroProjectKind] = useState<ProjectKind | null>(null);
+
+  const placeholderPhrase = useMemo(() => t("landing_simple_placeholder"), [t]);
+
+  const showcaseCategoryCounts = useMemo(() => {
+    const m: Record<LandingShowcaseCategory, number> = {
+      website: 0,
+      resume: 0,
+      presentation: 0,
+      other: 0
+    };
+    for (const item of LANDING_SHOWCASE_ITEMS) {
+      m[item.category] += 1;
+    }
+    return m;
+  }, []);
+
+  const showcaseFilterOptions = useMemo(
+    () => SHOWCASE_FILTER_ORDER.filter((c) => showcaseCategoryCounts[c] > 0),
+    [showcaseCategoryCounts]
+  );
+
+  const showShowcaseFilter = showcaseFilterOptions.length > 1;
+
+  const showcaseItemsFiltered = useMemo(() => {
+    if (showcaseFilter === "all") return [...LANDING_SHOWCASE_ITEMS];
+    return LANDING_SHOWCASE_ITEMS.filter((i) => i.category === showcaseFilter);
+  }, [showcaseFilter]);
+
+  useEffect(() => {
+    if (!showShowcaseFilter) {
+      setShowcaseFilter("all");
+      return;
+    }
+    if (showcaseFilter !== "all" && showcaseCategoryCounts[showcaseFilter] === 0) {
+      setShowcaseFilter("all");
+    }
+  }, [showShowcaseFilter, showcaseFilter, showcaseCategoryCounts]);
+
+  useEffect(() => {
+    if (prompt.trim().length > 0 || isFocused) {
+      setTyped("");
+      return;
+    }
+
+    let cancelled = false;
+    let charIndex = 0;
+    const phrase = placeholderPhrase;
+
+    /** Плавная «печать»: медленный ритм, небольшой разброс по длине символа */
+    function nextCharDelayMs(char: string) {
+      const base = 88;
+      const jitter = 12 + Math.random() * 38;
+      const pauseAfter = /[.,…!?;:]$/.test(char) ? 220 + Math.random() * 180 : 0;
+      return base + jitter + pauseAfter;
+    }
+
+    function tick() {
+      if (cancelled) return;
+      charIndex += 1;
+      setTyped(phrase.slice(0, charIndex));
+
+      if (charIndex < phrase.length) {
+        const ch = phrase.charAt(charIndex - 1);
+        window.setTimeout(tick, nextCharDelayMs(ch));
+        return;
+      }
+
+      window.setTimeout(() => {
+        if (cancelled) return;
+        charIndex = 0;
+        setTyped("");
+        window.setTimeout(tick, 720);
+      }, 2200);
+    }
+
+    setTyped("");
+    const start = window.setTimeout(tick, 520);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(start);
+    };
+  }, [prompt, isFocused, placeholderPhrase]);
+
+  const goApp = useCallback(() => {
+    const text = prompt.trim();
+    if (!text) return;
+    saveBuilderHandoff(text, heroProjectKind ?? undefined);
+    setPostLoginRedirect("/playground/build");
+    router.push(authed ? "/playground/build" : "/login");
+  }, [authed, heroProjectKind, prompt, router]);
+
+  return (
+    <div className="relative min-h-screen font-sans text-foreground">
+      <div className="landing-backdrop" aria-hidden>
+        <div className="landing-backdrop__blob landing-backdrop__blob--a" />
+        <div className="landing-backdrop__blob landing-backdrop__blob--b" />
+        <div className="landing-backdrop__blob landing-backdrop__blob--c" />
+      </div>
+
+      <div className="relative z-10">
+        <MarketingSiteHeader />
+
+        <main className="mx-auto max-w-6xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">
+        <div className="flex justify-center">
+          <div className="inline-flex items-center gap-3 rounded-full border border-zinc-200/90 bg-white px-4 py-2 text-sm shadow-sm">
+            <span className="text-zinc-500">{t("landing_simple_badge_free")}</span>
+            <span className="h-3 w-px bg-zinc-300" aria-hidden />
+            <button
+              type="button"
+              onClick={() => router.push(authed ? "/playground" : "/login")}
+              className="font-medium text-blue-600 transition hover:text-blue-700"
+            >
+              {t("landing_simple_badge_trial")}
+            </button>
+          </div>
+        </div>
+
+        <h1
+          id="hero-heading"
+          className="mx-auto mt-12 max-w-3xl text-center font-sans text-[2.35rem] font-normal leading-tight tracking-tight text-zinc-900 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem]"
+        >
+          {t("landing_simple_hero_h1")}
+        </h1>
+
+        <div id="hero-input" className="mx-auto mt-10 w-full max-w-3xl">
+          <div className="rounded-lg border border-zinc-200/90 bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.06)] sm:p-4">
+            <div className="relative min-h-[72px]">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
+                placeholder=""
+                rows={3}
+                aria-label={t("landing_simple_placeholder")}
+                className="min-h-[72px] w-full resize-none border-0 bg-transparent text-base leading-snug text-zinc-900 focus:outline-none focus:ring-0"
+              />
+              <AnimatePresence mode="wait">
+                {!prompt.trim() && !isFocused ? (
+                  <motion.div
+                    key="landing-typewriter"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -3 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 28,
+                      mass: 0.85,
+                      opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
+                    }}
+                    className="pointer-events-none absolute left-0 top-0 z-10 pr-10 text-base text-zinc-400"
+                  >
+                    <span>{typed}</span>
+                    <motion.span
+                      aria-hidden
+                      className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/65"
+                      animate={{ opacity: [0.35, 1, 0.35] }}
+                      transition={{
+                        duration: 1.65,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-zinc-100 pt-2">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                aria-label={t("landing_simple_attach")}
+              >
+                <Plus className="h-5 w-5" strokeWidth={1.75} />
+              </button>
+              <button
+                type="button"
+                onClick={goApp}
+                disabled={!prompt.trim()}
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Send"
+              >
+                <ArrowUp className="h-5 w-5" strokeWidth={2.25} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-2">
+          {LANDING_HERO_CHIPS.map(({ labelKey, promptKey, icon: Icon, projectKind: pk }) => (
+            <button
+              key={labelKey}
+              type="button"
+              onClick={() => {
+                setPrompt(t(promptKey));
+                setHeroProjectKind(pk);
+              }}
+              className="inline-flex items-center gap-2 rounded-full border border-zinc-200/90 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50"
+            >
+              <Icon className="h-4 w-4 text-zinc-500" strokeWidth={1.75} />
+              {t(labelKey)}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => router.push(authed ? "/playground" : "/login")}
+            className="rounded-full border border-transparent bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+          >
+            {t("landing_simple_quick_more")}
+          </button>
+        </div>
+
+        <section id="showcase" className="mx-auto mt-20 w-full scroll-mt-24">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+            <div className="max-w-2xl">
+              <h2 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
+                {t("landing_showcase_title")}
+              </h2>
+              <p className="mt-2 text-base text-zinc-600 sm:text-lg">{t("landing_showcase_subtitle")}</p>
+            </div>
+            <Button
+              variant="outline"
+              className="w-full shrink-0 rounded-full border-zinc-300 bg-white px-6 text-zinc-800 shadow-sm hover:bg-zinc-50 sm:w-auto"
+              asChild
+            >
+              <Link href={authed ? "/projects" : "/login"}>{t("landing_showcase_view_all")}</Link>
+            </Button>
+          </div>
+
+          {showShowcaseFilter ? (
+            <div
+              className="mt-8 flex flex-wrap items-center gap-2"
+              role="group"
+              aria-label={t("landing_showcase_title")}
+            >
+              <button
+                type="button"
+                onClick={() => setShowcaseFilter("all")}
+                className={cn(
+                  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                  showcaseFilter === "all"
+                    ? "border-zinc-900 bg-zinc-900 text-white"
+                    : "border-zinc-200/90 bg-white text-zinc-700 shadow-sm hover:border-zinc-300 hover:bg-zinc-50"
+                )}
+              >
+                {t("landing_showcase_filter_all")}
+              </button>
+              {showcaseFilterOptions.map((cat) => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setShowcaseFilter(cat)}
+                  className={cn(
+                    "rounded-full border px-3.5 py-1.5 text-sm font-medium transition",
+                    showcaseFilter === cat
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-200/90 bg-white text-zinc-700 shadow-sm hover:border-zinc-300 hover:bg-zinc-50"
+                  )}
+                >
+                  {t(SHOWCASE_FILTER_LABEL[cat])}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+            {showcaseItemsFiltered.map((item) => (
+              <a
+                key={item.slug}
+                href={getShowcaseCardHref(item)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group block outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f4f4f3]"
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-zinc-200 shadow-sm ring-1 ring-zinc-200/80">
+                  <Image
+                    src={item.imageSrc}
+                    alt=""
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                    className="object-cover transition duration-300 ease-out group-hover:scale-[1.03]"
+                  />
+                </div>
+                <h3 className="mt-4 text-base font-semibold text-zinc-900">{t(item.titleKey as MessageKey)}</h3>
+                <p className="mt-1 text-sm leading-snug text-zinc-500">{t(item.descKey as MessageKey)}</p>
+              </a>
+            ))}
+          </div>
+        </section>
+      </main>
+
+      <footer className="border-t border-zinc-200/80 py-8 text-center text-xs text-zinc-500">
+        <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+          <Link href="/login" className="hover:text-zinc-800">
+            {t("landing_footer_login")}
+          </Link>
+          <Link href="/pricing" className="hover:text-zinc-800">
+            {t("landing_simple_nav_pricing")}
+          </Link>
+          <Link href="/docs" className="hover:text-zinc-800">
+            {t("landing_simple_nav_docs")}
+          </Link>
+          <Link href={authed ? "/playground" : "/login"} className="hover:text-zinc-800">
+            {t("landing_footer_dashboard")}
+          </Link>
+        </div>
+        <p className="mt-4">© {new Date().getFullYear()} Lemnity</p>
+      </footer>
+      </div>
+    </div>
+  );
+}

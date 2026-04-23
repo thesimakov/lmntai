@@ -3,6 +3,8 @@ import { getToken } from "next-auth/jwt";
 
 import { captureJsonBodyPreview, logRequestEntry } from "@/lib/request-log";
 
+const REDACT_BODY_PATHS = new Set(["/api/generate-stream", "/api/prompt-builder"]);
+
 async function resolveUserId(req: NextRequest): Promise<string | undefined> {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) return undefined;
@@ -24,7 +26,7 @@ export function withApiLogging<TCtx>(
 ): (req: NextRequest, ctx: TCtx) => Promise<Response> {
   return async (req: NextRequest, ctx: TCtx) => {
     const started = Date.now();
-    const bodyPreview = await captureJsonBodyPreview(req);
+    const bodyPreview = REDACT_BODY_PATHS.has(pathname) ? undefined : await captureJsonBodyPreview(req);
     const userId = await resolveUserId(req);
 
     try {

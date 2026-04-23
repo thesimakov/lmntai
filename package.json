@@ -4,13 +4,22 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:clean": "rm -rf .next && next dev",
     "dev:poll": "WATCHPACK_POLLING=true next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:wait": "node scripts/wait-for-pg.mjs",
+    "db:migrate": "prisma migrate deploy",
+    "db:setup": "npm run db:up && npm run db:wait && prisma migrate deploy",
+    "db:reset": "docker compose down -v && npm run db:setup"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
@@ -21,12 +30,14 @@
     "@radix-ui/react-dialog": "^1.1.2",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-popover": "^1.1.15",
     "@radix-ui/react-progress": "^1.1.8",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-separator": "^1.1.8",
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-switch": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.1",
+    "@radix-ui/react-tooltip": "^1.2.8",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "dockerode": "^4.0.10",
@@ -57,6 +68,7 @@
     "prisma": "^5.22.0",
     "tailwindcss": "^3.4.15",
     "tailwindcss-animate": "^1.0.7",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^3.2.4"
   }
 }

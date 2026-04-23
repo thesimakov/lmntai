@@ -1,6 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { useMemo } from "react"
 import { useI18n } from "@/components/i18n-provider"
 import {
   BarChart,
@@ -12,56 +13,85 @@ import {
 } from "recharts"
 import { Layers, Zap, Clock, TrendingUp } from "lucide-react"
 
-export function Analytics() {
-  const { t } = useI18n()
-  const chartData = [
-    { name: t("analytics_day_mon"), projects: 4 },
-    { name: t("analytics_day_tue"), projects: 7 },
-    { name: t("analytics_day_wed"), projects: 5 },
-    { name: t("analytics_day_thu"), projects: 12 },
-    { name: t("analytics_day_fri"), projects: 8 },
-    { name: t("analytics_day_sat"), projects: 3 },
-    { name: t("analytics_day_sun"), projects: 6 },
-  ]
+export type AnalyticsChartPoint = { name: string; projects: number }
 
-  const stats = [
-    {
-      id: "projects",
-      label: t("analytics_stat_projects"),
-      value: "47",
-      change: "+12%",
-      trend: "up" as const,
-      icon: Layers,
-      color: "from-purple-500 to-pink-500",
-    },
-    {
-      id: "tokens",
-      label: t("analytics_stat_coins_spent"),
-      value: "124.5K",
-      change: "+8%",
-      trend: "up" as const,
-      icon: Zap,
-      color: "from-blue-500 to-cyan-500",
-    },
-    {
-      id: "time",
-      label: t("analytics_stat_avg_time"),
-      value: "12.4с",
-      change: "-15%",
-      trend: "down" as const,
-      icon: Clock,
-      color: "from-green-500 to-emerald-500",
-    },
-    {
-      id: "efficiency",
-      label: t("analytics_stat_efficiency"),
-      value: "94%",
-      change: "+5%",
-      trend: "up" as const,
-      icon: TrendingUp,
-      color: "from-orange-500 to-amber-500",
-    },
-  ]
+export type AnalyticsStatValues = {
+  projects: number
+  tokens: number
+  time: string
+  efficiency: string
+}
+
+type AnalyticsProps = {
+  chartData?: AnalyticsChartPoint[]
+  statValues?: AnalyticsStatValues
+}
+
+function formatTokensShort(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`
+  return String(n)
+}
+
+export function Analytics({ chartData: chartDataProp, statValues }: AnalyticsProps) {
+  const { t } = useI18n()
+
+  const demoChartData = useMemo(
+    () => [
+      { name: t("analytics_day_mon"), projects: 4 },
+      { name: t("analytics_day_tue"), projects: 7 },
+      { name: t("analytics_day_wed"), projects: 5 },
+      { name: t("analytics_day_thu"), projects: 12 },
+      { name: t("analytics_day_fri"), projects: 8 },
+      { name: t("analytics_day_sat"), projects: 3 },
+      { name: t("analytics_day_sun"), projects: 6 },
+    ],
+    [t],
+  )
+
+  const chartData = chartDataProp ?? demoChartData
+
+  const stats = useMemo(() => {
+    const live = Boolean(statValues)
+    return [
+      {
+        id: "projects",
+        label: t("analytics_stat_projects"),
+        value: live ? String(statValues!.projects) : "47",
+        change: live ? "—" : "+12%",
+        trend: "up" as const,
+        icon: Layers,
+        color: "from-purple-500 to-pink-500",
+      },
+      {
+        id: "tokens",
+        label: t("analytics_stat_coins_spent"),
+        value: live ? formatTokensShort(statValues!.tokens) : "124.5K",
+        change: live ? "—" : "+8%",
+        trend: "up" as const,
+        icon: Zap,
+        color: "from-blue-500 to-cyan-500",
+      },
+      {
+        id: "time",
+        label: t("analytics_stat_avg_time"),
+        value: live ? statValues!.time : "12.4с",
+        change: live ? "—" : "-15%",
+        trend: "down" as const,
+        icon: Clock,
+        color: "from-green-500 to-emerald-500",
+      },
+      {
+        id: "efficiency",
+        label: t("analytics_stat_efficiency"),
+        value: live ? statValues!.efficiency : "94%",
+        change: live ? "—" : "+5%",
+        trend: "up" as const,
+        icon: TrendingUp,
+        color: "from-orange-500 to-amber-500",
+      },
+    ]
+  }, [statValues, t])
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -138,7 +168,7 @@ export function Analytics() {
                 contentStyle={{
                   backgroundColor: "var(--popover)",
                   border: "1px solid var(--border)",
-                  borderRadius: "12px",
+                  borderRadius: "15px",
                   color: "var(--popover-foreground)",
                 }}
                 cursor={{ fill: "color-mix(in oklab, var(--muted) 50%, transparent)" }}
@@ -146,7 +176,7 @@ export function Analytics() {
               <Bar
                 dataKey="projects"
                 fill="url(#gradient)"
-                radius={[8, 8, 0, 0]}
+                radius={[15, 15, 0, 0]}
               />
               <defs>
                 <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">

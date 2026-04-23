@@ -1,8 +1,6 @@
-import { getServerSession } from "next-auth";
-
 import { Analytics } from "@/components/dashboard/analytics";
 import { PageTransition } from "@/components/page-transition";
-import { authOptions } from "@/lib/auth";
+import { getSafeServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 function last7Days() {
@@ -17,7 +15,7 @@ function last7Days() {
 }
 
 export default async function AnalyticsPage() {
-  const session = await getServerSession(authOptions);
+  const session = await getSafeServerSession();
   const email = session?.user?.email;
   if (!email) {
     return null;

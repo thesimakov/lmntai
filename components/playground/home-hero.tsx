@@ -1,33 +1,79 @@
 "use client";
 
 import {
+  Activity,
   ArrowUp,
+  BookOpen,
   Building2,
   ChevronRight,
+  Clock,
   Cloud,
   Code2,
+  Coffee,
+  FileText,
   Globe,
+  IdCard,
   Images,
   LayoutDashboard,
   LayoutTemplate,
   Link2,
-  Monitor,
   Palette,
   Plus,
   Presentation,
+  Sparkles,
   X,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { PLAYGROUND_QUICK_TEMPLATES } from "@/lib/playground-templates";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
-type ActionCategory = "presentation" | "website" | "service" | "design";
+export type HomeHeroActionCategory = "presentation" | "website" | "resume" | "design" | "visitcard";
+type ActionCategory = HomeHeroActionCategory;
+
+/** Маркер в промпте: агент и пайплайн могут искать `reference_site:` */
+const REFERENCE_SITE_MARKER = "\n\n---\nreference_site:";
+
+function stripReferenceBlock(text: string): string {
+  const idx = text.indexOf(REFERENCE_SITE_MARKER);
+  if (idx === -1) return text.trimEnd();
+  return text.slice(0, idx).trimEnd();
+}
+
+function parseExistingReferenceUrl(text: string): string {
+  const idx = text.indexOf(REFERENCE_SITE_MARKER);
+  if (idx === -1) return "";
+  const rest = text.slice(idx + REFERENCE_SITE_MARKER.length).trimStart();
+  return rest.split("\n")[0]?.trim() ?? "";
+}
+
+function normalizeReferenceUrl(raw: string): string | null {
+  const s = raw.trim();
+  if (!s) return null;
+  try {
+    const u = new URL(s.includes("://") ? s : `https://${s}`);
+    if (u.protocol !== "http:" && u.protocol !== "https:") return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
 
 const ACTION_DEFS: Array<{
   id: ActionCategory;
@@ -37,13 +83,6 @@ const ACTION_DEFS: Array<{
   valueKey: MessageKey;
 }> = [
   {
-    id: "presentation",
-    icon: Presentation,
-    toolbarIcon: Presentation,
-    labelKey: "playground_home_cat_presentation",
-    valueKey: "playground_home_val_presentation"
-  },
-  {
     id: "website",
     icon: Globe,
     toolbarIcon: Code2,
@@ -51,11 +90,18 @@ const ACTION_DEFS: Array<{
     valueKey: "playground_home_val_website"
   },
   {
-    id: "service",
-    icon: Monitor,
-    toolbarIcon: Monitor,
-    labelKey: "playground_home_cat_service",
-    valueKey: "playground_home_val_service"
+    id: "presentation",
+    icon: Presentation,
+    toolbarIcon: Presentation,
+    labelKey: "playground_home_cat_presentation",
+    valueKey: "playground_home_val_presentation"
+  },
+  {
+    id: "resume",
+    icon: FileText,
+    toolbarIcon: FileText,
+    labelKey: "playground_home_cat_resume",
+    valueKey: "playground_home_val_resume"
   },
   {
     id: "design",
@@ -63,6 +109,13 @@ const ACTION_DEFS: Array<{
     toolbarIcon: Palette,
     labelKey: "playground_home_cat_design",
     valueKey: "playground_home_val_design"
+  },
+  {
+    id: "visitcard",
+    icon: IdCard,
+    toolbarIcon: IdCard,
+    labelKey: "playground_home_cat_visitcard",
+    valueKey: "playground_home_val_visitcard"
   }
 ];
 
@@ -79,17 +132,6 @@ const WEBSITE_TYPE_DEFS: Array<{
   { icon: Link2, labelKey: "playground_home_site_bylink", valueKey: "playground_home_val_site_bylink" }
 ];
 
-const TEMPLATE_DEFS: Array<{
-  id: string;
-  titleKey: MessageKey;
-  valueKey: MessageKey;
-}> = [
-  { id: "saas", titleKey: "playground_home_tpl_saas", valueKey: "playground_home_tpl_saas_prompt" },
-  { id: "course", titleKey: "playground_home_tpl_course", valueKey: "playground_home_tpl_course_prompt" },
-  { id: "fitness", titleKey: "playground_home_tpl_fitness", valueKey: "playground_home_tpl_fitness_prompt" },
-  { id: "cafe", titleKey: "playground_home_tpl_cafe", valueKey: "playground_home_tpl_cafe_prompt" }
-];
-
 const HINT_KEYS: MessageKey[] = [
   "playground_home_hint_0",
   "playground_home_hint_1",
@@ -97,14 +139,22 @@ const HINT_KEYS: MessageKey[] = [
   "playground_home_hint_3"
 ];
 
+const TEMPLATE_CARD_ICONS: Record<string, typeof Sparkles> = {
+  saas: Sparkles,
+  course: BookOpen,
+  fitness: Activity,
+  cafe: Coffee
+};
+
 type HomeHeroProps = {
   username: string;
   idea: string;
   onIdeaChange: (v: string) => void;
-  tokenBalance: number | null;
   onOpenTemplates: () => void;
   onSelectTemplate: (value: string) => void;
   onSubmit: () => void;
+  /** Сообщить родителю выбранный тип (для конверта ai-manus / projectKind). */
+  onActiveCategoryChange?: (category: HomeHeroActionCategory | null) => void;
   disabled?: boolean;
 };
 
@@ -112,13 +162,13 @@ export function HomeHero({
   username,
   idea,
   onIdeaChange,
-  tokenBalance,
   onOpenTemplates,
   onSelectTemplate,
   onSubmit,
+  onActiveCategoryChange,
   disabled
 }: HomeHeroProps) {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
 
   const actionPills = useMemo(
     () =>
@@ -144,10 +194,11 @@ export function HomeHero({
 
   const templates = useMemo(
     () =>
-      TEMPLATE_DEFS.map((d) => ({
+      PLAYGROUND_QUICK_TEMPLATES.map((d) => ({
         id: d.id,
         title: t(d.titleKey),
-        value: t(d.valueKey)
+        value: t(d.valueKey),
+        defaultCategory: d.defaultCategory
       })),
     [t]
   );
@@ -155,18 +206,42 @@ export function HomeHero({
   const hintExamples = useMemo(() => HINT_KEYS.map((k) => t(k)), [t]);
 
   const canSubmit = useMemo(() => idea.trim().length > 0 && !disabled, [disabled, idea]);
-  const [activeCategory, setActiveCategory] = useState<ActionCategory | null>("website");
+  const [activeCategory, setActiveCategory] = useState<ActionCategory | null>(null);
   const websiteTypesScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    onActiveCategoryChange?.(activeCategory);
+  }, [activeCategory, onActiveCategoryChange]);
   const [hintIndex, setHintIndex] = useState(0);
 
   function openTemplatesUi() {
     onOpenTemplates();
-    document.getElementById("playground-templates-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
   const [typed, setTyped] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
   const [tab, setTab] = useState<"templates" | "recent">("templates");
+  const [refDialogOpen, setRefDialogOpen] = useState(false);
+  const [refUrlDraft, setRefUrlDraft] = useState("");
+
+  function openReferenceDialog() {
+    setRefUrlDraft(parseExistingReferenceUrl(idea));
+    setRefDialogOpen(true);
+  }
+
+  function confirmReferenceUrl() {
+    const url = normalizeReferenceUrl(refUrlDraft);
+    if (!url) {
+      toast.error(t("playground_home_ref_invalid"));
+      return;
+    }
+    const base = stripReferenceBlock(idea);
+    const block = `${REFERENCE_SITE_MARKER} ${url}\n`;
+    onIdeaChange(
+      base ? `${base}${block}` : `${t("playground_home_ref_prompt_prefix")}\n${block.trim()}`
+    );
+    setRefDialogOpen(false);
+  }
 
   useEffect(() => {
     function readRecent() {
@@ -228,16 +303,14 @@ export function HomeHero({
     websiteTypesScrollRef.current?.scrollBy({ left: 220, behavior: "smooth" });
   }
 
-  const numberLocale = lang === "en" ? "en-US" : "ru-RU";
-
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4">
       <div className="shrink-0 space-y-4">
       <div className="relative overflow-hidden rounded-3xl border bg-card/70 p-6 shadow-sm md:p-10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(168,85,247,.25),transparent_45%),radial-gradient(circle_at_75%_70%,rgba(236,72,153,.18),transparent_48%)]" />
 
         <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
-          <h1 className="text-balance font-serif text-4xl font-normal tracking-tight text-foreground md:text-5xl">
+          <h1 className="text-balance text-4xl font-normal tracking-tight text-foreground md:text-5xl">
             {t("playground_home_title")}
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -248,7 +321,7 @@ export function HomeHero({
           <div className="mt-6 w-full">
             <div
               className={cn(
-                "rounded-[28px] border border-border bg-background p-4 shadow-md",
+                "rounded-lg border border-border bg-background p-4 shadow-md",
                 "text-left"
               )}
             >
@@ -369,24 +442,11 @@ export function HomeHero({
                     <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 text-sm sm:justify-self-end md:gap-x-4">
                       <button
                         type="button"
-                        onClick={openTemplatesUi}
+                        onClick={openReferenceDialog}
                         className="inline-flex items-center gap-1.5 text-primary transition hover:text-primary/80"
                       >
                         <Link2 className="h-4 w-4" />
                         <span className="border-b border-primary/40 pb-px">{t("playground_home_ref_site")}</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={openTemplatesUi}
-                        className="inline-flex items-center gap-1.5 text-foreground transition hover:text-primary"
-                      >
-                        <span
-                          className="flex h-6 w-6 items-center justify-center rounded-md bg-[linear-gradient(180deg,#f24e1e,#a259ff,#0acf83)] text-[10px] font-bold text-white"
-                          aria-hidden
-                        >
-                          F
-                        </span>
-                        <span className="border-b border-border pb-px">{t("playground_home_figma")}</span>
                       </button>
                     </div>
                   </div>
@@ -460,20 +520,6 @@ export function HomeHero({
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               <span className="text-muted-foreground/80">{t("playground_home_submit_hint")}</span>
-              <span className="mx-2 text-border">·</span>
-              {tokenBalance === null ? (
-                <span>
-                  {t("playground_home_tokens")} {t("playground_home_tokens_none")}
-                </span>
-              ) : (
-                <span>
-                  {t("playground_home_tokens")}{" "}
-                  <span className="font-semibold text-foreground">
-                    {tokenBalance.toLocaleString(numberLocale)}
-                  </span>{" "}
-                  {t("playground_home_tokens_suffix")}
-                </span>
-              )}
             </p>
           </div>
         </div>
@@ -482,56 +528,142 @@ export function HomeHero({
 
       <div
         id="playground-templates-panel"
-        className="flex min-h-[11rem] max-h-[min(56vh,28rem)] flex-1 flex-col overflow-hidden rounded-2xl border bg-card/70 p-3 shadow-sm sm:max-h-[min(52vh,32rem)]"
+        className="relative flex w-full shrink-0 flex-col overflow-visible rounded-3xl border border-border/50 bg-gradient-to-b from-card via-card/95 to-muted/25 p-1 shadow-[0_1px_0_0_hsl(var(--border)/0.4),0_8px_40px_-12px_hsl(0_0%_0%/0.12)] dark:from-card/90 dark:via-zinc-950/80 dark:to-zinc-950/40 dark:shadow-[0_8px_40px_-12px_hsl(0_0%_0%/0.45)]"
       >
+        <div className="border-b border-border/40 bg-gradient-to-r from-violet-500/5 via-transparent to-cyan-500/5 px-4 py-3 dark:from-violet-500/10">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-base font-medium tracking-tight text-foreground">{t("playground_templates_title")}</h2>
+            <span className="rounded-full border border-border/60 bg-background/60 px-2.5 py-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              {t("playground_templates_hint")}
+            </span>
+          </div>
+        </div>
+
         <Tabs
           value={tab}
           onValueChange={(v) => setTab(v as "templates" | "recent")}
-          className="flex min-h-0 flex-1 flex-col gap-2"
+          className="flex w-full flex-col gap-0 px-3 pb-3 pt-3"
         >
-          <TabsList className="h-9 w-full shrink-0 justify-start sm:w-fit">
-            <TabsTrigger value="templates">{t("playground_templates_tab_templates")}</TabsTrigger>
-            <TabsTrigger value="recent">{t("playground_templates_tab_recent")}</TabsTrigger>
+          <TabsList className="mb-3 h-10 w-full shrink-0 justify-stretch gap-0 rounded-xl bg-muted/70 p-1 dark:bg-zinc-900/80 sm:w-full">
+            <TabsTrigger
+              value="templates"
+              className="flex-1 rounded-lg px-3 text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+            >
+              {t("playground_templates_tab_templates")}
+            </TabsTrigger>
+            <TabsTrigger
+              value="recent"
+              className="flex-1 rounded-lg px-3 text-sm data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+            >
+              {t("playground_templates_tab_recent")}
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="templates" className="mt-0 flex-1 min-h-0 overflow-y-auto pr-1">
-            <div className="grid gap-2 pt-1">
-              {templates.map((tpl) => (
-                <Button
-                  key={tpl.id}
-                  variant="outline"
-                  className="h-11 justify-start rounded-2xl"
-                  onClick={() => {
-                    onSelectTemplate(tpl.value);
-                    setTab("templates");
-                  }}
-                >
-                  {tpl.title}
-                </Button>
-              ))}
+          <TabsContent value="templates" className="mt-0 focus-visible:outline-none">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {templates.map((tpl) => {
+                const CardIcon = TEMPLATE_CARD_ICONS[tpl.id] ?? LayoutTemplate;
+                return (
+                  <button
+                    key={tpl.id}
+                    type="button"
+                    onClick={() => {
+                      onSelectTemplate(tpl.value);
+                      setActiveCategory(tpl.defaultCategory);
+                      setTab("templates");
+                    }}
+                    className={cn(
+                      "group relative w-full text-left transition-all duration-200",
+                      "rounded-2xl border border-border/50 bg-gradient-to-b from-background/90 to-muted/15",
+                      "p-3.5 shadow-sm",
+                      "hover:-translate-y-0.5 hover:border-violet-500/25 hover:shadow-md hover:shadow-violet-500/5",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      "dark:from-zinc-900/90 dark:to-zinc-950/50 dark:hover:border-violet-400/30 dark:hover:shadow-violet-900/20"
+                    )}
+                  >
+                    <div className="flex gap-3">
+                      <div
+                        className={cn(
+                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                          "bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-600 dark:from-violet-500/25 dark:to-fuchsia-500/10 dark:text-violet-300"
+                        )}
+                      >
+                        <CardIcon className="h-5 w-5" strokeWidth={1.75} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="text-pretty text-sm font-semibold text-foreground">{tpl.title}</span>
+                          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                        </div>
+                        <p className="mt-1 text-pretty text-xs leading-relaxed text-muted-foreground">{tpl.value}</p>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </TabsContent>
 
-          <TabsContent value="recent" className="mt-0 flex-1 min-h-0 overflow-y-auto pr-1">
+          <TabsContent value="recent" className="mt-0 focus-visible:outline-none">
             {recent.length ? (
-              <div className="grid gap-2 pt-1">
+              <div className="flex flex-col gap-2.5">
                 {recent.map((r) => (
-                  <Button
+                  <button
                     key={r.t}
-                    variant="outline"
-                    className="h-11 justify-start rounded-2xl"
+                    type="button"
                     onClick={() => onIdeaChange(r.text)}
+                    className={cn(
+                      "group flex w-full gap-3 rounded-2xl border border-border/50 bg-background/50 px-3.5 py-3 text-left",
+                      "transition-all hover:border-violet-500/20 hover:bg-accent/50 dark:hover:bg-zinc-900/50",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    )}
                   >
-                    <span className="truncate">{r.text}</span>
-                  </Button>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground dark:bg-zinc-800">
+                      <Clock className="h-4 w-4" />
+                    </div>
+                    <span className="min-w-0 flex-1 text-pretty break-words text-sm text-foreground/90">{r.text}</span>
+                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-60" />
+                  </button>
                 ))}
               </div>
             ) : (
-              <p className="pt-1 text-sm text-muted-foreground">{t("playground_templates_empty_recent")}</p>
+              <div className="flex min-h-[8rem] flex-col items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20 px-4 py-8 text-center dark:bg-zinc-900/30">
+                <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">{t("playground_templates_empty_recent")}</p>
+              </div>
             )}
           </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={refDialogOpen} onOpenChange={setRefDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("playground_home_ref_dialog_title")}</DialogTitle>
+            <DialogDescription>{t("playground_home_ref_dialog_desc")}</DialogDescription>
+          </DialogHeader>
+          <Input
+            type="url"
+            inputMode="url"
+            autoComplete="url"
+            placeholder={t("playground_home_ref_dialog_placeholder")}
+            value={refUrlDraft}
+            onChange={(e) => setRefUrlDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter") return;
+              e.preventDefault();
+              confirmReferenceUrl();
+            }}
+          />
+          <DialogFooter className="gap-2 sm:justify-end">
+            <Button type="button" variant="outline" onClick={() => setRefDialogOpen(false)}>
+              {t("playground_home_ref_dialog_cancel")}
+            </Button>
+            <Button type="button" onClick={confirmReferenceUrl}>
+              {t("playground_home_ref_dialog_save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

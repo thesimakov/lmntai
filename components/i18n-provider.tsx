@@ -20,26 +20,54 @@ type I18nContextValue = {
 
 const I18nContext = createContext<I18nContextValue | null>(null);
 
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<UiLanguage>('ru');
+type I18nProviderProps = { children: React.ReactNode; initialLang: UiLanguage };
+
+function syncCookie(lang: UiLanguage) {
+  try {
+    document.cookie = `${COOKIE_KEY}=${lang}; path=/; max-age=31536000; samesite=lax`;
+  } catch {
+    // ignore
+  }
+}
+
+function readCookieLang(): UiLanguage | null {
+  if (typeof document === 'undefined') return null;
+  const m = new RegExp(`(?:^|; )${COOKIE_KEY}=([^;]*)`).exec(document.cookie);
+  const v = m?.[1];
+  if (v === 'ru' || v === 'en' || v === 'tg') return v;
+  return null;
+}
+
+export function I18nProvider({ children, initialLang }: I18nProviderProps) {
+  const [lang, setLangState] = useState<UiLanguage>(initialLang);
 
   useEffect(() => {
     const stored = readStoredLanguage();
-    const initial = stored ?? guessLanguageFromLocale(window.navigator.language);
-    setLangState(initial);
-    try {
-      document.cookie = `${COOKIE_KEY}=${initial}; path=/; max-age=31536000; samesite=lax`;
-    } catch {
-      // ignore
+    if (stored) {
+      setLangState((prev) => (stored !== prev ? stored : prev));
+      syncCookie(stored);
+      return;
     }
+    const fromCookie = readCookieLang();
+    if (fromCookie) {
+      setLangState((prev) => (fromCookie !== prev ? fromCookie : prev));
+      return;
+    }
+    const guessed = guessLanguageFromLocale(
+      typeof navigator !== 'undefined' ? navigator.language : undefined,
+    );
+    setLangState((prev) => (guessed !== prev ? guessed : prev));
+    writeStoredLanguage(guessed);
+    syncCookie(guessed);
+    // Intentionally once on mount: align client with localStorage / cookie / browser; avoid re-running on lang.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function setLang(next: UiLanguage) {
     setLangState(next);
     try {
       writeStoredLanguage(next);
-      // Server components (not-found/landing metadata) can read this.
-      document.cookie = `${COOKIE_KEY}=${next}; path=/; max-age=31536000; samesite=lax`;
+      syncCookie(next);
     } catch {
       // ignore
     }
@@ -68,4 +96,3 @@ export function useI18n(): I18nContextValue {
   }
   return ctx;
 }
-

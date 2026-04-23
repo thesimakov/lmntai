@@ -25,7 +25,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Table,
@@ -125,6 +124,7 @@ export function Team() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
   const [roleDraft, setRoleDraft] = useState<TeamMember["role"]>("editor")
+  const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null)
 
   const selectedMember = selectedMemberId
     ? members.find((m) => m.id === selectedMemberId) ?? null
@@ -262,14 +262,8 @@ export function Team() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {members.map((member, index) => (
-              <motion.tr
-                key={member.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.05 }}
-                className="hover:bg-muted/30"
-              >
+            {members.map((member) => (
+              <TableRow key={member.id} className="hover:bg-muted/30">
                 <TableCell>
                   <div className="flex items-center gap-3">
                     <Avatar className="h-9 w-9 border border-border/60">
@@ -328,41 +322,25 @@ export function Team() {
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+                      <DropdownMenuContent align="end" className="z-[100]">
                         <DropdownMenuItem
-                          onSelect={() => openRoleDialog(member)}
+                          onSelect={() => {
+                            openRoleDialog(member)
+                          }}
                         >
                           {t("team_menu_change_role")}
                         </DropdownMenuItem>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <DropdownMenuItem className="text-red-400 hover:text-red-300">
-                              {t("team_menu_delete")}
-                            </DropdownMenuItem>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>{t("team_delete_title")}</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                {member.name} ({member.email}) {t("team_delete_desc_prefix")}
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>{t("team_cancel")}</AlertDialogCancel>
-                              <AlertDialogAction
-                                className="bg-red-500 text-white hover:bg-red-500/90"
-                                onClick={() => removeMember(member.id)}
-                              >
-                                {t("team_delete_confirm")}
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <DropdownMenuItem
+                          className="text-red-400 focus:text-red-300"
+                          onSelect={() => setMemberToRemove(member)}
+                        >
+                          {t("team_menu_delete")}
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
                 </TableCell>
-              </motion.tr>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
@@ -377,6 +355,36 @@ export function Team() {
       >
         {members.length} / 10 {t("team_quota")}
       </motion.div>
+
+      <AlertDialog
+        open={memberToRemove !== null}
+        onOpenChange={(open) => {
+          if (!open) setMemberToRemove(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("team_delete_title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {memberToRemove
+                ? `${memberToRemove.name} (${memberToRemove.email}) ${t("team_delete_desc_prefix")}`
+                : ""}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("team_cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 text-white hover:bg-red-500/90"
+              onClick={() => {
+                if (memberToRemove) removeMember(memberToRemove.id)
+                setMemberToRemove(null)
+              }}
+            >
+              {t("team_delete_confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={roleDialogOpen} onOpenChange={setRoleDialogOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">

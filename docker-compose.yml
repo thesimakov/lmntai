@@ -10,6 +10,12 @@ services:
       - "5432:5432"
     volumes:
       - lemnity_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lemnity -d lemnity"]
+      interval: 3s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
 
 volumes:
   lemnity_pg:

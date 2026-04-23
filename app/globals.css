@@ -23,7 +23,7 @@
   --border: 240 5.9% 90%;
   --input: 240 5.9% 90%;
   --ring: 240 5.9% 10%;
-  --radius: 0.75rem;
+  --radius: 15px;
   --chart-1: 12 76% 61%;
   --chart-2: 173 58% 39%;
   --chart-3: 197 37% 24%;
@@ -94,4 +94,94 @@
     mask-composite: exclude;
     pointer-events: none;
   }
+}
+
+/* Лендинг: мягкий градиент + дрейф «пятен» света */
+@keyframes landing-blob-drift-a {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(6%, -5%) scale(1.06);
+  }
+}
+
+@keyframes landing-blob-drift-b {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1.04);
+  }
+  50% {
+    transform: translate(-7%, 6%) scale(0.94);
+  }
+}
+
+@keyframes landing-blob-drift-c {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(5%, 5%) scale(1.08);
+  }
+}
+
+.landing-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background: linear-gradient(165deg, #f4f4f3 0%, #eceaf5 42%, #f2f0ea 100%);
+}
+
+.landing-backdrop__blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(68px);
+  will-change: transform;
+}
+
+.landing-backdrop__blob--a {
+  width: min(78vw, 540px);
+  height: min(78vw, 540px);
+  left: -10%;
+  top: 8%;
+  background: radial-gradient(
+    circle at 32% 28%,
+    rgba(139, 92, 246, 0.38),
+    rgba(167, 139, 250, 0.14) 58%,
+    transparent 72%
+  );
+  animation: landing-blob-drift-a 21s ease-in-out infinite;
+}
+
+.landing-backdrop__blob--b {
+  width: min(88vw, 640px);
+  height: min(88vw, 640px);
+  right: -14%;
+  top: 22%;
+  background: radial-gradient(
+    circle at 55% 45%,
+    rgba(14, 165, 233, 0.3),
+    rgba(125, 211, 252, 0.12) 60%,
+    transparent 74%
+  );
+  animation: landing-blob-drift-b 27s ease-in-out infinite reverse;
+}
+
+.landing-backdrop__blob--c {
+  width: min(72vw, 500px);
+  height: min(72vw, 500px);
+  left: 18%;
+  bottom: -8%;
+  background: radial-gradient(
+    circle at 48% 52%,
+    rgba(251, 191, 36, 0.22),
+    rgba(253, 224, 71, 0.1) 56%,
+    transparent 72%
+  );
+  animation: landing-blob-drift-c 18s ease-in-out infinite;
+  animation-delay: -5s;
 }

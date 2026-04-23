@@ -1,46 +1,56 @@
 import type { User } from "@prisma/client";
 
-export type Plan = "FREE" | "PRO" | "BUSINESS";
-
 import { prisma } from "@/lib/prisma";
+import {
+  getMonthlyTokenAllowance,
+  MIN_TOKENS_GENERATE_STREAM,
+  MONTHLY_TOKEN_ALLOWANCE,
+  normalizePlanId,
+  type PlanId
+} from "@/lib/plan-config";
 
-export const PLAN_LIMITS: Record<Plan, number> = {
-  FREE: 20_000,
-  PRO: 300_000,
-  BUSINESS: 2_000_000
-};
+export type Plan = PlanId;
+
+export const PLAN_LIMITS: Record<Plan, number> = MONTHLY_TOKEN_ALLOWANCE;
 
 export async function getUserByEmail(email: string) {
-  return prisma.user.findUnique({ where: { email } });
+  return prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
 }
 
 export async function ensureUser(email: string, name?: string | null) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const free = MONTHLY_TOKEN_ALLOWANCE.FREE;
   return prisma.user.upsert({
-    where: { email },
+    where: { email: normalizedEmail },
     update: {},
     create: {
-      email,
+      email: normalizedEmail,
       name: name ?? undefined,
-      tokenBalance: PLAN_LIMITS.FREE,
-      tokenLimit: PLAN_LIMITS.FREE
+      tokenBalance: free,
+      tokenLimit: free
     }
   });
 }
 
-export function hasEnoughTokens(user: Pick<User, "tokenBalance">, minimum = 1000) {
+export function hasEnoughTokens(
+  user: Pick<User, "tokenBalance">,
+  minimum = MIN_TOKENS_GENERATE_STREAM
+) {
   return user.tokenBalance >= minimum;
 }
 
-export function getPlanLimit(plan: Plan) {
-  return PLAN_LIMITS[plan];
+export function getPlanLimit(plan: string) {
+  return getMonthlyTokenAllowance(normalizePlanId(plan));
 }
 
-export async function applyPlan(userId: string, plan: Plan) {
-  const limit = getPlanLimit(plan);
+/** Принимает `FREE` | `PRO` | `TEAM` и устаревший `BUSINESS` (сохраняется как `TEAM`). */
+export async function applyPlan(userId: string, plan: string) {
+  const normalized = normalizePlanId(plan);
+  const limit = getMonthlyTokenAllowance(normalized);
   return prisma.user.update({
     where: { id: userId },
     data: {
-      plan,
+      plan: normalized,
       tokenLimit: limit,
       tokenBalance: limit
     }

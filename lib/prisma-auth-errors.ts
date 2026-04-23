@@ -1,0 +1,46 @@
+import { Prisma } from "@prisma/client";
+
+/** Сообщение для формы входа; null — не базовая ошибка Prisma. */
+export function getAuthDatabaseUserMessage(err: unknown): string | null {
+  if (err instanceof Prisma.PrismaClientInitializationError) {
+    return "Не удаётся подключиться к PostgreSQL. Запустите Docker Desktop, в корне проекта выполните: npm run db:setup (или: docker compose up -d db и npx prisma migrate deploy). Проверьте DATABASE_URL.";
+  }
+
+  if (err instanceof Prisma.PrismaClientKnownRequestError) {
+    switch (err.code) {
+      case "P1000":
+      case "P1001":
+      case "P1017":
+        return "База данных недоступна. Убедитесь, что PostgreSQL запущен и в DATABASE_URL указаны верный хост и порт.";
+      case "P1010":
+        return "Доступ к базе отклонён: неверный логин/пароль или нет прав на схему public. Проверьте DATABASE_URL. Локально: docker compose down -v && docker compose up -d db, затем npx prisma migrate deploy.";
+      case "P2021":
+      case "P2010":
+        return "Таблицы в базе не созданы. Выполните: npx prisma migrate deploy";
+      default:
+        break;
+    }
+  }
+
+  const msg = err instanceof Error ? err.message : String(err);
+  const lower = msg.toLowerCase();
+
+  if (
+    lower.includes("p1010") ||
+    lower.includes("denied access") ||
+    lower.includes("password authentication failed")
+  ) {
+    return "Доступ к PostgreSQL отклонён. Проверьте пользователя и пароль в DATABASE_URL (см. docker-compose.yml: lemnity/lemnity).";
+  }
+  if (lower.includes("p1001") || lower.includes("can't reach database") || lower.includes("econnrefused")) {
+    return "Не удаётся достучаться до PostgreSQL. Запустите: docker compose up -d db";
+  }
+  if (lower.includes("does not exist") && (lower.includes("relation") || lower.includes("table"))) {
+    return "В базе нет таблиц. Выполните: npx prisma migrate deploy";
+  }
+  if (lower.includes("datasource") || lower.includes("postgresql://")) {
+    return "Ошибка настройки DATABASE_URL. Нужна строка postgresql://… См. .env.local.example.";
+  }
+
+  return null;
+}

@@ -1,11 +1,14 @@
 import type { NextRequest } from "next/server";
-import { getServerSession } from "next-auth";
 
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { requireDbUser } from "@/lib/auth-guards";
+import { resolveAgentForTask } from "@/lib/agent-models";
 import { requestRouterAIStream } from "@/lib/routerai-client";
+import { extractDataJson, splitSseLines } from "@/lib/sse-parser";
+import { chargeTokensSafely, estimateUsageFromText, normalizeUsage, type TokenUsage } from "@/lib/token-billing";
+import { MIN_TOKENS_GENERATE_STREAM } from "@/lib/plan-config";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
+import { buildRouterGenerationPrompt, isProjectKind } from "@/lib/manus-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -20,51 +23,43 @@ function sse(controller: ReadableStreamDefaultController, payload: unknown) {
   controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(payload)}\n\n`));
 }
 
-function extractUsageFromSSE(buffer: string): Usage | null {
-  try {
-    const lines = buffer.split("\n");
-    for (let i = lines.length - 1; i >= 0; i -= 1) {
-      const line = lines[i];
-      if (!line.startsWith("data: ")) {
-        continue;
-      }
-      const data = JSON.parse(line.slice(6)) as { usage?: Usage };
-      if (data?.usage?.total_tokens) {
-        return data.usage;
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return null;
-}
-
 async function postGenerateStream(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+  const guard = await requireDbUser();
+  if (!guard.ok) {
+    return new Response(guard.message, { status: guard.status });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email }
-  });
+  const user = guard.data.user;
 
-  if (!user) {
-    return new Response("User not found", { status: 404 });
-  }
-
-  if (!hasEnoughTokens(user, 1000)) {
+  if (!hasEnoughTokens(user, MIN_TOKENS_GENERATE_STREAM)) {
     return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
   }
 
-  const { prompt } = (await req.json()) as { prompt?: string };
-  if (!prompt?.trim()) {
+  const body = (await req.json().catch(() => null)) as
+    | { prompt?: string; projectKind?: string; agentHint?: string }
+    | null;
+  const rawPrompt = body?.prompt?.trim();
+  if (!rawPrompt) {
     return new Response("Prompt is required", { status: 400 });
   }
 
-  const { sandboxId } = await sandboxManager.createSandbox("lemnity");
+  const pk = isProjectKind(body?.projectKind) ? body.projectKind : undefined;
+  const prompt = buildRouterGenerationPrompt(rawPrompt, pk);
+  const agent = resolveAgentForTask({
+    plan: user.plan,
+    projectKind: pk,
+    task: "generate-stream",
+    hint: body?.agentHint
+  });
 
-  const routerRes = await requestRouterAIStream({ prompt });
+  const { sandboxId } = await sandboxManager.createSandbox("lemnity", user.id);
+
+  const routerRes = await requestRouterAIStream({
+    prompt,
+    model: agent.modelId,
+    settings: agent.settings.stream,
+    user: user.id
+  });
   if (!routerRes.ok || !routerRes.body) {
     await destroySandbox(sandboxId);
     const errText = await routerRes.text().catch(() => "RouterAI error");
@@ -76,6 +71,8 @@ async function postGenerateStream(req: NextRequest) {
 
   let raw = "";
   let assembledText = "";
+  let lineCarry = "";
+  let usageFromStream: TokenUsage | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -106,19 +103,24 @@ async function postGenerateStream(req: NextRequest) {
           const chunk = decoder.decode(value, { stream: true });
           raw += chunk;
 
-          // Пытаемся извлечь контент из OpenAI-совместимых SSE чанков (delta.content)
-          const lines = chunk.split("\n");
+          const parsed = splitSseLines(chunk, lineCarry);
+          lineCarry = parsed.carry;
+          const lines = parsed.lines;
           for (const line of lines) {
-            if (!line.startsWith("data: ")) continue;
-            const jsonPart = line.slice(6).trim();
-            if (!jsonPart || jsonPart === "[DONE]") continue;
+            const event = extractDataJson(line) as
+              | {
+                  choices?: Array<{ delta?: { content?: unknown } }>;
+                  usage?: Partial<Usage>;
+                }
+              | null;
+            if (!event) continue;
             try {
-              const parsed = JSON.parse(jsonPart) as {
-                choices?: Array<{ delta?: { content?: unknown } }>;
-              };
-              const delta = parsed.choices?.[0]?.delta?.content;
+              const delta = event.choices?.[0]?.delta?.content;
               if (typeof delta === "string" && delta.length) {
                 assembledText += delta;
+              }
+              if (event.usage) {
+                usageFromStream = normalizeUsage(event.usage);
               }
             } catch {
               // ignore
@@ -158,24 +160,23 @@ async function postGenerateStream(req: NextRequest) {
         sse(controller, { type: "preview", previewUrl, sandboxId });
         sse(controller, { type: "done" });
 
-        // usage списываем после стрима
-        const usage = extractUsageFromSSE(raw);
-        if (usage) {
-          await prisma.tokenUsageLog.create({
-            data: {
-              userId: user.id,
-              promptTokens: usage.prompt_tokens,
-              completionTokens: usage.completion_tokens,
-              totalTokens: usage.total_tokens,
-              model: "gpt-4o-mini"
-            }
-          });
+        if (lineCarry.trim()) {
+          const event = extractDataJson(lineCarry) as { usage?: Partial<Usage> } | null;
+          if (event?.usage) {
+            usageFromStream = normalizeUsage(event.usage);
+          }
+        }
 
-          await prisma.user.update({
-            where: { id: user.id },
-            data: {
-              tokenBalance: { decrement: usage.total_tokens }
-            }
+        const fallbackUsage = estimateUsageFromText(prompt, assembledText || raw);
+        const charge = await chargeTokensSafely({
+          userId: user.id,
+          usage: usageFromStream ?? fallbackUsage,
+          model: agent.modelId
+        });
+        if (!charge.charged && charge.reason === "insufficient_balance") {
+          sse(controller, {
+            type: "log",
+            content: "⚠️ Баланс токенов изменился параллельно. Списание пропущено, запрос завершён."
           });
         }
 

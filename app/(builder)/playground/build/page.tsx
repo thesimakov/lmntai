@@ -1,8 +1,10 @@
 "use client";
 
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 import { AgentChat, type ChatMessage } from "@/components/playground/agent-chat";
 import { BuildCode } from "@/components/playground/build-code";
@@ -11,24 +13,27 @@ import { BuildSettings } from "@/components/playground/build-settings";
 import { MenuDrawer } from "@/components/playground/menu-drawer";
 import { RightPanel } from "@/components/playground/right-panel";
 import { PageTransition } from "@/components/page-transition";
-import type { PromptQA } from "@/components/playground/left-panel";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
+import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
 import { useBuildStreamLog } from "@/hooks/use-build-stream-log";
+import { readBuilderHandoff } from "@/lib/landing-handoff";
+import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
+import type { AgentUiLabel } from "@/lib/agent-models";
+import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { PromptQA } from "@/types/prompt-builder";
 import type { StreamEvent } from "@/types/build-stream";
 
-function readIdea() {
-  try {
-    const data = JSON.parse(localStorage.getItem("lemnity.builder") ?? "{}") as { idea?: string };
-    return data.idea ?? "";
-  } catch {
-    return "";
-  }
-}
-
 export default function PromptBuildPage() {
+  const { t } = useI18n();
   const router = useRouter();
+  const { data: session } = useSession();
   const didInitRef = useRef(false);
+  const mountedRef = useRef(true);
+  const requestAbortRef = useRef<AbortController | null>(null);
   const [idea, setIdea] = useState("");
   const [stage, setStage] = useState<"idea" | "questions" | "ready" | "generating">("idea");
   const [questions, setQuestions] = useState<string[]>([]);
@@ -40,10 +45,14 @@ export default function PromptBuildPage() {
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [shareIsPublic, setShareIsPublic] = useState(false);
   const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
+  const [chatEditorMode, setChatEditorMode] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [leftWidth, setLeftWidth] = useState(400);
+  const [projectKind, setProjectKind] = useState<ProjectKind | null>(null);
+  const [agentHint, setAgentHint] = useState<AgentUiLabel>("GPT-4.1");
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
     pointerId: number;
@@ -77,6 +86,39 @@ export default function PromptBuildPage() {
     }
   }, [previewUrl]);
 
+  const handlePublishPreview = useCallback(() => {
+    if (typeof window === "undefined") return;
+    const rawOk = resolveShareablePreviewUrl(previewUrl, window.location.origin);
+    if (!rawOk || !sandboxId) {
+      toast.error(t("playground_build_publish_no_preview"));
+      return;
+    }
+    const origin = window.location.origin;
+    void (async () => {
+      if (!shareIsPublic) {
+        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
+        if (!res.ok) {
+          const msg = await res.text();
+          toast.error(msg || t("playground_build_share_error_instant"));
+          return;
+        }
+        setShareIsPublic(true);
+      }
+      const publicUrl = buildPublicSharePageUrl(origin, sandboxId);
+      window.open(publicUrl, "_blank", "noopener,noreferrer");
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          role: "assistant" as const,
+          content:
+            "Ссылка на публичную страницу превью открыта. Управлять доступом можно в «Поделиться» (приват / публично)."
+        }
+      ]);
+      toast.message(t("playground_build_publish_opened"));
+    })();
+  }, [previewUrl, sandboxId, shareIsPublic, t]);
+
   function push(role: ChatMessage["role"], content: string) {
     setMessages((prev) => [
       ...prev,
@@ -89,14 +131,28 @@ export default function PromptBuildPage() {
   }
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestAbortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     if (didInitRef.current) return;
     didInitRef.current = true;
-    const fromStorage = readIdea();
+    const handoff = readBuilderHandoff();
+    const fromStorage = handoff?.idea;
     if (fromStorage) {
+      if (handoff?.projectKind) setProjectKind(handoff.projectKind);
+      const initKey = `lemnity.builder.init:${fromStorage}`;
+      const alreadyStarted = sessionStorage.getItem(initKey) === "1";
+      if (alreadyStarted) return;
+      sessionStorage.setItem(initKey, "1");
       setIdea(fromStorage);
       setStage("questions");
       push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
-      void handleCreateQuestions(fromStorage);
+      void handleCreateQuestions(fromStorage, handoff?.projectKind);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -113,20 +169,41 @@ export default function PromptBuildPage() {
     }
   }
 
-  async function handleCreateQuestions(overrideIdea?: string) {
+  async function handleCreateQuestions(overrideIdea?: string, projectKindForApi?: ProjectKind) {
     const currentIdea = (overrideIdea ?? idea).trim();
     if (!currentIdea) return;
+    const kindForRequest = projectKindForApi !== undefined ? projectKindForApi : projectKind;
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+
     pushRecent(currentIdea);
     setStage("questions");
 
-    const res = await fetch("/api/prompt-builder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "questions", idea: currentIdea })
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/prompt-builder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "questions",
+          idea: currentIdea,
+          projectKind: kindForRequest ?? undefined,
+          agentHint
+        }),
+        signal: controller.signal
+      });
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+      push("assistant", "❌ Не удалось получить вопросы");
+      setStage("idea");
+      return;
+    }
+    if (!mountedRef.current || controller.signal.aborted) return;
 
     if (!res.ok) {
       const msg = await res.text();
+      if (!mountedRef.current || controller.signal.aborted) return;
       push("assistant", `❌ ${msg || "Не удалось получить вопросы"}`);
       setStage("idea");
       return;
@@ -141,14 +218,34 @@ export default function PromptBuildPage() {
 
   async function handleComposePrompt() {
     push("assistant", "🧩 Собираю финальный промпт...");
-    const res = await fetch("/api/prompt-builder", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: "compose", idea, qa })
-    });
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+
+    let res: Response;
+    try {
+      res = await fetch("/api/prompt-builder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "compose",
+          idea,
+          qa,
+          projectKind: projectKind ?? undefined,
+          agentHint
+        }),
+        signal: controller.signal
+      });
+    } catch (error) {
+      if ((error as Error).name === "AbortError") return;
+      push("assistant", "❌ Не удалось собрать промпт");
+      return;
+    }
+    if (!mountedRef.current || controller.signal.aborted) return;
 
     if (!res.ok) {
       const msg = await res.text();
+      if (!mountedRef.current || controller.signal.aborted) return;
       push("assistant", `❌ ${msg || "Не удалось собрать промпт"}`);
       return;
     }
@@ -176,62 +273,82 @@ export default function PromptBuildPage() {
     setProgress(8);
     setPreviewUrl(null);
     setSandboxId(null);
+    setShareIsPublic(false);
 
-    const response = await fetch("/api/generate-stream", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt })
-    });
+    requestAbortRef.current?.abort();
+    const controller = new AbortController();
+    requestAbortRef.current = controller;
+    try {
+      const response = await fetch("/api/generate-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          projectKind: projectKind ?? undefined,
+          agentHint
+        }),
+        signal: controller.signal
+      });
+      if (!mountedRef.current || controller.signal.aborted) return;
 
-    if (!response.ok || !response.body) {
-      const message = await response.text();
-      push("assistant", `❌ ${message || "Ошибка генерации"}`);
-      setIsGenerating(false);
-      setStage("ready");
-      setMode("idle");
-      return;
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    const processEvent = (eventData: StreamEvent) => {
-      applyStreamLog(eventData);
-      if (eventData.type === "log") push("assistant", eventData.content);
-      if (eventData.type === "progress") setProgress(eventData.value);
-      if (eventData.type === "preview") {
-        setPreviewUrl(eventData.previewUrl);
-        setSandboxId(eventData.sandboxId);
-        setMode("preview");
-        push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
-      }
-      if (eventData.type === "error") {
-        push("assistant", `❌ ${eventData.message}`);
+      if (!response.ok || !response.body) {
+        const message = await response.text();
+        push("assistant", `❌ ${message || "Ошибка генерации"}`);
+        setStage("ready");
         setMode("idle");
+        return;
       }
-      if (eventData.type === "done") setProgress(100);
-    };
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const chunks = buffer.split("\n\n");
-      buffer = chunks.pop() ?? "";
-      for (const chunk of chunks) {
-        const line = chunk.split("\n").find((x) => x.startsWith("data: "));
-        if (!line) continue;
-        try {
-          processEvent(JSON.parse(line.slice(6)) as StreamEvent);
-        } catch {
-          // ignore
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      const processEvent = (eventData: StreamEvent) => {
+        applyStreamLog(eventData);
+        if (eventData.type === "log") push("assistant", eventData.content);
+        if (eventData.type === "progress") setProgress(eventData.value);
+        if (eventData.type === "preview") {
+          setPreviewUrl(eventData.previewUrl);
+          setSandboxId(eventData.sandboxId);
+          setMode("preview");
+          push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
+        }
+        if (eventData.type === "error") {
+          push("assistant", `❌ ${eventData.message}`);
+          setMode("idle");
+        }
+        if (eventData.type === "done") setProgress(100);
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (!mountedRef.current || controller.signal.aborted) break;
+        buffer += decoder.decode(value, { stream: true });
+        const chunks = buffer.split("\n\n");
+        buffer = chunks.pop() ?? "";
+        for (const chunk of chunks) {
+          const line = chunk.split("\n").find((x) => x.startsWith("data: "));
+          if (!line) continue;
+          try {
+            processEvent(JSON.parse(line.slice(6)) as StreamEvent);
+          } catch {
+            // ignore
+          }
         }
       }
-    }
+      if (!mountedRef.current || controller.signal.aborted) return;
 
-    setIsGenerating(false);
-    setProgress((v) => (v < 95 ? 95 : v));
+      setProgress((v) => (v < 95 ? 95 : v));
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        push("assistant", "❌ Ошибка генерации");
+      }
+    } finally {
+      if (mountedRef.current) {
+        setIsGenerating(false);
+      }
+    }
   }
 
   function onSend(text: string) {
@@ -262,31 +379,40 @@ export default function PromptBuildPage() {
       <div className="flex h-full min-h-0 flex-1 flex-col bg-muted/40">
         <div className="flex min-h-0 flex-1">
           <aside className="flex w-[52px] shrink-0 flex-col items-center gap-2 border-r border-border bg-background py-3">
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
-              aria-label="Назад в Playground"
-              onClick={() => router.push("/playground")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <MenuDrawer
-              compact
-              leftCollapsed={leftCollapsed}
-              onToggleCollapse={() => {
-                setLeftCollapsed((v) => {
-                  const next = !v;
-                  if (next) {
-                    leftWidthBeforeCollapseRef.current = leftWidth;
-                  } else {
-                    setLeftWidth(leftWidthBeforeCollapseRef.current || 400);
-                  }
-                  return next;
-                });
-              }}
-            />
+            <TooltipProvider delayDuration={400}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
+                    aria-label="Назад в Playground"
+                    onClick={() => router.push("/playground")}
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" align="center">
+                  Назад в Playground
+                </TooltipContent>
+              </Tooltip>
+              <MenuDrawer
+                compact
+                leftCollapsed={leftCollapsed}
+                onToggleCollapse={() => {
+                  setLeftCollapsed((v) => {
+                    const next = !v;
+                    if (next) {
+                      leftWidthBeforeCollapseRef.current = leftWidth;
+                    } else {
+                      setLeftWidth(leftWidthBeforeCollapseRef.current || 400);
+                    }
+                    return next;
+                  });
+                }}
+              />
+            </TooltipProvider>
           </aside>
 
           <div
@@ -307,6 +433,12 @@ export default function PromptBuildPage() {
               disabled={isGenerating}
               onSend={onSend}
               placeholder="Отправить сообщение Lemnity…"
+              isEditor={chatEditorMode}
+              onIsEditorChange={setChatEditorMode}
+              hideEditorToggle={tab === "preview"}
+              plan={session?.user?.plan ?? null}
+              projectKind={projectKind}
+              onModelHintChange={setAgentHint}
               footerSlot={
                 isGenerating ? (
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
@@ -352,18 +484,42 @@ export default function PromptBuildPage() {
             ) : null}
           </div>
 
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/30">
+          <section className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-muted/30">
             <BuildPreviewChrome
               tab={tab}
               onTabChange={setTab}
-              onPublish={() => push("assistant", "Публикация будет подключена позже (заглушка).")}
+              sandboxId={sandboxId}
+              shareMenu={
+                <BuildSharePopover
+                  sandboxId={sandboxId}
+                  hasPreview={Boolean(previewUrl)}
+                  shareIsPublic={shareIsPublic}
+                  onShareIsPublicChange={setShareIsPublic}
+                  t={t}
+                />
+              }
+              onPublish={handlePublishPreview}
+              publishDisabled={!previewUrl || !sandboxId}
               addressPath={addressPath}
+              previewEditorToggle={
+                tab === "preview"
+                  ? {
+                      active: chatEditorMode,
+                      onToggle: () => setChatEditorMode((v) => !v)
+                    }
+                  : undefined
+              }
             />
 
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden p-2 pt-1">
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col overflow-hidden",
+                tab === "preview" ? "gap-0 p-0" : "gap-2 p-2 pt-1"
+              )}
+            >
               {tab === "preview" ? (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background shadow-sm">
-                  <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="rounded-t-xl border-0" />
+                <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-background">
+                  <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="shrink-0" />
                   <RightPanel
                     mode={mode}
                     progress={progress}

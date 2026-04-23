@@ -7,6 +7,18 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+/// Публичный доступ к превью песочницы по ссылке /share/:sandboxId (как в ai-manus session share).
+model SandboxShare {
+  id        String   @id @default(cuid())
+  sandboxId String   @unique
+  ownerId   String
+  isPublic  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId])
+}
+
 model User {
   id             String          @id @default(cuid())
   email          String          @unique
@@ -15,6 +27,15 @@ model User {
   avatar         String?
   image          String?
   company        String?
+  isPartner      Boolean         @default(false)
+  partnerApprovedAt DateTime?
+  partnerApprovedById String?
+  partnerApprovedBy User?        @relation("PartnerApprover", fields: [partnerApprovedById], references: [id], onDelete: SetNull)
+  partnerApprovedUsers User[]    @relation("PartnerApprover")
+  referralCode   String?         @unique
+  referredById   String?
+  referredBy     User?           @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals      User[]          @relation("UserReferrals")
   tokenBalance   Int             @default(0)
   tokenLimit     Int             @default(0)
   plan           String          @default("FREE")
@@ -25,9 +46,18 @@ model User {
   accounts       Account[]
   sessions       Session[]
   usageLogs      TokenUsageLog[]
+  referralWallet ReferralWallet?
+  referralEarnings ReferralEarning[] @relation("ReferralEarningReferrer")
+  referralRevenueFrom ReferralEarning[] @relation("ReferralEarningBuyer")
+  referralWalletEntries ReferralWalletEntry[]
+  withdrawalRequests WithdrawalRequest[] @relation("WithdrawalUser")
+  reviewedWithdrawalRequests WithdrawalRequest[] @relation("WithdrawalReviewer")
   invitations    TeamInvitation[]
   requestLogs    RequestLog[]
   authEvents     AuthEventLog[]
+
+  @@index([partnerApprovedById])
+  @@index([referredById])
 }
 
 model Account {
@@ -74,6 +104,74 @@ model TokenUsageLog {
   cost             Float?
   model            String
   createdAt        DateTime @default(now())
+}
+
+model ReferralWallet {
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableRubMinor Int      @default(0)
+  availableTjsMinor Int      @default(0)
+  availableUsdMinor Int      @default(0)
+  lifetimeRubMinor  Int      @default(0)
+  lifetimeTjsMinor  Int      @default(0)
+  lifetimeUsdMinor  Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ReferralEarning {
+  id                String   @id @default(cuid())
+  referrerId        String
+  referredUserId    String
+  paymentEventId    String   @unique
+  paymentId         String?
+  planId            String?
+  sourceAmountMinor Int
+  sourceCurrency    String
+  rewardAmountMinor Int
+  rewardCurrency    String
+  rateUsed          Float
+  createdAt         DateTime @default(now())
+  referrer          User     @relation("ReferralEarningReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser      User     @relation("ReferralEarningBuyer", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId, createdAt])
+  @@index([referredUserId, createdAt])
+}
+
+model ReferralWalletEntry {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency   String
+  amountMinor Int
+  kind       String
+  sourceType String?
+  sourceId   String?
+  note       String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([sourceType, sourceId])
+}
+
+model WithdrawalRequest {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation("WithdrawalUser", fields: [userId], references: [id], onDelete: Cascade)
+  amountMinor  Int
+  currency     String
+  status       String   @default("PENDING")
+  details      String?  @db.Text
+  createdAt    DateTime @default(now())
+  reviewedAt   DateTime?
+  reviewedById String?
+  reviewedBy   User?    @relation("WithdrawalReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewNote   String?  @db.Text
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@index([reviewedById])
 }
 
 model TeamInvitation {
