@@ -1,6 +1,8 @@
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import EmailProvider from "next-auth/providers/email";
+import GitHub from "next-auth/providers/github";
+import Google from "next-auth/providers/google";
 import VK from "next-auth/providers/vk";
 import Yandex from "next-auth/providers/yandex";
 
@@ -140,6 +142,19 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
             clientSecret: process.env.YANDEX_CLIENT_SECRET
           })
         ]
-      : [])
+      : []),
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          Google({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET
+          })
+        ]
+      : []),
+    ...(() => {
+      const id = process.env.GITHUB_ID || process.env.GITHUB_CLIENT_ID;
+      const secret = process.env.GITHUB_SECRET || process.env.GITHUB_CLIENT_SECRET;
+      return id && secret ? [GitHub({ clientId: id, clientSecret: secret })] : [];
+    })()
   ];
 }

@@ -13,7 +13,13 @@ function readFeatures(): LoginFeatures {
   const demoName = (process.env.DEMO_LOGIN_NAME ?? "Демо").trim();
   const demoPasswordSet = Boolean(process.env.DEMO_LOGIN_PASSWORD);
 
+  const gh =
+    Boolean(process.env.GITHUB_ID && process.env.GITHUB_SECRET) ||
+    Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET);
+
   return {
+    google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    github: gh,
     vk: Boolean(process.env.VK_CLIENT_ID && process.env.VK_CLIENT_SECRET),
     yandex: Boolean(process.env.YANDEX_CLIENT_ID && process.env.YANDEX_CLIENT_SECRET),
     emailMagic: smtp,
