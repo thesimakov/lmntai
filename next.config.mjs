@@ -25,11 +25,6 @@ const nextConfig = {
         pathname: "/**"
       }
     ]
-  },
-  // Раньше / рендерился через page с redirect() — в prod давало Invariant: clientReferenceManifest
-  // (RSC + route group). Редирект на уровне конфига обходит баг.
-  async redirects() {
-    return [{ source: "/", destination: "/playground", permanent: false }];
   }
 };
 
