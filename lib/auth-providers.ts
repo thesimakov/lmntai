@@ -143,7 +143,15 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
             clientId: process.env.YANDEX_CLIENT_ID,
             clientSecret: process.env.YANDEX_CLIENT_SECRET,
             // Тот же email, что уже в БД (credentials) — не создаём второго пользователя, клеим OAuth-аккаунт.
-            allowDangerousEmailAccountLinking: true
+            allowDangerousEmailAccountLinking: true,
+            // Дефолт next-auth: login:info+email+avatar — в кабинете Яндекса часто нет `login:avatar` → invalid_scope.
+            // Минимум: профиль + email (аватар в профиле будет null, если API не отдаст).
+            authorization: {
+              url: "https://oauth.yandex.ru/authorize",
+              params: {
+                scope: "login:info login:email"
+              }
+            }
           })
         ]
       : []),
