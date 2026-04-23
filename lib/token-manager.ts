@@ -17,15 +17,22 @@ export async function getUserByEmail(email: string) {
   return prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
 }
 
-export async function ensureUser(email: string, name?: string | null) {
+export async function ensureUser(
+  email: string,
+  name?: string | null,
+  company?: string | null
+) {
   const normalizedEmail = email.trim().toLowerCase();
   const free = MONTHLY_TOKEN_ALLOWANCE.FREE;
+  const n = name?.trim() || null;
+  const co = company?.trim() || null;
   return prisma.user.upsert({
     where: { email: normalizedEmail },
     update: {},
     create: {
       email: normalizedEmail,
-      name: name ?? undefined,
+      name: n ?? undefined,
+      company: co ?? undefined,
       tokenBalance: free,
       tokenLimit: free
     }

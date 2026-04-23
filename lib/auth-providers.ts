@@ -29,6 +29,7 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
       credentials: {
         email: { label: "Email", type: "email" },
         name: { label: "Имя", type: "text" },
+        company: { label: "Компания", type: "text" },
         password: { label: "Пароль", type: "password" }
       },
       async authorize(credentials) {
@@ -70,7 +71,8 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
         }
 
         try {
-          const user = await ensureUser(emailLower, credentials.name);
+          const company = (credentials as { company?: string }).company;
+          const user = await ensureUser(emailLower, credentials.name, company);
           return {
             id: user.id,
             email: user.email,

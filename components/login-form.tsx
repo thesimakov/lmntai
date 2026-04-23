@@ -73,6 +73,10 @@ export function LoginForm({
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [regName, setRegName] = useState("");
+  const [regEmail, setRegEmail] = useState("");
+  const [regCompany, setRegCompany] = useState("");
+  const [regPassword, setRegPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -87,6 +91,7 @@ export function LoginForm({
       const result = await signIn("credentials", {
         email,
         name,
+        company: "",
         password: features.demo?.requiresPassword ? password : "",
         redirect: false
       });
@@ -98,6 +103,43 @@ export function LoginForm({
       router.push(consumePostLoginRedirect("/playground"));
     } catch {
       setError("Не удалось выполнить вход. Повторите попытку.");
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleRegisterSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedName = regName.trim();
+    const trimmedEmail = regEmail.trim();
+    if (!trimmedName) {
+      setError("Укажите имя — так мы обратимся к вам в сервисе.");
+      return;
+    }
+    if (!trimmedEmail) {
+      setError("Укажите email.");
+      return;
+    }
+    setIsLoading(true);
+    setError(null);
+    setInfo(null);
+
+    try {
+      const result = await signIn("credentials", {
+        email: trimmedEmail,
+        name: trimmedName,
+        company: regCompany.trim() || undefined,
+        password: features.demo?.requiresPassword ? regPassword : "",
+        redirect: false
+      });
+      if (result?.error) {
+        setError(result.error);
+        return;
+      }
+      await claimPendingReferral();
+      router.push(consumePostLoginRedirect("/playground"));
+    } catch {
+      setError("Не удалось создать аккаунт. Повторите попытку.");
     } finally {
       setIsLoading(false);
     }
@@ -295,6 +337,65 @@ export function LoginForm({
               </Button>
             </form>
           </div>
+
+          <div className="border-border relative border-t pt-4">
+            <span
+              className={cn(
+                "text-muted-foreground absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-1/2 px-2 text-xs",
+                embedded
+                  ? "bg-white/20 backdrop-blur-sm dark:bg-zinc-950/30"
+                  : "bg-card"
+              )}
+            >
+              Регистрация
+            </span>
+            <p className="text-muted-foreground mb-3 text-sm">
+              Нет аккаунта? Укажите данные — мы создадим профиль с бесплатным пакетом токенов.
+            </p>
+            <form className="space-y-3" onSubmit={handleRegisterSubmit}>
+              <Input
+                value={regName}
+                onChange={(event) => setRegName(event.target.value)}
+                placeholder="Имя и фамилия"
+                autoComplete="name"
+                required
+              />
+              <Input
+                type="email"
+                value={regEmail}
+                onChange={(event) => setRegEmail(event.target.value)}
+                placeholder="Email"
+                autoComplete="email"
+                required
+              />
+              <Input
+                value={regCompany}
+                onChange={(event) => setRegCompany(event.target.value)}
+                placeholder="Компания (необязательно)"
+                autoComplete="organization"
+              />
+              {features.demo?.requiresPassword ? (
+                <Input
+                  type="password"
+                  value={regPassword}
+                  onChange={(event) => setRegPassword(event.target.value)}
+                  placeholder="Пароль демо"
+                  autoComplete="new-password"
+                />
+              ) : null}
+              <Button
+                type="submit"
+                variant="secondary"
+                className={cn(
+                  "w-full",
+                  embedded && "rounded-xl"
+                )}
+                disabled={isLoading}
+              >
+                {isLoading ? "Создаём профиль…" : "Создать аккаунт"}
+              </Button>
+            </form>
+          </div>
     </>
   );
 
@@ -307,7 +408,7 @@ export function LoginForm({
             Вход в аккаунт
           </CardTitle>
           <CardDescription className="text-zinc-600 dark:text-zinc-400">
-            Соцсети, ссылка на email или быстрый вход по email (демо).
+            Соцсети, ссылка на email, вход или регистрация по email.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 px-6 pt-2">{formBody}</CardContent>
@@ -321,7 +422,7 @@ export function LoginForm({
         <CardHeader>
           <CardTitle className="text-2xl">Вход в Lemnity</CardTitle>
           <CardDescription>
-            Войдите через соцсети, ссылку на email или мгновенно по email (демо-режим).
+            Войдите или зарегистрируйтесь через соцсети, ссылку на email или email (демо).
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">{formBody}</CardContent>

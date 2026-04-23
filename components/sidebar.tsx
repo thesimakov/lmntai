@@ -20,7 +20,8 @@ import {
   Settings,
   SunMoon,
   Users,
-  UserCircle2
+  UserCircle2,
+  Shield
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -130,6 +131,18 @@ function SidebarBody() {
             </Link>
           );
         })}
+        {session?.user?.role === "ADMIN" ? (
+          <Link
+            href="/admin"
+            className={cn(
+              "pointer-events-auto group relative flex items-center gap-3 rounded-2xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
+              (pathname === "/admin" || pathname.startsWith("/admin/")) && "bg-accent text-accent-foreground"
+            )}
+          >
+            <Shield className="h-4 w-4" />
+            <span>{t("nav_admin")}</span>
+          </Link>
+        ) : null}
       </nav>
 
       <div className="mt-6 space-y-3">
