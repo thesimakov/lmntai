@@ -26,11 +26,11 @@ async function respondWithHtml(sandboxId: string) {
 
 async function getSandbox(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
-  const sandboxId = params.id;
+  const { id: sandboxId } = await params;
 
   const guard = await requireDbUser();
   if (guard.ok) {

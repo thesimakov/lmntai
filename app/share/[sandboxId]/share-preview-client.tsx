@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 type SharePreviewClientProps = {
   sandboxId: string;
 };
@@ -10,9 +12,9 @@ export function SharePreviewClient({ sandboxId }: SharePreviewClientProps) {
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4">
-        <a href="/" className="text-sm font-medium text-foreground hover:underline">
+        <Link href="/" className="text-sm font-medium text-foreground hover:underline">
           Lemnity
-        </a>
+        </Link>
         <span className="truncate text-center text-sm text-muted-foreground sm:flex-1" title="Публичное превью">
           Публичное превью
         </span>

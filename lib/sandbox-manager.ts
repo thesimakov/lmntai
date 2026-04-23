@@ -13,49 +13,17 @@ import {
   manusSupervisorStatus,
   type ManusApiResponse
 } from "@/lib/manus-sandbox-api";
+import {
+  dockerRegistry,
+  isManusDockerEnabled,
+  memoryStore,
+  type DockerRecord,
+  type MemoryState
+} from "@/lib/sandbox-stores";
 
 type SandboxMode = "memory" | "docker";
 
-type MemoryState = {
-  id: string;
-  ownerId: string;
-  html: string;
-  files: Record<string, string>;
-};
-
-type DockerRecord = {
-  sandboxId: string;
-  ownerId: string;
-  containerId: string;
-  ip: string;
-  /** Docker container name (for dockerode.getContainer) */
-  containerName: string;
-  ttlTimer?: ReturnType<typeof setTimeout>;
-};
-
-declare global {
-  // eslint-disable-next-line no-var
-  var lemnitySandboxStore: Map<string, MemoryState> | undefined;
-  // eslint-disable-next-line no-var
-  var lemnityDockerSandboxRegistry: Map<string, DockerRecord> | undefined;
-}
-
-const memoryStore = global.lemnitySandboxStore ?? new Map<string, MemoryState>();
-if (!global.lemnitySandboxStore) {
-  global.lemnitySandboxStore = memoryStore;
-}
-
-const dockerRegistry = global.lemnityDockerSandboxRegistry ?? new Map<string, DockerRecord>();
-if (!global.lemnityDockerSandboxRegistry) {
-  global.lemnityDockerSandboxRegistry = dockerRegistry;
-}
-
 let lemnityDockerClient: any = null;
-
-function isManusDockerEnabled(): boolean {
-  const v = (process.env.MANUS_SANDBOX_ENABLED ?? "").toLowerCase();
-  return v === "true" || v === "1" || v === "yes";
-}
 
 function manusImage(): string {
   return process.env.MANUS_SANDBOX_IMAGE ?? "manus-sandbox:local";

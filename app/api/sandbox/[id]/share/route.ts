@@ -8,16 +8,18 @@ import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
 
+type RouteCtx = { params: Promise<{ id: string }> };
+
 async function withOwner(
   _req: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: RouteCtx,
   work: (arg: { sandboxId: string; userId: string }) => Promise<Response>
 ): Promise<Response> {
   const guard = await requireDbUser();
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });
   }
-  const sandboxId = params.id;
+  const { id: sandboxId } = await params;
   const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
   if (!allowed) {
     return new Response("Not found", { status: 404 });
@@ -25,7 +27,7 @@ async function withOwner(
   return work({ sandboxId, userId: guard.data.user.id });
 }
 
-async function getShare(req: NextRequest, ctx: { params: { id: string } }) {
+async function getShare(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ sandboxId }) => {
     try {
       const state = await getSandboxShareState(sandboxId);
@@ -40,7 +42,7 @@ async function getShare(req: NextRequest, ctx: { params: { id: string } }) {
   });
 }
 
-async function postShare(req: NextRequest, ctx: { params: { id: string } }) {
+async function postShare(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ sandboxId, userId }) => {
     try {
       await setSandboxSharePublic(sandboxId, userId, true);
@@ -58,7 +60,7 @@ async function postShare(req: NextRequest, ctx: { params: { id: string } }) {
   });
 }
 
-async function deleteShare(req: NextRequest, ctx: { params: { id: string } }) {
+async function deleteShare(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ sandboxId, userId }) => {
     try {
       await setSandboxSharePublic(sandboxId, userId, false);
