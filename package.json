@@ -7,6 +7,7 @@
     "dev:clean": "rm -rf .next && next dev",
     "dev:poll": "WATCHPACK_POLLING=true next dev",
     "build": "next build",
+    "build:clean": "rm -rf .next && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
