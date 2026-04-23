@@ -75,7 +75,7 @@ type WalletApiResponse = {
 
 export function Profile() {
   const { t, lang } = useI18n()
-  const { data: session } = useSession()
+  const { data: session, update } = useSession()
 
   const [profile, setProfile] = useState<ProfileApiUser | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
@@ -248,17 +248,19 @@ export function Profile() {
       const data = (await res.json()) as {
         user?: { name?: string | null; company?: string | null; avatar?: string | null; email?: string }
       }
+      const nextName = data.user?.name ?? (formName.trim() || null)
       setProfile((prev) =>
         prev
           ? {
               ...prev,
-              name: data.user?.name ?? (formName.trim() || null),
+              name: nextName,
               company: data.user?.company ?? (formCompany.trim() || null),
               avatar: data.user?.avatar ?? prev.avatar,
               email: data.user?.email ?? prev.email
             }
           : prev
       )
+      await update({ name: nextName ?? undefined })
     } catch {
       toast.error(t("retry"))
     } finally {

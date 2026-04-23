@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -81,11 +82,51 @@ export function LoginForm({
   const [regPassword, setRegPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingState, setLoadingState] = useState<
+    "idle" | "oauth" | "credentials" | "register" | "magic"
+  >("idle");
+  const [activeProvider, setActiveProvider] = useState<"google" | "github" | "vk" | "yandex" | null>(null);
+  const isLoading = loadingState !== "idle";
+
+  async function handleOAuthSignIn(
+    provider: "google" | "github" | "vk" | "yandex",
+    label: string
+  ) {
+    setError(null);
+    setInfo(null);
+    setActiveProvider(provider);
+    setLoadingState("oauth");
+
+    try {
+      const result = await signIn(provider, {
+        callbackUrl: authContinueCallbackUrl(SITE_URL),
+        redirect: false
+      });
+
+      if (result?.error) {
+        setError(result.error);
+        setLoadingState("idle");
+        setActiveProvider(null);
+        return;
+      }
+
+      if (result?.url) {
+        window.location.assign(result.url);
+        return;
+      }
+
+      setError(`Не удалось начать вход через ${label}. Повторите попытку.`);
+    } catch {
+      setError(`Не удалось начать вход через ${label}. Повторите попытку.`);
+    }
+
+    setLoadingState("idle");
+    setActiveProvider(null);
+  }
 
   async function handleCredentialsSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setIsLoading(true);
+    setLoadingState("credentials");
     setError(null);
     setInfo(null);
 
@@ -106,7 +147,7 @@ export function LoginForm({
     } catch {
       setError("Не удалось выполнить вход. Повторите попытку.");
     } finally {
-      setIsLoading(false);
+      setLoadingState("idle");
     }
   }
 
@@ -122,7 +163,7 @@ export function LoginForm({
       setError("Укажите email.");
       return;
     }
-    setIsLoading(true);
+    setLoadingState("register");
     setError(null);
     setInfo(null);
 
@@ -143,7 +184,7 @@ export function LoginForm({
     } catch {
       setError("Не удалось создать аккаунт. Повторите попытку.");
     } finally {
-      setIsLoading(false);
+      setLoadingState("idle");
     }
   }
 
@@ -153,7 +194,7 @@ export function LoginForm({
       setError("Укажите email");
       return;
     }
-    setIsLoading(true);
+    setLoadingState("magic");
     setError(null);
     setInfo(null);
 
@@ -171,7 +212,7 @@ export function LoginForm({
     } catch {
       setError("Не удалось отправить magic link");
     } finally {
-      setIsLoading(false);
+      setLoadingState("idle");
     }
   }
 
@@ -213,14 +254,20 @@ export function LoginForm({
                   className="w-full gap-2"
                   disabled={isLoading}
                   onClick={() => {
-                    setIsLoading(true);
-                    void signIn("google", { callbackUrl: authContinueCallbackUrl(SITE_URL) }).finally(() =>
-                      setIsLoading(false)
-                    );
+                    void handleOAuthSignIn("google", "Google");
                   }}
                 >
-                  <GoogleIcon className="size-4" />
-                  Google
+                  {loadingState === "oauth" && activeProvider === "google" ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Перенаправляем в Google...
+                    </>
+                  ) : (
+                    <>
+                      <GoogleIcon className="size-4" />
+                      Google
+                    </>
+                  )}
                 </Button>
               ) : null}
               {features.github ? (
@@ -230,14 +277,20 @@ export function LoginForm({
                   className="w-full gap-2"
                   disabled={isLoading}
                   onClick={() => {
-                    setIsLoading(true);
-                    void signIn("github", { callbackUrl: authContinueCallbackUrl(SITE_URL) }).finally(() =>
-                      setIsLoading(false)
-                    );
+                    void handleOAuthSignIn("github", "GitHub");
                   }}
                 >
-                  <GitHubIcon className="size-4" />
-                  GitHub
+                  {loadingState === "oauth" && activeProvider === "github" ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Перенаправляем в GitHub...
+                    </>
+                  ) : (
+                    <>
+                      <GitHubIcon className="size-4" />
+                      GitHub
+                    </>
+                  )}
                 </Button>
               ) : null}
               {features.vk ? (
@@ -247,13 +300,17 @@ export function LoginForm({
                   className="w-full"
                   disabled={isLoading}
                   onClick={() => {
-                    setIsLoading(true);
-                    void signIn("vk", { callbackUrl: authContinueCallbackUrl(SITE_URL) }).finally(() =>
-                      setIsLoading(false)
-                    );
+                    void handleOAuthSignIn("vk", "ВКонтакте");
                   }}
                 >
-                  ВКонтакте
+                  {loadingState === "oauth" && activeProvider === "vk" ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Перенаправляем во ВКонтакте...
+                    </>
+                  ) : (
+                    "ВКонтакте"
+                  )}
                 </Button>
               ) : null}
               {features.yandex ? (
@@ -263,13 +320,17 @@ export function LoginForm({
                   className="w-full"
                   disabled={isLoading}
                   onClick={() => {
-                    setIsLoading(true);
-                    void signIn("yandex", { callbackUrl: authContinueCallbackUrl(SITE_URL) }).finally(() =>
-                      setIsLoading(false)
-                    );
+                    void handleOAuthSignIn("yandex", "Яндекс");
                   }}
                 >
-                  Яндекс
+                  {loadingState === "oauth" && activeProvider === "yandex" ? (
+                    <>
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                      Перенаправляем в Яндекс...
+                    </>
+                  ) : (
+                    "Яндекс"
+                  )}
                 </Button>
               ) : null}
             </div>
@@ -286,7 +347,7 @@ export function LoginForm({
                 required
               />
               <Button type="submit" variant="secondary" className="w-full" disabled={isLoading}>
-                {isLoading ? "Отправляю…" : "Отправить ссылку"}
+                {loadingState === "magic" ? "Отправляю…" : "Отправить ссылку"}
               </Button>
             </form>
           ) : null}
@@ -335,7 +396,7 @@ export function LoginForm({
                 )}
                 disabled={isLoading}
               >
-                {isLoading ? "Выполняю вход…" : "Войти по email"}
+                {loadingState === "credentials" ? "Выполняю вход…" : "Войти по email"}
               </Button>
             </form>
           </div>
@@ -394,7 +455,7 @@ export function LoginForm({
                 )}
                 disabled={isLoading}
               >
-                {isLoading ? "Создаём профиль…" : "Создать аккаунт"}
+                {loadingState === "register" ? "Создаём профиль…" : "Создать аккаунт"}
               </Button>
             </form>
           </div>

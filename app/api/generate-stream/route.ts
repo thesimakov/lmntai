@@ -52,7 +52,8 @@ async function postGenerateStream(req: NextRequest) {
     hint: body?.agentHint
   });
 
-  const { sandboxId } = await sandboxManager.createSandbox("lemnity", user.id);
+  const sandboxTitle = rawPrompt.slice(0, 120);
+  const { sandboxId } = await sandboxManager.createSandbox(sandboxTitle, user.id);
 
   const routerRes = await requestRouterAIStream({
     prompt,

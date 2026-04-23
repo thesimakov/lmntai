@@ -52,7 +52,8 @@ model User {
   referralWalletEntries ReferralWalletEntry[]
   withdrawalRequests WithdrawalRequest[] @relation("WithdrawalUser")
   reviewedWithdrawalRequests WithdrawalRequest[] @relation("WithdrawalReviewer")
-  invitations    TeamInvitation[]
+  invitations    TeamInvitation[] @relation("TeamOwnerInvitations")
+  teamMemberships TeamInvitation[] @relation("TeamInvitedUser")
   requestLogs    RequestLog[]
   authEvents     AuthEventLog[]
 
@@ -175,13 +176,20 @@ model WithdrawalRequest {
 }
 
 model TeamInvitation {
-  id        String   @id @default(cuid())
-  userId    String
-  email     String
-  role      String   @default("EDITOR")
-  status    String   @default("INVITED")
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  userId        String
+  invitedUserId String?
+  email         String
+  role          String   @default("EDITOR")
+  status        String   @default("INVITED")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  user          User     @relation("TeamOwnerInvitations", fields: [userId], references: [id], onDelete: Cascade)
+  invitedUser   User?    @relation("TeamInvitedUser", fields: [invitedUserId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, email])
+  @@index([userId, status])
+  @@index([invitedUserId])
 }
 
 /// Журнал HTTP-запросов к API (метаданные + усечённое тело).

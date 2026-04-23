@@ -43,6 +43,12 @@ function ttlMs(): number {
   return m * 60_000;
 }
 
+function normalizeSandboxTitle(seed: string): string {
+  const cleaned = seed.trim();
+  if (!cleaned) return "Новый проект";
+  return cleaned.slice(0, 120);
+}
+
 function getDocker(): any {
   if (lemnityDockerClient == null) {
     // Важно: не top-level `import "dockerode"` — Webpack тянет ssh2 и ломает RSC clientReferenceManifest.
@@ -169,6 +175,8 @@ async function destroyDockerSandbox(sandboxId: string): Promise<void> {
 async function createDockerSandbox(seed: string, ownerId: string): Promise<{ sandboxId: string }> {
   const docker = getDocker();
   const sandboxId = crypto.randomUUID();
+  const now = Date.now();
+  const title = normalizeSandboxTitle(seed);
   const short = sandboxId.replace(/-/g, "").slice(0, 12);
   const containerName = `${namePrefix()}-${short}`.toLowerCase();
 
@@ -214,6 +222,9 @@ async function createDockerSandbox(seed: string, ownerId: string): Promise<{ san
   const record: DockerRecord = {
     sandboxId,
     ownerId,
+    title,
+    createdAt: now,
+    updatedAt: now,
     containerId: inspect.Id,
     ip,
     containerName
@@ -239,6 +250,7 @@ async function applyDockerCode(sandboxId: string, code: string): Promise<{ previ
   assertManusSuccess(w1, "file/write index.html");
   const w2 = await manusFileWrite(base, genPath, code, { append: false });
   assertManusSuccess(w2, "file/write generated.txt");
+  rec.updatedAt = Date.now();
 
   return { previewUrl: `/api/sandbox/${sandboxId}` };
 }
@@ -322,9 +334,14 @@ export const sandboxManager = {
       return createDockerSandbox(seed, ownerId);
     }
     const id = crypto.randomUUID();
+    const now = Date.now();
+    const title = normalizeSandboxTitle(seed);
     memoryStore.set(id, {
       id,
       ownerId,
+      title,
+      createdAt: now,
+      updatedAt: now,
       html: `<html><body style="font-family:Rubik,system-ui,sans-serif;background:#0A0A0A;color:white;padding:24px">Создаю проект: ${seed}</body></html>`,
       files: {}
     });
@@ -343,6 +360,9 @@ export const sandboxManager = {
     const next: MemoryState = {
       id: sandboxId,
       ownerId: previous.ownerId,
+      title: previous.title,
+      createdAt: previous.createdAt,
+      updatedAt: Date.now(),
       html,
       files: {
         "index.html": html,
@@ -385,5 +405,31 @@ export const sandboxManager = {
       return dockerRegistry.has(sandboxId);
     }
     return memoryStore.has(sandboxId);
+  },
+
+  async listSandboxesByOwner(ownerId: string) {
+    if (isManusDockerEnabled()) {
+      return Array.from(dockerRegistry.values())
+        .filter((item) => item.ownerId === ownerId)
+        .map((item) => ({
+          sandboxId: item.sandboxId,
+          title: item.title,
+          createdAt: item.createdAt,
+          updatedAt: item.updatedAt,
+          previewUrl: `/api/sandbox/${item.sandboxId}`
+        }))
+        .sort((a, b) => b.updatedAt - a.updatedAt);
+    }
+
+    return Array.from(memoryStore.values())
+      .filter((item) => item.ownerId === ownerId)
+      .map((item) => ({
+        sandboxId: item.id,
+        title: item.title,
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt,
+        previewUrl: `/api/sandbox/${item.id}`
+      }))
+      .sort((a, b) => b.updatedAt - a.updatedAt);
   }
 };

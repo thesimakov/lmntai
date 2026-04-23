@@ -7,6 +7,9 @@
 export type MemoryState = {
   id: string;
   ownerId: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
   html: string;
   files: Record<string, string>;
 };
@@ -14,6 +17,9 @@ export type MemoryState = {
 export type DockerRecord = {
   sandboxId: string;
   ownerId: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
   containerId: string;
   ip: string;
   containerName: string;

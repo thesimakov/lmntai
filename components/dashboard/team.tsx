@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import { UserPlus, MoreHorizontal, Mail } from "lucide-react"
 import { toast } from "sonner"
@@ -49,50 +49,17 @@ import {
 } from "@/components/ui/select"
 
 type TeamMember = {
-  id: number
+  id: string
+  ownerId: string
+  userId: string | null
   name: string
   email: string
   role: "owner" | "admin" | "editor"
   status: "active" | "invited"
   avatar: string | null
+  createdAt: string
+  canManage: boolean
 }
-
-const initialTeamMembers: TeamMember[] = [
-  {
-    id: 1,
-    name: "Alex Kim",
-    email: "alex@lemnity.com",
-    role: "owner",
-    status: "active",
-    avatar:
-      "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face",
-  },
-  {
-    id: 2,
-    name: "Maria Chen",
-    email: "maria@lemnity.com",
-    role: "admin",
-    status: "active",
-    avatar:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
-  },
-  {
-    id: 3,
-    name: "John Doe",
-    email: "john@lemnity.com",
-    role: "editor",
-    status: "active",
-    avatar: null,
-  },
-  {
-    id: 4,
-    name: "Sarah Wilson",
-    email: "sarah@company.com",
-    role: "editor",
-    status: "invited",
-    avatar: null,
-  },
-]
 
 const getRoleBadgeColor = (role: TeamMember["role"]) => {
   switch (role) {
@@ -119,10 +86,15 @@ const getStatusBadgeColor = (status: TeamMember["status"]) => {
 export function Team() {
   const { t } = useI18n()
   const [inviteEmail, setInviteEmail] = useState("")
-  const [inviteRole, setInviteRole] = useState("editor")
-  const [members, setMembers] = useState<TeamMember[]>(initialTeamMembers)
+  const [inviteRole, setInviteRole] = useState<"admin" | "editor">("editor")
+  const [members, setMembers] = useState<TeamMember[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isInviting, setIsInviting] = useState(false)
+  const [isRoleSaving, setIsRoleSaving] = useState(false)
+  const [isRemoving, setIsRemoving] = useState(false)
+  const [quotaLimit, setQuotaLimit] = useState(10)
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
-  const [selectedMemberId, setSelectedMemberId] = useState<number | null>(null)
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [roleDraft, setRoleDraft] = useState<TeamMember["role"]>("editor")
   const [memberToRemove, setMemberToRemove] = useState<TeamMember | null>(null)
 
@@ -135,11 +107,37 @@ export function Team() {
     return "editor"
   }
 
+  async function loadMembers() {
+    setIsLoading(true)
+    try {
+      const res = await fetch("/api/team", { credentials: "include" })
+      if (!res.ok) {
+        throw new Error(await res.text().catch(() => "load_failed"))
+      }
+      const data = (await res.json()) as {
+        members?: TeamMember[]
+        quota?: { limit?: number }
+      }
+      setMembers(data.members ?? [])
+      setQuotaLimit(data.quota?.limit ?? 10)
+    } catch {
+      toast.error(t("team_load_error"))
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   function isValidEmail(email: string) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
   }
 
-  function invite() {
+  useEffect(() => {
+    void loadMembers()
+    // initial load only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function invite() {
     const email = inviteEmail.trim().toLowerCase()
     if (!isValidEmail(email)) {
       toast.error(t("team_toast_invalid_email"))
@@ -149,21 +147,28 @@ export function Team() {
       toast.error(t("team_toast_email_exists"))
       return
     }
-    const role = roleFromSelect(inviteRole)
-    const name = email.split("@")[0] ? `${email.split("@")[0]}` : t("team_new_member")
-
-    const next: TeamMember = {
-      id: Math.max(0, ...members.map((m) => m.id)) + 1,
-      name,
-      email,
-      role,
-      status: "invited",
-      avatar: null,
+    setIsInviting(true)
+    try {
+      const role = roleFromSelect(inviteRole).toUpperCase()
+      const res = await fetch("/api/team", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, role })
+      })
+      if (!res.ok) {
+        throw new Error(await res.text().catch(() => "invite_failed"))
+      }
+      setInviteEmail("")
+      setInviteRole("editor")
+      await loadMembers()
+      toast.success(t("team_toast_invite_sent"))
+    } catch (error) {
+      const message = error instanceof Error && error.message ? error.message : t("team_invite_error")
+      toast.error(message)
+    } finally {
+      setIsInviting(false)
     }
-    setMembers((prev) => [...prev, next])
-    setInviteEmail("")
-    setInviteRole("editor")
-    toast.success(t("team_toast_invite_sent"))
   }
 
   function openRoleDialog(member: TeamMember) {
@@ -172,18 +177,55 @@ export function Team() {
     setRoleDialogOpen(true)
   }
 
-  function saveRole() {
+  async function saveRole() {
     if (!selectedMember) return
-    setMembers((prev) =>
-      prev.map((m) => (m.id === selectedMember.id ? { ...m, role: roleDraft } : m)),
-    )
-    toast.success(t("team_toast_role_updated"))
-    setRoleDialogOpen(false)
+    setIsRoleSaving(true)
+    try {
+      const res = await fetch(`/api/team/${encodeURIComponent(selectedMember.id)}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ role: roleDraft.toUpperCase() })
+      })
+      if (!res.ok) {
+        throw new Error(await res.text().catch(() => "role_update_failed"))
+      }
+      const data = (await res.json()) as { member?: TeamMember }
+      if (data.member) {
+        setMembers((prev) => prev.map((m) => (m.id === data.member!.id ? data.member! : m)))
+      } else {
+        await loadMembers()
+      }
+      toast.success(t("team_toast_role_updated"))
+      setRoleDialogOpen(false)
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : t("team_role_update_error")
+      toast.error(message)
+    } finally {
+      setIsRoleSaving(false)
+    }
   }
 
-  function removeMember(memberId: number) {
-    setMembers((prev) => prev.filter((m) => m.id !== memberId))
-    toast.success(t("team_toast_member_removed"))
+  async function removeMember(memberId: string) {
+    setIsRemoving(true)
+    try {
+      const res = await fetch(`/api/team/${encodeURIComponent(memberId)}`, {
+        method: "DELETE",
+        credentials: "include"
+      })
+      if (!res.ok) {
+        throw new Error(await res.text().catch(() => "member_remove_failed"))
+      }
+      setMembers((prev) => prev.filter((m) => m.id !== memberId))
+      toast.success(t("team_toast_member_removed"))
+    } catch (error) {
+      const message =
+        error instanceof Error && error.message ? error.message : t("team_member_remove_error")
+      toast.error(message)
+    } finally {
+      setIsRemoving(false)
+    }
   }
 
   return (
@@ -219,9 +261,14 @@ export function Team() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               className="pl-10"
+              disabled={isInviting || isLoading}
             />
           </div>
-          <Select value={inviteRole} onValueChange={setInviteRole}>
+          <Select
+            value={inviteRole}
+            onValueChange={(value) => setInviteRole(value === "admin" ? "admin" : "editor")}
+            disabled={isInviting || isLoading}
+          >
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
@@ -238,9 +285,10 @@ export function Team() {
             type="button"
             onClick={invite}
             className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500"
+            disabled={isInviting || isLoading}
           >
             <UserPlus className="mr-2 h-4 w-4" />
-            {t("team_invite_button")}
+            {isInviting ? t("loading") : t("team_invite_button")}
           </Button>
         </div>
       </motion.div>
@@ -262,6 +310,20 @@ export function Team() {
             </TableRow>
           </TableHeader>
           <TableBody>
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  {t("loading")}
+                </TableCell>
+              </TableRow>
+            ) : null}
+            {!isLoading && members.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={4} className="py-8 text-center text-sm text-muted-foreground">
+                  {t("team_empty")}
+                </TableCell>
+              </TableRow>
+            ) : null}
             {members.map((member) => (
               <TableRow key={member.id} className="hover:bg-muted/30">
                 <TableCell>
@@ -311,13 +373,14 @@ export function Team() {
                   </span>
                 </TableCell>
                 <TableCell>
-                  {member.role !== "owner" && (
+                  {member.canManage && member.role !== "owner" && (
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          disabled={isRoleSaving || isRemoving}
                         >
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -353,7 +416,7 @@ export function Team() {
         transition={{ duration: 0.4, delay: 0.3 }}
         className="mt-6 text-center text-sm text-muted-foreground"
       >
-        {members.length} / 10 {t("team_quota")}
+        {members.length} / {quotaLimit} {t("team_quota")}
       </motion.div>
 
       <AlertDialog
@@ -379,8 +442,9 @@ export function Team() {
                 if (memberToRemove) removeMember(memberToRemove.id)
                 setMemberToRemove(null)
               }}
+              disabled={isRemoving}
             >
-              {t("team_delete_confirm")}
+              {isRemoving ? t("loading") : t("team_delete_confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -451,9 +515,9 @@ export function Team() {
               type="button"
               className="bg-gradient-to-r from-purple-600 to-pink-600 text-white"
               onClick={saveRole}
-              disabled={!selectedMember}
+              disabled={!selectedMember || isRoleSaving}
             >
-              {t("team_role_dialog_save")}
+              {isRoleSaving ? t("loading") : t("team_role_dialog_save")}
             </Button>
           </DialogFooter>
         </DialogContent>
