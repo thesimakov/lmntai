@@ -10,21 +10,6 @@ const nextConfig = {
       bodySizeLimit: "2mb"
     }
   },
-  // Нативные модули ssh2/dockerode: externalize только для server-бандла Webpack'ом.
-  // `serverComponentsExternalPackages` на 14.2.3x в ряде деплоев давал runtime:
-  // TypeError: … 'clientModules' (clientReferenceManifest undefined).
-  webpack: (config, { isServer }) => {
-    if (isServer) {
-      const ext = config.externals ?? [];
-      const extra = {
-        ssh2: "commonjs ssh2",
-        dockerode: "commonjs dockerode",
-        "docker-modem": "commonjs docker-modem"
-      };
-      config.externals = Array.isArray(ext) ? [...ext, extra] : [ext, extra];
-    }
-    return config;
-  },
   images: {
     remotePatterns: [
       {

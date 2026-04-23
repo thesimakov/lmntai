@@ -2,7 +2,8 @@
  * Песочница: режим in-memory (прототип) или Docker + FastAPI ai-manus sandbox.
  * Docker: см. docker/manus-sandbox/README.md и docker-compose.manus.yml
  */
-import Docker from "dockerode";
+/* eslint-disable @typescript-eslint/no-explicit-any -- dockerode: CommonJS, типы default/instance в TS нестабильны; lazy require см. getDocker */
+import type Docker from "dockerode";
 
 import {
   manusAllServicesRunning,
@@ -37,8 +38,6 @@ declare global {
   var lemnitySandboxStore: Map<string, MemoryState> | undefined;
   // eslint-disable-next-line no-var
   var lemnityDockerSandboxRegistry: Map<string, DockerRecord> | undefined;
-  // eslint-disable-next-line no-var
-  var lemnityDockerClient: Docker | undefined;
 }
 
 const memoryStore = global.lemnitySandboxStore ?? new Map<string, MemoryState>();
@@ -50,6 +49,8 @@ const dockerRegistry = global.lemnityDockerSandboxRegistry ?? new Map<string, Do
 if (!global.lemnityDockerSandboxRegistry) {
   global.lemnityDockerSandboxRegistry = dockerRegistry;
 }
+
+let lemnityDockerClient: any = null;
 
 function isManusDockerEnabled(): boolean {
   const v = (process.env.MANUS_SANDBOX_ENABLED ?? "").toLowerCase();
@@ -74,14 +75,19 @@ function ttlMs(): number {
   return m * 60_000;
 }
 
-function getDocker(): Docker {
-  if (!global.lemnityDockerClient) {
+function getDocker(): any {
+  if (lemnityDockerClient == null) {
+    // Важно: не top-level `import "dockerode"` — Webpack тянет ssh2 и ломает RSC clientReferenceManifest.
+    // Не `require("dockerode")` буквально: иначе снова статический follow. Собираем имя в рантайме.
+    const dockerodeName = ["docker", "ode"].join("");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const DockerMod = require(dockerodeName) as new (o?: { socketPath?: string }) => any;
     const socket = process.env.DOCKER_HOST;
-    global.lemnityDockerClient = socket?.startsWith("unix://")
-      ? new Docker({ socketPath: socket.replace(/^unix:\/\//, "") })
-      : new Docker();
+    lemnityDockerClient = socket?.startsWith("unix://")
+      ? new DockerMod({ socketPath: socket.replace(/^unix:\/\//, "") })
+      : new DockerMod();
   }
-  return global.lemnityDockerClient;
+  return lemnityDockerClient;
 }
 
 function containerBaseUrl(ip: string): string {
