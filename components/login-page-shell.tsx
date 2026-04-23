@@ -41,7 +41,7 @@ export function LoginPageShell({ features }: { features: LoginFeatures }) {
         onClick={close}
       />
       <div
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-lg border-2 border-blue-500/70 bg-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.2)] backdrop-blur-xl dark:border-blue-400/60 dark:bg-zinc-950/25"
+        className="relative z-10 max-h-[min(100dvh-2rem,720px)] w-full max-w-md overflow-y-auto rounded-lg border-2 border-blue-500/70 bg-white/10 shadow-[0_25px_80px_rgba(0,0,0,0.2)] backdrop-blur-xl dark:border-blue-400/60 dark:bg-zinc-950/25"
         role="dialog"
         aria-modal="true"
         aria-labelledby="login-dialog-title"
