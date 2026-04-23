@@ -1,5 +1,8 @@
 import { LoginForm, type LoginFeatures } from "@/components/login-form";
 
+/** Иначе при `next build` на CI/без .env флаги провайдеров «запекаются», и кнопки (Яндекс и др.) исчезают на проде даже при .env на сервере. */
+export const dynamic = "force-dynamic";
+
 function readFeatures(): LoginFeatures {
   const smtp =
     Boolean(process.env.EMAIL_SERVER_HOST) &&
