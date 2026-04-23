@@ -6,11 +6,24 @@ const nextConfig = {
     // register() в instrumentation.ts не критичен для рендера; при необходимости вернуть
     // после обновления Next / после проверки на staging.
     // instrumentationHook: true,
-    // Нативные .node (ssh2 → dockerode) нельзя бандлить Webpack'ом; иначе build падает на 14.2.3x.
-    serverComponentsExternalPackages: ["ssh2", "dockerode", "docker-modem"],
     serverActions: {
       bodySizeLimit: "2mb"
     }
+  },
+  // Нативные модули ssh2/dockerode: externalize только для server-бандла Webpack'ом.
+  // `serverComponentsExternalPackages` на 14.2.3x в ряде деплоев давал runtime:
+  // TypeError: … 'clientModules' (clientReferenceManifest undefined).
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      const ext = config.externals ?? [];
+      const extra = {
+        ssh2: "commonjs ssh2",
+        dockerode: "commonjs dockerode",
+        "docker-modem": "commonjs docker-modem"
+      };
+      config.externals = Array.isArray(ext) ? [...ext, extra] : [ext, extra];
+    }
+    return config;
   },
   images: {
     remotePatterns: [
