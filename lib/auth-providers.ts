@@ -141,7 +141,9 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
       ? [
           Yandex({
             clientId: process.env.YANDEX_CLIENT_ID,
-            clientSecret: process.env.YANDEX_CLIENT_SECRET
+            clientSecret: process.env.YANDEX_CLIENT_SECRET,
+            // Тот же email, что уже в БД (credentials) — не создаём второго пользователя, клеим OAuth-аккаунт.
+            allowDangerousEmailAccountLinking: true
           })
         ]
       : []),
