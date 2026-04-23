@@ -17,6 +17,23 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
         token.plan = "FREE";
         return token;
       }
+      // OAuth: иногда в первом круге `user.email` пуст, хотя в БД уже создан User.
+      if (!user.email && user.id) {
+        try {
+          const row = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { email: true, role: true, plan: true }
+          });
+          if (row?.email) {
+            token.email = row.email.toLowerCase();
+            token.role = toUserRole(row.role);
+            token.plan = toPlan(row.plan);
+            return token;
+          }
+        } catch (err) {
+          console.error("[next-auth] jwt: prisma.user.findUnique by id failed", err);
+        }
+      }
     }
 
     if (token.demoOffline) {
@@ -24,22 +41,38 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
     }
 
     const email = token.email as string | undefined;
-    if (!email) {
-      return token;
+    const userId = token.userId as string | undefined;
+    if (!email && userId) {
+      try {
+        const byId = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { email: true, role: true, plan: true }
+        });
+        if (byId?.email) {
+          token.email = byId.email.toLowerCase();
+          token.role = toUserRole(byId.role);
+          token.plan = toPlan(byId.plan);
+        }
+      } catch (err) {
+        console.error("[next-auth] jwt: prisma.user by userId failed", err);
+      }
     }
 
-    try {
-      const dbUser = await prisma.user.findUnique({
-        where: { email: email.toLowerCase() }
-      });
+    const emailForLookup = (token.email as string | undefined)?.toLowerCase();
+    if (emailForLookup) {
+      try {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: emailForLookup }
+        });
 
-      if (dbUser) {
-        token.userId = dbUser.id;
-        token.role = toUserRole(dbUser.role);
-        token.plan = toPlan(dbUser.plan);
+        if (dbUser) {
+          token.userId = dbUser.id;
+          token.role = toUserRole(dbUser.role);
+          token.plan = toPlan(dbUser.plan);
+        }
+      } catch (err) {
+        console.error("[next-auth] jwt: prisma.user.findUnique failed", err);
       }
-    } catch (err) {
-      console.error("[next-auth] jwt: prisma.user.findUnique failed", err);
     }
 
     return token;
