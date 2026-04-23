@@ -1,5 +1,7 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -417,16 +419,35 @@ export function LoginForm({
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-6">
-      <Card className="glass w-full max-w-md rounded-3xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">Вход в Lemnity</CardTitle>
-          <CardDescription>
-            Войдите или зарегистрируйтесь через соцсети, ссылку на email или email (демо).
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">{formBody}</CardContent>
-      </Card>
-    </main>
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-card/50 px-4 py-3 backdrop-blur-sm sm:px-6">
+        <Link href="/" className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+          <Image
+            src="/logo-w.svg"
+            alt="Lemnity"
+            width={112}
+            height={28}
+            className="h-7 w-auto brightness-0 dark:invert"
+            priority
+          />
+        </Link>
+        <Button variant="ghost" size="sm" asChild>
+          <Link href="/">На главную</Link>
+        </Button>
+      </header>
+      <main className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 sm:justify-center sm:py-10">
+        <Card className="glass w-full max-w-md rounded-3xl shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-2xl">Вход в Lemnity</CardTitle>
+            <CardDescription>
+              Войдите или зарегистрируйтесь через соцсети, ссылку на email или email (демо).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="max-h-[min(70dvh,560px)] space-y-6 overflow-y-auto sm:max-h-none sm:overflow-visible">
+            {formBody}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
   );
 }

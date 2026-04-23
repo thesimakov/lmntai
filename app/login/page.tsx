@@ -1,5 +1,4 @@
-import { LoginPageShell } from "@/components/login-page-shell";
-import type { LoginFeatures } from "@/components/login-form";
+import { LoginForm, type LoginFeatures } from "@/components/login-form";
 
 function readFeatures(): LoginFeatures {
   const smtp =
@@ -31,5 +30,5 @@ function readFeatures(): LoginFeatures {
 }
 
 export default function LoginPage() {
-  return <LoginPageShell features={readFeatures()} />;
+  return <LoginForm features={readFeatures()} />;
 }
