@@ -9,9 +9,11 @@ module.exports = {
     {
       name: "lemnity",
       cwd: __dirname,
-      script: "node_modules/.bin/next",
+      // Прямой entrypoint Next — иначе PM2 иногда запускает shell-шим из .bin и падает с выводом «npm start».
+      script: "node_modules/next/dist/bin/next",
       args: "start -H 0.0.0.0 -p 3000",
       instances: 1,
+      exec_mode: "fork",
       autorestart: true,
       env: {
         NODE_ENV: "production"
