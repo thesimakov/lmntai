@@ -97,17 +97,50 @@ const config: Config = {
         },
         /** Правая панель /login: фон + блобы */
         "login-hero-mesh": {
-          "0%, 100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" }
+          "0%": { backgroundPosition: "0% 40%" },
+          "25%": { backgroundPosition: "100% 0%" },
+          "50%": { backgroundPosition: "100% 100%" },
+          "75%": { backgroundPosition: "0% 100%" },
+          "100%": { backgroundPosition: "0% 40%" }
         },
         "login-hero-blob-a": {
-          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "1" },
-          "40%": { transform: "translate(4%, -5%) scale(1.12)", opacity: "0.85" },
-          "70%": { transform: "translate(-2%, 3%) scale(1.04)", opacity: "0.95" }
+          "0%, 100%": {
+            transform: "translate(0, 0) scale(1)",
+            opacity: "1",
+            filter: "hue-rotate(0deg) saturate(1)"
+          },
+          "40%": {
+            transform: "translate(4%, -5%) scale(1.12)",
+            opacity: "0.88",
+            filter: "hue-rotate(8deg) saturate(1.1)"
+          },
+          "70%": {
+            transform: "translate(-2%, 3%) scale(1.04)",
+            opacity: "0.95",
+            filter: "hue-rotate(-6deg) saturate(1.05)"
+          }
         },
         "login-hero-blob-b": {
-          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.9" },
-          "50%": { transform: "translate(-6%, 5%) scale(1.1)", opacity: "1" }
+          "0%, 100%": {
+            transform: "translate(0, 0) scale(1)",
+            opacity: "0.88",
+            filter: "hue-rotate(0deg) brightness(1)"
+          },
+          "25%": {
+            transform: "translate(-5%, 4%) scale(1.1)",
+            opacity: "0.95",
+            filter: "hue-rotate(15deg) brightness(1.05)"
+          },
+          "50%": {
+            transform: "translate(3%, -2%) scale(1.14)",
+            opacity: "1",
+            filter: "hue-rotate(-10deg) brightness(1.08)"
+          },
+          "75%": {
+            transform: "translate(4%, 6%) scale(1.06)",
+            opacity: "0.9",
+            filter: "hue-rotate(6deg) brightness(1.02)"
+          }
         },
         "login-hero-cursor": {
           "0%, 45%": { opacity: "1" },
@@ -122,9 +155,9 @@ const config: Config = {
         "accordion-up": "accordion-up 0.2s ease-out",
         "cp-iso-yaw": "cp-iso-yaw 14s linear infinite",
         "cp-iso-pulse": "cp-iso-pulse 2.2s ease-in-out infinite",
-        "login-hero-mesh": "login-hero-mesh 18s ease-in-out infinite",
-        "login-hero-blob-a": "login-hero-blob-a 14s ease-in-out infinite",
-        "login-hero-blob-b": "login-hero-blob-b 20s ease-in-out infinite",
+        "login-hero-mesh": "login-hero-mesh 24s ease-in-out infinite",
+        "login-hero-blob-a": "login-hero-blob-a 16s ease-in-out infinite",
+        "login-hero-blob-b": "login-hero-blob-b 22s ease-in-out infinite",
         "login-hero-cursor": "login-hero-cursor 0.9s step-end infinite"
       }
     }

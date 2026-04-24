@@ -39,6 +39,21 @@ function GoogleIcon({ className }: { className?: string }) {
   );
 }
 
+/** Мини-маркер «Я» в духе Yandex ID (без официального логотипа) */
+function YandexBrandMark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex size-5 shrink-0 items-center justify-center rounded bg-white/25 text-[11px] font-extrabold leading-none text-white",
+        className
+      )}
+      aria-hidden
+    >
+      Я
+    </span>
+  );
+}
+
 function GitHubIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -344,8 +359,12 @@ export function LoginForm({
           {features.yandex ? (
             <Button
               type="button"
-              variant="outline"
-              className="h-10 w-full"
+              variant="default"
+              className={cn(
+                "h-11 w-full justify-center gap-2 border-0 font-semibold !text-white shadow-md",
+                "!bg-[#FC3F1D] hover:!bg-[#E63618] focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:!ring-[#FC3F1D]/50",
+                "dark:!bg-[#FC3F1D] dark:hover:!bg-[#E63618]"
+              )}
               disabled={isLoading}
               onClick={() => {
                 void handleOAuthSignIn("yandex", "Яндекс");
@@ -353,11 +372,14 @@ export function LoginForm({
             >
               {loadingState === "oauth" && activeProvider === "yandex" ? (
                 <>
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <Loader2 className="size-4 shrink-0 animate-spin text-white" />
                   Перенаправляем в Яндекс…
                 </>
               ) : (
-                "Продолжить с Яндекс"
+                <>
+                  <YandexBrandMark />
+                  Продолжить с Яндекс
+                </>
               )}
             </Button>
           ) : null}

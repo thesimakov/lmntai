@@ -45,7 +45,7 @@ export function LoginSplitHero() {
     <div className="relative flex h-full min-h-[min(100dvh,640px)] w-full items-center justify-center overflow-hidden rounded-[1.75rem] p-6 shadow-inner sm:min-h-0 sm:rounded-[2rem] sm:p-8 lg:min-h-full">
       {/* Анимированная «сетка» градиента */}
       <div
-        className="absolute inset-0 animate-login-hero-mesh bg-gradient-to-br from-sky-200/90 via-violet-100/85 to-rose-200/90 bg-[length:200%_200%]"
+        className="absolute inset-0 animate-login-hero-mesh bg-gradient-to-br from-sky-200/90 via-violet-100/85 to-rose-200/90 bg-[length:280%_280%]"
         aria-hidden
       />
       <div

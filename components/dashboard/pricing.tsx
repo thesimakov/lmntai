@@ -1,8 +1,8 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Check, Sparkles } from "lucide-react"
-import { useMemo } from "react"
+import { Check, Globe, Sparkles } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
 import { Button } from "@/components/ui/button"
@@ -13,29 +13,113 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion"
 import type { MessageKey } from "@/lib/i18n"
+import {
+  type BillingPeriod,
+  subscriptionBillingMinor,
+} from "@/lib/pricing-billing"
+import {
+  type PricingDisplayPayload,
+  localeForLanguage,
+} from "@/lib/pricing-display"
+import { formatCurrencyMinor, type ReferralCurrency } from "@/lib/referrals-currency"
 import { cn } from "@/lib/utils"
 
 const faqIds = [1, 2, 3, 4, 5, 6] as const
 type FaqId = (typeof faqIds)[number]
+type TokenPackId = "starter" | "optimal" | "max"
+function formatPaidPlanLine(
+  monthlyMinor: number,
+  currency: ReferralCurrency,
+  locale: string,
+  period: BillingPeriod,
+  t: (k: MessageKey) => string,
+  periodTextKey: "pricing_plan_pro_period" | "pricing_plan_team_period"
+): { price: string; period: string; subline?: string; discount?: string } {
+  const b = subscriptionBillingMinor(monthlyMinor, period)
+  if (period === "monthly") {
+    return {
+      price: formatCurrencyMinor(b.totalMinor, currency, locale),
+      period: t(periodTextKey),
+    }
+  }
+  return {
+    price: formatCurrencyMinor(b.totalMinor, currency, locale),
+    period:
+      period === "quarter"
+        ? t("pricing_billing_period_for_quarter")
+        : t("pricing_billing_period_for_year"),
+    subline: `≈ ${formatCurrencyMinor(
+      b.effectiveMonthlyMinor,
+      currency,
+      locale
+    )}${t("pricing_billing_per_month_mean")}`,
+    discount:
+      period === "quarter"
+        ? t("pricing_billing_discount_10")
+        : t("pricing_billing_discount_15"),
+  }
+}
+
+const billingOptions: { id: BillingPeriod; tab: MessageKey }[] = [
+  { id: "monthly", tab: "pricing_billing_tab_month" },
+  { id: "quarter", tab: "pricing_billing_tab_quarter" },
+  { id: "yearly", tab: "pricing_billing_tab_year" },
+]
 
 export function Pricing() {
   const { t, lang } = useI18n()
+  const [displayPricing, setDisplayPricing] = useState<PricingDisplayPayload | null>(null)
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly")
+  const showBilling = displayPricing != null
+
+  useEffect(() => {
+    let cancelled = false
+    setDisplayPricing(null)
+
+    async function loadDisplayPricing() {
+      try {
+        const res = await fetch(`/api/pricing/display?lang=${lang}`)
+        if (!res.ok) return
+        const payload = (await res.json()) as PricingDisplayPayload
+        if (!cancelled) {
+          setDisplayPricing(payload)
+        }
+      } catch {
+        // Keep i18n fallback prices on network/API errors.
+      }
+    }
+
+    void loadDisplayPricing()
+    return () => {
+      cancelled = true
+    }
+  }, [lang])
+
+  function resolvePackBody(packId: TokenPackId, fallbackKey: MessageKey) {
+    const fallbackBody = t(fallbackKey)
+    const formattedPrice = displayPricing?.packs[packId]?.formattedPrice
+    if (!formattedPrice) return fallbackBody
+    return fallbackBody.replace(/·\s*[^·]+$/u, `· ${formattedPrice}`)
+  }
 
   const plans = useMemo(() => {
+    const locale = displayPricing
+      ? localeForLanguage(displayPricing.language)
+      : localeForLanguage(lang)
+    const currency = displayPricing?.currency
+
     const starter = {
       id: "starter" as const,
       name: t("pricing_plan_starter_name"),
       price: t("pricing_plan_starter_price"),
       period: t("pricing_plan_starter_period"),
-      priceNote: undefined as string | undefined,
+      subline: undefined as string | undefined,
+      discount: undefined as string | undefined,
       description: t("pricing_plan_starter_desc"),
       features: [
         t("pricing_plan_starter_feat_1"),
         t("pricing_plan_starter_feat_2"),
         t("pricing_plan_starter_feat_3"),
-        t("pricing_plan_starter_feat_4"),
-        t("pricing_plan_starter_feat_5"),
-        t("pricing_plan_starter_feat_6"),
       ],
       cta: t("pricing_plan_starter_cta"),
       current: true,
@@ -43,22 +127,49 @@ export function Pricing() {
       badge: t("pricing_plan_starter_badge"),
     }
 
+    const proLine =
+      currency && displayPricing
+        ? formatPaidPlanLine(
+            displayPricing.subscriptions.pro.amountMinor,
+            currency,
+            locale,
+            showBilling ? billingPeriod : "monthly",
+            t,
+            "pricing_plan_pro_period"
+          )
+        : {
+            price: t("pricing_plan_pro_price_monthly"),
+            period: t("pricing_plan_pro_period"),
+          }
+
+    const teamLine =
+      currency && displayPricing
+        ? formatPaidPlanLine(
+            displayPricing.subscriptions.team.amountMinor,
+            currency,
+            locale,
+            showBilling ? billingPeriod : "monthly",
+            t,
+            "pricing_plan_team_period"
+          )
+        : {
+            price: t("pricing_plan_team_price_monthly"),
+            period: t("pricing_plan_team_period"),
+          }
+
     const pro = {
       id: "pro" as const,
       name: t("pricing_plan_pro_name"),
-      price: t("pricing_plan_pro_price_monthly"),
-      period: t("pricing_plan_pro_period"),
-      priceNote: t("pricing_plan_pro_price_note"),
+      price: proLine.price,
+      period: proLine.period,
+      subline: proLine.subline,
+      discount: proLine.discount,
       description: t("pricing_plan_pro_desc"),
       features: [
         t("pricing_plan_pro_feat_1"),
         t("pricing_plan_pro_feat_2"),
         t("pricing_plan_pro_feat_3"),
         t("pricing_plan_pro_feat_4"),
-        t("pricing_plan_pro_feat_5"),
-        t("pricing_plan_pro_feat_6"),
-        t("pricing_plan_pro_feat_7"),
-        t("pricing_plan_pro_feat_8"),
       ],
       cta: t("pricing_plan_pro_cta"),
       current: false,
@@ -69,20 +180,15 @@ export function Pricing() {
     const team = {
       id: "team" as const,
       name: t("pricing_plan_team_name"),
-      price: t("pricing_plan_team_price_monthly"),
-      period: t("pricing_plan_team_period"),
-      priceNote: t("pricing_plan_team_price_note"),
+      price: teamLine.price,
+      period: teamLine.period,
+      subline: teamLine.subline,
+      discount: teamLine.discount,
       description: t("pricing_plan_team_desc"),
       features: [
         t("pricing_plan_team_feat_1"),
         t("pricing_plan_team_feat_2"),
         t("pricing_plan_team_feat_3"),
-        t("pricing_plan_team_feat_4"),
-        t("pricing_plan_team_feat_5"),
-        t("pricing_plan_team_feat_6"),
-        t("pricing_plan_team_feat_7"),
-        t("pricing_plan_team_feat_8"),
-        t("pricing_plan_team_feat_9"),
       ],
       cta: t("pricing_plan_team_cta"),
       current: false,
@@ -91,14 +197,14 @@ export function Pricing() {
     }
 
     return [starter, pro, team]
-  }, [t])
+  }, [displayPricing, t, lang, billingPeriod, showBilling])
 
   const paygPacks = useMemo(
     () =>
-      (["starter", "optimal", "max"] as const).map((pack) => ({
+      (["starter", "optimal", "max"] as const).map((pack: TokenPackId) => ({
         id: pack,
         labelKey: `pricing_payg_pack_${pack}_label` as MessageKey,
-        bodyKey: `pricing_payg_pack_${pack}_body` as MessageKey,
+        fallbackBodyKey: `pricing_payg_pack_${pack}_body` as MessageKey,
         highlight: pack === "optimal",
       })),
     [],
@@ -146,17 +252,84 @@ export function Pricing() {
       transition={{ duration: 0.4 }}
     >
       {/* Header */}
-      <div className="mb-12 text-center">
-        <h1 className="text-3xl font-semibold text-foreground">
-          {t("pricing_title")}
-        </h1>
-        <p className="mt-3 text-muted-foreground">
-          {t("pricing_subtitle")}
+      <div className="mb-12">
+        <div className="text-center">
+          <h1 className="bg-gradient-to-br from-foreground to-foreground/70 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl">
+            {t("pricing_title")}
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            {t("pricing_header_lead")}
+          </p>
+        </div>
+
+        <div className="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+          {(
+            [
+              { k: "pricing_header_starter" as const, tone: "border-zinc-200/80 bg-zinc-50/80 dark:border-border/60 dark:bg-muted/25" },
+              { k: "pricing_header_pro" as const, tone: "border-purple-500/20 bg-gradient-to-b from-purple-500/[0.07] to-transparent dark:border-purple-500/25" },
+              { k: "pricing_header_team" as const, tone: "border-zinc-200/80 bg-zinc-50/80 dark:border-border/60 dark:bg-muted/25" },
+            ] as const
+          ).map((item) => (
+            <div
+              key={item.k}
+              className={cn(
+                "rounded-2xl border p-4 text-left shadow-sm ring-1 ring-black/5",
+                item.tone,
+              )}
+            >
+              <p className="text-sm font-medium leading-snug text-foreground">
+                {t(item.k)}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-muted-foreground">
+          {t("pricing_header_packs_note")}
         </p>
-        <p className="mx-auto mt-4 max-w-2xl text-sm text-muted-foreground">
-          {t("pricing_monthly_note")}
-        </p>
+
+        <div className="mx-auto mt-5 flex max-w-2xl justify-center">
+          <div
+            className="inline-flex w-full items-start gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 py-3 text-left sm:items-center"
+            role="note"
+          >
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
+              <Globe className="h-4 w-4" aria-hidden />
+            </span>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              {t("pricing_monthly_note")}
+            </p>
+          </div>
+        </div>
       </div>
+
+      {showBilling ? (
+        <div
+          className="mx-auto mb-8 flex max-w-lg flex-col items-center gap-2"
+          role="group"
+          aria-label={t("pricing_billing_aria")}
+        >
+          <div className="inline-flex flex-wrap justify-center gap-1 rounded-2xl border border-border/60 bg-muted/25 p-1 shadow-sm">
+            {billingOptions.map((opt) => (
+              <Button
+                key={opt.id}
+                type="button"
+                variant={billingPeriod === opt.id ? "default" : "ghost"}
+                size="sm"
+                className={cn(
+                  "rounded-xl px-3 py-2 text-xs font-medium sm:px-4 sm:text-sm",
+                  billingPeriod !== opt.id && "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => {
+                  setBillingPeriod(opt.id);
+                }}
+              >
+                {t(opt.tab)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Pricing Cards */}
       <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
@@ -194,18 +367,21 @@ export function Pricing() {
             {/* Plan Header */}
             <div className="mb-6">
               <h3 className="text-lg font-medium text-foreground">{plan.name}</h3>
-              <div className="mt-2 flex flex-wrap items-baseline gap-x-1 gap-y-0">
-                <span className="text-4xl font-bold text-foreground">
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                <span className="text-4xl font-bold tabular-nums text-foreground">
                   {plan.price}
                 </span>
                 {plan.period ? (
-                  <span className="text-muted-foreground">{plan.period}</span>
+                  <span className="text-base text-muted-foreground">{plan.period}</span>
+                ) : null}
+                {plan.discount ? (
+                  <span className="rounded-md border border-border/80 bg-muted/50 px-2 py-0.5 text-xs font-medium text-foreground/90">
+                    {plan.discount}
+                  </span>
                 ) : null}
               </div>
-              {plan.priceNote ? (
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                  {plan.priceNote}
-                </p>
+              {plan.subline ? (
+                <p className="mt-1 text-xs text-muted-foreground">{plan.subline}</p>
               ) : null}
               <p className="mt-2 text-sm text-muted-foreground">{plan.description}</p>
             </div>
@@ -285,7 +461,7 @@ export function Pricing() {
                 ) : null}
                 <p className="text-sm font-medium text-foreground">{t(pack.labelKey)}</p>
                 <p className="mt-2 text-lg font-semibold tabular-nums text-foreground">
-                  {t(pack.bodyKey)}
+                  {resolvePackBody(pack.id, pack.fallbackBodyKey)}
                 </p>
                 <div className="mt-auto flex flex-1 flex-col justify-end pt-6">
                   <Button

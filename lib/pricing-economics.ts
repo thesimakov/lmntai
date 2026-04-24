@@ -93,6 +93,6 @@ export function buildTariffEconomics(pricesRub: Record<PlanId, number>): TariffE
 
 export const DEFAULT_TARIFF_PRICES_RUB: Record<PlanId, number> = {
   FREE: 0,
-  PRO: 990,
-  TEAM: 2490
+  PRO: 1_990,
+  TEAM: 4_990
 };

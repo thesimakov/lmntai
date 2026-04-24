@@ -1,0 +1,244 @@
+"use client";
+
+import { ChevronDown, ChevronUp, Copy, ExternalLink, Link as LinkIcon, Lock } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { copyTextToClipboard } from "@/lib/preview-share";
+import { cn } from "@/lib/utils";
+
+type BuildPublishDialogProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPublish: () => Promise<void> | void;
+  publishPending?: boolean;
+  sandboxId: string | null;
+  seedText?: string;
+  hasCustomDomainAccess: boolean;
+};
+
+const BASE_DOMAIN = "lemnity.com";
+
+function normalizeLabel(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/-{2,}/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
+
+function suggestSubdomain(seedText: string | undefined, sandboxId: string | null): string {
+  const fromSeed = normalizeLabel(seedText ?? "");
+  if (fromSeed) return fromSeed;
+  const suffix = sandboxId ? sandboxId.slice(0, 6).toLowerCase() : "demo";
+  return `project-${suffix}`;
+}
+
+function buildNginxCommands(hostname: string, sandboxId: string | null): string {
+  const targetPath = sandboxId ? `/share/${encodeURIComponent(sandboxId)}` : "/share/<sandbox-id>";
+  return [
+    "# 1) Проверьте, что DNS-запись домена указывает на ваш сервер",
+    `dig +short ${hostname}`,
+    "",
+    "# 2) Проксируйте домен на страницу публикации в Nginx",
+    `export SITE_HOST="${hostname}"`,
+    `export TARGET_PATH="${targetPath}"`,
+    "sudo tee /etc/nginx/sites-available/$SITE_HOST >/dev/null <<'EOF'",
+    "server {",
+    "  listen 80;",
+    "  server_name $SITE_HOST;",
+    "",
+    "  location / {",
+    "    proxy_set_header Host $host;",
+    "    proxy_set_header X-Forwarded-Proto $scheme;",
+    "    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;",
+    "    proxy_pass http://127.0.0.1:3000$TARGET_PATH;",
+    "  }",
+    "}",
+    "EOF",
+    "sudo ln -sf /etc/nginx/sites-available/$SITE_HOST /etc/nginx/sites-enabled/$SITE_HOST",
+    "sudo nginx -t && sudo systemctl reload nginx",
+    "",
+    "# 3) Выпустите SSL-сертификат",
+    "sudo certbot --nginx -d $SITE_HOST",
+    "",
+    "# 4) Проверка",
+    `curl -I https://${hostname}`
+  ].join("\n");
+}
+
+export function BuildPublishDialog({
+  open,
+  onOpenChange,
+  onPublish,
+  publishPending = false,
+  sandboxId,
+  seedText,
+  hasCustomDomainAccess
+}: BuildPublishDialogProps) {
+  const [subdomain, setSubdomain] = useState("");
+  const [customDomainOpen, setCustomDomainOpen] = useState(false);
+  const [customDomain, setCustomDomain] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+    setSubdomain((prev) => prev || suggestSubdomain(seedText, sandboxId));
+  }, [open, seedText, sandboxId]);
+
+  const cleanSubdomain = useMemo(() => {
+    const normalized = normalizeLabel(subdomain);
+    return normalized || suggestSubdomain(seedText, sandboxId);
+  }, [subdomain, seedText, sandboxId]);
+
+  const defaultHost = `${cleanSubdomain}.${BASE_DOMAIN}`;
+  const manualHost = normalizeLabel(customDomain);
+  const publishHost = hasCustomDomainAccess && manualHost ? customDomain.toLowerCase().trim() : defaultHost;
+  const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
+
+  async function copyValue(value: string, successText: string) {
+    const ok = await copyTextToClipboard(value);
+    if (ok) {
+      toast.success(successText);
+    } else {
+      toast.error("Не удалось скопировать");
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl rounded-3xl p-0 sm:max-w-xl" showCloseButton={false}>
+        <DialogHeader className="gap-1 border-b px-6 py-5 text-left">
+          <DialogTitle className="text-3xl font-semibold">Публикация</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Настройте адрес, опубликуйте превью и используйте команды для подключения домена.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 px-6 py-5">
+          <section className="space-y-2">
+            <p className="text-sm font-semibold">Адрес сайта</p>
+            <p className="text-sm text-muted-foreground">Введите поддомен для публикации.</p>
+            <div className="flex items-center gap-2 rounded-2xl border bg-muted/20 p-2">
+              <div className="flex min-h-12 flex-1 items-center rounded-xl border bg-background px-3">
+                <span className="shrink-0 text-xl text-muted-foreground">https://</span>
+                <Input
+                  value={cleanSubdomain}
+                  onChange={(e) => setSubdomain(e.target.value)}
+                  className="h-auto border-0 bg-transparent px-1 py-0 text-3xl font-medium shadow-none focus-visible:ring-0"
+                  spellCheck={false}
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                />
+                <span className="shrink-0 text-3xl text-muted-foreground">.{BASE_DOMAIN}</span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-12 w-12 rounded-xl p-0"
+                onClick={() => void copyValue(`https://${defaultHost}`, "Адрес публикации скопирован")}
+                aria-label="Скопировать адрес"
+              >
+                <Copy className="h-5 w-5" />
+              </Button>
+            </div>
+          </section>
+
+          <section className="space-y-2 border-t pt-4">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-left"
+              onClick={() => setCustomDomainOpen((v) => !v)}
+            >
+              <span className="inline-flex items-center gap-2 text-2xl font-semibold">
+                <LinkIcon className="h-5 w-5 text-muted-foreground" />
+                Свой домен
+                <Lock className="h-5 w-5 text-muted-foreground" />
+              </span>
+              {customDomainOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+            </button>
+
+            {customDomainOpen ? (
+              hasCustomDomainAccess ? (
+                <div className="rounded-2xl border bg-muted/20 p-4">
+                  <p className="text-sm font-medium">Домен Pro/Team</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Укажите свой домен (например, `app.your-company.com`). Сейчас настройка выполняется вручную командами ниже.
+                  </p>
+                  <Input
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value)}
+                    placeholder="app.your-company.com"
+                    className="mt-3"
+                  />
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-700/50 dark:bg-amber-950/20">
+                  <p className="text-lg font-semibold text-amber-900 dark:text-amber-200">Недоступно в бесплатном тарифе</p>
+                  <p className="mt-1 text-base text-amber-800 dark:text-amber-300">
+                    Подключите свой домен с тарифом Pro или Team.
+                  </p>
+                  <Button
+                    type="button"
+                    className="mt-3 bg-amber-500 text-white hover:bg-amber-600"
+                    onClick={() => {
+                      if (typeof window !== "undefined") window.location.href = "/pricing";
+                    }}
+                  >
+                    Перейти на Pro
+                  </Button>
+                </div>
+              )
+            ) : null}
+          </section>
+
+          <section className="space-y-2 border-t pt-4">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold">Команды для подключения домена</p>
+                <p className="text-xs text-muted-foreground">Хост: {publishHost}</p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void copyValue(nginxCommands, "Команды скопированы")}
+              >
+                <Copy className="mr-1.5 h-4 w-4" />
+                Копировать
+              </Button>
+            </div>
+            <pre
+              className={cn(
+                "max-h-56 overflow-auto rounded-xl border bg-muted/20 p-3",
+                "text-xs leading-relaxed text-foreground"
+              )}
+            >
+              {nginxCommands}
+            </pre>
+          </section>
+        </div>
+
+        <DialogFooter className="border-t px-6 py-4 sm:justify-between">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            Отмена
+          </Button>
+          <Button type="button" className="gap-1.5" disabled={publishPending} onClick={() => void onPublish()}>
+            <ExternalLink className="h-4 w-4" />
+            {publishPending ? "Публикация…" : "Опубликовать"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

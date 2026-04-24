@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { AgentChat, type ChatMessage } from "@/components/playground/agent-chat";
 import { BuildCode } from "@/components/playground/build-code";
+import { BuildPublishDialog } from "@/components/playground/build-publish-dialog";
 import { BuildPreviewChrome } from "@/components/playground/build-topbar";
 import { BuildSettings } from "@/components/playground/build-settings";
 import { MenuDrawer } from "@/components/playground/menu-drawer";
@@ -48,6 +49,8 @@ export default function PromptBuildPage() {
   const [shareIsPublic, setShareIsPublic] = useState(false);
   const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
   const [chatEditorMode, setChatEditorMode] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [publishPending, setPublishPending] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [leftWidth, setLeftWidth] = useState(400);
@@ -87,6 +90,10 @@ export default function PromptBuildPage() {
   }, [previewUrl]);
 
   const handlePublishPreview = useCallback(() => {
+    setPublishDialogOpen(true);
+  }, []);
+
+  const handlePublishConfirm = useCallback(async () => {
     if (typeof window === "undefined") return;
     const rawOk = resolveShareablePreviewUrl(previewUrl, window.location.origin);
     if (!rawOk || !sandboxId) {
@@ -94,7 +101,8 @@ export default function PromptBuildPage() {
       return;
     }
     const origin = window.location.origin;
-    void (async () => {
+    try {
+      setPublishPending(true);
       if (!shareIsPublic) {
         const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
         if (!res.ok) {
@@ -106,6 +114,7 @@ export default function PromptBuildPage() {
       }
       const publicUrl = buildPublicSharePageUrl(origin, sandboxId);
       window.open(publicUrl, "_blank", "noopener,noreferrer");
+      setPublishDialogOpen(false);
       setMessages((prev) => [
         ...prev,
         {
@@ -116,8 +125,12 @@ export default function PromptBuildPage() {
         }
       ]);
       toast.message(t("playground_build_publish_opened"));
-    })();
+    } finally {
+      setPublishPending(false);
+    }
   }, [previewUrl, sandboxId, shareIsPublic, t]);
+
+  const hasCustomDomainAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM";
 
   function push(role: ChatMessage["role"], content: string) {
     setMessages((prev) => [
@@ -543,6 +556,15 @@ export default function PromptBuildPage() {
           </section>
         </div>
       </div>
+      <BuildPublishDialog
+        open={publishDialogOpen}
+        onOpenChange={setPublishDialogOpen}
+        onPublish={handlePublishConfirm}
+        publishPending={publishPending}
+        sandboxId={sandboxId}
+        seedText={idea}
+        hasCustomDomainAccess={hasCustomDomainAccess}
+      />
     </PageTransition>
   );
 }

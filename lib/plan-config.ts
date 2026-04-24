@@ -1,13 +1,13 @@
 /**
  * Единый источник правды по тарифам: квоты токенов/мес и пороги для операций.
- * Числа совпадают с /pricing (lib/i18n: pricing_plan_*_feat_1).
+ * Числа совпадают с /pricing (lib/i18n: лимиты в описании тарифов).
  */
 export type PlanId = "FREE" | "PRO" | "TEAM";
 
 export const MONTHLY_TOKEN_ALLOWANCE: Record<PlanId, number> = {
-  FREE: 15_000,
+  FREE: 10_000,
   PRO: 500_000,
-  TEAM: 1_500_000
+  TEAM: 2_000_000
 };
 
 /** Старое имя плана в БД и внешних вебхуках → канонический `PlanId`. */
