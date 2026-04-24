@@ -385,7 +385,7 @@ export function AgentChat({
                   }}
                   placeholder={placeholder}
                   rows={2}
-                  className="min-h-[72px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  className="min-h-[72px] w-full resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
                   disabled={disabled}
                 />
               )}
@@ -413,7 +413,7 @@ export function AgentChat({
                 </div>
               ) : null}
 
-              <div className="mt-3 flex min-h-10 items-center gap-0.5 border-t border-border/60 pt-3">
+              <div className="mt-3 flex min-h-10 items-center gap-0.5 border-t border-border/60">
                 <Button
                   type="button"
                   size="icon"
