@@ -16,6 +16,8 @@ import {
   listLemnityAiSessionsForUser,
   syncLemnityAiSessionSummary
 } from "@/lib/lemnity-ai-session-links";
+import { resolveAgentForTask } from "@/lib/agent-models";
+import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { MIN_TOKENS_GENERATE_STREAM } from "@/lib/plan-config";
 import { estimateUsageFromText } from "@/lib/token-billing";
@@ -129,20 +131,53 @@ async function streamUserSessionsSse(userId: string, signal: AbortSignal): Promi
   });
 }
 
+function enrichChatRequestForRouterModel(
+  requestText: string,
+  plan: string
+): string {
+  try {
+    const parsed = JSON.parse(requestText || "{}") as Record<string, unknown>;
+    const hintRaw = parsed.agent_hint;
+    const hint = typeof hintRaw === "string" ? hintRaw : null;
+    const pkRaw = parsed.project_kind;
+    const projectKind = isProjectKind(pkRaw) ? pkRaw : undefined;
+    const agent = resolveAgentForTask({
+      plan,
+      projectKind: projectKind ?? null,
+      task: "generate-stream",
+      hint
+    });
+    const next: Record<string, unknown> = { ...parsed, model: agent.modelId };
+    delete next.agent_hint;
+    delete next.project_kind;
+    return JSON.stringify(next);
+  } catch {
+    return requestText;
+  }
+}
+
 async function proxyChatStream(input: {
   userId: string;
   upstreamSessionId: string;
   upstream: Response;
   requestText: string;
 }) {
-  let requestJson: { message?: string; event_id?: string } = {};
+  let requestJson: { message?: string; event_id?: string; model?: string } = {};
   try {
-    requestJson = JSON.parse(input.requestText || "{}") as { message?: string; event_id?: string };
+    requestJson = JSON.parse(input.requestText || "{}") as {
+      message?: string;
+      event_id?: string;
+      model?: string;
+    };
   } catch {
     requestJson = {};
   }
   const userMessage = typeof requestJson.message === "string" ? requestJson.message : "";
   const eventId = typeof requestJson.event_id === "string" && requestJson.event_id ? requestJson.event_id : randomEventId();
+  const billingModel =
+    typeof requestJson.model === "string" && requestJson.model.trim()
+      ? requestJson.model.trim()
+      : "lemnity-ai/full-parity";
 
   const reader = input.upstream.body?.getReader();
   if (!reader) return passthrough(input.upstream);
@@ -207,7 +242,7 @@ async function proxyChatStream(input: {
           upstreamSessionId: input.upstreamSessionId,
           eventId,
           usage,
-          model: "lemnity-ai/full-parity"
+          model: billingModel
         });
         if (!charge.charged && charge.reason === "insufficient_balance") {
           controller.enqueue(
@@ -354,10 +389,12 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       status: "running"
     });
 
+    const chatBody = enrichChatRequestForRouterModel(requestText, user.plan);
+
     const upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
       method: "POST",
       headers,
-      body: requestText
+      body: chatBody
     });
     if (!upstream.ok || !upstream.body) {
       return passthrough(upstream);
@@ -366,7 +403,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       userId: user.id,
       upstreamSessionId,
       upstream,
-      requestText
+      requestText: chatBody
     });
   }
 

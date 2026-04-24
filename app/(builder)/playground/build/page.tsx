@@ -275,7 +275,9 @@ export default function PromptBuildPage() {
           body: JSON.stringify({
             message: messageText,
             timestamp: Math.floor(Date.now() / 1000),
-            event_id: `lmnt-${Date.now()}`
+            event_id: `lmnt-${Date.now()}`,
+            agent_hint: agentHint,
+            project_kind: projectKind ?? undefined
           }),
           signal: controller.signal
         });
@@ -373,7 +375,7 @@ export default function PromptBuildPage() {
         }
       }
     },
-    [applyStreamLog, ensureLemnityAiSession, loadLemnityAiSession]
+    [agentHint, applyStreamLog, ensureLemnityAiSession, loadLemnityAiSession, projectKind]
   );
 
   useEffect(() => {
