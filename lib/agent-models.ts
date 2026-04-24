@@ -118,7 +118,7 @@ export function resolveAgentForTask(input: {
 
   const defaultAgent = defaultAgentByPlanAndKind(plan, kind);
   const hint = parseAgentUiLabel(input.hint);
-  if (hint && hint === defaultAgent && canUseAgent(plan, hint)) {
+  if (hint && canUseAgent(plan, hint)) {
     return AGENT_PROFILES[hint];
   }
   return AGENT_PROFILES[defaultAgent];

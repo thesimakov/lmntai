@@ -1,13 +1,14 @@
 const DEFAULT_MODEL = "gpt-4o-mini";
 
 export function getGatewayConfig() {
-  const baseUrl = process.env.AI_GATEWAY_BASE_URL;
-  const apiKey = process.env.AI_GATEWAY_API_KEY;
+  const rawBase = process.env.AI_GATEWAY_BASE_URL?.trim();
+  const apiKey = process.env.AI_GATEWAY_API_KEY?.trim();
 
-  if (!baseUrl || !apiKey) {
+  if (!rawBase || !apiKey) {
     throw new Error("AI_GATEWAY_BASE_URL или AI_GATEWAY_API_KEY не заданы.");
   }
 
+  const baseUrl = rawBase.replace(/\/+$/, "");
   return { baseUrl, apiKey };
 }
 

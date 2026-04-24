@@ -24,6 +24,24 @@ describe("agent models catalog", () => {
     expect(website.uiLabel).toBe("GPT-4.1");
   });
 
+  it("honors paid user agent hint when it differs from default", () => {
+    const gemini = resolveAgentForTask({
+      plan: "PRO",
+      projectKind: "website",
+      task: "generate-stream",
+      hint: "Gemini 3 Pro"
+    });
+    expect(gemini.uiLabel).toBe("Gemini 3 Pro");
+
+    const kimi = resolveAgentForTask({
+      plan: "TEAM",
+      projectKind: "website",
+      task: "generate-stream",
+      hint: "Kimi K2.6"
+    });
+    expect(kimi.uiLabel).toBe("Kimi K2.6");
+  });
+
   it("uses task-specific defaults for PRO plan", () => {
     const website = resolveAgentForTask({
       plan: "PRO",
