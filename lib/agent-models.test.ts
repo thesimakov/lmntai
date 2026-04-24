@@ -70,6 +70,35 @@ describe("agent models catalog", () => {
     expect(questions.uiLabel).toBe("GPT-4.1");
   });
 
+  it("keeps TEAM defaults aligned with PRO for stream and compose tasks", () => {
+    const kinds = ["website", "presentation", "resume", "design", "visitcard"] as const;
+    for (const kind of kinds) {
+      const proStream = resolveAgentForTask({
+        plan: "PRO",
+        projectKind: kind,
+        task: "generate-stream"
+      });
+      const teamStream = resolveAgentForTask({
+        plan: "TEAM",
+        projectKind: kind,
+        task: "generate-stream"
+      });
+      const proCompose = resolveAgentForTask({
+        plan: "PRO",
+        projectKind: kind,
+        task: "prompt-compose"
+      });
+      const teamCompose = resolveAgentForTask({
+        plan: "TEAM",
+        projectKind: kind,
+        task: "prompt-compose"
+      });
+
+      expect(teamStream.modelId).toBe(proStream.modelId);
+      expect(teamCompose.modelId).toBe(proCompose.modelId);
+    }
+  });
+
   it("marks pro models unavailable in trial UI options", () => {
     const options = getAgentOptionsForUi({
       plan: "FREE",

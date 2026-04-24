@@ -242,7 +242,7 @@ export const messages = {
       'Основное решение для фрилансера и микробизнеса: 2–3 качественных лендинга в месяц — достаточно для регулярной работы с клиентами.',
     pricing_plan_pro_feat_1: '500 000 токенов в месяц',
     pricing_plan_pro_feat_2: 'Полный экспорт кода, без водяного знака',
-    pricing_plan_pro_feat_3: 'Модели GPT-4o и Claude 3.5 Sonnet',
+    pricing_plan_pro_feat_3: 'Модели GPT-4.1, Claude Sonnet, Gemini 3 Pro и Kimi K2.6',
     pricing_plan_pro_feat_4: 'До 10 активных проектов, история версий',
     pricing_plan_pro_cta: 'Выбрать Pro',
 
@@ -254,7 +254,7 @@ export const messages = {
     pricing_plan_team_desc:
       'Агентства и команды: ориентир 10–15 проектов в месяц вместо отдельного штата вёрстки.',
     pricing_plan_team_feat_1: '2 000 000 токенов в месяц',
-    pricing_plan_team_feat_2: 'Всё из Pro + до 5 пользователей',
+    pricing_plan_team_feat_2: 'Всё из Pro + до 10 пользователей',
     pricing_plan_team_feat_3: 'Безлимитная история версий, максимальный приоритет',
     pricing_plan_team_cta: 'Выбрать Team',
 
@@ -284,7 +284,7 @@ export const messages = {
       'У подписок Starter, Pro и Team месячный пакет токенов обновляется каждый расчётный период по правилам вашего плана (на странице: Starter 10 000, Pro 500 000, Team 2 000 000 токенов в месяц). Пакеты докупки действуют 365 дней с момента покупки.',
     pricing_faq_q3: 'Чем Pro отличается от Team?',
     pricing_faq_a3:
-      'Pro — до 10 активных проектов и история версий в рамках тарифа. Team добавляет до 5 участников, безлимитную глубину истории версий и максимальный приоритет в очереди.',
+      'Pro — до 10 активных проектов и история версий в рамках тарифа. Team добавляет до 10 участников, безлимитную глубину истории версий и максимальный приоритет в очереди.',
     pricing_faq_q4: 'Можно ли отменить подписку в любой момент?',
     pricing_faq_a4:
       'Да. Отменить можно в любой момент; доступ к платным функциям сохранится до конца оплаченного периода.',
@@ -861,7 +861,7 @@ export const messages = {
       'Main plan for freelancers and micro-businesses: about 2–3 quality landing pages per month — enough for steady client work.',
     pricing_plan_pro_feat_1: '500,000 tokens per month',
     pricing_plan_pro_feat_2: 'Full code export, no watermark',
-    pricing_plan_pro_feat_3: 'GPT-4o and Claude 3.5 Sonnet',
+    pricing_plan_pro_feat_3: 'GPT-4.1, Claude Sonnet, Gemini 3 Pro, and Kimi K2.6',
     pricing_plan_pro_feat_4: 'Up to 10 active projects, version history',
     pricing_plan_pro_cta: 'Choose Pro',
 
@@ -873,7 +873,7 @@ export const messages = {
     pricing_plan_team_desc:
       'Agencies and teams: on the order of 10–15 projects per month — replacing a separate layout hire.',
     pricing_plan_team_feat_1: '2,000,000 tokens per month',
-    pricing_plan_team_feat_2: 'Everything in Pro + up to 5 users',
+    pricing_plan_team_feat_2: 'Everything in Pro + up to 10 users',
     pricing_plan_team_feat_3: 'Unlimited version history, maximum queue priority',
     pricing_plan_team_cta: 'Choose Team',
 
@@ -902,7 +902,7 @@ export const messages = {
       'Monthly subscription allowances renew each billing period per plan rules (Starter: 10,000 · Pro: 500,000 · Team: 2,000,000 tokens/mo as shown on this page). Token top-up packs are valid for 365 days from purchase.',
     pricing_faq_q3: 'How is Pro different from Team?',
     pricing_faq_a3:
-      'Pro: up to 10 active projects and version history per the plan. Team adds up to 5 collaborators, unlimited version history depth, and maximum queue priority.',
+      'Pro: up to 10 active projects and version history per the plan. Team adds up to 10 collaborators, unlimited version history depth, and maximum queue priority.',
     pricing_faq_q4: 'Can I cancel anytime?',
     pricing_faq_a4:
       'Yes. You can cancel anytime; paid features stay available until the end of the paid period.',
@@ -1477,7 +1477,7 @@ export const messages = {
       'Барои фрилансер ва микробизнес: 2–3 лендинги сифатнок дар моҳ — барои кори мунтазам бо мизоҷ кофӣ аст.',
     pricing_plan_pro_feat_1: '500 000 токен дар як моҳ',
     pricing_plan_pro_feat_2: 'Экспорти пурраи код, бе watermark',
-    pricing_plan_pro_feat_3: 'Моделҳои GPT-4o ва Claude 3.5 Sonnet',
+    pricing_plan_pro_feat_3: 'Моделҳои GPT-4.1, Claude Sonnet, Gemini 3 Pro ва Kimi K2.6',
     pricing_plan_pro_feat_4: 'То 10 лоиҳаи фаъол, таърихи версия',
     pricing_plan_pro_cta: 'Интихоби Pro',
 
@@ -1489,7 +1489,7 @@ export const messages = {
     pricing_plan_team_desc:
       'Агентӣ ва даста: тақрибан 10–15 лоиҳа дар моҳ — бидуни штати алоҳидаи верстка.',
     pricing_plan_team_feat_1: '2 000 000 токен дар як моҳ',
-    pricing_plan_team_feat_2: 'Ҳамаи Pro + то 5 корбар',
+    pricing_plan_team_feat_2: 'Ҳамаи Pro + то 10 корбар',
     pricing_plan_team_feat_3: 'Таърихи версия бемаҳдуд, афзалияти ҳадди аксар',
     pricing_plan_team_cta: 'Интихоби Team',
 
@@ -1519,7 +1519,7 @@ export const messages = {
       'Лимити моҳонаи обуна мувофиқи нақша нав мешавад (Starter: 10 000 · Pro: 500 000 · Team: 2 000 000). Бастаҳои иловагии токен 365 рӯз эътибор доранд.',
     pricing_faq_q3: 'Фарқи Pro ва Team дар чист?',
     pricing_faq_a3:
-      'Pro: то 10 лоиҳаи фаъол ва таърихи версия мувофиқи нақша. Team: то 5 шарик, таърихи версия бемаҳдуд, афзалияти ҳадди аксар дар навбат.',
+      'Pro: то 10 лоиҳаи фаъол ва таърихи версия мувофиқи нақша. Team: то 10 шарик, таърихи версия бемаҳдуд, афзалияти ҳадди аксар дар навбат.',
     pricing_faq_q4: 'Оё обунаро ҳар вақт бекор кардан мумкин аст?',
     pricing_faq_a4:
       'Бале. Шумо метавонед ҳар вақт бекор кунед; имкониятҳои пулакӣ то охири давраи пардохтшуда фаъол мемонанд.',

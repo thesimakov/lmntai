@@ -5,6 +5,24 @@ import { captureJsonBodyPreview, logRequestEntry } from "@/lib/request-log";
 
 const REDACT_BODY_PATHS = new Set(["/api/generate-stream", "/api/prompt-builder"]);
 
+export function shouldRedactBodyPath(pathname: string, method: string, requestPathname: string): boolean {
+  if (REDACT_BODY_PATHS.has(pathname)) return true;
+
+  if (
+    pathname === "/api/lemnity-ai/[...path]" &&
+    method === "POST" &&
+    /^\/api\/lemnity-ai\/sessions\/[^/]+\/chat$/.test(requestPathname)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function shouldRedactBody(pathname: string, req: NextRequest): boolean {
+  return shouldRedactBodyPath(pathname, req.method, req.nextUrl.pathname);
+}
+
 async function resolveUserId(req: NextRequest): Promise<string | undefined> {
   const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) return undefined;
@@ -26,7 +44,7 @@ export function withApiLogging<TCtx>(
 ): (req: NextRequest, ctx: TCtx) => Promise<Response> {
   return async (req: NextRequest, ctx: TCtx) => {
     const started = Date.now();
-    const bodyPreview = REDACT_BODY_PATHS.has(pathname) ? undefined : await captureJsonBodyPreview(req);
+    const bodyPreview = shouldRedactBody(pathname, req) ? undefined : await captureJsonBodyPreview(req);
     const userId = await resolveUserId(req);
 
     try {

@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
 import { useBuildStreamLog } from "@/hooks/use-build-stream-log";
+import { consumeDataSseBuffer } from "@/lib/client-sse";
 import {
   BUILDER_LAST_PROCESSED_NAV_KEY,
   BUILDER_NAV_TOKEN_KEY,
@@ -97,6 +98,10 @@ export default function PromptBuildPage() {
   const requestedSessionId = searchParams.get("sessionId");
   const mountedRef = useRef(true);
   const requestAbortRef = useRef<AbortController | null>(null);
+  const streamRequestSeqRef = useRef(0);
+  const sessionLoadSeqRef = useRef(0);
+  const bridgeAssistantMessageIdRef = useRef<string | null>(null);
+  const bridgeSawDeltaRef = useRef(false);
   const [idea, setIdea] = useState("");
   const [stage, setStage] = useState<"idea" | "questions" | "ready" | "generating">("idea");
   const [questions, setQuestions] = useState<string[]>([]);
@@ -195,28 +200,91 @@ export default function PromptBuildPage() {
 
   const hasCustomDomainAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM";
 
-  function push(role: ChatMessage["role"], content: string) {
+  const createMessageId = useCallback(() => {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }, []);
+
+  const push = useCallback((role: ChatMessage["role"], content: string) => {
     setMessages((prev) => [
       ...prev,
       {
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        id: createMessageId(),
         role,
         content
       }
     ]);
-  }
+  }, [createMessageId]);
+
+  const appendBridgeAssistantChunk = useCallback((chunk: string) => {
+    if (!chunk) return;
+    setMessages((prev) => {
+      const existingId = bridgeAssistantMessageIdRef.current;
+      if (existingId) {
+        const idx = prev.findIndex((m) => m.id === existingId);
+        if (idx !== -1) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], content: `${next[idx].content}${chunk}` };
+          return next;
+        }
+      }
+      const id = createMessageId();
+      bridgeAssistantMessageIdRef.current = id;
+      return [...prev, { id, role: "assistant", content: chunk }];
+    });
+  }, [createMessageId]);
+
+  const pushBridgeAssistantMessage = useCallback((content: string) => {
+    const normalized = content.trim();
+    if (!normalized) return;
+    setMessages((prev) => {
+      const existingId = bridgeAssistantMessageIdRef.current;
+      if (!existingId) {
+        const id = createMessageId();
+        bridgeAssistantMessageIdRef.current = id;
+        return [...prev, { id, role: "assistant", content: normalized }];
+      }
+
+      const idx = prev.findIndex((m) => m.id === existingId);
+      if (idx === -1) {
+        const id = createMessageId();
+        bridgeAssistantMessageIdRef.current = id;
+        return [...prev, { id, role: "assistant", content: normalized }];
+      }
+
+      if (!bridgeSawDeltaRef.current) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], content: normalized };
+        return next;
+      }
+
+      const current = prev[idx].content.trim();
+      if (normalized === current) return prev;
+      if (normalized.startsWith(current) || current.startsWith(normalized)) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], content: normalized };
+        return next;
+      }
+
+      const id = createMessageId();
+      bridgeAssistantMessageIdRef.current = id;
+      return [...prev, { id, role: "assistant", content: normalized }];
+    });
+  }, [createMessageId]);
 
   const loadLemnityAiSession = useCallback(
     async (sessionId: string) => {
       try {
+        const loadSeq = ++sessionLoadSeqRef.current;
         const res = await fetch(
           `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sessionId)}`,
           { method: "GET" }
         );
         if (!res.ok) return;
+        if (!mountedRef.current || sessionLoadSeqRef.current !== loadSeq) return;
         const envelope = (await res.json()) as LemnityAiBridgeEnvelope<LemnityAiSessionPayload>;
         const payload = envelope?.data;
         if (!payload) return;
+        if (!mountedRef.current || sessionLoadSeqRef.current !== loadSeq) return;
         if (payload.title?.trim()) {
           setIdea((prev) => (prev.trim() ? prev : payload.title?.trim() || prev));
         }
@@ -275,6 +343,18 @@ export default function PromptBuildPage() {
       requestAbortRef.current?.abort();
       const controller = new AbortController();
       requestAbortRef.current = controller;
+      const requestSeq = ++streamRequestSeqRef.current;
+      const eventId =
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? `lmnt-${crypto.randomUUID()}`
+          : `lmnt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const isCurrentRequest = () =>
+        mountedRef.current &&
+        !controller.signal.aborted &&
+        requestAbortRef.current === controller &&
+        streamRequestSeqRef.current === requestSeq;
+      bridgeAssistantMessageIdRef.current = null;
+      bridgeSawDeltaRef.current = false;
       try {
         const response = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sid)}/chat`, {
           method: "POST",
@@ -283,14 +363,16 @@ export default function PromptBuildPage() {
           body: JSON.stringify({
             message: messageText,
             timestamp: Math.floor(Date.now() / 1000),
-            event_id: `lmnt-${Date.now()}`,
+            event_id: eventId,
             agent_hint: agentHint,
             project_kind: projectKind ?? undefined
           }),
           signal: controller.signal
         });
+        if (!isCurrentRequest()) return;
         if (!response.ok || !response.body) {
           const message = await response.text().catch(() => "Ошибка API Lemnity AI");
+          if (!isCurrentRequest()) return;
           push("assistant", `❌ ${message}`);
           setMode("idle");
           setStage("ready");
@@ -302,6 +384,7 @@ export default function PromptBuildPage() {
         let buffer = "";
 
         const handleSseBlock = (rawChunk: string) => {
+          if (!isCurrentRequest()) return;
           const chunk = parseLemnityAiSseChunk(rawChunk);
           if (!chunk) return;
           const ev = sseEventName(chunk.event);
@@ -323,9 +406,9 @@ export default function PromptBuildPage() {
                   : typeof data.text === "string"
                     ? data.text
                     : "";
-              const trimmed = piece.trim();
-              if (trimmed) {
-                push("assistant", trimmed);
+              if (piece.length > 0) {
+                bridgeSawDeltaRef.current = true;
+                appendBridgeAssistantChunk(piece);
                 setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
               return;
@@ -344,7 +427,9 @@ export default function PromptBuildPage() {
               if (!trimmed) return;
               if (roleRaw === "user") return;
               if (roleRaw === "assistant" || roleRaw === undefined) {
-                push("assistant", trimmed);
+                if (!bridgeSawDeltaRef.current) {
+                  pushBridgeAssistantMessage(trimmed);
+                }
                 setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
               return;
@@ -393,7 +478,7 @@ export default function PromptBuildPage() {
 
         while (true) {
           const { done, value } = await reader.read();
-          if (!mountedRef.current || controller.signal.aborted) break;
+          if (!isCurrentRequest()) break;
           if (value) {
             buffer += decoder.decode(value, { stream: true });
           }
@@ -415,10 +500,13 @@ export default function PromptBuildPage() {
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
+          if (!isCurrentRequest()) return;
           push("assistant", "❌ Ошибка стрима Lemnity AI");
         }
       } finally {
-        if (mountedRef.current) {
+        if (isCurrentRequest()) {
+          bridgeAssistantMessageIdRef.current = null;
+          bridgeSawDeltaRef.current = false;
           setIsGenerating(false);
           setMode((prev) => (prev === "generating" ? "idle" : prev));
           setStage((prev) => (prev === "generating" ? "ready" : prev));
@@ -426,7 +514,16 @@ export default function PromptBuildPage() {
         }
       }
     },
-    [agentHint, applyStreamLog, ensureLemnityAiSession, loadLemnityAiSession, projectKind]
+    [
+      agentHint,
+      appendBridgeAssistantChunk,
+      applyStreamLog,
+      ensureLemnityAiSession,
+      loadLemnityAiSession,
+      projectKind,
+      push,
+      pushBridgeAssistantMessage
+    ]
   );
 
   useEffect(() => {
@@ -621,6 +718,12 @@ export default function PromptBuildPage() {
     requestAbortRef.current?.abort();
     const controller = new AbortController();
     requestAbortRef.current = controller;
+    const requestSeq = ++streamRequestSeqRef.current;
+    const isCurrentRequest = () =>
+      mountedRef.current &&
+      !controller.signal.aborted &&
+      requestAbortRef.current === controller &&
+      streamRequestSeqRef.current === requestSeq;
     try {
       const response = await fetch("/api/generate-stream", {
         method: "POST",
@@ -632,10 +735,11 @@ export default function PromptBuildPage() {
         }),
         signal: controller.signal
       });
-      if (!mountedRef.current || controller.signal.aborted) return;
+      if (!isCurrentRequest()) return;
 
       if (!response.ok || !response.body) {
         const message = await response.text();
+        if (!isCurrentRequest()) return;
         push("assistant", `❌ ${message || "Ошибка генерации"}`);
         setStage("ready");
         setMode("idle");
@@ -668,34 +772,43 @@ export default function PromptBuildPage() {
         }
       };
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        if (!mountedRef.current || controller.signal.aborted) break;
-        buffer += decoder.decode(value, { stream: true });
-        const chunks = buffer.split("\n\n");
-        buffer = chunks.pop() ?? "";
-        for (const chunk of chunks) {
-          const line = chunk.split("\n").find((x) => x.startsWith("data: "));
-          if (!line) continue;
+      const flushBuffer = (isFinal = false) => {
+        const parsed = consumeDataSseBuffer(buffer, isFinal);
+        buffer = parsed.carry;
+        for (const payload of parsed.events) {
           try {
-            processEvent(JSON.parse(line.slice(6)) as StreamEvent);
+            processEvent(JSON.parse(payload) as StreamEvent);
           } catch {
             // ignore
           }
         }
+      };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (!isCurrentRequest()) break;
+        if (value) {
+          buffer += decoder.decode(value, { stream: true });
+        }
+        if (done) {
+          buffer += decoder.decode();
+          break;
+        }
+        flushBuffer();
       }
-      if (!mountedRef.current || controller.signal.aborted) return;
+      flushBuffer(true);
+      if (!isCurrentRequest()) return;
 
       setProgress((v) => (v < 95 ? 95 : v));
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
+        if (!isCurrentRequest()) return;
         push("assistant", "❌ Ошибка генерации");
         setMode("idle");
         setStage("ready");
       }
     } finally {
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         setIsGenerating(false);
         setMode((prev) => (prev === "generating" ? "idle" : prev));
         setStage((prev) => (prev === "generating" ? "ready" : prev));
