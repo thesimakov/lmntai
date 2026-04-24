@@ -11,7 +11,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -25,18 +25,73 @@ type MenuDrawerProps = {
   compact?: boolean;
 };
 
+type MenuProfileTokens = {
+  tokenBalance: number;
+  tokenLimit: number;
+  tokensUsedToday: number;
+};
+
 export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDrawerProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
   const [projectTitle, setProjectTitle] = useState<string>("");
+  const [tokenSnap, setTokenSnap] = useState<MenuProfileTokens | null>(null);
+  const [tokenLoad, setTokenLoad] = useState<"ready" | "loading" | "unauthorized" | "error">("loading");
+
+  const numberLocale = lang === "en" ? "en-US" : lang === "tg" ? "tg-TJ" : "ru-RU";
+
+  const loadProfileTokens = useCallback(async () => {
+    setTokenLoad("loading");
+    try {
+      const res = await fetch("/api/profile", { credentials: "include" });
+      if (res.status === 401) {
+        setTokenSnap(null);
+        setTokenLoad("unauthorized");
+        return;
+      }
+      if (!res.ok) {
+        setTokenSnap(null);
+        setTokenLoad("error");
+        return;
+      }
+      const data = (await res.json()) as { user?: MenuProfileTokens };
+      if (data.user) {
+        setTokenSnap({
+          tokenBalance: data.user.tokenBalance,
+          tokenLimit: data.user.tokenLimit,
+          tokensUsedToday: data.user.tokensUsedToday
+        });
+      } else {
+        setTokenSnap(null);
+      }
+      setTokenLoad("ready");
+    } catch {
+      setTokenSnap(null);
+      setTokenLoad("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadProfileTokens();
+  }, [loadProfileTokens]);
+
+  useEffect(() => {
+    if (open) void loadProfileTokens();
+  }, [open, loadProfileTokens]);
 
   const projectTitleShort = useMemo(() => {
     const value = projectTitle.trim() || t("playground_default_project");
     return value.length > 18 ? `${value.slice(0, 18)}…` : value;
   }, [projectTitle, t]);
+
+  const tokenProgressPct = useMemo(() => {
+    if (!tokenSnap || tokenSnap.tokenLimit <= 0) return 0;
+    const raw = (tokenSnap.tokenBalance / tokenSnap.tokenLimit) * 100;
+    return Math.min(100, Math.max(0, raw));
+  }, [tokenSnap]);
 
   useEffect(() => {
     function readRecent() {
@@ -201,17 +256,51 @@ export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDra
           </button>
 
           <div className="mt-2 rounded-3xl border border-black/10 bg-white/70 p-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <p className="text-sm font-semibold text-zinc-900">{t("playground_menu_tokens_header")}</p>
-              <button type="button" className="flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-950">
-                <span>{t("playground_menu_tokens_zero_left")}</span>
-                <ChevronRight className="h-4 w-4" />
+              <button
+                type="button"
+                className="flex min-w-0 items-center gap-1 text-sm text-zinc-600 hover:text-zinc-950"
+                aria-label={t("playground_menu_tokens_open_profile")}
+                onClick={() => {
+                  setOpen(false);
+                  router.push("/profile");
+                }}
+              >
+                <span className="truncate">
+                  {tokenLoad === "loading" ? (
+                    t("playground_menu_tokens_loading")
+                  ) : tokenLoad === "unauthorized" ? (
+                    t("playground_menu_tokens_need_login")
+                  ) : tokenSnap ? (
+                    <>
+                      {tokenSnap.tokenBalance.toLocaleString(numberLocale)}{" "}
+                      {t("playground_home_tokens_suffix")}
+                    </>
+                  ) : (
+                    t("playground_home_tokens_none")
+                  )}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
             </div>
-            <div className="mt-2 h-2 w-full rounded-full bg-black/10">
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
+            <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-black/10">
+              <div
+                className="h-2 min-w-0.5 rounded-full bg-blue-500 transition-[width] duration-300"
+                style={{ width: `${tokenLoad === "ready" && tokenSnap ? tokenProgressPct : 0}%` }}
+              />
             </div>
-            <p className="mt-2 text-xs text-zinc-500">{t("playground_menu_tokens_midnight")}</p>
+            {tokenSnap ? (
+              <p className="mt-2 text-xs text-zinc-500">
+                {t("playground_menu_tokens_used_today")}:{" "}
+                {tokenSnap.tokensUsedToday.toLocaleString(numberLocale)}
+              </p>
+            ) : null}
+            {tokenLoad !== "unauthorized" ? (
+              <p className={cn("text-xs text-zinc-500", tokenSnap ? "mt-1" : "mt-2")}>
+                {t("playground_menu_tokens_allowance_hint")}
+              </p>
+            ) : null}
             <Button
               className="mt-3 w-full rounded-2xl bg-blue-600 hover:bg-blue-700"
               onClick={() => {
