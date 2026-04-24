@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronRight,
@@ -9,7 +9,8 @@ import {
   HelpCircle,
   Menu,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  RefreshCw
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -17,6 +18,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
+import { saveBuilderHandoff } from "@/lib/landing-handoff";
 import { cn } from "@/lib/utils";
 
 type MenuDrawerProps = {
@@ -52,6 +54,7 @@ export function MenuDrawer({
 }: MenuDrawerProps) {
   const { t, lang } = useI18n();
   const router = useRouter();
+  const pathname = usePathname();
   const useLemnityAiBridge = lemnityAiBridgeReady && shouldUseLemnityAiBridge;
   const [open, setOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -124,7 +127,8 @@ export function MenuDrawer({
         return;
       }
       const data = (await res.json()) as { data?: { sessions?: LemnityAiSessionListItem[] } };
-      setLemnityAiHistory(Array.isArray(data.data?.sessions) ? data.data!.sessions! : []);
+      const sessions = Array.isArray(data.data?.sessions) ? data.data!.sessions! : [];
+      setLemnityAiHistory(sessions);
     } catch {
       setLemnityAiHistory([]);
     } finally {
@@ -132,11 +136,35 @@ export function MenuDrawer({
     }
   }, [useLemnityAiBridge]);
 
-  useEffect(() => {
-    if (historyOpen && useLemnityAiBridge) {
-      void loadLemnityAiHistory();
+  const refreshHistoryPanel = useCallback(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{ t: number; text: string }>;
+      setRecent(data.slice(0, 6));
+    } catch {
+      setRecent([]);
     }
-  }, [historyOpen, loadLemnityAiHistory, useLemnityAiBridge]);
+    if (useLemnityAiBridge) void loadLemnityAiHistory();
+  }, [useLemnityAiBridge, loadLemnityAiHistory]);
+
+  useEffect(() => {
+    if (!historyOpen) return;
+    refreshHistoryPanel();
+  }, [historyOpen, refreshHistoryPanel]);
+
+  const continueWithIdea = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      saveBuilderHandoff(trimmed);
+      setHistoryOpen(false);
+      if (pathname === "/playground/build") {
+        window.location.assign("/playground/build");
+        return;
+      }
+      router.push("/playground/build");
+    },
+    [pathname, router]
+  );
 
   useEffect(() => {
     function readRecent() {
@@ -391,7 +419,17 @@ export function MenuDrawer({
           )}
         >
           <div className="rounded-2xl border border-black/10 bg-white/70 p-3">
-            <p className="text-xs font-semibold text-zinc-700">{t("playground_menu_history_header")}</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-zinc-700">{t("playground_menu_history_header")}</p>
+              <button
+                type="button"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-zinc-600 transition hover:bg-white hover:text-zinc-900"
+                aria-label={t("playground_menu_history_refresh_aria")}
+                onClick={() => refreshHistoryPanel()}
+              >
+                <RefreshCw className={cn("h-3.5 w-3.5", historyLoading && useLemnityAiBridge && "animate-spin")} />
+              </button>
+            </div>
             <div className="mt-2 space-y-1">
               {useLemnityAiBridge ? (
                 historyLoading ? (
@@ -402,6 +440,7 @@ export function MenuDrawer({
                       key={session.session_id}
                       type="button"
                       className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                      aria-label={t("playground_menu_history_continue_aria")}
                       onClick={() => {
                         setHistoryOpen(false);
                         router.push(`/playground/build?sessionId=${encodeURIComponent(session.session_id)}`);
@@ -410,14 +449,32 @@ export function MenuDrawer({
                       {session.title?.trim() || session.latest_message?.trim() || session.session_id.slice(0, 12)}
                     </button>
                   ))
+                ) : recent.length ? (
+                  recent.slice(0, 8).map((r) => (
+                    <button
+                      key={r.t}
+                      type="button"
+                      className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                      aria-label={t("playground_menu_history_continue_aria")}
+                      onClick={() => continueWithIdea(r.text)}
+                    >
+                      {r.text}
+                    </button>
+                  ))
                 ) : (
                   <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>
                 )
               ) : recent.length ? (
                 recent.slice(0, 8).map((r) => (
-                  <div key={r.t} className="truncate rounded-xl bg-white px-3 py-2 text-xs text-zinc-700">
+                  <button
+                    key={r.t}
+                    type="button"
+                    className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                    aria-label={t("playground_menu_history_continue_aria")}
+                    onClick={() => continueWithIdea(r.text)}
+                  >
                     {r.text}
-                  </div>
+                  </button>
                 ))
               ) : (
                 <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>

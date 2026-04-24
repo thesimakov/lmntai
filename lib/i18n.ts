@@ -633,6 +633,8 @@ export const messages = {
     playground_menu_free_tokens_row: 'Получить бесплатные токены',
     playground_menu_help_row: 'Помощь',
     playground_menu_history_header: 'История',
+    playground_menu_history_refresh_aria: 'Обновить список',
+    playground_menu_history_continue_aria: 'Продолжить работу над этим запросом',
     playground_menu_no_history: 'Пока нет запросов.',
     playground_right_idle_hint:
       'Ожидание запроса. Опишите проект в чате и запустите генерацию.',
@@ -1248,6 +1250,8 @@ export const messages = {
     playground_menu_free_tokens_row: 'Get free tokens',
     playground_menu_help_row: 'Help',
     playground_menu_history_header: 'History',
+    playground_menu_history_refresh_aria: 'Refresh list',
+    playground_menu_history_continue_aria: 'Continue this request',
     playground_menu_no_history: 'No requests yet.',
     playground_right_idle_hint: 'Waiting for a prompt. Describe your project in chat and start generation.',
     playground_right_generating_line1: 'Lemnity is building your site. One moment…',
@@ -1864,6 +1868,8 @@ export const messages = {
     playground_menu_free_tokens_row: 'Гирифтани токенҳои ройгон',
     playground_menu_help_row: 'Кӯмак',
     playground_menu_history_header: 'Таърих',
+    playground_menu_history_refresh_aria: 'Навсозии рӯйхат',
+    playground_menu_history_continue_aria: 'Идомаи кор бо ин дархост',
     playground_menu_no_history: 'Ҳанӯз дархост нест.',
     playground_right_idle_hint:
       'Интизори дархост. Лоиҳаро дар чат тавсиф кунед ва тавлидро оғоз кунед.',

@@ -4,6 +4,11 @@ import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 /** localStorage ключ для страницы сборки промпта (`/playground/build`). */
 export const BUILDER_STORAGE_KEY = "lemnity.builder";
 
+/** sessionStorage: уникальный токен каждого перехода «Старт» → build (обход Strict Mode и повторов с той же идеей). */
+export const BUILDER_NAV_TOKEN_KEY = "lemnity.builder.navToken";
+
+export const BUILDER_LAST_PROCESSED_NAV_KEY = "lemnity.builder.lastProcessedNavToken";
+
 export type BuilderHandoff = {
   idea: string;
   /** Тип доставляемого UI (согласно `lib/lemnity-ai-prompt-spec.ts`). */
@@ -35,6 +40,11 @@ export function saveBuilderHandoff(idea: string, projectKind?: ProjectKind) {
   try {
     localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(payload));
     sessionStorage.setItem("lemnity.landing.prompt", trimmed);
+    const navToken =
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem(BUILDER_NAV_TOKEN_KEY, navToken);
   } catch {
     // ignore
   }
