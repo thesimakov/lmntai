@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 
 export type GuardFailure = {
   ok: false;
-  status: 401 | 403 | 404;
+  status: 401 | 403 | 404 | 503;
   message: string;
 };
 
@@ -28,30 +28,68 @@ export type DbUserContext = {
   };
 };
 
+const dbUserSelect = {
+  id: true,
+  email: true,
+  role: true,
+  plan: true,
+  tokenBalance: true,
+  tokenLimit: true
+} as const;
+
 export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
   const session = await getSafeServerSession();
   const email = session?.user?.email?.trim().toLowerCase();
   if (!session || !email) {
     return { ok: false, status: 401, message: "Unauthorized" };
   }
-  if (session.user.demoOffline) {
-    return { ok: false, status: 403, message: "Offline demo is read-only for protected operations" };
-  }
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      email: true,
-      role: true,
-      plan: true,
-      tokenBalance: true,
-      tokenLimit: true
+
+  try {
+    let user = await prisma.user.findUnique({
+      where: { email },
+      select: dbUserSelect
+    });
+
+    if (!user && session.user.demoOffline) {
+      if (process.env.NODE_ENV !== "development") {
+        return { ok: false, status: 403, message: "Offline demo is read-only for protected operations" };
+      }
+      try {
+        user = await prisma.user.create({
+          data: {
+            email,
+            name: session.user.name ?? "Demo",
+            plan: "FREE",
+            role: "USER",
+            tokenBalance: 100_000,
+            tokenLimit: 500_000
+          },
+          select: dbUserSelect
+        });
+      } catch {
+        user = await prisma.user.findUnique({
+          where: { email },
+          select: dbUserSelect
+        });
+        if (!user) {
+          return { ok: false, status: 403, message: "Offline demo is read-only for protected operations" };
+        }
+      }
     }
-  });
-  if (!user) {
-    return { ok: false, status: 404, message: "User not found" };
+
+    if (!user) {
+      return { ok: false, status: 404, message: "User not found" };
+    }
+    return { ok: true, data: { session, user } };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[requireDbUser] prisma error", err);
+    return {
+      ok: false,
+      status: 503,
+      message: `База данных недоступна или ошибка запроса: ${detail.slice(0, 200)}`
+    };
   }
-  return { ok: true, data: { session, user } };
 }
 
 export async function requireAdminUser(): Promise<GuardResult<DbUserContext>> {

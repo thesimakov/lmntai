@@ -242,7 +242,10 @@ export default function PromptBuildPage() {
   const ensureLemnityAiSession = useCallback(async (): Promise<string | null> => {
     if (lemnityAiSessionId) return lemnityAiSessionId;
     try {
-      const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, { method: "PUT" });
+      const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, {
+        method: "PUT",
+        credentials: "include"
+      });
       if (!res.ok) return null;
       const envelope = (await res.json()) as LemnityAiBridgeEnvelope<{ session_id?: string }>;
       const createdId = envelope?.data?.session_id;

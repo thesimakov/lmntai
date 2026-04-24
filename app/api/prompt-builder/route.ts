@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { getSafeServerSession } from "@/lib/auth";
 import { requireDbUser } from "@/lib/auth-guards";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
@@ -18,6 +19,37 @@ function safeJsonParse<T>(text: string): T | null {
   }
 }
 
+function composePromptBuilderOfflineDemo(idea: string, packed: string): string {
+  return [
+    `Проект: ${idea}`,
+    "",
+    "Требования:",
+    "- Next.js + Tailwind",
+    "- Светлая тема, аккуратная типографика, rounded-2xl/3xl",
+    "- Секции: hero, преимущества, кейсы/отзывы, тарифы, FAQ, контакты, форма заявки",
+    "",
+    "Детали:",
+    "- Чёткий CTA, понятная навигация",
+    "- Добавить место под интеграции (Telegram/CRM) в будущем",
+    "",
+    "Контекст (ответы пользователя):",
+    packed || "—"
+  ].join("\n");
+}
+
+function getPromptBuilderFallbackQuestions(): string[] {
+  return [
+    "Какой тип сайта нужен (лендинг/мультистраничный/магазин)?",
+    "Какая основная цель сайта (лиды/продажи/бренд/запись)?",
+    "Кто целевая аудитория и география?",
+    "Какой стиль и референсы нравятся (минимализм/неон/премиум)?",
+    "Какие блоки должны быть на главной (герой, тарифы, отзывы, FAQ)?",
+    "Какой главный оффер и призыв к действию?",
+    "Нужны ли интеграции (Telegram, CRM, платежи)?",
+    "Язык и тон: официальный/дружелюбный/дерзкий?"
+  ];
+}
+
 async function postPromptBuilder(req: NextRequest) {
   if (isLemnityAiBridgeEnabledServer()) {
     return new Response("Legacy /api/prompt-builder disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", {
@@ -25,13 +57,7 @@ async function postPromptBuilder(req: NextRequest) {
     });
   }
 
-  const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
-  const user = guard.data.user;
-  if (!hasEnoughTokens(user, MIN_TOKENS_PROMPT_BUILDER)) {
-    return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
-  }
-
+  try {
   const body = (await req.json().catch(() => null)) as
     | {
         mode?: "questions" | "compose";
@@ -41,6 +67,42 @@ async function postPromptBuilder(req: NextRequest) {
         agentHint?: string;
       }
     | null;
+
+  const session = await getSafeServerSession();
+  const guard = await requireDbUser();
+
+  if (!guard.ok) {
+    if (
+      guard.status === 503 &&
+      session?.user?.demoOffline &&
+      process.env.NODE_ENV === "development"
+    ) {
+      const ideaEarly = body?.idea?.trim();
+      if (!ideaEarly) return new Response("idea is required", { status: 400 });
+      if (body?.mode === "questions") {
+        return Response.json({ questions: getPromptBuilderFallbackQuestions(), fallback: true, noDb: true });
+      }
+      if (body?.mode === "compose") {
+        const qa = body?.qa ?? [];
+        const packed = qa
+          .filter((x) => x.q && x.a)
+          .map((x) => `Q: ${x.q}\nA: ${x.a}`)
+          .join("\n\n");
+        return Response.json({
+          finalPrompt: composePromptBuilderOfflineDemo(ideaEarly, packed),
+          fallback: true,
+          noDb: true
+        });
+      }
+      return new Response("mode must be questions|compose", { status: 400 });
+    }
+    return new Response(guard.message, { status: guard.status });
+  }
+
+  const user = guard.data.user;
+  if (!hasEnoughTokens(user, MIN_TOKENS_PROMPT_BUILDER)) {
+    return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+  }
 
   const idea = body?.idea?.trim();
   if (!idea) return new Response("idea is required", { status: 400 });
@@ -64,16 +126,7 @@ async function postPromptBuilder(req: NextRequest) {
 - верни только JSON без текста вокруг:
 { "questions": ["...","..."] }`;
 
-    const fallback = [
-      "Какой тип сайта нужен (лендинг/мультистраничный/магазин)?",
-      "Какая основная цель сайта (лиды/продажи/бренд/запись)?",
-      "Кто целевая аудитория и география?",
-      "Какой стиль и референсы нравятся (минимализм/неон/премиум)?",
-      "Какие блоки должны быть на главной (герой, тарифы, отзывы, FAQ)?",
-      "Какой главный оффер и призыв к действию?",
-      "Нужны ли интеграции (Telegram, CRM, платежи)?",
-      "Язык и тон: официальный/дружелюбный/дерзкий?"
-    ];
+    const fallback = getPromptBuilderFallbackQuestions();
 
     try {
       const { text, usage } = await requestRouterAIJson({
@@ -148,26 +201,16 @@ async function postPromptBuilder(req: NextRequest) {
 
       return Response.json({ finalPrompt });
     } catch {
-      const finalPrompt = [
-        `Проект: ${idea}`,
-        "",
-        "Требования:",
-        "- Next.js + Tailwind",
-        "- Светлая тема, аккуратная типографика, rounded-2xl/3xl",
-        "- Секции: hero, преимущества, кейсы/отзывы, тарифы, FAQ, контакты, форма заявки",
-        "",
-        "Детали:",
-        "- Чёткий CTA, понятная навигация",
-        "- Добавить место под интеграции (Telegram/CRM) в будущем",
-        "",
-        "Контекст (ответы пользователя):",
-        packed || "—"
-      ].join("\n");
-      return Response.json({ finalPrompt, fallback: true });
+      return Response.json({ finalPrompt: composePromptBuilderOfflineDemo(idea, packed), fallback: true });
     }
   }
 
   return new Response("mode must be questions|compose", { status: 400 });
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    console.error("[api/prompt-builder]", err);
+    return Response.json({ error: detail.slice(0, 500) }, { status: 500 });
+  }
 }
 
 export const POST = withApiLogging("/api/prompt-builder", postPromptBuilder);
