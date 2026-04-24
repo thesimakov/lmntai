@@ -69,21 +69,27 @@ NEXT_PUBLIC_MANUS_FULL_PARITY_ENABLED=1
 MANUS_API_BASE_URL=http://127.0.0.1:8000
 # опционально, если backend ai-manus-main работает с Bearer auth:
 # MANUS_API_BEARER_TOKEN=<token>
-NEXT_PUBLIC_MANUS_FRONTEND_URL=https://manus.lemnity.com
 ```
 
-### Поднять стек ai-manus-main на сервере
+### Поднять backend из вашей папки Manus (рядом с lmntai)
+
+Интерфейс сборки — это `/playground/build` в Lemnity. Отдельный домен и отдельный фронтенд-репозиторий не нужны.
+
+Скопируйте на сервер **ту же папку** `ai-manus-main`, которую вы изучали локально (rsync/scp/archив), в корень репозитория приложения:
+
+`/root/lmntai/ai-manus-main/`
+
+Затем:
 
 ```bash
 cd /root/lmntai
 npm run manus:up
 ```
 
-По умолчанию скрипт ждёт репозиторий Manus в `/root/ai-manus-main`.  
-Если путь другой:
+По умолчанию `manus:up` ищет compose в `$LMNTAI_ROOT/ai-manus-main`. Другой путь:
 
 ```bash
-MANUS_REPO_DIR=/var/www/ai-manus-main npm run manus:up
+MANUS_REPO_DIR=/opt/manus-stack npm run manus:up
 ```
 
 ### Проверка health full parity
@@ -96,7 +102,7 @@ curl -fsS http://127.0.0.1:3000/api/manus/health
 
 ### Что меняется после включения
 
-- `/playground/build` переводит пользователя в Manus workspace (`NEXT_PUBLIC_MANUS_FRONTEND_URL`).
+- `/playground/build` ходит в FastAPI Manus через мост `/api/manus/*`, без редиректа на другой сайт.
 - История сессий хранится серверно через bridge таблицу `ManusSessionLink`.
 - Чат и SSE идут через `/api/manus/sessions/:id/chat`.
 - Токены списываются по итогам каждого чата (`ManusChatCharge` + `TokenUsageLog`), с дедупликацией по `event_id`.
