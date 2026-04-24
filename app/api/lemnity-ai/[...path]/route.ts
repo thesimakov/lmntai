@@ -140,7 +140,8 @@ function enrichChatRequestForRouterModel(
     const hintRaw = parsed.agent_hint;
     const hint = typeof hintRaw === "string" ? hintRaw : null;
     const pkRaw = parsed.project_kind;
-    const projectKind = isProjectKind(pkRaw) ? pkRaw : undefined;
+    const projectKind =
+      typeof pkRaw === "string" && isProjectKind(pkRaw) ? pkRaw : undefined;
     const agent = resolveAgentForTask({
       plan,
       projectKind: projectKind ?? null,
