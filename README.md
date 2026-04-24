@@ -36,7 +36,7 @@ pnpm dev
 
 ## RouterAI: чеклист для сервера
 
-1. В `.env` (или `.env.production`) задайте:
+1. В серверном env-файле (рекомендовано вне репозитория: `/etc/lemnity/production.env`) задайте:
 
 ```bash
 AI_GATEWAY_BASE_URL=https://routerai.ru/api/v1
@@ -46,7 +46,7 @@ AI_GATEWAY_API_KEY=<ваш_routerai_ключ>
 2. Примените переменные в процессе:
 
 ```bash
-pm2 restart lmntai --update-env
+set -a && . /etc/lemnity/production.env && set +a && pm2 restart lemnity --update-env
 ```
 
 3. Проверьте API-маршруты:
@@ -59,9 +59,44 @@ pm2 restart lmntai --update-env
 
 ## Деплой на сервер
 
-1. На сервере: `git clone` репозитория (или `git pull`), скопируйте `.env.local.example` → `.env` / `.env.local`, выставьте `DATABASE_URL`, `NEXTAUTH_SECRET`, **`NEXTAUTH_URL=https://lemnity.com`**, **`NEXT_PUBLIC_SITE_URL=https://lemnity.com`**, ключи OAuth/SMTP по необходимости.
-2. База: `docker compose up -d` (Postgres из репо) или свой managed Postgres → `npx prisma migrate deploy`.
-3. Сборка и запуск: `npm ci && npm run build && npm run start` (или PM2/systemd вокруг `npm run start`). Убедитесь, что reverse proxy (Nginx/Caddy) отдаёт HTTPS на **https://lemnity.com** и проксирует на порт приложения.
+Данные и настройки должны жить отдельно от кода:
+- **Код**: `/root/lmntai` (обновляется через git).
+- **Настройки**: `/etc/lemnity/production.env` (не хранить в git).
+- **Данные Postgres**: Docker volume `lemnity_pg` из `docker-compose.yml` (не удалять через `down -v`).
+
+### 1) Одноразовая настройка env на сервере
+
+```bash
+mkdir -p /etc/lemnity && cp -n /root/lmntai/.env.local.example /etc/lemnity/production.env && nano /etc/lemnity/production.env
+```
+
+Заполните минимум: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL` и ключи OAuth/SMTP.
+
+### 2) Первый запуск приложения через PM2 (если процесса ещё нет)
+
+```bash
+cd /root/lmntai && set -a && . /etc/lemnity/production.env && set +a && pm2 start ecosystem.config.cjs --only lemnity --update-env && pm2 save
+```
+
+### 3) Основная one-line команда обновления билда без потери данных
+
+```bash
+cd /root/lmntai && set -a && . /etc/lemnity/production.env && set +a && npm run deploy:production
+```
+
+Что делает `deploy:production`:
+- `git pull --ff-only`
+- `npm ci`
+- `npm run prisma:generate`
+- `npx prisma migrate deploy`
+- `npm run build`
+- `pm2 restart lemnity --update-env` (или первый старт при отсутствии процесса)
+
+### 4) Критично важно для сохранности данных
+
+- Не используйте в обычном деплое `docker compose down -v`.
+- Не используйте в обычном деплое `npm run db:reset`.
+- Проверьте прокси (Nginx/Caddy): HTTPS на `https://lemnity.com` должен проксировать на `127.0.0.1:3000`.
 
 Заливка в GitHub с локальной машины (после коммита):
 

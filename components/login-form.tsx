@@ -597,8 +597,8 @@ export function LoginForm({
   if (useSplitLayout) {
     return (
       <div className="min-h-dvh w-full bg-zinc-50 text-foreground dark:bg-zinc-950">
-        <div className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col lg:flex-row">
-          <section className="flex min-h-dvh w-full min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-8 lg:min-h-0 lg:max-w-[min(100%,520px)] lg:shrink-0 lg:px-12 lg:py-8 xl:px-16">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col lg:flex-row lg:items-stretch">
+          <section className="flex min-h-dvh w-full min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-8 lg:min-h-0 lg:basis-1/2 lg:px-12 lg:py-8 xl:px-16">
             <header className="flex shrink-0 items-center justify-between gap-4">
               <Link
                 href="/"
@@ -632,7 +632,7 @@ export function LoginForm({
               </div>
             </div>
           </section>
-          <section className="relative w-full min-w-0 flex-1 bg-zinc-100/50 p-3 sm:p-4 lg:min-h-dvh lg:bg-transparent lg:py-6 lg:pl-0 lg:pr-6 lg:pt-6 xl:pr-10">
+          <section className="relative w-full min-w-0 flex-1 bg-zinc-100/50 p-3 sm:p-4 lg:min-h-dvh lg:basis-1/2 lg:bg-transparent lg:py-6 lg:pl-0 lg:pr-6 lg:pt-6 xl:pr-10">
             <div className="h-full min-h-[280px] lg:min-h-0">
               <LoginSplitHero />
             </div>

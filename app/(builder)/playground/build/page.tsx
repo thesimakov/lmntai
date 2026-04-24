@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -465,7 +465,8 @@ export default function PromptBuildPage() {
               <div
                 role="separator"
                 aria-orientation="vertical"
-                className="absolute right-0 top-0 z-10 h-full w-2 cursor-col-resize touch-none"
+                aria-label="Потянуть влево или вправо, чтобы изменить ширину чата"
+                className="absolute right-0 top-0 z-10 flex h-full w-4 cursor-col-resize touch-none items-center justify-center"
                 onPointerDown={(e) => {
                   if (e.button !== 0) return;
                   dragStateRef.current = {
@@ -492,7 +493,15 @@ export default function PromptBuildPage() {
                     // ignore
                   }
                 }}
-              />
+              >
+                <div className="pointer-events-none flex items-center justify-center rounded-md border border-border/80 bg-background/95 px-1 py-2 shadow-sm ring-1 ring-black/5 backdrop-blur-sm dark:bg-zinc-900/90 dark:ring-white/10">
+                  <ArrowLeftRight
+                    className="h-4 w-4 shrink-0 text-muted-foreground"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                </div>
+              </div>
             ) : null}
           </div>
 

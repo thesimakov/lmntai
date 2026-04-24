@@ -22,7 +22,8 @@
     "db:wait": "node scripts/wait-for-pg.mjs",
     "db:migrate": "prisma migrate deploy",
     "db:setup": "npm run db:up && npm run db:wait && prisma migrate deploy",
-    "db:reset": "docker compose down -v && npm run db:setup"
+    "db:reset": "docker compose down -v && npm run db:setup",
+    "deploy:production": "bash scripts/deploy-production.sh"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",
