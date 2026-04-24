@@ -187,6 +187,39 @@ export function Profile() {
     setTimeout(() => setRefCopied(false), 2000)
   }
 
+  async function shareReferral() {
+    const title = t("profile_share_native_title")
+    const text = `${t("profile_referral_desc_prefix")} ${stats.coinsPerReferral.toLocaleString(numberLocale)} ${t("profile_referral_desc_suffix")}\n\n${referralLink}`
+
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+      const data: ShareData = { title, text, url: referralLink }
+      try {
+        if (typeof navigator.canShare === "function" && !navigator.canShare(data)) {
+          await copyReferralWithToast()
+          return
+        }
+        await navigator.share(data)
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return
+        await copyReferralWithToast()
+      }
+      return
+    }
+
+    await copyReferralWithToast()
+  }
+
+  async function copyReferralWithToast() {
+    try {
+      await navigator.clipboard.writeText(referralLink)
+      setRefCopied(true)
+      setTimeout(() => setRefCopied(false), 2000)
+      toast.success(t("profile_copied_to_clipboard"))
+    } catch {
+      toast.error(t("retry"))
+    }
+  }
+
   async function createWithdrawalRequest() {
     const amount = Number(withdrawAmount.replace(",", "."))
     if (!Number.isFinite(amount) || amount <= 0) {
@@ -494,7 +527,7 @@ export function Profile() {
                 )}
               </AnimatePresence>
             </Button>
-            <Button type="button" variant="secondary" className="rounded-xl" onClick={copyReferral}>
+            <Button type="button" variant="default" className="rounded-xl" onClick={() => void shareReferral()}>
               <Share2 className="mr-2 h-4 w-4" />
               {t("profile_share")}
             </Button>
