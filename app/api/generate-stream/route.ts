@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { resolveAgentForTask } from "@/lib/agent-models";
+import { isManusFullParityEnabledServer } from "@/lib/manus-parity-config";
 import { requestRouterAIStream } from "@/lib/routerai-client";
 import { extractDataJson, splitSseLines } from "@/lib/sse-parser";
 import { chargeTokensSafely, estimateUsageFromText, normalizeUsage, type TokenUsage } from "@/lib/token-billing";
@@ -24,6 +25,12 @@ function sse(controller: ReadableStreamDefaultController, payload: unknown) {
 }
 
 async function postGenerateStream(req: NextRequest) {
+  if (isManusFullParityEnabledServer()) {
+    return new Response("Legacy /api/generate-stream disabled in Manus full parity mode. Use /api/manus/sessions/:id/chat", {
+      status: 410
+    });
+  }
+
   const guard = await requireDbUser();
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });

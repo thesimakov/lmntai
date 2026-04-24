@@ -23,7 +23,9 @@
     "db:migrate": "prisma migrate deploy",
     "db:setup": "npm run db:up && npm run db:wait && prisma migrate deploy",
     "db:reset": "docker compose down -v && npm run db:setup",
-    "deploy:production": "bash scripts/deploy-production.sh"
+    "deploy:production": "bash scripts/deploy-production.sh",
+    "manus:up": "bash scripts/manus-full-parity-up.sh",
+    "manus:health": "bash scripts/manus-full-parity-health.sh"
   },
   "dependencies": {
     "@next-auth/prisma-adapter": "^1.0.7",

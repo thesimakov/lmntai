@@ -2,7 +2,7 @@
 
 import { ArrowLeft, ArrowLeftRight, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
@@ -22,6 +22,7 @@ import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
 import { useBuildStreamLog } from "@/hooks/use-build-stream-log";
 import { readBuilderHandoff } from "@/lib/landing-handoff";
+import { buildManusFrontendLaunchUrl, isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
 import type { ProjectKind } from "@/lib/manus-prompt-spec";
@@ -31,7 +32,10 @@ import type { StreamEvent } from "@/types/build-stream";
 export default function PromptBuildPage() {
   const { t } = useI18n();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
+  const shouldUseManusParity = isManusFullParityEnabledClient();
+  const requestedSessionId = searchParams.get("sessionId");
   const didInitRef = useRef(false);
   const mountedRef = useRef(true);
   const requestAbortRef = useRef<AbortController | null>(null);
@@ -152,6 +156,20 @@ export default function PromptBuildPage() {
   }, []);
 
   useEffect(() => {
+    if (!shouldUseManusParity) return;
+    const handoff = readBuilderHandoff();
+    const target = buildManusFrontendLaunchUrl({
+      idea: handoff?.idea,
+      projectKind: handoff?.projectKind ?? null,
+      sessionId: requestedSessionId
+    });
+    if (target) {
+      window.location.replace(target);
+    }
+  }, [requestedSessionId, shouldUseManusParity]);
+
+  useEffect(() => {
+    if (shouldUseManusParity) return;
     if (didInitRef.current) return;
     didInitRef.current = true;
     const handoff = readBuilderHandoff();
@@ -168,7 +186,7 @@ export default function PromptBuildPage() {
       void handleCreateQuestions(fromStorage, handoff?.projectKind);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [shouldUseManusParity]);
 
   function pushRecent(item: string) {
     try {
@@ -229,11 +247,12 @@ export default function PromptBuildPage() {
     push("assistant", data.questions[0] ?? "Опиши задачу подробнее.");
   }
 
-  async function handleComposePrompt() {
+  async function handleComposePrompt(qaOverride?: PromptQA[]) {
     push("assistant", "🧩 Собираю финальный промпт...");
     requestAbortRef.current?.abort();
     const controller = new AbortController();
     requestAbortRef.current = controller;
+    const qaPayload = qaOverride ?? qa;
 
     let res: Response;
     try {
@@ -243,7 +262,7 @@ export default function PromptBuildPage() {
         body: JSON.stringify({
           mode: "compose",
           idea,
-          qa,
+          qa: qaPayload,
           projectKind: projectKind ?? undefined,
           agentHint
         }),
@@ -329,8 +348,13 @@ export default function PromptBuildPage() {
         if (eventData.type === "error") {
           push("assistant", `❌ ${eventData.message}`);
           setMode("idle");
+          setStage("ready");
         }
-        if (eventData.type === "done") setProgress(100);
+        if (eventData.type === "done") {
+          setProgress(100);
+          setStage("ready");
+          setMode((prev) => (prev === "generating" ? "idle" : prev));
+        }
       };
 
       while (true) {
@@ -356,15 +380,20 @@ export default function PromptBuildPage() {
     } catch (error) {
       if ((error as Error).name !== "AbortError") {
         push("assistant", "❌ Ошибка генерации");
+        setMode("idle");
+        setStage("ready");
       }
     } finally {
       if (mountedRef.current) {
         setIsGenerating(false);
+        setMode((prev) => (prev === "generating" ? "idle" : prev));
+        setStage((prev) => (prev === "generating" ? "ready" : prev));
       }
     }
   }
 
   function onSend(text: string) {
+    if (shouldUseManusParity) return;
     push("user", text);
 
     if (stage === "questions") {
@@ -380,11 +409,60 @@ export default function PromptBuildPage() {
         return;
       }
 
-      void handleComposePrompt();
+      void handleComposePrompt(next);
       return;
     }
 
-    push("assistant", "Принято. Следующим шагом сделаю итеративные правки (пока прототип).");
+    if (stage === "idea") {
+      setIdea(text);
+      void handleCreateQuestions(text, projectKind ?? undefined);
+      return;
+    }
+
+    if (stage === "ready") {
+      void handleGenerate(text);
+      return;
+    }
+
+    push("assistant", "⌛ Дождись завершения текущего шага и повтори запрос.");
+  }
+
+  const manusLaunchUrl = useMemo(
+    () =>
+      buildManusFrontendLaunchUrl({
+        idea: idea.trim() || null,
+        projectKind,
+        sessionId: requestedSessionId
+      }),
+    [idea, projectKind, requestedSessionId]
+  );
+
+  if (shouldUseManusParity) {
+    return (
+      <PageTransition>
+        <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/40 p-6">
+          <div className="w-full max-w-xl rounded-3xl border border-border bg-background p-6 text-center">
+            <h2 className="text-xl font-semibold text-foreground">Manus build workspace</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Полный parity-режим активен. Сборка и история чатов работают в `ai-manus-main`.
+            </p>
+            <div className="mt-4">
+              <Button
+                type="button"
+                onClick={() => {
+                  if (manusLaunchUrl) {
+                    window.location.assign(manusLaunchUrl);
+                  }
+                }}
+                disabled={!manusLaunchUrl}
+              >
+                Открыть Manus Workspace
+              </Button>
+            </div>
+          </div>
+        </div>
+      </PageTransition>
+    );
   }
 
   return (
@@ -524,6 +602,7 @@ export default function PromptBuildPage() {
               }
               onPublish={handlePublishPreview}
               publishDisabled={!previewUrl || !sandboxId}
+              onHistoryClick={() => router.push("/playground")}
               addressPath={addressPath}
               previewEditorToggle={
                 tab === "preview"

@@ -32,7 +32,7 @@ pnpm dev
 
 - Мастер‑ключ RouterAI хранится **только** на сервере (`AI_GATEWAY_API_KEY`).
 - Генерация идёт через `/api/generate-stream` и списывает токены по `usage` из стрима (если провайдер возвращает usage в SSE).
-- Песочница в этом репо — **заглушка** (`lib/sandbox-manager.ts`) с превью через `/api/sandbox/:id` и экспортом ZIP из файлов.
+- В режиме `MANUS_FULL_PARITY_ENABLED=1` legacy-маршруты `/api/generate-stream` и `/api/prompt-builder` выключаются, а сборка идёт через bridge `/api/manus/*`.
 
 ## RouterAI: чеклист для сервера
 
@@ -56,6 +56,50 @@ set -a && . /etc/lemnity/production.env && set +a && pm2 restart lemnity --updat
 
 `/api/routerai/health` возвращает JSON с `ok`, `latencyMs`, `model`, `textPreview` и `usage`.  
 При ошибке конфигурации вернётся `500`, при ошибке апстрима RouterAI — `502`.
+
+## AI Manus Full Parity
+
+### Env (Lemnity bridge)
+
+В `/etc/lemnity/production.env` добавьте:
+
+```bash
+MANUS_FULL_PARITY_ENABLED=1
+NEXT_PUBLIC_MANUS_FULL_PARITY_ENABLED=1
+MANUS_API_BASE_URL=http://127.0.0.1:8000
+# опционально, если backend ai-manus-main работает с Bearer auth:
+# MANUS_API_BEARER_TOKEN=<token>
+NEXT_PUBLIC_MANUS_FRONTEND_URL=https://manus.lemnity.com
+```
+
+### Поднять стек ai-manus-main на сервере
+
+```bash
+cd /root/lmntai
+npm run manus:up
+```
+
+По умолчанию скрипт ждёт репозиторий Manus в `/root/ai-manus-main`.  
+Если путь другой:
+
+```bash
+MANUS_REPO_DIR=/var/www/ai-manus-main npm run manus:up
+```
+
+### Проверка health full parity
+
+```bash
+cd /root/lmntai
+MANUS_API_BASE_URL=http://127.0.0.1:8000 LMNTAI_APP_URL=http://127.0.0.1:3000 npm run manus:health
+curl -fsS http://127.0.0.1:3000/api/manus/health
+```
+
+### Что меняется после включения
+
+- `/playground/build` переводит пользователя в Manus workspace (`NEXT_PUBLIC_MANUS_FRONTEND_URL`).
+- История сессий хранится серверно через bridge таблицу `ManusSessionLink`.
+- Чат и SSE идут через `/api/manus/sessions/:id/chat`.
+- Токены списываются по итогам каждого чата (`ManusChatCharge` + `TokenUsageLog`), с дедупликацией по `event_id`.
 
 ## Деплой на сервер
 

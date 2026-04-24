@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { resolveAgentForTask } from "@/lib/agent-models";
+import { isManusFullParityEnabledServer } from "@/lib/manus-parity-config";
 import { requestRouterAIJson } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
 import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
@@ -18,6 +19,12 @@ function safeJsonParse<T>(text: string): T | null {
 }
 
 async function postPromptBuilder(req: NextRequest) {
+  if (isManusFullParityEnabledServer()) {
+    return new Response("Legacy /api/prompt-builder disabled in Manus full parity mode. Use /api/manus/sessions/:id/chat", {
+      status: 410
+    });
+  }
+
   const guard = await requireDbUser();
   if (!guard.ok) return new Response(guard.message, { status: guard.status });
   const user = guard.data.user;

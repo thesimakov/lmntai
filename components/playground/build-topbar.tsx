@@ -49,6 +49,7 @@ type BuildPreviewChromeProps = {
     active: boolean;
     onToggle: () => void;
   };
+  onHistoryClick?: () => void;
 };
 
 export function BuildPreviewChrome({
@@ -60,7 +61,8 @@ export function BuildPreviewChrome({
   publishDisabled = false,
   addressPath,
   onRefresh,
-  previewEditorToggle
+  previewEditorToggle,
+  onHistoryClick
 }: BuildPreviewChromeProps) {
   const [taskFilesOpen, setTaskFilesOpen] = useState(false);
   const { t } = useI18n();
@@ -120,7 +122,15 @@ export function BuildPreviewChrome({
             </button>
           ) : null}
 
-          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled aria-label={t("build_aria_history")}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground"
+            disabled={!onHistoryClick}
+            aria-label={t("build_aria_history")}
+            onClick={onHistoryClick}
+          >
             <History className="h-4 w-4" />
           </Button>
           <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" disabled aria-label={t("build_aria_database")}>

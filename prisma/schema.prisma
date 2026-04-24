@@ -56,6 +56,8 @@ model User {
   teamMemberships TeamInvitation[] @relation("TeamInvitedUser")
   requestLogs    RequestLog[]
   authEvents     AuthEventLog[]
+  manusSessions  ManusSessionLink[]
+  manusCharges   ManusChatCharge[]
 
   @@index([partnerApprovedById])
   @@index([referredById])
@@ -105,6 +107,39 @@ model TokenUsageLog {
   cost             Float?
   model            String
   createdAt        DateTime @default(now())
+}
+
+model ManusSessionLink {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manusSessionId     String   @unique
+  title              String?
+  latestMessage      String?
+  latestMessageAt    DateTime?
+  unreadMessageCount Int      @default(0)
+  status             String   @default("pending")
+  isShared           Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}
+
+model ManusChatCharge {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manusSessionId String
+  eventId        String
+  model          String
+  promptTokens   Int
+  completionTokens Int
+  totalTokens    Int
+  createdAt      DateTime @default(now())
+
+  @@unique([manusSessionId, eventId])
+  @@index([userId, createdAt])
 }
 
 model ReferralWallet {
