@@ -86,14 +86,9 @@ export function MarketingSiteHeader() {
               <Link href="/playground">{t("landing_open_dashboard")}</Link>
             </Button>
           ) : (
-            <>
-              <Button asChild variant="ghost" size="sm" className="rounded-full text-zinc-700">
-                <Link href="/login">{t("landing_login")}</Link>
-              </Button>
-              <Button asChild size="sm" className="rounded-full bg-zinc-900 px-5 text-white hover:bg-zinc-800">
-                <Link href="/login">{t("landing_simple_nav_cta")}</Link>
-              </Button>
-            </>
+            <Button asChild size="sm" className="rounded-full bg-zinc-900 px-5 text-white hover:bg-zinc-800">
+              <Link href="/login">{t("landing_login")}</Link>
+            </Button>
           )}
         </div>
       </div>

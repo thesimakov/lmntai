@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useI18n } from "@/components/i18n-provider"
+import { cn } from "@/lib/utils"
 
 type UiLanguage = "ru" | "en" | "tg"
 
@@ -476,6 +477,8 @@ export function Settings() {
                 {group.settings.map((setting) => {
                   const isTimezone = group.id === "localization" && setting.id === "timezone"
                   const isLanguage = group.id === "localization" && setting.id === "language"
+                  const fieldLabelId = `lmnt-settings-${group.id}-${setting.id}-label`
+                  const fieldDescId = `lmnt-settings-${group.id}-${setting.id}-description`
                   const settingText = (t.settings as Record<string, SettingsFieldCopy | undefined>)[
                     setting.id
                   ]
@@ -497,27 +500,49 @@ export function Settings() {
                   return (
                     <div
                       key={setting.id}
-                      className="flex items-center justify-between gap-4 rounded-xl bg-muted/40 px-4 py-3"
+                      className={cn(
+                        "rounded-xl bg-muted/40 px-4 py-3",
+                        isTimezone
+                          ? "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6"
+                          : "flex items-center justify-between gap-4"
+                      )}
                     >
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">
+                      <div
+                        className={cn(
+                          "min-w-0",
+                          isTimezone && "w-full sm:max-w-[15.5rem] sm:shrink-0"
+                        )}
+                      >
+                        <h4 id={fieldLabelId} className="m-0 text-base font-medium text-foreground">
                           {settingText?.label ?? setting.id}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
+                        </h4>
+                        <p id={fieldDescId} className="mt-1 text-sm text-muted-foreground">
                           {settingText?.description ?? ""}
                         </p>
                       </div>
                       {setting.type === "switch" ? (
                         <Switch defaultChecked={setting.defaultValue as boolean} />
                       ) : (
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div
+                          className={cn(
+                            "flex items-center gap-2",
+                            isTimezone
+                              ? "w-full min-w-0 sm:w-auto sm:flex-1 sm:justify-end"
+                              : "shrink-0"
+                          )}
+                        >
                           <Select
                             value={selectValue}
+                            aria-labelledby={`${fieldLabelId} ${fieldDescId}`}
                             onValueChange={
                               isTimezone ? onTimezoneChange : isLanguage ? onLanguageChange : undefined
                             }
                           >
-                            <SelectTrigger className="w-56">
+                            <SelectTrigger
+                              className={
+                                isTimezone ? "w-full min-w-0 max-w-md sm:min-w-[18rem]" : "w-56"
+                              }
+                            >
                               <SelectValue placeholder={t.settings.timezone.placeholder} />
                             </SelectTrigger>
                             <SelectContent>

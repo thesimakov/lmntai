@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Check, Globe, Sparkles } from "lucide-react"
+import { Check, Sparkles } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
@@ -262,45 +262,9 @@ export function Pricing() {
           </p>
         </div>
 
-        <div className="mx-auto mt-8 grid max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
-          {(
-            [
-              { k: "pricing_header_starter" as const, tone: "border-zinc-200/80 bg-zinc-50/80 dark:border-border/60 dark:bg-muted/25" },
-              { k: "pricing_header_pro" as const, tone: "border-purple-500/20 bg-gradient-to-b from-purple-500/[0.07] to-transparent dark:border-purple-500/25" },
-              { k: "pricing_header_team" as const, tone: "border-zinc-200/80 bg-zinc-50/80 dark:border-border/60 dark:bg-muted/25" },
-            ] as const
-          ).map((item) => (
-            <div
-              key={item.k}
-              className={cn(
-                "rounded-2xl border p-4 text-left shadow-sm ring-1 ring-black/5",
-                item.tone,
-              )}
-            >
-              <p className="text-sm font-medium leading-snug text-foreground">
-                {t(item.k)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <p className="mx-auto mt-4 max-w-2xl text-center text-sm text-muted-foreground">
+        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground">
           {t("pricing_header_packs_note")}
         </p>
-
-        <div className="mx-auto mt-5 flex max-w-2xl justify-center">
-          <div
-            className="inline-flex w-full items-start gap-3 rounded-2xl border border-dashed border-border/80 bg-muted/20 px-4 py-3 text-left sm:items-center"
-            role="note"
-          >
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-background text-muted-foreground shadow-sm">
-              <Globe className="h-4 w-4" aria-hidden />
-            </span>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              {t("pricing_monthly_note")}
-            </p>
-          </div>
-        </div>
       </div>
 
       {showBilling ? (
