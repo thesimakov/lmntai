@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { LoginSplitHero } from "@/components/login-split-hero";
 
 function GoogleIcon({ className }: { className?: string }) {
   return (
@@ -66,12 +67,19 @@ export type LoginFeatures = {
 
 export function LoginForm({
   features,
-  embedded = false
+  embedded = false,
+  splitLayout
 }: {
   features: LoginFeatures;
   /** Карточка без внешнего main/Card — для модального окна */
   embedded?: boolean;
+  /**
+   * Двухколоночный макет: форма слева, визуализация справа (страница /login).
+   * По умолчанию true, если не embedded. Передайте false, чтобы осталась одна карточка по центру.
+   */
+  splitLayout?: boolean;
 }) {
+  const useSplitLayout = embedded ? false : splitLayout !== false;
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -86,7 +94,23 @@ export function LoginForm({
     "idle" | "oauth" | "credentials" | "register" | "magic"
   >("idle");
   const [activeProvider, setActiveProvider] = useState<"google" | "github" | "vk" | "yandex" | null>(null);
+  const [emailLoginOpen, setEmailLoginOpen] = useState(false);
+  const [registerOpen, setRegisterOpen] = useState(false);
   const isLoading = loadingState !== "idle";
+
+  function openEmailLogin() {
+    setError(null);
+    setInfo(null);
+    setRegisterOpen(false);
+    setEmailLoginOpen(true);
+  }
+
+  function openRegisterPanel() {
+    setError(null);
+    setInfo(null);
+    setEmailLoginOpen(false);
+    setRegisterOpen(true);
+  }
 
   async function handleOAuthSignIn(
     provider: "google" | "github" | "vk" | "yandex",
@@ -219,151 +243,248 @@ export function LoginForm({
   const hasOAuth =
     features.google || features.github || features.vk || features.yandex;
 
+  const hasUpperBlock =
+    Boolean(features.demo) || hasOAuth || features.emailMagic;
+
   const formBody = (
     <>
-          {features.demo ? (
-            <div className="space-y-3 rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
-              <p className="text-sm text-muted-foreground">
-                Демо-доступ: подставим email и имя
-                {features.demo.requiresPassword
-                  ? ". Пароль задаётся в `DEMO_LOGIN_PASSWORD` на сервере."
-                  : "."}
-              </p>
-              <Button
+      {features.demo ? (
+        <div className="space-y-3 rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
+          <p className="text-sm text-muted-foreground">
+            Демо-доступ: подставим email и имя
+            {features.demo!.requiresPassword
+              ? ". Пароль задаётся в `DEMO_LOGIN_PASSWORD` на сервере."
+              : "."}
+          </p>
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            disabled={isLoading}
+            onClick={() => {
+              setEmail(features.demo!.email);
+              setName(features.demo!.name);
+              setError(null);
+              openEmailLogin();
+            }}
+          >
+            Заполнить демо
+          </Button>
+        </div>
+      ) : null}
+
+      {hasOAuth ? (
+        <div className="flex flex-col gap-2">
+          {features.google ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full justify-center gap-2"
+              disabled={isLoading}
+              onClick={() => {
+                void handleOAuthSignIn("google", "Google");
+              }}
+            >
+              {loadingState === "oauth" && activeProvider === "google" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Перенаправляем в Google…
+                </>
+              ) : (
+                <>
+                  <GoogleIcon className="size-4" />
+                  Продолжить с Google
+                </>
+              )}
+            </Button>
+          ) : null}
+          {features.github ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full justify-center gap-2"
+              disabled={isLoading}
+              onClick={() => {
+                void handleOAuthSignIn("github", "GitHub");
+              }}
+            >
+              {loadingState === "oauth" && activeProvider === "github" ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Перенаправляем в GitHub…
+                </>
+              ) : (
+                <>
+                  <GitHubIcon className="size-4" />
+                  Продолжить с GitHub
+                </>
+              )}
+            </Button>
+          ) : null}
+          {features.vk ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full"
+              disabled={isLoading}
+              onClick={() => {
+                void handleOAuthSignIn("vk", "ВКонтакте");
+              }}
+            >
+              {loadingState === "oauth" && activeProvider === "vk" ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Перенаправляем во ВКонтакте…
+                </>
+              ) : (
+                "Продолжить с ВКонтакте"
+              )}
+            </Button>
+          ) : null}
+          {features.yandex ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full"
+              disabled={isLoading}
+              onClick={() => {
+                void handleOAuthSignIn("yandex", "Яндекс");
+              }}
+            >
+              {loadingState === "oauth" && activeProvider === "yandex" ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Перенаправляем в Яндекс…
+                </>
+              ) : (
+                "Продолжить с Яндекс"
+              )}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {features.emailMagic ? (
+        <form className="space-y-3" onSubmit={handleMagicLink}>
+          <p className="text-muted-foreground text-sm">Вход по ссылке на почту</p>
+          <Input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="Email"
+            required
+          />
+          <Button type="submit" variant="secondary" className="w-full" disabled={isLoading}>
+            {loadingState === "magic" ? "Отправляю…" : "Отправить ссылку"}
+          </Button>
+        </form>
+      ) : null}
+
+      {registerOpen ? (
+        <div className="border-border relative border-t pt-4">
+          <span
+            className={cn(
+              "text-muted-foreground absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-1/2 px-2 text-xs",
+              embedded ? "bg-white/20 backdrop-blur-sm dark:bg-zinc-950/30" : "bg-card"
+            )}
+          >
+            {hasUpperBlock ? "или" : "Регистрация"}
+          </span>
+          <form
+            className="animate-in fade-in slide-in-from-top-1 space-y-3 duration-200"
+            onSubmit={handleRegisterSubmit}
+            id="register-credentials-form"
+          >
+            {!useSplitLayout ? (
+              <>
+                <p className="text-base font-medium text-foreground">Создать аккаунт</p>
+                <p className="text-muted-foreground text-sm">
+                  Укажите данные — создадим профиль с бесплатным пакетом токенов.
+                </p>
+              </>
+            ) : null}
+            <Input
+              value={regName}
+              onChange={(event) => setRegName(event.target.value)}
+              placeholder="Имя и фамилия"
+              autoComplete="name"
+              required
+            />
+            <Input
+              type="email"
+              value={regEmail}
+              onChange={(event) => setRegEmail(event.target.value)}
+              placeholder="Email"
+              autoComplete="email"
+              required
+            />
+            <Input
+              value={regCompany}
+              onChange={(event) => setRegCompany(event.target.value)}
+              placeholder="Компания (необязательно)"
+              autoComplete="organization"
+            />
+            {features.demo?.requiresPassword ? (
+              <Input
+                type="password"
+                value={regPassword}
+                onChange={(event) => setRegPassword(event.target.value)}
+                placeholder="Пароль демо"
+                autoComplete="new-password"
+              />
+            ) : null}
+            {error ? <p className="text-sm text-red-400">{error}</p> : null}
+            <Button
+              type="submit"
+              className={cn("w-full", embedded && "rounded-xl")}
+              disabled={isLoading}
+            >
+              {loadingState === "register" ? "Создаём профиль…" : "Создать аккаунт"}
+            </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              Уже есть аккаунт?{" "}
+              <button
                 type="button"
-                variant="secondary"
-                className="w-full"
-                disabled={isLoading}
+                className="font-semibold text-foreground underline-offset-2 hover:underline"
                 onClick={() => {
-                  setEmail(features.demo!.email);
-                  setName(features.demo!.name);
+                  setRegisterOpen(false);
                   setError(null);
                 }}
               >
-                Заполнить демо
-              </Button>
-            </div>
-          ) : null}
-
-          {hasOAuth ? (
-            <div className="flex flex-col gap-2">
-              {features.google ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={isLoading}
-                  onClick={() => {
-                    void handleOAuthSignIn("google", "Google");
-                  }}
-                >
-                  {loadingState === "oauth" && activeProvider === "google" ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Перенаправляем в Google...
-                    </>
-                  ) : (
-                    <>
-                      <GoogleIcon className="size-4" />
-                      Google
-                    </>
-                  )}
-                </Button>
-              ) : null}
-              {features.github ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full gap-2"
-                  disabled={isLoading}
-                  onClick={() => {
-                    void handleOAuthSignIn("github", "GitHub");
-                  }}
-                >
-                  {loadingState === "oauth" && activeProvider === "github" ? (
-                    <>
-                      <Loader2 className="size-4 animate-spin" />
-                      Перенаправляем в GitHub...
-                    </>
-                  ) : (
-                    <>
-                      <GitHubIcon className="size-4" />
-                      GitHub
-                    </>
-                  )}
-                </Button>
-              ) : null}
-              {features.vk ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={isLoading}
-                  onClick={() => {
-                    void handleOAuthSignIn("vk", "ВКонтакте");
-                  }}
-                >
-                  {loadingState === "oauth" && activeProvider === "vk" ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Перенаправляем во ВКонтакте...
-                    </>
-                  ) : (
-                    "ВКонтакте"
-                  )}
-                </Button>
-              ) : null}
-              {features.yandex ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full"
-                  disabled={isLoading}
-                  onClick={() => {
-                    void handleOAuthSignIn("yandex", "Яндекс");
-                  }}
-                >
-                  {loadingState === "oauth" && activeProvider === "yandex" ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Перенаправляем в Яндекс...
-                    </>
-                  ) : (
-                    "Яндекс"
-                  )}
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-
-          {features.emailMagic ? (
-            <form className="space-y-3" onSubmit={handleMagicLink}>
-              <p className="text-muted-foreground text-sm">Вход по ссылке на почту</p>
-              <Input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email"
-                required
-              />
-              <Button type="submit" variant="secondary" className="w-full" disabled={isLoading}>
-                {loadingState === "magic" ? "Отправляю…" : "Отправить ссылку"}
-              </Button>
-            </form>
-          ) : null}
-
-          <div className="border-border relative border-t pt-4">
-            <span
-              className={cn(
-                "text-muted-foreground absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-1/2 px-2 text-xs",
-                embedded
-                  ? "bg-white/20 backdrop-blur-sm dark:bg-zinc-950/30"
-                  : "bg-card"
-              )}
+                Войти
+              </button>
+            </p>
+          </form>
+        </div>
+      ) : (
+        <div className="border-border relative border-t pt-4">
+          <span
+            className={cn(
+              "text-muted-foreground absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-1/2 px-2 text-xs",
+              embedded ? "bg-white/20 backdrop-blur-sm dark:bg-zinc-950/30" : "bg-card"
+            )}
+          >
+            {hasUpperBlock ? "или" : "Войти"}
+          </span>
+          {emailLoginOpen ? (
+            <form
+              className="animate-in fade-in slide-in-from-top-1 space-y-4 duration-200"
+              onSubmit={handleCredentialsSubmit}
+              id="email-credentials-form"
             >
-              {hasOAuth || features.emailMagic ? "или быстрый вход" : "Вход по email"}
-            </span>
-            <form className="space-y-4" onSubmit={handleCredentialsSubmit}>
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-muted-foreground"
+                  onClick={() => {
+                    setEmailLoginOpen(false);
+                  }}
+                >
+                  Свернуть
+                </Button>
+              </div>
               <Input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -390,75 +511,44 @@ export function LoginForm({
               <Button
                 type="submit"
                 className={cn(
-                  "w-full",
+                  "h-10 w-full",
                   embedded &&
                     "rounded-xl bg-zinc-900 text-white shadow-md hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
                 )}
                 disabled={isLoading}
               >
-                {loadingState === "credentials" ? "Выполняю вход…" : "Войти по email"}
+                {loadingState === "credentials" ? "Выполняю вход…" : "Войти"}
               </Button>
             </form>
-          </div>
-
-          <div className="border-border relative border-t pt-4">
-            <span
+          ) : (
+            <Button
+              type="button"
+              variant="default"
               className={cn(
-                "text-muted-foreground absolute left-1/2 top-0 z-[1] -translate-x-1/2 -translate-y-1/2 px-2 text-xs",
-                embedded
-                  ? "bg-white/20 backdrop-blur-sm dark:bg-zinc-950/30"
-                  : "bg-card"
+                "h-10 w-full",
+                embedded &&
+                  "rounded-xl bg-zinc-900 text-white shadow-md hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-white"
               )}
+              onClick={openEmailLogin}
+              disabled={isLoading}
             >
-              Регистрация
-            </span>
-            <p className="text-muted-foreground mb-3 text-sm">
-              Нет аккаунта? Укажите данные — мы создадим профиль с бесплатным пакетом токенов.
-            </p>
-            <form className="space-y-3" onSubmit={handleRegisterSubmit}>
-              <Input
-                value={regName}
-                onChange={(event) => setRegName(event.target.value)}
-                placeholder="Имя и фамилия"
-                autoComplete="name"
-                required
-              />
-              <Input
-                type="email"
-                value={regEmail}
-                onChange={(event) => setRegEmail(event.target.value)}
-                placeholder="Email"
-                autoComplete="email"
-                required
-              />
-              <Input
-                value={regCompany}
-                onChange={(event) => setRegCompany(event.target.value)}
-                placeholder="Компания (необязательно)"
-                autoComplete="organization"
-              />
-              {features.demo?.requiresPassword ? (
-                <Input
-                  type="password"
-                  value={regPassword}
-                  onChange={(event) => setRegPassword(event.target.value)}
-                  placeholder="Пароль демо"
-                  autoComplete="new-password"
-                />
-              ) : null}
-              <Button
-                type="submit"
-                variant="secondary"
-                className={cn(
-                  "w-full",
-                  embedded && "rounded-xl"
-                )}
-                disabled={isLoading}
-              >
-                {loadingState === "register" ? "Создаём профиль…" : "Создать аккаунт"}
-              </Button>
-            </form>
-          </div>
+              Войти по email
+            </Button>
+          )}
+
+          <p className="text-center text-sm text-muted-foreground pt-4">
+            Нет аккаунта?{" "}
+            <button
+              type="button"
+              className="font-semibold text-foreground underline-offset-2 hover:underline"
+              onClick={openRegisterPanel}
+              disabled={isLoading}
+            >
+              Зарегистрируйтесь
+            </button>
+          </p>
+        </div>
+      )}
     </>
   );
 
@@ -466,12 +556,15 @@ export function LoginForm({
     return (
       <div className="pb-6">
         <CardHeader className="space-y-1 px-6 pb-2 pt-4">
-          <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Начните создавать</p>
-          <CardTitle id="login-dialog-title" className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Вход в аккаунт
+          <p className="text-sm font-semibold text-zinc-500 dark:text-zinc-400">Начни создавать</p>
+          <CardTitle
+            id="login-dialog-title"
+            className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50"
+          >
+            Войдите в свой аккаунт
           </CardTitle>
           <CardDescription className="text-zinc-600 dark:text-zinc-400">
-            Соцсети, ссылка на email, вход или регистрация по email.
+            Соцсети или email — как вам удобнее.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6 px-6 pt-2">{formBody}</CardContent>
@@ -479,10 +572,61 @@ export function LoginForm({
     );
   }
 
+  if (useSplitLayout) {
+    return (
+      <div className="min-h-dvh w-full bg-zinc-50 text-foreground dark:bg-zinc-950">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col lg:flex-row">
+          <section className="flex min-h-dvh w-full min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-8 lg:min-h-0 lg:max-w-[min(100%,520px)] lg:shrink-0 lg:px-12 lg:py-8 xl:px-16">
+            <header className="flex shrink-0 items-center justify-between gap-4">
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+              >
+                <Image
+                  src="/logo-w.svg"
+                  alt="Lemnity"
+                  width={120}
+                  height={32}
+                  className="h-8 w-auto brightness-0 dark:invert"
+                  priority
+                />
+              </Link>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/">На главную</Link>
+              </Button>
+            </header>
+            <div className="flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
+              <div className="mx-auto w-full max-w-md py-6 sm:py-8 lg:py-4">
+                <p className="text-sm font-semibold text-muted-foreground">Начни создавать</p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
+                  {registerOpen ? "Создать аккаунт" : "Войдите в свой аккаунт"}
+                </h1>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {registerOpen
+                    ? "Заполните данные для регистрации"
+                    : "Соцсети или email — как вам удобнее."}
+                </p>
+                <div className="mt-6 w-full space-y-6 sm:mt-8">{formBody}</div>
+              </div>
+            </div>
+          </section>
+          <section className="relative w-full min-w-0 flex-1 bg-zinc-100/50 p-3 sm:p-4 lg:min-h-dvh lg:bg-transparent lg:py-6 lg:pl-0 lg:pr-6 lg:pt-6 xl:pr-10">
+            <div className="h-full min-h-[280px] lg:min-h-0">
+              <LoginSplitHero />
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-card/50 px-4 py-3 backdrop-blur-sm sm:px-6">
-        <Link href="/" className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
+        >
           <Image
             src="/logo-w.svg"
             alt="Lemnity"
@@ -498,13 +642,12 @@ export function LoginForm({
       </header>
       <main className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 sm:justify-center sm:py-10">
         <Card className="glass w-full max-w-md rounded-3xl shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-2xl">Вход в Lemnity</CardTitle>
-            <CardDescription>
-              Войдите или зарегистрируйтесь через соцсети, ссылку на email или email (демо).
-            </CardDescription>
+          <CardHeader className="space-y-1">
+            <p className="text-sm font-semibold text-muted-foreground">Начни создавать</p>
+            <CardTitle className="text-2xl font-bold tracking-tight">Войдите в свой аккаунт</CardTitle>
+            <CardDescription>Соцсети или email — как вам удобнее.</CardDescription>
           </CardHeader>
-          <CardContent className="max-h-[min(70dvh,560px)] space-y-6 overflow-y-auto sm:max-h-none sm:overflow-visible">
+          <CardContent className="min-h-0 max-h-[min(75dvh,600px)] space-y-6 overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable] sm:max-h-[min(80vh,680px)]">
             {formBody}
           </CardContent>
         </Card>

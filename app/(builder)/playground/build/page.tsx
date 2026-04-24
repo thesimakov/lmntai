@@ -435,7 +435,6 @@ export default function PromptBuildPage() {
               placeholder="Отправить сообщение Lemnity…"
               isEditor={chatEditorMode}
               onIsEditorChange={setChatEditorMode}
-              hideEditorToggle={tab === "preview"}
               plan={session?.user?.plan ?? null}
               projectKind={projectKind}
               onModelHintChange={setAgentHint}
@@ -487,7 +486,10 @@ export default function PromptBuildPage() {
           <section className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-muted/30">
             <BuildPreviewChrome
               tab={tab}
-              onTabChange={setTab}
+              onTabChange={(next) => {
+                setTab(next);
+                if (next !== "preview") setChatEditorMode(false);
+              }}
               sandboxId={sandboxId}
               shareMenu={
                 <BuildSharePopover

@@ -94,6 +94,24 @@ const config: Config = {
         "cp-iso-pulse": {
           "0%, 100%": { opacity: "0.45", filter: "brightness(0.9)" },
           "50%": { opacity: "1", filter: "brightness(1.12)" }
+        },
+        /** Правая панель /login: фон + блобы */
+        "login-hero-mesh": {
+          "0%, 100%": { backgroundPosition: "0% 50%" },
+          "50%": { backgroundPosition: "100% 50%" }
+        },
+        "login-hero-blob-a": {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "1" },
+          "40%": { transform: "translate(4%, -5%) scale(1.12)", opacity: "0.85" },
+          "70%": { transform: "translate(-2%, 3%) scale(1.04)", opacity: "0.95" }
+        },
+        "login-hero-blob-b": {
+          "0%, 100%": { transform: "translate(0, 0) scale(1)", opacity: "0.9" },
+          "50%": { transform: "translate(-6%, 5%) scale(1.1)", opacity: "1" }
+        },
+        "login-hero-cursor": {
+          "0%, 45%": { opacity: "1" },
+          "50%, 100%": { opacity: "0" }
         }
       },
       animation: {
@@ -103,7 +121,11 @@ const config: Config = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "cp-iso-yaw": "cp-iso-yaw 14s linear infinite",
-        "cp-iso-pulse": "cp-iso-pulse 2.2s ease-in-out infinite"
+        "cp-iso-pulse": "cp-iso-pulse 2.2s ease-in-out infinite",
+        "login-hero-mesh": "login-hero-mesh 18s ease-in-out infinite",
+        "login-hero-blob-a": "login-hero-blob-a 14s ease-in-out infinite",
+        "login-hero-blob-b": "login-hero-blob-b 20s ease-in-out infinite",
+        "login-hero-cursor": "login-hero-cursor 0.9s step-end infinite"
       }
     }
   },

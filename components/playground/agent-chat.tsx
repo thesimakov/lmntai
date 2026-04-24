@@ -9,13 +9,11 @@ import {
   Image as ImageIcon,
   MoreHorizontal,
   Paperclip,
-  Send as PlaneSendIcon,
   SendHorizontal,
   Sparkles,
   Square,
   ThumbsDown,
   ThumbsUp,
-  TriangleRight,
   X
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -54,8 +52,6 @@ type AgentChatProps = {
   /** Многострочный режим ввода; при передаче `onIsEditorChange` состояние контролируется снаружи */
   isEditor?: boolean;
   onIsEditorChange?: (value: boolean) => void;
-  /** Скрыть переключатель «Редактор» в панели чата (например, когда он в шапке превью) */
-  hideEditorToggle?: boolean;
   /** Текущий план пользователя для ограничений trial/pro */
   plan?: string | null;
   /** Тип проекта для подбора рекомендованного агента */
@@ -78,7 +74,6 @@ export function AgentChat({
   footerSlot,
   isEditor: isEditorProp,
   onIsEditorChange,
-  hideEditorToggle = false,
   plan = null,
   projectKind = null,
   agentTask = "generate-stream",
@@ -187,15 +182,9 @@ export function AgentChat({
     const text = value.trim();
     if (!text || disabled) return;
     setValue("");
-    const meta =
-      attachments.length || model || isEditor
-        ? `\n\n---\nmodel: ${model}\neditor: ${isEditor ? "on" : "off"}\nattachments: ${
-            attachments.length ? attachments.map((a) => `${a.type}:${a.name}`).join(", ") : "none"
-          }`
-        : "";
     setAttachments([]);
     setModelOpen(false);
-    onSend(`${text}${meta}`);
+    onSend(text);
   }
 
   function addFiles(files: FileList | null, kind: "image" | "video" | "file") {
@@ -271,15 +260,31 @@ export function AgentChat({
         )}
       </div>
 
-      <div ref={scrollRef} className={cn("flex-1 space-y-2 overflow-auto", isStudio ? "bg-muted/20 p-3" : "p-3")}>
+      <div
+        ref={scrollRef}
+        className={cn(
+          "flex-1 overflow-auto",
+          isStudio ? "space-y-3 bg-gradient-to-b from-zinc-100/40 to-zinc-50/30 p-3 dark:from-zinc-950/40 dark:to-zinc-900/30" : "space-y-2 p-3"
+        )}
+      >
         <AnimatePresence mode="popLayout">
           {visible.map((m) => (
             <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
               <div
                 className={cn(
-                  "max-w-[92%] whitespace-pre-wrap rounded-2xl border px-4 py-3 text-sm leading-relaxed",
-                  m.role === "assistant" && "mr-auto border-border/80 bg-background text-foreground",
-                  m.role === "user" && "ml-auto bg-primary text-primary-foreground"
+                  "max-w-[min(92%,32rem)] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed [word-break:break-word]",
+                  m.role === "assistant" &&
+                    cn(
+                      "mr-auto rounded-[1.25rem] border border-border/60 bg-background/95 text-foreground shadow-sm backdrop-blur-sm dark:border-border/50 dark:bg-zinc-900/90",
+                      isStudio && "rounded-2xl border-zinc-200/80 bg-white/90 dark:border-zinc-800 dark:bg-zinc-900/85"
+                    ),
+                  m.role === "user" &&
+                    cn(
+                      "ml-auto rounded-[1.25rem] border border-transparent font-medium text-zinc-50 shadow-sm dark:text-zinc-900",
+                      isStudio
+                        ? "bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-zinc-100 dark:to-zinc-200"
+                        : "bg-primary text-primary-foreground"
+                    )
                 )}
               >
                 {m.content}
@@ -353,7 +358,7 @@ export function AgentChat({
           />
 
           {isStudio ? (
-            <div className="flex h-full min-h-full flex-col bg-background px-4 pb-3 pt-3.5">
+            <div className="@container flex h-full min-h-full flex-col bg-zinc-100 px-4 pb-3 pt-3.5 dark:bg-zinc-900/45">
               {isEditor ? (
                 <Textarea
                   value={value}
@@ -445,8 +450,8 @@ export function AgentChat({
                 <button
                   ref={modelAnchorRef}
                   type="button"
-                  className="inline-flex max-w-[min(200px,46%)] shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50"
-                  aria-label="Выбор модели"
+                  className="inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50 @min-[360px]:px-2 @min-[360px]:max-w-[min(200px,46%)]"
+                  aria-label={`Выбор модели, сейчас: ${model}`}
                   onClick={() => setModelOpen((v) => !v)}
                 >
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
@@ -474,29 +479,11 @@ export function AgentChat({
                       />
                     </svg>
                   </span>
-                  <span className="truncate">{model}</span>
+                  <span className="hidden min-w-0 max-w-[min(11rem,46%)] truncate @min-[360px]:inline">
+                    {model}
+                  </span>
                   <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
                 </button>
-
-                {hideEditorToggle ? (
-                  <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
-                ) : (
-                  <>
-                    <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
-                    <button
-                      type="button"
-                      className={cn(
-                        "inline-flex shrink-0 items-center gap-1.5 rounded-xl px-2 py-1.5 text-sm font-medium hover:bg-muted/50",
-                        isEditor ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      aria-label="Редактор"
-                      onClick={() => setEditor(!isEditor)}
-                    >
-                      <PlaneSendIcon className="h-4 w-4 shrink-0" />
-                      Редактор
-                    </button>
-                  </>
-                )}
 
                 <span className="min-w-2 flex-1" />
 
@@ -625,23 +612,6 @@ export function AgentChat({
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
                   </button>
                 </div>
-                {hideEditorToggle ? null : (
-                  <>
-                    <div className="h-6 w-px bg-border" />
-                    <button
-                      type="button"
-                      className={cn(
-                        "flex items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium hover:bg-accent",
-                        isEditor ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      aria-label="Редактор"
-                      onClick={() => setEditor(!isEditor)}
-                    >
-                      <TriangleRight className="h-4 w-4" />
-                      Редактор
-                    </button>
-                  </>
-                )}
               </div>
             </div>
           ) : null}
