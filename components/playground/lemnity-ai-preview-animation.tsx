@@ -3,8 +3,8 @@
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 
-/** Сетка + мягкое свечение — как фон рабочей области в ai-manus / studio */
-export function ManusGridBackdrop({ dense = false }: { dense?: boolean }) {
+/** Сетка + мягкое свечение — фон рабочей области студии Lemnity AI */
+export function LemnityAiGridBackdrop({ dense = false }: { dense?: boolean }) {
   const size = dense ? "20px_20px" : "28px_28px";
   return (
     <>
@@ -20,8 +20,8 @@ export function ManusGridBackdrop({ dense = false }: { dense?: boolean }) {
   );
 }
 
-/** Вертикальная «подсветка» сканирования (Manus-style loading) */
-export function ManusScanBeam() {
+/** Вертикальная «подсветка» сканирования (индикатор загрузки студии) */
+export function LemnityAiScanBeam() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
       <motion.div
@@ -34,8 +34,8 @@ export function ManusScanBeam() {
   );
 }
 
-/** Концентрические кольца + пульсирующее ядро + спутники — орбита как в ai-manus */
-export function ManusOrbitStack({ intense = false }: { intense?: boolean }) {
+/** Концентрические кольца + пульсирующее ядро + спутники */
+export function LemnityAiOrbitStack({ intense = false }: { intense?: boolean }) {
   const ringDuration = intense ? [11, 15, 19] : [18, 24, 30];
   return (
     <div className="relative flex h-[200px] w-[200px] shrink-0 items-center justify-center sm:h-[220px] sm:w-[220px]">
@@ -112,8 +112,8 @@ export function ManusOrbitStack({ intense = false }: { intense?: boolean }) {
 
 const blockClass = "rounded-lg border-2 border-dashed border-foreground/15 bg-foreground/[0.03]";
 
-/** Wireframe-блоки с лёгким «дыханием» (как скелетон превью в Manus) */
-export function ManusWireframeBlocks({
+/** Wireframe-блоки с лёгким «дыханием» (скелетон превью) */
+export function LemnityAiWireframeBlocks({
   animated = true,
   className = "mt-8"
 }: {
@@ -152,7 +152,7 @@ export function ManusWireframeBlocks({
 }
 
 /** Тонкая рамка с бегущим градиентом вокруг превью (idle к готовому) */
-export function ManusPreviewChrome({ children }: { children: ReactNode }) {
+export function LemnityAiPreviewChrome({ children }: { children: ReactNode }) {
   return (
     <motion.div
       className="relative h-full min-h-0 flex-1 overflow-hidden rounded-none p-px"

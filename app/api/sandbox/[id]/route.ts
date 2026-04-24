@@ -49,7 +49,7 @@ async function getSandbox(
     return new Response("Not found", { status: 404 });
   }
 
-  // HTML превью без входа — если песочница опубликована (как /share/:id в ai-manus)
+  // HTML превью без входа — если песочница опубликована
   let publicOk = false;
   try {
     publicOk = (await isSandboxLinkPublic(sandboxId)) && sandboxManager.hasSandbox(sandboxId);

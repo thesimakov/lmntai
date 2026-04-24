@@ -5,12 +5,12 @@ import { motion } from "framer-motion";
 import { useI18n } from "@/components/i18n-provider";
 import { CodepenIsometricBuildLoader } from "@/components/playground/codepen-isometric-build";
 import {
-  ManusGridBackdrop,
-  ManusOrbitStack,
-  ManusScanBeam,
-  ManusWireframeBlocks,
-  ManusPreviewChrome
-} from "@/components/playground/manus-preview-animation";
+  LemnityAiGridBackdrop,
+  LemnityAiOrbitStack,
+  LemnityAiScanBeam,
+  LemnityAiWireframeBlocks,
+  LemnityAiPreviewChrome
+} from "@/components/playground/lemnity-ai-preview-animation";
 import { PreviewFrame } from "@/components/playground/preview-frame";
 import { Progress } from "@/components/ui/progress";
 
@@ -19,7 +19,7 @@ type RightPanelProps = {
   progress: number;
   previewUrl: string | null;
   sandboxId: string | null;
-  /** Подсказка из стрима (шаг / инструмент), как в ai-manus right panel */
+  /** Подсказка из стрима (шаг / инструмент) */
   streamHint?: string | null;
 };
 
@@ -27,9 +27,9 @@ function IdleState() {
   const { t } = useI18n();
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col items-center justify-between overflow-hidden bg-background py-3">
-      <ManusGridBackdrop />
+      <LemnityAiGridBackdrop />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(168,85,247,.11),transparent_42%),radial-gradient(circle_at_78%_72%,rgba(236,72,153,.1),transparent_44%)]" />
-      <ManusScanBeam />
+      <LemnityAiScanBeam />
       <div className="relative z-10 flex w-full min-h-0 flex-1 flex-col items-center justify-center gap-1 px-4">
         <motion.div
           className="flex flex-col items-center"
@@ -37,9 +37,9 @@ function IdleState() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.45, ease: "easeOut" }}
         >
-          <ManusOrbitStack />
+          <LemnityAiOrbitStack />
         </motion.div>
-        <ManusWireframeBlocks animated className="mt-2" />
+        <LemnityAiWireframeBlocks animated className="mt-2" />
       </div>
       <p className="relative z-10 max-w-sm shrink-0 px-6 text-center text-sm text-muted-foreground">
         {t("playground_right_idle_hint")}
@@ -52,8 +52,8 @@ function GeneratingState({ progress, streamHint }: { progress: number; streamHin
   const { t } = useI18n();
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
-      <ManusGridBackdrop dense />
-      <ManusScanBeam />
+      <LemnityAiGridBackdrop dense />
+      <LemnityAiScanBeam />
 
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-8 text-center">
         {streamHint ? (
@@ -73,7 +73,7 @@ function GeneratingState({ progress, streamHint }: { progress: number; streamHin
         <div className="relative z-10 mt-3 w-full max-h-[min(48vh,340px)] min-h-[180px]">
           <CodepenIsometricBuildLoader />
         </div>
-        <ManusWireframeBlocks animated className="mt-3" />
+        <LemnityAiWireframeBlocks animated className="mt-3" />
         <div className="absolute bottom-0 left-0 right-0 border-t border-border/80 bg-background/80 px-4 py-3 backdrop-blur-sm">
           <div className="mx-auto flex max-w-md items-center gap-3">
             <span className="text-xs text-muted-foreground">{t("playground_right_build_label")}</span>
@@ -98,9 +98,9 @@ export function RightPanel({ mode, progress, previewUrl, sandboxId, streamHint }
   if (mode === "preview" && previewUrl && sandboxId) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        <ManusPreviewChrome>
+        <LemnityAiPreviewChrome>
           <PreviewFrame previewUrl={previewUrl} sandboxId={sandboxId} />
-        </ManusPreviewChrome>
+        </LemnityAiPreviewChrome>
       </div>
     );
   }

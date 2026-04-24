@@ -1,8 +1,8 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
-import { isManusFullParityEnabledServer } from "@/lib/manus-parity-config";
-import { listManusSessionsForUser } from "@/lib/manus-session-links";
+import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
+import { listLemnityAiSessionsForUser } from "@/lib/lemnity-ai-session-links";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -13,8 +13,8 @@ async function getProjects(req: NextRequest) {
     return new Response(guard.message, { status: guard.status });
   }
 
-  if (isManusFullParityEnabledServer()) {
-    const sessions = await listManusSessionsForUser(guard.data.user.id);
+  if (isLemnityAiBridgeEnabledServer()) {
+    const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
     const projects = sessions.map((row) => ({
       id: row.session_id,
       name: row.title || "New Session",

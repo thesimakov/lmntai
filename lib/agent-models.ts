@@ -1,4 +1,4 @@
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 
 export type AgentUiLabel = "Kimi K2.6" | "Gemini 3 Pro" | "GPT-4.1" | "Claude Sonnet";

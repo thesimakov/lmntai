@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeUsage, type TokenUsage } from "@/lib/token-billing";
 
-export type ManusListSessionItem = {
+export type LemnityAiSessionListItem = {
   session_id: string;
   title?: string | null;
   latest_message?: string | null;
@@ -16,7 +16,7 @@ function toDateFromUnix(value: number | null | undefined): Date | null {
   return new Date(value * 1000);
 }
 
-export function asManusListItem(link: {
+export function asLemnityAiListItem(link: {
   manusSessionId: string;
   title: string | null;
   latestMessage: string | null;
@@ -24,7 +24,7 @@ export function asManusListItem(link: {
   status: string;
   unreadMessageCount: number;
   isShared: boolean;
-}): ManusListSessionItem {
+}): LemnityAiSessionListItem {
   return {
     session_id: link.manusSessionId,
     title: link.title ?? null,
@@ -36,55 +36,55 @@ export function asManusListItem(link: {
   };
 }
 
-export async function createManusSessionLink(userId: string, manusSessionId: string) {
+export async function createLemnityAiSessionLink(userId: string, upstreamSessionId: string) {
   const existing = await prisma.manusSessionLink.findUnique({
-    where: { manusSessionId }
+    where: { manusSessionId: upstreamSessionId }
   });
   if (existing) {
     if (existing.userId !== userId) {
-      throw new Error("MANUS_SESSION_ALREADY_OWNED");
+      throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
     }
     return existing;
   }
   return prisma.manusSessionLink.create({
     data: {
       userId,
-      manusSessionId
+      manusSessionId: upstreamSessionId
     }
   });
 }
 
-export async function listManusSessionsForUser(userId: string) {
+export async function listLemnityAiSessionsForUser(userId: string) {
   const rows = await prisma.manusSessionLink.findMany({
     where: { userId },
     orderBy: [{ updatedAt: "desc" }]
   });
-  return rows.map(asManusListItem);
+  return rows.map(asLemnityAiListItem);
 }
 
-export async function getManusSessionForUser(userId: string, manusSessionId: string) {
+export async function getLemnityAiSessionForUser(userId: string, upstreamSessionId: string) {
   return prisma.manusSessionLink.findFirst({
-    where: { userId, manusSessionId }
+    where: { userId, manusSessionId: upstreamSessionId }
   });
 }
 
-export async function ensureManusSessionOwnership(userId: string, manusSessionId: string) {
-  const row = await getManusSessionForUser(userId, manusSessionId);
+export async function ensureLemnityAiSessionOwnership(userId: string, upstreamSessionId: string) {
+  const row = await getLemnityAiSessionForUser(userId, upstreamSessionId);
   if (!row) {
-    throw new Error("MANUS_SESSION_NOT_FOUND");
+    throw new Error("LEMNITY_AI_SESSION_NOT_FOUND");
   }
   return row;
 }
 
-export async function deleteManusSessionForUser(userId: string, manusSessionId: string) {
+export async function deleteLemnityAiSessionForUser(userId: string, upstreamSessionId: string) {
   await prisma.manusSessionLink.deleteMany({
-    where: { userId, manusSessionId }
+    where: { userId, manusSessionId: upstreamSessionId }
   });
 }
 
-export async function syncManusSessionSummary(input: {
+export async function syncLemnityAiSessionSummary(input: {
   userId: string;
-  manusSessionId: string;
+  upstreamSessionId: string;
   title?: string | null;
   latestMessage?: string | null;
   latestMessageAt?: number | Date | null;
@@ -100,7 +100,7 @@ export async function syncManusSessionSummary(input: {
         : null;
 
   await prisma.manusSessionLink.upsert({
-    where: { manusSessionId: input.manusSessionId },
+    where: { manusSessionId: input.upstreamSessionId },
     update: {
       userId: input.userId,
       title: input.title ?? undefined,
@@ -113,7 +113,7 @@ export async function syncManusSessionSummary(input: {
     },
     create: {
       userId: input.userId,
-      manusSessionId: input.manusSessionId,
+      manusSessionId: input.upstreamSessionId,
       title: input.title ?? null,
       latestMessage: input.latestMessage ?? null,
       latestMessageAt: latestAt ?? null,
@@ -125,9 +125,9 @@ export async function syncManusSessionSummary(input: {
   });
 }
 
-export async function chargeManusChatUsage(input: {
+export async function chargeLemnityAiChatUsage(input: {
   userId: string;
-  manusSessionId: string;
+  upstreamSessionId: string;
   eventId: string;
   usage: Partial<TokenUsage> | null | undefined;
   model: string;
@@ -144,7 +144,7 @@ export async function chargeManusChatUsage(input: {
     const existing = await tx.manusChatCharge.findUnique({
       where: {
         manusSessionId_eventId: {
-          manusSessionId: input.manusSessionId,
+          manusSessionId: input.upstreamSessionId,
           eventId: input.eventId
         }
       }
@@ -164,7 +164,7 @@ export async function chargeManusChatUsage(input: {
     await tx.manusChatCharge.create({
       data: {
         userId: input.userId,
-        manusSessionId: input.manusSessionId,
+        manusSessionId: input.upstreamSessionId,
         eventId: input.eventId,
         model: input.model,
         promptTokens: usage.prompt_tokens,

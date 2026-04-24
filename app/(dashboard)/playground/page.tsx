@@ -7,7 +7,7 @@ import { useSession } from "next-auth/react";
 import { HomeHero, type HomeHeroActionCategory } from "@/components/playground/home-hero";
 import { PageTransition } from "@/components/page-transition";
 import { saveBuilderHandoff } from "@/lib/landing-handoff";
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 
 export default function PlaygroundPage() {
   const router = useRouter();

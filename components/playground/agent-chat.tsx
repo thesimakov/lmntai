@@ -21,7 +21,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import {
   getAgentOptionsForUi,
   parseAgentUiLabel,
@@ -45,7 +45,7 @@ type AgentChatProps = {
   placeholder?: string;
   disabled?: boolean;
   onSend: (text: string) => void;
-  /** Раскладка «студии»: шапка как в Manus, поле ввода в одной капсуле */
+  /** Раскладка «студии»: шапка и поле ввода в одной капсуле */
   variant?: "default" | "studio";
   /** Над полем ввода — прогресс / статус */
   footerSlot?: React.ReactNode;

@@ -43,14 +43,14 @@ if (!global.lemnityDockerSandboxRegistry) {
   global.lemnityDockerSandboxRegistry = dockerRegistry;
 }
 
-export function isManusDockerEnabled(): boolean {
-  const v = (process.env.MANUS_SANDBOX_ENABLED ?? "").toLowerCase();
+export function isLemnityAiSandboxDockerEnabled(): boolean {
+  const v = (process.env.LEMNITY_AI_SANDBOX_ENABLED ?? process.env.MANUS_SANDBOX_ENABLED ?? "").toLowerCase();
   return v === "true" || v === "1" || v === "yes";
 }
 
 /** Только проверка регистра — без dockerode. Для /share и публичных проверок. */
 export function hasSandboxInRegistry(sandboxId: string): boolean {
-  if (isManusDockerEnabled()) {
+  if (isLemnityAiSandboxDockerEnabled()) {
     return dockerRegistry.has(sandboxId);
   }
   return memoryStore.has(sandboxId);

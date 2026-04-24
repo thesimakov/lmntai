@@ -153,7 +153,7 @@ type HomeHeroProps = {
   onOpenTemplates: () => void;
   onSelectTemplate: (value: string) => void;
   onSubmit: () => void;
-  /** Сообщить родителю выбранный тип (для конверта ai-manus / projectKind). */
+  /** Сообщить родителю выбранный тип (projectKind для Lemnity AI). */
   onActiveCategoryChange?: (category: HomeHeroActionCategory | null) => void;
   disabled?: boolean;
 };

@@ -32,7 +32,7 @@ pnpm dev
 
 - Мастер‑ключ RouterAI хранится **только** на сервере (`AI_GATEWAY_API_KEY`).
 - Генерация идёт через `/api/generate-stream` и списывает токены по `usage` из стрима (если провайдер возвращает usage в SSE).
-- В режиме `MANUS_FULL_PARITY_ENABLED=1` legacy-маршруты `/api/generate-stream` и `/api/prompt-builder` выключаются, а сборка идёт через bridge `/api/manus/*`.
+- В режиме моста Lemnity AI (`LEMNITY_AI_BRIDGE_ENABLED=1` или устар. `MANUS_FULL_PARITY_ENABLED=1`) legacy-маршруты `/api/generate-stream` и `/api/prompt-builder` выключаются, а сборка идёт через `/api/lemnity-ai/*` (старый путь `/api/manus/*` редиректится на него).
 
 ## RouterAI: чеклист для сервера
 
@@ -57,55 +57,54 @@ set -a && . /etc/lemnity/production.env && set +a && pm2 restart lemnity --updat
 `/api/routerai/health` возвращает JSON с `ok`, `latencyMs`, `model`, `textPreview` и `usage`.  
 При ошибке конфигурации вернётся `500`, при ошибке апстрима RouterAI — `502`.
 
-## AI Manus Full Parity
+## Lemnity AI — мост к upstream builder
 
-### Env (Lemnity bridge)
+### Env
 
-В `/etc/lemnity/production.env` добавьте:
+В `/etc/lemnity/production.env` (рекомендуемые имена):
 
 ```bash
-MANUS_FULL_PARITY_ENABLED=1
-NEXT_PUBLIC_MANUS_FULL_PARITY_ENABLED=1
-MANUS_API_BASE_URL=http://127.0.0.1:8000
-# опционально, если backend ai-manus-main работает с Bearer auth:
-# MANUS_API_BEARER_TOKEN=<token>
+LEMNITY_AI_BRIDGE_ENABLED=1
+LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8000
+# опционально Bearer к upstream:
+# LEMNITY_AI_UPSTREAM_BEARER_TOKEN=<token>
 ```
 
-### Поднять backend из вашей папки Manus (рядом с lmntai)
+Обратная совместимость: `MANUS_FULL_PARITY_ENABLED`, `MANUS_API_BASE_URL`, `MANUS_API_BEARER_TOKEN` по-прежнему читаются.
 
-Интерфейс сборки — это `/playground/build` в Lemnity. Отдельный домен и отдельный фронтенд-репозиторий не нужны.
+Клиент узнаёт режим через `GET /api/lemnity-ai/bootstrap` (пересборка не обязательна).
 
-Скопируйте на сервер **ту же папку** `ai-manus-main`, которую вы изучали локально (rsync/scp/archив), в корень репозитория приложения:
+### Поднять upstream Docker Compose (рядом с lmntai)
 
-`/root/lmntai/ai-manus-main/`
-
-Затем:
+Интерфейс сборки — `/playground/build` в Lemnity. Положите каталог с `docker-compose.yml` upstream (часто `ai-manus-main`) в корень приложения, например `/root/lmntai/ai-manus-main/`, затем:
 
 ```bash
 cd /root/lmntai
-npm run manus:up
+npm run lemnity-ai:up
 ```
 
-По умолчанию `manus:up` ищет compose в `$LMNTAI_ROOT/ai-manus-main`. Другой путь:
+Другой путь к каталогу:
 
 ```bash
-MANUS_REPO_DIR=/opt/manus-stack npm run manus:up
+LEMNITY_AI_STACK_DIR=/opt/builder-stack npm run lemnity-ai:up
 ```
 
-### Проверка health full parity
+(алиас `npm run manus:up` вызывает ту же команду.)
+
+### Проверка health
 
 ```bash
 cd /root/lmntai
-MANUS_API_BASE_URL=http://127.0.0.1:8000 LMNTAI_APP_URL=http://127.0.0.1:3000 npm run manus:health
-curl -fsS http://127.0.0.1:3000/api/manus/health
+LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8000 LMNTAI_APP_URL=http://127.0.0.1:3000 npm run lemnity-ai:health
+curl -fsS http://127.0.0.1:3000/api/lemnity-ai/health
 ```
 
-### Что меняется после включения
+### Поведение при включённом мосте
 
-- `/playground/build` ходит в FastAPI Manus через мост `/api/manus/*`, без редиректа на другой сайт.
-- История сессий хранится серверно через bridge таблицу `ManusSessionLink`.
-- Чат и SSE идут через `/api/manus/sessions/:id/chat`.
-- Токены списываются по итогам каждого чата (`ManusChatCharge` + `TokenUsageLog`), с дедупликацией по `event_id`.
+- `/playground/build` ходит в upstream FastAPI через `/api/lemnity-ai/*`.
+- История сессий в Postgres: таблицы `ManusSessionLink` / `ManusChatCharge` (имена колонок исторические).
+- Чат и SSE: `POST /api/lemnity-ai/sessions/:id/chat`.
+- Списание токенов: `TokenUsageLog` + дедупликация по `event_id`.
 
 ## Деплой на сервер
 

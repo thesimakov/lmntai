@@ -1,12 +1,12 @@
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
-import { isProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 
 /** localStorage ключ для страницы сборки промпта (`/playground/build`). */
 export const BUILDER_STORAGE_KEY = "lemnity.builder";
 
 export type BuilderHandoff = {
   idea: string;
-  /** Тип доставляемого UI (согласно `lib/manus-prompt-spec.ts`, план в духе ai-manus). */
+  /** Тип доставляемого UI (согласно `lib/lemnity-ai-prompt-spec.ts`). */
   projectKind?: ProjectKind;
 };
 

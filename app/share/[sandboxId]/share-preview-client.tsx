@@ -6,7 +6,7 @@ type SharePreviewClientProps = {
   sandboxId: string;
 };
 
-/** Публичная оболочка превью: iframe на /api/sandbox (эталон ai-manus /share/:sessionId). */
+/** Публичная оболочка превью: iframe на /api/sandbox. */
 export function SharePreviewClient({ sandboxId }: SharePreviewClientProps) {
   const src = `/api/sandbox/${encodeURIComponent(sandboxId)}`;
   return (

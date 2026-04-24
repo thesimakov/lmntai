@@ -1,9 +1,9 @@
 /**
- * HTTP-клиент к FastAPI внутри контейнера ai-manus sandbox (порт 8080).
- * Контракты подобраны под вызовы в `sandbox-manager.ts`; при смене API правьте пути/тело здесь.
+ * HTTP-клиент к FastAPI внутри контейнера песочницы Lemnity (порт 8080).
+ * Контракты подобраны под вызовы в `sandbox-manager.ts`.
  */
 
-export type ManusApiResponse<T> = {
+export type LemnityBuilderSandboxResponse<T> = {
   success: boolean;
   message?: string;
   data?: T;
@@ -25,7 +25,7 @@ async function readJson(res: Response): Promise<unknown> {
   }
 }
 
-export function manusAllServicesRunning(services: unknown[]): boolean {
+export function lemnityBuilderAllServicesRunning(services: unknown[]): boolean {
   if (!Array.isArray(services) || services.length === 0) return false;
   return services.every((row) => {
     if (!row || typeof row !== "object") return false;
@@ -36,7 +36,9 @@ export function manusAllServicesRunning(services: unknown[]): boolean {
   });
 }
 
-export async function manusSupervisorStatus(baseUrl: string): Promise<ManusApiResponse<SupervisorRow[]>> {
+export async function lemnityBuilderSupervisorStatus(
+  baseUrl: string
+): Promise<LemnityBuilderSandboxResponse<SupervisorRow[]>> {
   const base = normalizeBase(baseUrl);
   const urls = [`${base}/supervisor/status`, `${base}/api/supervisor/status`];
   for (const url of urls) {
@@ -60,12 +62,12 @@ export async function manusSupervisorStatus(baseUrl: string): Promise<ManusApiRe
   return { success: false, message: "supervisor/status недоступен" };
 }
 
-export async function manusFileWrite(
+export async function lemnityBuilderFileWrite(
   baseUrl: string,
   path: string,
   content: string,
   opts?: { append?: boolean }
-): Promise<ManusApiResponse<unknown>> {
+): Promise<LemnityBuilderSandboxResponse<unknown>> {
   const base = normalizeBase(baseUrl);
   try {
     const res = await fetch(`${base}/file/write`, {
@@ -86,10 +88,10 @@ export async function manusFileWrite(
   }
 }
 
-export async function manusFileRead(
+export async function lemnityBuilderFileRead(
   baseUrl: string,
   path: string
-): Promise<ManusApiResponse<{ content: string }>> {
+): Promise<LemnityBuilderSandboxResponse<{ content: string }>> {
   const base = normalizeBase(baseUrl);
   try {
     const res = await fetch(`${base}/file/read`, {
@@ -116,11 +118,11 @@ export async function manusFileRead(
   }
 }
 
-export async function manusFileFind(
+export async function lemnityBuilderFileFind(
   baseUrl: string,
   workdir: string,
   pattern: string
-): Promise<ManusApiResponse<{ files: string[] }>> {
+): Promise<LemnityBuilderSandboxResponse<{ files: string[] }>> {
   const base = normalizeBase(baseUrl);
   try {
     const res = await fetch(`${base}/file/find`, {

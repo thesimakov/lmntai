@@ -2,12 +2,12 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { resolveAgentForTask } from "@/lib/agent-models";
-import { isManusFullParityEnabledServer } from "@/lib/manus-parity-config";
+import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { requestRouterAIJson } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
 import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
 import { hasEnoughTokens } from "@/lib/token-manager";
-import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/manus-prompt-spec";
+import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 function safeJsonParse<T>(text: string): T | null {
@@ -19,8 +19,8 @@ function safeJsonParse<T>(text: string): T | null {
 }
 
 async function postPromptBuilder(req: NextRequest) {
-  if (isManusFullParityEnabledServer()) {
-    return new Response("Legacy /api/prompt-builder disabled in Manus full parity mode. Use /api/manus/sessions/:id/chat", {
+  if (isLemnityAiBridgeEnabledServer()) {
+    return new Response("Legacy /api/prompt-builder disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", {
       status: 410
     });
   }
@@ -56,7 +56,7 @@ async function postPromptBuilder(req: NextRequest) {
       hint: body?.agentHint
     });
 
-    const systemPrompt = `Ты — продакт/UX-стратег для генерации интерфейса в Lemnity (как план/goal в ai-manus, но результат — один HTML-прототип).
+    const systemPrompt = `Ты — продакт/UX-стратег для генерации интерфейса в Lemnity (план/goal в духе Lemnity AI builder, но результат — один HTML-прототип).
 Сгенерируй 6–9 уточняющих вопросов, чтобы собрать промпт для AI-генератора.
 Требования:
 - вопросы короткие и конкретные; учитывай заданный тип доставляемого результата, если он указан
@@ -117,7 +117,7 @@ async function postPromptBuilder(req: NextRequest) {
       .map((x) => `Q: ${x.q}\nA: ${x.a}`)
       .join("\n\n");
 
-    const composePrompt = `Ты — senior prompt engineer для генерации HTML-интерфейса в Lemnity (см. конверт ai-manus: один результат, чёткий формат).
+    const composePrompt = `Ты — senior prompt engineer для генерации HTML-интерфейса в Lemnity (конверт Lemnity AI: один результат, чёткий формат).
 Собери финальный ПРОМПТ для AI-генератора (один HTML, встроенные стили / Tailwind CDN, читаемая структура).
 Формат:
 - 1) Короткий заголовок проекта

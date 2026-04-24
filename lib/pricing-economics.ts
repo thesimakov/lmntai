@@ -1,4 +1,4 @@
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { MONTHLY_TOKEN_ALLOWANCE, type PlanId } from "@/lib/plan-config";
 import { AGENT_PROFILES, resolveAgentForTask } from "@/lib/agent-models";
 

@@ -1,21 +1,21 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import {
-  buildManusApiUrl,
-  manusApiFetch,
-  readManusEnvelope,
-  withManusAuthHeaders
-} from "@/lib/manus-api-client";
-import { isManusFullParityEnabledServer } from "@/lib/manus-parity-config";
+  buildLemnityAiUpstreamUrl,
+  lemnityAiUpstreamFetch,
+  readLemnityAiUpstreamEnvelope,
+  withLemnityAiUpstreamAuthHeaders
+} from "@/lib/lemnity-ai-upstream-client";
 import {
-  createManusSessionLink,
-  deleteManusSessionForUser,
-  ensureManusSessionOwnership,
-  listManusSessionsForUser,
-  syncManusSessionSummary,
-  chargeManusChatUsage
-} from "@/lib/manus-session-links";
+  chargeLemnityAiChatUsage,
+  createLemnityAiSessionLink,
+  deleteLemnityAiSessionForUser,
+  ensureLemnityAiSessionOwnership,
+  listLemnityAiSessionsForUser,
+  syncLemnityAiSessionSummary
+} from "@/lib/lemnity-ai-session-links";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { MIN_TOKENS_GENERATE_STREAM } from "@/lib/plan-config";
 import { estimateUsageFromText } from "@/lib/token-billing";
@@ -25,7 +25,7 @@ export const runtime = "nodejs";
 
 type RouteCtx = { params: Promise<{ path: string[] }> };
 
-type ManusGetSessionData = {
+type BridgeUpstreamSessionData = {
   session_id: string;
   title?: string | null;
   status?: string | null;
@@ -57,7 +57,7 @@ function passthrough(upstream: Response): Response {
   });
 }
 
-function toManusPath(parts: string[]): string {
+function toUpstreamApiPath(parts: string[]): string {
   return `/${parts.join("/")}`;
 }
 
@@ -65,7 +65,7 @@ function randomEventId(): string {
   return `lmnt-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-function summarizeLatestAssistant(events: ManusGetSessionData["events"]): string | null {
+function summarizeLatestAssistant(events: BridgeUpstreamSessionData["events"]): string | null {
   if (!events?.length) return null;
   for (let i = events.length - 1; i >= 0; i -= 1) {
     const e = events[i];
@@ -111,7 +111,7 @@ async function streamUserSessionsSse(userId: string, signal: AbortSignal): Promi
     async start(controller) {
       try {
         while (!signal.aborted) {
-          const sessions = await listManusSessionsForUser(userId);
+          const sessions = await listLemnityAiSessionsForUser(userId);
           controller.enqueue(encoder.encode(`event: sessions\ndata: ${JSON.stringify({ sessions })}\n\n`));
           await sleepWithAbort(5000, signal);
         }
@@ -131,7 +131,7 @@ async function streamUserSessionsSse(userId: string, signal: AbortSignal): Promi
 
 async function proxyChatStream(input: {
   userId: string;
-  manusSessionId: string;
+  upstreamSessionId: string;
   upstream: Response;
   requestText: string;
 }) {
@@ -202,12 +202,12 @@ async function proxyChatStream(input: {
         }
 
         const usage = estimateUsageFromText(userMessage, assistantText);
-        const charge = await chargeManusChatUsage({
+        const charge = await chargeLemnityAiChatUsage({
           userId: input.userId,
-          manusSessionId: input.manusSessionId,
+          upstreamSessionId: input.upstreamSessionId,
           eventId,
           usage,
-          model: "manus/full-parity"
+          model: "lemnity-ai/full-parity"
         });
         if (!charge.charged && charge.reason === "insufficient_balance") {
           controller.enqueue(
@@ -215,17 +215,17 @@ async function proxyChatStream(input: {
           );
         }
 
-        await syncManusSessionSummary({
+        await syncLemnityAiSessionSummary({
           userId: input.userId,
-          manusSessionId: input.manusSessionId,
+          upstreamSessionId: input.upstreamSessionId,
           title,
           latestMessage: latestAssistant,
           status
         });
       } catch {
-        await syncManusSessionSummary({
+        await syncLemnityAiSessionSummary({
           userId: input.userId,
-          manusSessionId: input.manusSessionId,
+          upstreamSessionId: input.upstreamSessionId,
           status: "failed"
         });
       } finally {
@@ -240,9 +240,15 @@ async function proxyChatStream(input: {
   });
 }
 
-async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
-  if (!isManusFullParityEnabledServer()) {
-    return new Response("Manus full parity is disabled", { status: 404 });
+async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<Response> {
+  const { path } = await ctx.params;
+
+  if (req.method === "GET" && path?.length === 1 && path[0] === "bootstrap") {
+    return Response.json({ fullParity: isLemnityAiBridgeEnabledServer() });
+  }
+
+  if (!isLemnityAiBridgeEnabledServer()) {
+    return new Response("Lemnity AI bridge is disabled", { status: 404 });
   }
 
   const guard = await requireDbUser();
@@ -250,30 +256,27 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     return new Response(guard.message, { status: guard.status });
   }
   const user = guard.data.user;
-
-  const { path } = await ctx.params;
   if (!path?.length) {
     return new Response("Not found", { status: 404 });
   }
 
-  // /api/manus/sessions
   if (path.length === 1 && path[0] === "sessions") {
     if (req.method === "GET") {
-      const sessions = await listManusSessionsForUser(user.id);
+      const sessions = await listLemnityAiSessionsForUser(user.id);
       return Response.json({ code: 0, msg: "success", data: { sessions } });
     }
     if (req.method === "POST") {
       return streamUserSessionsSse(user.id, req.signal);
     }
     if (req.method === "PUT") {
-      const upstream = await manusApiFetch("/sessions", { method: "PUT" });
-      const envelope = await readManusEnvelope<{ session_id?: string }>(upstream.clone());
+      const upstream = await lemnityAiUpstreamFetch("/sessions", { method: "PUT" });
+      const envelope = await readLemnityAiUpstreamEnvelope<{ session_id?: string }>(upstream.clone());
       const sessionId = envelope?.data?.session_id;
       if (upstream.ok && envelope?.code === 0 && typeof sessionId === "string" && sessionId) {
         try {
-          await createManusSessionLink(user.id, sessionId);
+          await createLemnityAiSessionLink(user.id, sessionId);
         } catch (error) {
-          if (error instanceof Error && error.message === "MANUS_SESSION_ALREADY_OWNED") {
+          if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_ALREADY_OWNED") {
             return Response.json({ code: 409, msg: "Session already linked to another user", data: null }, { status: 409 });
           }
           throw error;
@@ -289,30 +292,30 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   if (path[1] === "shared" && path.length === 3 && req.method === "GET") {
-    const upstream = await manusApiFetch(toManusPath(path), { method: "GET" });
+    const upstream = await lemnityAiUpstreamFetch(toUpstreamApiPath(path), { method: "GET" });
     return passthrough(upstream);
   }
 
-  const manusSessionId = path[1];
+  const upstreamSessionId = path[1];
   try {
-    await ensureManusSessionOwnership(user.id, manusSessionId);
+    await ensureLemnityAiSessionOwnership(user.id, upstreamSessionId);
   } catch (error) {
-    if (error instanceof Error && error.message === "MANUS_SESSION_NOT_FOUND") {
+    if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_NOT_FOUND") {
       return new Response("Session not found", { status: 404 });
     }
     throw error;
   }
 
   const tail = path.slice(2);
-  const upstreamPath = toManusPath(path);
+  const upstreamPath = toUpstreamApiPath(path);
 
   if (tail.length === 0 && req.method === "GET") {
-    const upstream = await manusApiFetch(upstreamPath, { method: "GET" });
-    const envelope = await readManusEnvelope<ManusGetSessionData>(upstream.clone());
+    const upstream = await lemnityAiUpstreamFetch(upstreamPath, { method: "GET" });
+    const envelope = await readLemnityAiUpstreamEnvelope<BridgeUpstreamSessionData>(upstream.clone());
     if (upstream.ok && envelope?.code === 0 && envelope.data) {
-      await syncManusSessionSummary({
+      await syncLemnityAiSessionSummary({
         userId: user.id,
-        manusSessionId,
+        upstreamSessionId,
         title: envelope.data.title ?? null,
         latestMessage: summarizeLatestAssistant(envelope.data.events),
         status: envelope.data.status ?? null,
@@ -323,16 +326,16 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   if (tail.length === 0 && req.method === "DELETE") {
-    const upstream = await manusApiFetch(upstreamPath, { method: "DELETE" });
+    const upstream = await lemnityAiUpstreamFetch(upstreamPath, { method: "DELETE" });
     if (upstream.ok) {
-      await deleteManusSessionForUser(user.id, manusSessionId);
+      await deleteLemnityAiSessionForUser(user.id, upstreamSessionId);
     }
     return passthrough(upstream);
   }
 
   const requestText =
     req.method === "GET" || req.method === "HEAD" ? "" : await req.text().catch(() => "");
-  const headers = withManusAuthHeaders({
+  const headers = withLemnityAiUpstreamAuthHeaders({
     "Content-Type": req.headers.get("content-type") || "application/json",
     Accept: req.headers.get("accept") || "*/*",
     "x-lmnt-user-id": user.id,
@@ -345,13 +348,13 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     if (!hasEnoughTokens(user, MIN_TOKENS_GENERATE_STREAM)) {
       return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
     }
-    await syncManusSessionSummary({
+    await syncLemnityAiSessionSummary({
       userId: user.id,
-      manusSessionId,
+      upstreamSessionId,
       status: "running"
     });
 
-    const upstream = await fetch(buildManusApiUrl(upstreamPath), {
+    const upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
       method: "POST",
       headers,
       body: requestText
@@ -361,13 +364,13 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
     }
     return proxyChatStream({
       userId: user.id,
-      manusSessionId,
+      upstreamSessionId,
       upstream,
       requestText
     });
   }
 
-  const upstream = await fetch(buildManusApiUrl(upstreamPath), {
+  const upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
     method: req.method,
     headers,
     body: requestText || undefined
@@ -375,23 +378,23 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
 
   if (upstream.ok && tail[0] === "share") {
     if (req.method === "POST") {
-      await syncManusSessionSummary({ userId: user.id, manusSessionId, isShared: true });
+      await syncLemnityAiSessionSummary({ userId: user.id, upstreamSessionId, isShared: true });
     } else if (req.method === "DELETE") {
-      await syncManusSessionSummary({ userId: user.id, manusSessionId, isShared: false });
+      await syncLemnityAiSessionSummary({ userId: user.id, upstreamSessionId, isShared: false });
     }
   }
   if (upstream.ok && tail[0] === "clear_unread_message_count" && req.method === "POST") {
-    await syncManusSessionSummary({ userId: user.id, manusSessionId, unreadMessageCount: 0 });
+    await syncLemnityAiSessionSummary({ userId: user.id, upstreamSessionId, unreadMessageCount: 0 });
   }
   if (upstream.ok && tail[0] === "stop" && req.method === "POST") {
-    await syncManusSessionSummary({ userId: user.id, manusSessionId, status: "stopped" });
+    await syncLemnityAiSessionSummary({ userId: user.id, upstreamSessionId, status: "stopped" });
   }
 
   return passthrough(upstream);
 }
 
-export const GET = withApiLogging("/api/manus/[...path]", handleManus);
-export const POST = withApiLogging("/api/manus/[...path]", handleManus);
-export const PUT = withApiLogging("/api/manus/[...path]", handleManus);
-export const PATCH = withApiLogging("/api/manus/[...path]", handleManus);
-export const DELETE = withApiLogging("/api/manus/[...path]", handleManus);
+export const GET = withApiLogging("/api/lemnity-ai/[...path]", handleLemnityAiBridge);
+export const POST = withApiLogging("/api/lemnity-ai/[...path]", handleLemnityAiBridge);
+export const PUT = withApiLogging("/api/lemnity-ai/[...path]", handleLemnityAiBridge);
+export const PATCH = withApiLogging("/api/lemnity-ai/[...path]", handleLemnityAiBridge);
+export const DELETE = withApiLogging("/api/lemnity-ai/[...path]", handleLemnityAiBridge);

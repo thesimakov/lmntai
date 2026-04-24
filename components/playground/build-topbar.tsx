@@ -36,9 +36,9 @@ export type BuildWorkspaceTab = "preview" | "settings" | "code";
 type BuildPreviewChromeProps = {
   tab: BuildWorkspaceTab;
   onTabChange: (t: BuildWorkspaceTab) => void;
-  /** Панель «Поделиться» (Popover по образцу ai-manus) */
+  /** Панель «Поделиться» (Popover студии) */
   shareMenu: ReactNode;
-  /** Текущая песочница — для «Файлы задания» (логика FileSearch + SessionFileList в ai-manus) */
+  /** Текущая песочница — для «Файлы задания» */
   sandboxId?: string | null;
   onPublish: () => void;
   publishDisabled?: boolean;

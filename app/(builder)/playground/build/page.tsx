@@ -22,47 +22,48 @@ import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
 import { useBuildStreamLog } from "@/hooks/use-build-stream-log";
 import { readBuilderHandoff } from "@/lib/landing-handoff";
-import { isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
+import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
 import type { StreamEvent } from "@/types/build-stream";
 
-type ManusEnvelope<T> = {
+type LemnityAiBridgeEnvelope<T> = {
   code: number;
   msg: string;
   data: T;
 };
 
-type ManusSessionGet = {
+type LemnityAiSessionPayload = {
   session_id: string;
   title?: string | null;
   events?: Array<{ event?: string; data?: { role?: "user" | "assistant"; content?: string; title?: string } }>;
 };
 
-type ManusChatMessageEvent = {
+type LemnityAiChatMessageEvent = {
   role?: "user" | "assistant";
   content?: string;
 };
 
-type ManusStepEvent = {
+type LemnityAiStepEvent = {
   id?: string;
   description?: string;
   status?: string;
 };
 
-type ManusToolEvent = {
+type LemnityAiToolEvent = {
   name?: string;
   status?: string;
 };
 
-function mapManusStepStatus(status?: string): "running" | "completed" {
+function mapLemnityAiStepStatus(status?: string): "running" | "completed" {
   if (status === "completed") return "completed";
   return "running";
 }
 
-function parseManusSseChunk(chunk: string): { event: string; data: string | null } | null {
+function parseLemnityAiSseChunk(chunk: string): { event: string; data: string | null } | null {
   if (!chunk.trim()) return null;
   const lines = chunk.split("\n");
   let event = "message";
@@ -84,7 +85,7 @@ export default function PromptBuildPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
-  const shouldUseManusParity = isManusFullParityEnabledClient();
+  const { ready: lemnityAiBridgeReady, fullParity: shouldUseLemnityAiBridge } = useLemnityAiBridgeFromServer();
   const requestedSessionId = searchParams.get("sessionId");
   const didInitRef = useRef(false);
   const mountedRef = useRef(true);
@@ -110,7 +111,7 @@ export default function PromptBuildPage() {
   const [leftWidth, setLeftWidth] = useState(400);
   const [projectKind, setProjectKind] = useState<ProjectKind | null>(null);
   const [agentHint, setAgentHint] = useState<AgentUiLabel>("GPT-4.1");
-  const [manusSessionId, setManusSessionId] = useState<string | null>(requestedSessionId);
+  const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
     pointerId: number;
@@ -198,12 +199,15 @@ export default function PromptBuildPage() {
     ]);
   }
 
-  const loadManusSession = useCallback(
+  const loadLemnityAiSession = useCallback(
     async (sessionId: string) => {
       try {
-        const res = await fetch(`/api/manus/sessions/${encodeURIComponent(sessionId)}`, { method: "GET" });
+        const res = await fetch(
+          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sessionId)}`,
+          { method: "GET" }
+        );
         if (!res.ok) return;
-        const envelope = (await res.json()) as ManusEnvelope<ManusSessionGet>;
+        const envelope = (await res.json()) as LemnityAiBridgeEnvelope<LemnityAiSessionPayload>;
         const payload = envelope?.data;
         if (!payload) return;
         if (payload.title?.trim()) {
@@ -228,28 +232,28 @@ export default function PromptBuildPage() {
     []
   );
 
-  const ensureManusSession = useCallback(async (): Promise<string | null> => {
-    if (manusSessionId) return manusSessionId;
+  const ensureLemnityAiSession = useCallback(async (): Promise<string | null> => {
+    if (lemnityAiSessionId) return lemnityAiSessionId;
     try {
-      const res = await fetch("/api/manus/sessions", { method: "PUT" });
+      const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, { method: "PUT" });
       if (!res.ok) return null;
-      const envelope = (await res.json()) as ManusEnvelope<{ session_id?: string }>;
+      const envelope = (await res.json()) as LemnityAiBridgeEnvelope<{ session_id?: string }>;
       const createdId = envelope?.data?.session_id;
       if (!createdId) return null;
-      setManusSessionId(createdId);
+      setLemnityAiSessionId(createdId);
       router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
       return createdId;
     } catch {
       return null;
     }
-  }, [manusSessionId, router]);
+  }, [lemnityAiSessionId, router]);
 
-  const sendManusChat = useCallback(
+  const sendLemnityAiChat = useCallback(
     async (messageText: string) => {
       pushRecent(messageText.slice(0, 120));
-      const sid = await ensureManusSession();
+      const sid = await ensureLemnityAiSession();
       if (!sid) {
-        push("assistant", "❌ Не удалось создать Manus-сессию.");
+        push("assistant", "❌ Не удалось создать сессию Lemnity AI.");
         return;
       }
 
@@ -262,7 +266,7 @@ export default function PromptBuildPage() {
       const controller = new AbortController();
       requestAbortRef.current = controller;
       try {
-        const response = await fetch(`/api/manus/sessions/${encodeURIComponent(sid)}/chat`, {
+        const response = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sid)}/chat`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -273,7 +277,7 @@ export default function PromptBuildPage() {
           signal: controller.signal
         });
         if (!response.ok || !response.body) {
-          const message = await response.text().catch(() => "Ошибка Manus API");
+          const message = await response.text().catch(() => "Ошибка API Lemnity AI");
           push("assistant", `❌ ${message}`);
           setMode("idle");
           setStage("ready");
@@ -291,7 +295,7 @@ export default function PromptBuildPage() {
           const chunks = buffer.split("\n\n");
           buffer = chunks.pop() ?? "";
           for (const rawChunk of chunks) {
-            const chunk = parseManusSseChunk(rawChunk);
+            const chunk = parseLemnityAiSseChunk(rawChunk);
             if (!chunk) continue;
 
             if (chunk.event === "done") {
@@ -304,7 +308,7 @@ export default function PromptBuildPage() {
             if (!chunk.data) continue;
             try {
               if (chunk.event === "message") {
-                const data = JSON.parse(chunk.data) as ManusChatMessageEvent;
+                const data = JSON.parse(chunk.data) as LemnityAiChatMessageEvent;
                 if (data.role === "assistant" && typeof data.content === "string" && data.content.trim()) {
                   push("assistant", data.content);
                   setProgress((prev) => Math.min(95, Math.max(prev, 45)));
@@ -313,19 +317,19 @@ export default function PromptBuildPage() {
               }
 
               if (chunk.event === "step") {
-                const data = JSON.parse(chunk.data) as ManusStepEvent;
+                const data = JSON.parse(chunk.data) as LemnityAiStepEvent;
                 applyStreamLog({
                   type: "step",
                   id: data.id || "step",
                   description: data.description || "Шаг",
-                  status: mapManusStepStatus(data.status)
+                  status: mapLemnityAiStepStatus(data.status)
                 });
                 setProgress((prev) => Math.min(92, Math.max(prev, prev + 5)));
                 continue;
               }
 
               if (chunk.event === "tool") {
-                const data = JSON.parse(chunk.data) as ManusToolEvent;
+                const data = JSON.parse(chunk.data) as LemnityAiToolEvent;
                 applyStreamLog({
                   type: "tool",
                   name: data.name || "tool",
@@ -344,7 +348,7 @@ export default function PromptBuildPage() {
 
               if (chunk.event === "error") {
                 const data = JSON.parse(chunk.data) as { error?: string };
-                push("assistant", `❌ ${data.error || "Ошибка Manus"}`);
+                push("assistant", `❌ ${data.error || "Ошибка Lemnity AI"}`);
                 setMode("idle");
                 setStage("ready");
               }
@@ -355,18 +359,18 @@ export default function PromptBuildPage() {
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
-          push("assistant", "❌ Ошибка Manus стрима");
+          push("assistant", "❌ Ошибка стрима Lemnity AI");
         }
       } finally {
         if (mountedRef.current) {
           setIsGenerating(false);
           setMode((prev) => (prev === "generating" ? "idle" : prev));
           setStage((prev) => (prev === "generating" ? "ready" : prev));
-          void loadManusSession(sid);
+          void loadLemnityAiSession(sid);
         }
       }
     },
-    [applyStreamLog, ensureManusSession, loadManusSession]
+    [applyStreamLog, ensureLemnityAiSession, loadLemnityAiSession]
   );
 
   useEffect(() => {
@@ -378,14 +382,14 @@ export default function PromptBuildPage() {
   }, []);
 
   useEffect(() => {
-    if (!shouldUseManusParity) return;
+    if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
     if (!requestedSessionId) return;
-    setManusSessionId(requestedSessionId);
-    void loadManusSession(requestedSessionId);
-  }, [loadManusSession, requestedSessionId, shouldUseManusParity]);
+    setLemnityAiSessionId(requestedSessionId);
+    void loadLemnityAiSession(requestedSessionId);
+  }, [loadLemnityAiSession, requestedSessionId, shouldUseLemnityAiBridge, lemnityAiBridgeReady]);
 
   useEffect(() => {
-    if (shouldUseManusParity) return;
+    if (!lemnityAiBridgeReady || shouldUseLemnityAiBridge) return;
     if (didInitRef.current) return;
     didInitRef.current = true;
     const handoff = readBuilderHandoff();
@@ -402,7 +406,7 @@ export default function PromptBuildPage() {
       void handleCreateQuestions(fromStorage, handoff?.projectKind);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shouldUseManusParity]);
+  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge]);
 
   function pushRecent(item: string) {
     try {
@@ -417,6 +421,7 @@ export default function PromptBuildPage() {
   }
 
   async function handleCreateQuestions(overrideIdea?: string, projectKindForApi?: ProjectKind) {
+    if (lemnityAiBridgeReady && shouldUseLemnityAiBridge) return;
     const currentIdea = (overrideIdea ?? idea).trim();
     if (!currentIdea) return;
     const kindForRequest = projectKindForApi !== undefined ? projectKindForApi : projectKind;
@@ -464,6 +469,7 @@ export default function PromptBuildPage() {
   }
 
   async function handleComposePrompt(qaOverride?: PromptQA[]) {
+    if (lemnityAiBridgeReady && shouldUseLemnityAiBridge) return;
     push("assistant", "🧩 Собираю финальный промпт...");
     requestAbortRef.current?.abort();
     const controller = new AbortController();
@@ -509,6 +515,7 @@ export default function PromptBuildPage() {
   }
 
   async function handleGenerate(promptOverride?: string) {
+    if (lemnityAiBridgeReady && shouldUseLemnityAiBridge) return;
     const prompt = (promptOverride ?? finalPrompt).trim();
     if (!prompt) return;
 
@@ -609,9 +616,13 @@ export default function PromptBuildPage() {
   }
 
   function onSend(text: string) {
-    if (shouldUseManusParity) {
+    if (!lemnityAiBridgeReady) {
+      toast.message("Загрузка режима сборки…");
+      return;
+    }
+    if (shouldUseLemnityAiBridge) {
       push("user", text);
-      void sendManusChat(text);
+      void sendLemnityAiChat(text);
       return;
     }
     push("user", text);
@@ -672,6 +683,8 @@ export default function PromptBuildPage() {
               </Tooltip>
               <MenuDrawer
                 compact
+                lemnityAiBridgeReady={lemnityAiBridgeReady}
+                shouldUseLemnityAiBridge={shouldUseLemnityAiBridge}
                 leftCollapsed={leftCollapsed}
                 onToggleCollapse={() => {
                   setLeftCollapsed((v) => {
@@ -703,7 +716,7 @@ export default function PromptBuildPage() {
               title={header}
               subtitle={idea.trim() ? idea.trim().slice(0, 96) + (idea.trim().length > 96 ? "…" : "") : undefined}
               messages={messages}
-              disabled={isGenerating}
+              disabled={isGenerating || !lemnityAiBridgeReady}
               onSend={onSend}
               placeholder="Отправить сообщение Lemnity…"
               isEditor={chatEditorMode}

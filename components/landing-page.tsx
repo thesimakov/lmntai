@@ -19,7 +19,7 @@ import {
 import { MarketingSiteHeader } from "@/components/marketing/marketing-site-header";
 import { setPostLoginRedirect } from "@/lib/post-login-redirect";
 import { cn } from "@/lib/utils";
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { MessageKey } from "@/lib/i18n";
 
 const SHOWCASE_FILTER_ORDER: LandingShowcaseCategory[] = ["website", "resume", "presentation", "other"];

@@ -16,14 +16,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
+import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
 import { cn } from "@/lib/utils";
 
 type MenuDrawerProps = {
   onToggleCollapse?: () => void;
   leftCollapsed?: boolean;
-  /** Узкая колонка как в Manus: только иконки, меню справа от rail */
+  /** Узкая колонка студии: только иконки, меню справа от rail */
   compact?: boolean;
+  /** После bootstrap: не запрашивать API моста до готовности */
+  lemnityAiBridgeReady: boolean;
+  /** Режим чата через мост Lemnity AI */
+  shouldUseLemnityAiBridge: boolean;
 };
 
 type MenuProfileTokens = {
@@ -32,21 +36,27 @@ type MenuProfileTokens = {
   tokensUsedToday: number;
 };
 
-type ManusSessionListItem = {
+type LemnityAiSessionListItem = {
   session_id: string;
   title?: string | null;
   latest_message?: string | null;
   latest_message_at?: number | null;
 };
 
-export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDrawerProps) {
+export function MenuDrawer({
+  onToggleCollapse,
+  leftCollapsed,
+  compact,
+  lemnityAiBridgeReady,
+  shouldUseLemnityAiBridge
+}: MenuDrawerProps) {
   const { t, lang } = useI18n();
   const router = useRouter();
-  const useManusParity = isManusFullParityEnabledClient();
+  const useLemnityAiBridge = lemnityAiBridgeReady && shouldUseLemnityAiBridge;
   const [open, setOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
-  const [manusHistory, setManusHistory] = useState<ManusSessionListItem[]>([]);
+  const [lemnityAiHistory, setLemnityAiHistory] = useState<LemnityAiSessionListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState<string>("");
   const [tokenSnap, setTokenSnap] = useState<MenuProfileTokens | null>(null);
@@ -104,29 +114,29 @@ export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDra
     return Math.min(100, Math.max(0, raw));
   }, [tokenSnap]);
 
-  const loadManusHistory = useCallback(async () => {
-    if (!useManusParity) return;
+  const loadLemnityAiHistory = useCallback(async () => {
+    if (!useLemnityAiBridge) return;
     setHistoryLoading(true);
     try {
-      const res = await fetch("/api/manus/sessions", { method: "GET", credentials: "include" });
+      const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, { method: "GET", credentials: "include" });
       if (!res.ok) {
-        setManusHistory([]);
+        setLemnityAiHistory([]);
         return;
       }
-      const data = (await res.json()) as { data?: { sessions?: ManusSessionListItem[] } };
-      setManusHistory(Array.isArray(data.data?.sessions) ? data.data!.sessions! : []);
+      const data = (await res.json()) as { data?: { sessions?: LemnityAiSessionListItem[] } };
+      setLemnityAiHistory(Array.isArray(data.data?.sessions) ? data.data!.sessions! : []);
     } catch {
-      setManusHistory([]);
+      setLemnityAiHistory([]);
     } finally {
       setHistoryLoading(false);
     }
-  }, [useManusParity]);
+  }, [useLemnityAiBridge]);
 
   useEffect(() => {
-    if (historyOpen && useManusParity) {
-      void loadManusHistory();
+    if (historyOpen && useLemnityAiBridge) {
+      void loadLemnityAiHistory();
     }
-  }, [historyOpen, loadManusHistory, useManusParity]);
+  }, [historyOpen, loadLemnityAiHistory, useLemnityAiBridge]);
 
   useEffect(() => {
     function readRecent() {
@@ -383,11 +393,11 @@ export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDra
           <div className="rounded-2xl border border-black/10 bg-white/70 p-3">
             <p className="text-xs font-semibold text-zinc-700">{t("playground_menu_history_header")}</p>
             <div className="mt-2 space-y-1">
-              {useManusParity ? (
+              {useLemnityAiBridge ? (
                 historyLoading ? (
                   <p className="text-xs text-zinc-500">{t("playground_menu_tokens_loading")}</p>
-                ) : manusHistory.length ? (
-                  manusHistory.slice(0, 8).map((session) => (
+                ) : lemnityAiHistory.length ? (
+                  lemnityAiHistory.slice(0, 8).map((session) => (
                     <button
                       key={session.session_id}
                       type="button"

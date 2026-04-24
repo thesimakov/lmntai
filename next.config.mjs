@@ -25,6 +25,9 @@ const nextConfig = {
         pathname: "/**"
       }
     ]
+  },
+  async rewrites() {
+    return [{ source: "/api/manus/:path*", destination: "/api/lemnity-ai/:path*" }];
   }
 };
 

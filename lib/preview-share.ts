@@ -1,5 +1,5 @@
 /**
- * Ссылки для «Поделиться» / «Опубликовать» по превью из стрима (ai-manus sandbox).
+ * Ссылки для «Поделиться» / «Опубликовать» по превью из стрима (песочница Lemnity AI).
  * При появлении отдельного публичного deploy-URL из бэкенда — подставляйте его здесь.
  */
 
@@ -25,7 +25,7 @@ export async function copyTextToClipboard(text: string): Promise<boolean> {
   }
 }
 
-/** Публичная страница «как в ai-manus»: /share/{sandboxId} */
+/** Публичная страница превью: /share/{sandboxId} */
 export function buildPublicSharePageUrl(origin: string, sandboxId: string): string {
   return new URL(`/share/${encodeURIComponent(sandboxId)}`, origin).href;
 }

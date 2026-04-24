@@ -1,26 +1,23 @@
 /**
- * Слой согласования с ai-manus (Simpleyyt/ai-manus):
- * - `backend/.../prompts/planner.py` — план: goal, title, language, steps[{ id, description }]
- * - `backend/.../prompts/execution.py` — исполнение шага, язык из сообщения пользователя
- * - `backend/.../prompts/system.py` — песочница, инструменты, правила письма
+ * Спецификация промптов Lemnity AI (builder): план, шаги, форматы UI.
+ * Совместима с контрактом upstream-планировщика (goal, title, language, steps).
  *
- * Здесь: типы плана (для API/логов) + единый «конверт» для одношаговой HTML-генерации в RouterAI
- * (у нас нет plan-act агента, но структура требований к результату тем же осям: язык, формат, секции).
+ * Здесь: типы плана + единый «конверт» для одношаговой HTML-генерации в RouterAI.
  */
 
-/** Шаг плана, как в CreatePlanResponse (ai-manus planner). */
-export type ManusPlanStep = {
+/** Шаг плана (ответ планировщика). */
+export type LemnityAiPlanStep = {
   id: string;
   description: string;
 };
 
 /** Заголовок плана (совместим с JSON-планов агента). */
-export type ManusPlanOutline = {
+export type LemnityAiPlanOutline = {
   message?: string;
   language: string;
   goal: string;
   title: string;
-  steps: ManusPlanStep[];
+  steps: LemnityAiPlanStep[];
 };
 
 /**
@@ -117,7 +114,7 @@ export function isProjectKind(s: string | null | undefined): s is ProjectKind {
   return s != null && (PROJECT_KINDS as readonly string[]).includes(s);
 }
 
-/** Краткий контекст для /api/prompt-builder (вопросы + compose) — согласовать с типом, как план/goal в ai-manus. */
+/** Краткий контекст для /api/prompt-builder (вопросы + compose). */
 export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null): string {
   if (!kind) return "";
   const m: Record<ProjectKind, string> = {

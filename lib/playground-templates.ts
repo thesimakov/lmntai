@@ -1,10 +1,10 @@
 import type { MessageKey } from "@/lib/i18n";
-import type { ProjectKind } from "@/lib/manus-prompt-spec";
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 
 /**
  * Квик-шаблоны панели «Шаблоны» на /playground.
- * Тексты заголовков/промптов — в i18n (`playground_home_tpl_*`). У Simpleyyt/ai-manus на
- * HomePage нет аналогичного списка; локальная папка `ai-manus-main` в репозиторий не входит.
+ * Тексты заголовков/промптов — в i18n (`playground_home_tpl_*`).
+ * Внешний upstream builder в репозиторий не входит.
  */
 export type PlaygroundQuickTemplate = {
   id: string;
@@ -12,7 +12,7 @@ export type PlaygroundQuickTemplate = {
   valueKey: MessageKey;
   /**
    * Категория для handoff (`saveBuilderHandoff`) и чипа в HomeHero
-   * (согласуется с `ProjectKind` / `manus-prompt-spec`).
+   * (согласуется с `ProjectKind` / `lemnity-ai-prompt-spec`).
    */
   defaultCategory: ProjectKind;
 };

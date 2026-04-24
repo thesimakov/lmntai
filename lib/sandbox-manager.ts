@@ -1,21 +1,21 @@
 /**
- * Песочница: режим in-memory (прототип) или Docker + FastAPI ai-manus sandbox.
+ * Песочница: режим in-memory (прототип) или Docker + FastAPI песочницы Lemnity AI.
  * Docker: см. docker/manus-sandbox/README.md и docker-compose.manus.yml
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dockerode: CommonJS, типы default/instance в TS нестабильны; lazy require см. getDocker */
 import type Docker from "dockerode";
 
 import {
-  manusAllServicesRunning,
-  manusFileFind,
-  manusFileRead,
-  manusFileWrite,
-  manusSupervisorStatus,
-  type ManusApiResponse
-} from "@/lib/manus-sandbox-api";
+  lemnityBuilderAllServicesRunning,
+  lemnityBuilderFileFind,
+  lemnityBuilderFileRead,
+  lemnityBuilderFileWrite,
+  lemnityBuilderSupervisorStatus,
+  type LemnityBuilderSandboxResponse
+} from "@/lib/lemnity-builder-sandbox-api";
 import {
   dockerRegistry,
-  isManusDockerEnabled,
+  isLemnityAiSandboxDockerEnabled,
   memoryStore,
   type DockerRecord,
   type MemoryState
@@ -25,20 +25,29 @@ type SandboxMode = "memory" | "docker";
 
 let lemnityDockerClient: any = null;
 
-function manusImage(): string {
-  return process.env.MANUS_SANDBOX_IMAGE ?? "manus-sandbox:local";
+function sandboxDockerImage(): string {
+  return process.env.LEMNITY_AI_SANDBOX_IMAGE ?? process.env.MANUS_SANDBOX_IMAGE ?? "manus-sandbox:local";
 }
 
 function namePrefix(): string {
-  return (process.env.MANUS_SANDBOX_NAME_PREFIX ?? "lemnity-sbx").replace(/[^a-zA-Z0-9_.-]/g, "-");
+  return (process.env.LEMNITY_AI_SANDBOX_NAME_PREFIX ?? process.env.MANUS_SANDBOX_NAME_PREFIX ?? "lemnity-sbx").replace(
+    /[^a-zA-Z0-9_.-]/g,
+    "-"
+  );
 }
 
 function workdirInContainer(): string {
-  return (process.env.MANUS_SANDBOX_WORKDIR ?? "/home/ubuntu").replace(/\/$/, "");
+  return (process.env.LEMNITY_AI_SANDBOX_WORKDIR ?? process.env.MANUS_SANDBOX_WORKDIR ?? "/home/ubuntu").replace(
+    /\/$/,
+    ""
+  );
 }
 
 function ttlMs(): number {
-  const m = Number.parseInt(process.env.MANUS_SANDBOX_TTL_MINUTES ?? "60", 10);
+  const m = Number.parseInt(
+    process.env.LEMNITY_AI_SANDBOX_TTL_MINUTES ?? process.env.MANUS_SANDBOX_TTL_MINUTES ?? "60",
+    10
+  );
   if (!Number.isFinite(m) || m <= 0) return 0;
   return m * 60_000;
 }
@@ -86,22 +95,28 @@ function extractContainerIp(inspect: Docker.ContainerInspectInfo): string {
   return ip;
 }
 
-function assertManusSuccess<T>(res: ManusApiResponse<T>, action: string): void {
+function assertBuilderSandboxSuccess<T>(res: LemnityBuilderSandboxResponse<T>, action: string): void {
   if (!res.success) {
     throw new Error(`${action}: ${res.message || "unknown error"}`);
   }
 }
 
 async function waitForSandboxReady(baseUrl: string): Promise<void> {
-  const maxRetries = Number.parseInt(process.env.MANUS_SANDBOX_READY_RETRIES ?? "30", 10);
-  const intervalMs = Number.parseInt(process.env.MANUS_SANDBOX_READY_INTERVAL_MS ?? "2000", 10);
+  const maxRetries = Number.parseInt(
+    process.env.LEMNITY_AI_SANDBOX_READY_RETRIES ?? process.env.MANUS_SANDBOX_READY_RETRIES ?? "30",
+    10
+  );
+  const intervalMs = Number.parseInt(
+    process.env.LEMNITY_AI_SANDBOX_READY_INTERVAL_MS ?? process.env.MANUS_SANDBOX_READY_INTERVAL_MS ?? "2000",
+    10
+  );
   const retries = Number.isFinite(maxRetries) && maxRetries > 0 ? maxRetries : 30;
   const interval = Number.isFinite(intervalMs) && intervalMs > 0 ? intervalMs : 2000;
 
   for (let attempt = 0; attempt < retries; attempt += 1) {
     try {
-      const status = await manusSupervisorStatus(baseUrl);
-      if (status.success && manusAllServicesRunning(status.data ?? [])) {
+      const status = await lemnityBuilderSupervisorStatus(baseUrl);
+      if (status.success && lemnityBuilderAllServicesRunning(status.data ?? [])) {
         return;
       }
     } catch {
@@ -181,24 +196,28 @@ async function createDockerSandbox(seed: string, ownerId: string): Promise<{ san
   const containerName = `${namePrefix()}-${short}`.toLowerCase();
 
   const env: string[] = [];
-  const ttlMin = process.env.MANUS_SANDBOX_SERVICE_TIMEOUT_MINUTES;
+  const ttlMin =
+    process.env.LEMNITY_AI_SANDBOX_SERVICE_TIMEOUT_MINUTES ?? process.env.MANUS_SANDBOX_SERVICE_TIMEOUT_MINUTES;
   if (ttlMin && ttlMin !== "0") {
     env.push(`SERVICE_TIMEOUT_MINUTES=${ttlMin}`);
   }
-  const chromeArgs = process.env.MANUS_SANDBOX_CHROME_ARGS;
+  const chromeArgs =
+    process.env.LEMNITY_AI_SANDBOX_CHROME_ARGS ?? process.env.MANUS_SANDBOX_CHROME_ARGS;
   if (chromeArgs) env.push(`CHROME_ARGS=${chromeArgs}`);
 
   const hostConfig: Docker.HostConfig = {
     AutoRemove: true
   };
-  const net = process.env.MANUS_SANDBOX_DOCKER_NETWORK?.trim();
+  const net = (
+    process.env.LEMNITY_AI_SANDBOX_DOCKER_NETWORK ?? process.env.MANUS_SANDBOX_DOCKER_NETWORK
+  )?.trim();
   if (net) {
     hostConfig.NetworkMode = net;
   }
 
   const createOpts: Docker.ContainerCreateOptions = {
     name: containerName,
-    Image: manusImage(),
+    Image: sandboxDockerImage(),
     HostConfig: hostConfig
   };
   if (env.length) {
@@ -216,8 +235,8 @@ async function createDockerSandbox(seed: string, ownerId: string): Promise<{ san
   const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${seed}</title></head><body style="font-family:system-ui;padding:24px;background:#0a0a0a;color:#fafafa">Контейнер готов. Генерация…</body></html>`;
   const wd = workdirInContainer();
   const indexPath = `${wd}/index.html`;
-  const writeRes = await manusFileWrite(base, indexPath, html);
-  assertManusSuccess(writeRes, "file/write index.html");
+  const writeRes = await lemnityBuilderFileWrite(base, indexPath, html);
+  assertBuilderSandboxSuccess(writeRes, "file/write index.html");
 
   const record: DockerRecord = {
     sandboxId,
@@ -246,10 +265,10 @@ async function applyDockerCode(sandboxId: string, code: string): Promise<{ previ
   const indexPath = `${wd}/index.html`;
   const genPath = `${wd}/generated.txt`;
 
-  const w1 = await manusFileWrite(base, indexPath, html, { append: false });
-  assertManusSuccess(w1, "file/write index.html");
-  const w2 = await manusFileWrite(base, genPath, code, { append: false });
-  assertManusSuccess(w2, "file/write generated.txt");
+  const w1 = await lemnityBuilderFileWrite(base, indexPath, html, { append: false });
+  assertBuilderSandboxSuccess(w1, "file/write index.html");
+  const w2 = await lemnityBuilderFileWrite(base, genPath, code, { append: false });
+  assertBuilderSandboxSuccess(w2, "file/write generated.txt");
   rec.updatedAt = Date.now();
 
   return { previewUrl: `/api/sandbox/${sandboxId}` };
@@ -281,7 +300,7 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
   async function readOne(absPath: string, key: string) {
     if (out[key]) return;
     try {
-      const r = await manusFileRead(base, absPath);
+      const r = await lemnityBuilderFileRead(base, absPath);
       if (!r.success || typeof r.data?.content !== "string") return;
       const c = r.data.content;
       if (c.length > EXPORT_MAX_BYTES) return;
@@ -296,7 +315,7 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
   }
 
   try {
-    const found = await manusFileFind(base, wd, "**/*");
+    const found = await lemnityBuilderFileFind(base, wd, "**/*");
     if (found.success && Array.isArray(found.data?.files)) {
       let count = Object.keys(out).length;
       for (const absPath of found.data.files) {
@@ -317,7 +336,7 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
 
 /** Явное удаление контейнера (например, после сохранения проекта). */
 export async function destroySandbox(sandboxId: string): Promise<void> {
-  if (!isManusDockerEnabled()) {
+  if (!isLemnityAiSandboxDockerEnabled()) {
     memoryStore.delete(sandboxId);
     return;
   }
@@ -325,12 +344,12 @@ export async function destroySandbox(sandboxId: string): Promise<void> {
 }
 
 export function getSandboxMode(): SandboxMode {
-  return isManusDockerEnabled() ? "docker" : "memory";
+  return isLemnityAiSandboxDockerEnabled() ? "docker" : "memory";
 }
 
 export const sandboxManager = {
   async createSandbox(seed = "new-project", ownerId: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return createDockerSandbox(seed, ownerId);
     }
     const id = crypto.randomUUID();
@@ -349,7 +368,7 @@ export const sandboxManager = {
   },
 
   async applyCode(sandboxId: string, code: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return applyDockerCode(sandboxId, code);
     }
     const previous = memoryStore.get(sandboxId);
@@ -374,7 +393,7 @@ export const sandboxManager = {
   },
 
   async getPreviewUrl(sandboxId: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return getDockerPreviewUrl(sandboxId);
     }
     const exists = memoryStore.get(sandboxId);
@@ -383,14 +402,14 @@ export const sandboxManager = {
   },
 
   async exportFiles(sandboxId: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return exportDockerFiles(sandboxId);
     }
     return memoryStore.get(sandboxId)?.files ?? {};
   },
 
   async canAccess(sandboxId: string, ownerId: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       const rec = dockerRegistry.get(sandboxId);
       if (!rec) return false;
       return rec.ownerId === ownerId;
@@ -401,14 +420,14 @@ export const sandboxManager = {
   },
 
   hasSandbox(sandboxId: string): boolean {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return dockerRegistry.has(sandboxId);
     }
     return memoryStore.has(sandboxId);
   },
 
   async listSandboxesByOwner(ownerId: string) {
-    if (isManusDockerEnabled()) {
+    if (isLemnityAiSandboxDockerEnabled()) {
       return Array.from(dockerRegistry.values())
         .filter((item) => item.ownerId === ownerId)
         .map((item) => ({

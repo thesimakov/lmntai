@@ -7,7 +7,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-/// Публичный доступ к превью песочницы по ссылке /share/:sandboxId (как в ai-manus session share).
+/// Публичный доступ к превью песочницы по ссылке /share/:sandboxId.
 model SandboxShare {
   id        String   @id @default(cuid())
   sandboxId String   @unique
@@ -109,6 +109,7 @@ model TokenUsageLog {
   createdAt        DateTime @default(now())
 }
 
+/// Мост Lemnity AI: связь пользователя с идентификатором сессии upstream.
 model ManusSessionLink {
   id                 String   @id @default(cuid())
   userId             String
@@ -126,6 +127,7 @@ model ManusSessionLink {
   @@index([userId, updatedAt])
 }
 
+/// Учёт списаний за чат через мост Lemnity AI.
 model ManusChatCharge {
   id             String   @id @default(cuid())
   userId         String
