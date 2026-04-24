@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
 import { cn } from "@/lib/utils";
 
 type MenuDrawerProps = {
@@ -31,12 +32,22 @@ type MenuProfileTokens = {
   tokensUsedToday: number;
 };
 
+type ManusSessionListItem = {
+  session_id: string;
+  title?: string | null;
+  latest_message?: string | null;
+  latest_message_at?: number | null;
+};
+
 export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDrawerProps) {
   const { t, lang } = useI18n();
   const router = useRouter();
+  const useManusParity = isManusFullParityEnabledClient();
   const [open, setOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
+  const [manusHistory, setManusHistory] = useState<ManusSessionListItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState<string>("");
   const [tokenSnap, setTokenSnap] = useState<MenuProfileTokens | null>(null);
   const [tokenLoad, setTokenLoad] = useState<"ready" | "loading" | "unauthorized" | "error">("loading");
@@ -92,6 +103,30 @@ export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDra
     const raw = (tokenSnap.tokenBalance / tokenSnap.tokenLimit) * 100;
     return Math.min(100, Math.max(0, raw));
   }, [tokenSnap]);
+
+  const loadManusHistory = useCallback(async () => {
+    if (!useManusParity) return;
+    setHistoryLoading(true);
+    try {
+      const res = await fetch("/api/manus/sessions", { method: "GET", credentials: "include" });
+      if (!res.ok) {
+        setManusHistory([]);
+        return;
+      }
+      const data = (await res.json()) as { data?: { sessions?: ManusSessionListItem[] } };
+      setManusHistory(Array.isArray(data.data?.sessions) ? data.data!.sessions! : []);
+    } catch {
+      setManusHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [useManusParity]);
+
+  useEffect(() => {
+    if (historyOpen && useManusParity) {
+      void loadManusHistory();
+    }
+  }, [historyOpen, loadManusHistory, useManusParity]);
 
   useEffect(() => {
     function readRecent() {
@@ -348,7 +383,27 @@ export function MenuDrawer({ onToggleCollapse, leftCollapsed, compact }: MenuDra
           <div className="rounded-2xl border border-black/10 bg-white/70 p-3">
             <p className="text-xs font-semibold text-zinc-700">{t("playground_menu_history_header")}</p>
             <div className="mt-2 space-y-1">
-              {recent.length ? (
+              {useManusParity ? (
+                historyLoading ? (
+                  <p className="text-xs text-zinc-500">{t("playground_menu_tokens_loading")}</p>
+                ) : manusHistory.length ? (
+                  manusHistory.slice(0, 8).map((session) => (
+                    <button
+                      key={session.session_id}
+                      type="button"
+                      className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                      onClick={() => {
+                        setHistoryOpen(false);
+                        router.push(`/playground/build?sessionId=${encodeURIComponent(session.session_id)}`);
+                      }}
+                    >
+                      {session.title?.trim() || session.latest_message?.trim() || session.session_id.slice(0, 12)}
+                    </button>
+                  ))
+                ) : (
+                  <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>
+                )
+              ) : recent.length ? (
                 recent.slice(0, 8).map((r) => (
                   <div key={r.t} className="truncate rounded-xl bg-white px-3 py-2 text-xs text-zinc-700">
                     {r.text}

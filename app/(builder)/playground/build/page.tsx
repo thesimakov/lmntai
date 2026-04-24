@@ -22,12 +22,62 @@ import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
 import { useBuildStreamLog } from "@/hooks/use-build-stream-log";
 import { readBuilderHandoff } from "@/lib/landing-handoff";
-import { buildManusFrontendLaunchUrl, isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
+import { isManusFullParityEnabledClient } from "@/lib/manus-parity-config";
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
 import type { ProjectKind } from "@/lib/manus-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
 import type { StreamEvent } from "@/types/build-stream";
+
+type ManusEnvelope<T> = {
+  code: number;
+  msg: string;
+  data: T;
+};
+
+type ManusSessionGet = {
+  session_id: string;
+  title?: string | null;
+  events?: Array<{ event?: string; data?: { role?: "user" | "assistant"; content?: string; title?: string } }>;
+};
+
+type ManusChatMessageEvent = {
+  role?: "user" | "assistant";
+  content?: string;
+};
+
+type ManusStepEvent = {
+  id?: string;
+  description?: string;
+  status?: string;
+};
+
+type ManusToolEvent = {
+  name?: string;
+  status?: string;
+};
+
+function mapManusStepStatus(status?: string): "running" | "completed" {
+  if (status === "completed") return "completed";
+  return "running";
+}
+
+function parseManusSseChunk(chunk: string): { event: string; data: string | null } | null {
+  if (!chunk.trim()) return null;
+  const lines = chunk.split("\n");
+  let event = "message";
+  const dataLines: string[] = [];
+  for (const line of lines) {
+    if (line.startsWith("event:")) {
+      event = line.slice("event:".length).trim() || "message";
+      continue;
+    }
+    if (line.startsWith("data:")) {
+      dataLines.push(line.slice("data:".length).trim());
+    }
+  }
+  return { event, data: dataLines.length ? dataLines.join("\n") : null };
+}
 
 export default function PromptBuildPage() {
   const { t } = useI18n();
@@ -60,6 +110,7 @@ export default function PromptBuildPage() {
   const [leftWidth, setLeftWidth] = useState(400);
   const [projectKind, setProjectKind] = useState<ProjectKind | null>(null);
   const [agentHint, setAgentHint] = useState<AgentUiLabel>("GPT-4.1");
+  const [manusSessionId, setManusSessionId] = useState<string | null>(requestedSessionId);
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
     pointerId: number;
@@ -147,6 +198,177 @@ export default function PromptBuildPage() {
     ]);
   }
 
+  const loadManusSession = useCallback(
+    async (sessionId: string) => {
+      try {
+        const res = await fetch(`/api/manus/sessions/${encodeURIComponent(sessionId)}`, { method: "GET" });
+        if (!res.ok) return;
+        const envelope = (await res.json()) as ManusEnvelope<ManusSessionGet>;
+        const payload = envelope?.data;
+        if (!payload) return;
+        if (payload.title?.trim()) {
+          setIdea((prev) => (prev.trim() ? prev : payload.title?.trim() || prev));
+        }
+        const nextMessages: ChatMessage[] =
+          payload.events
+            ?.filter((event) => event?.event === "message" && typeof event.data?.content === "string")
+            .map((event) => ({
+              id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+              role: event.data?.role === "user" ? "user" : "assistant",
+              content: event.data?.content || ""
+            })) ?? [];
+        if (nextMessages.length) {
+          setMessages(nextMessages);
+          setStage("ready");
+        }
+      } catch {
+        // ignore
+      }
+    },
+    []
+  );
+
+  const ensureManusSession = useCallback(async (): Promise<string | null> => {
+    if (manusSessionId) return manusSessionId;
+    try {
+      const res = await fetch("/api/manus/sessions", { method: "PUT" });
+      if (!res.ok) return null;
+      const envelope = (await res.json()) as ManusEnvelope<{ session_id?: string }>;
+      const createdId = envelope?.data?.session_id;
+      if (!createdId) return null;
+      setManusSessionId(createdId);
+      router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
+      return createdId;
+    } catch {
+      return null;
+    }
+  }, [manusSessionId, router]);
+
+  const sendManusChat = useCallback(
+    async (messageText: string) => {
+      pushRecent(messageText.slice(0, 120));
+      const sid = await ensureManusSession();
+      if (!sid) {
+        push("assistant", "❌ Не удалось создать Manus-сессию.");
+        return;
+      }
+
+      setIsGenerating(true);
+      setMode("generating");
+      setStage("generating");
+      setProgress(10);
+
+      requestAbortRef.current?.abort();
+      const controller = new AbortController();
+      requestAbortRef.current = controller;
+      try {
+        const response = await fetch(`/api/manus/sessions/${encodeURIComponent(sid)}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: messageText,
+            timestamp: Math.floor(Date.now() / 1000),
+            event_id: `lmnt-${Date.now()}`
+          }),
+          signal: controller.signal
+        });
+        if (!response.ok || !response.body) {
+          const message = await response.text().catch(() => "Ошибка Manus API");
+          push("assistant", `❌ ${message}`);
+          setMode("idle");
+          setStage("ready");
+          return;
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (!mountedRef.current || controller.signal.aborted) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split("\n\n");
+          buffer = chunks.pop() ?? "";
+          for (const rawChunk of chunks) {
+            const chunk = parseManusSseChunk(rawChunk);
+            if (!chunk) continue;
+
+            if (chunk.event === "done") {
+              setProgress(100);
+              setMode("idle");
+              setStage("ready");
+              continue;
+            }
+
+            if (!chunk.data) continue;
+            try {
+              if (chunk.event === "message") {
+                const data = JSON.parse(chunk.data) as ManusChatMessageEvent;
+                if (data.role === "assistant" && typeof data.content === "string" && data.content.trim()) {
+                  push("assistant", data.content);
+                  setProgress((prev) => Math.min(95, Math.max(prev, 45)));
+                }
+                continue;
+              }
+
+              if (chunk.event === "step") {
+                const data = JSON.parse(chunk.data) as ManusStepEvent;
+                applyStreamLog({
+                  type: "step",
+                  id: data.id || "step",
+                  description: data.description || "Шаг",
+                  status: mapManusStepStatus(data.status)
+                });
+                setProgress((prev) => Math.min(92, Math.max(prev, prev + 5)));
+                continue;
+              }
+
+              if (chunk.event === "tool") {
+                const data = JSON.parse(chunk.data) as ManusToolEvent;
+                applyStreamLog({
+                  type: "tool",
+                  name: data.name || "tool",
+                  status: data.status === "called" ? "called" : "calling"
+                });
+                continue;
+              }
+
+              if (chunk.event === "title") {
+                const data = JSON.parse(chunk.data) as { title?: string };
+                if (data.title?.trim()) {
+                  setIdea((prev) => (prev.trim() ? prev : data.title!.trim()));
+                }
+                continue;
+              }
+
+              if (chunk.event === "error") {
+                const data = JSON.parse(chunk.data) as { error?: string };
+                push("assistant", `❌ ${data.error || "Ошибка Manus"}`);
+                setMode("idle");
+                setStage("ready");
+              }
+            } catch {
+              // ignore invalid sse payloads
+            }
+          }
+        }
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          push("assistant", "❌ Ошибка Manus стрима");
+        }
+      } finally {
+        if (mountedRef.current) {
+          setIsGenerating(false);
+          setMode((prev) => (prev === "generating" ? "idle" : prev));
+          setStage((prev) => (prev === "generating" ? "ready" : prev));
+          void loadManusSession(sid);
+        }
+      }
+    },
+    [applyStreamLog, ensureManusSession, loadManusSession]
+  );
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -157,16 +379,10 @@ export default function PromptBuildPage() {
 
   useEffect(() => {
     if (!shouldUseManusParity) return;
-    const handoff = readBuilderHandoff();
-    const target = buildManusFrontendLaunchUrl({
-      idea: handoff?.idea,
-      projectKind: handoff?.projectKind ?? null,
-      sessionId: requestedSessionId
-    });
-    if (target) {
-      window.location.replace(target);
-    }
-  }, [requestedSessionId, shouldUseManusParity]);
+    if (!requestedSessionId) return;
+    setManusSessionId(requestedSessionId);
+    void loadManusSession(requestedSessionId);
+  }, [loadManusSession, requestedSessionId, shouldUseManusParity]);
 
   useEffect(() => {
     if (shouldUseManusParity) return;
@@ -393,7 +609,11 @@ export default function PromptBuildPage() {
   }
 
   function onSend(text: string) {
-    if (shouldUseManusParity) return;
+    if (shouldUseManusParity) {
+      push("user", text);
+      void sendManusChat(text);
+      return;
+    }
     push("user", text);
 
     if (stage === "questions") {
@@ -425,44 +645,6 @@ export default function PromptBuildPage() {
     }
 
     push("assistant", "⌛ Дождись завершения текущего шага и повтори запрос.");
-  }
-
-  const manusLaunchUrl = useMemo(
-    () =>
-      buildManusFrontendLaunchUrl({
-        idea: idea.trim() || null,
-        projectKind,
-        sessionId: requestedSessionId
-      }),
-    [idea, projectKind, requestedSessionId]
-  );
-
-  if (shouldUseManusParity) {
-    return (
-      <PageTransition>
-        <div className="flex h-full min-h-0 flex-1 items-center justify-center bg-muted/40 p-6">
-          <div className="w-full max-w-xl rounded-3xl border border-border bg-background p-6 text-center">
-            <h2 className="text-xl font-semibold text-foreground">Manus build workspace</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Полный parity-режим активен. Сборка и история чатов работают в `ai-manus-main`.
-            </p>
-            <div className="mt-4">
-              <Button
-                type="button"
-                onClick={() => {
-                  if (manusLaunchUrl) {
-                    window.location.assign(manusLaunchUrl);
-                  }
-                }}
-                disabled={!manusLaunchUrl}
-              >
-                Открыть Manus Workspace
-              </Button>
-            </div>
-          </div>
-        </div>
-      </PageTransition>
-    );
   }
 
   return (
@@ -602,7 +784,7 @@ export default function PromptBuildPage() {
               }
               onPublish={handlePublishPreview}
               publishDisabled={!previewUrl || !sandboxId}
-              onHistoryClick={() => router.push("/playground")}
+              onHistoryClick={() => router.push("/projects")}
               addressPath={addressPath}
               previewEditorToggle={
                 tab === "preview"

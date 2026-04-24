@@ -294,7 +294,14 @@ async function handleManus(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   }
 
   const manusSessionId = path[1];
-  await ensureManusSessionOwnership(user.id, manusSessionId);
+  try {
+    await ensureManusSessionOwnership(user.id, manusSessionId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "MANUS_SESSION_NOT_FOUND") {
+      return new Response("Session not found", { status: 404 });
+    }
+    throw error;
+  }
 
   const tail = path.slice(2);
   const upstreamPath = toManusPath(path);
