@@ -74,19 +74,22 @@ LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8000
 
 Клиент узнаёт режим через `GET /api/lemnity-ai/bootstrap` (пересборка не обязательна).
 
-### Поднять upstream Docker Compose (рядом с lmntai)
+### Поднять upstream Docker Compose
 
-Интерфейс сборки — `/playground/build` в Lemnity. Положите каталог с `docker-compose.yml` upstream (часто `ai-manus-main`) в корень приложения, например `/root/lmntai/ai-manus-main/`, затем:
+Интерфейс сборки — `/playground/build` в Lemnity. Каталог с `docker-compose.yml` upstream **не входит в этот репозиторий**: положите его где угодно на сервере и задайте **абсолютный путь** в переменной `LEMNITY_AI_STACK_DIR` (или устар. `MANUS_REPO_DIR`).
+
+Пример:
 
 ```bash
+export LEMNITY_AI_STACK_DIR=/opt/lemnity-ai-builder
 cd /root/lmntai
 npm run lemnity-ai:up
 ```
 
-Другой путь к каталогу:
+Одной строкой без `export`:
 
 ```bash
-LEMNITY_AI_STACK_DIR=/opt/builder-stack npm run lemnity-ai:up
+cd /root/lmntai && LEMNITY_AI_STACK_DIR=/opt/lemnity-ai-builder npm run lemnity-ai:up
 ```
 
 (алиас `npm run manus:up` вызывает ту же команду.)
@@ -120,6 +123,8 @@ mkdir -p /etc/lemnity && cp -n /root/lmntai/.env.local.example /etc/lemnity/prod
 ```
 
 Заполните минимум: `DATABASE_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `NEXT_PUBLIC_SITE_URL` и ключи OAuth/SMTP.
+
+Для сборки через мост Lemnity AI дополнительно: `LEMNITY_AI_BRIDGE_ENABLED=1`, `LEMNITY_AI_UPSTREAM_URL` (URL живого upstream API, чаще `http://127.0.0.1:8000` на том же сервере) и **`LEMNITY_AI_STACK_DIR`** — абсолютный путь к каталогу с `docker-compose.yml` upstream, если пользуетесь `npm run lemnity-ai:up`. Если `PUT /api/lemnity-ai/sessions` даёт **500**, проверьте: upstream слушает тот же хост/порт, что в `LEMNITY_AI_UPSTREAM_URL`, и логи: `pm2 logs lemnity --lines 80`.
 
 ### 2) Первый запуск приложения через PM2 (если процесса ещё нет)
 

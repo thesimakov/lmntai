@@ -1,4 +1,4 @@
--- Публичная ссылка на превью /share/:sandboxId (эталон ai-manus session share)
+-- Публичная ссылка на превью /share/:sandboxId (совместимо с upstream session share)
 CREATE TABLE "SandboxShare" (
     "id" TEXT NOT NULL,
     "sandboxId" TEXT NOT NULL,

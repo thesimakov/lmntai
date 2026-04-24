@@ -3,13 +3,21 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LMNTAI_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-# Каталог с docker-compose upstream builder: по умолчанию внутри репозитория.
-LEMNITY_AI_STACK_DIR="${LEMNITY_AI_STACK_DIR:-${MANUS_REPO_DIR:-$LMNTAI_ROOT/ai-manus-main}}"
+# Каталог с docker-compose upstream задаётся только через окружение (см. README / .env.local.example).
+LEMNITY_AI_STACK_DIR="${LEMNITY_AI_STACK_DIR:-${MANUS_REPO_DIR:-}}"
 LEMNITY_AI_COMPOSE_FILE="${LEMNITY_AI_COMPOSE_FILE:-${MANUS_COMPOSE_FILE:-docker-compose.yml}}"
+
+if [[ -z "$LEMNITY_AI_STACK_DIR" ]]; then
+  echo "Error: не задан каталог upstream-стека."
+  echo "Укажите абсолютный путь к каталогу с docker-compose.yml, например:"
+  echo "  export LEMNITY_AI_STACK_DIR=/opt/lemnity-ai-builder"
+  echo "или добавьте в /etc/lemnity/production.env (или .env.local) ту же переменную."
+  echo "Совместимое имя: MANUS_REPO_DIR (устар., то же значение)."
+  exit 1
+fi
 
 if [[ ! -d "$LEMNITY_AI_STACK_DIR" ]]; then
   echo "Error: каталог стека Lemnity AI не найден: $LEMNITY_AI_STACK_DIR"
-  echo "Скопируйте папку upstream builder в корень lmntai (например ai-manus-main) или задайте LEMNITY_AI_STACK_DIR / MANUS_REPO_DIR."
   exit 1
 fi
 
