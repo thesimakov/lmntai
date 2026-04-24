@@ -84,6 +84,10 @@ function parseLemnityAiSseChunk(chunk: string): { event: string; data: string | 
   return { event, data: dataLines.length ? dataLines.join("\n") : null };
 }
 
+function sseEventName(event: string): string {
+  return event.trim().toLowerCase();
+}
+
 export default function PromptBuildPage() {
   const { t } = useI18n();
   const router = useRouter();
@@ -271,7 +275,8 @@ export default function PromptBuildPage() {
       try {
         const response = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sid)}/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          credentials: "include",
           body: JSON.stringify({
             message: messageText,
             timestamp: Math.floor(Date.now() / 1000),
@@ -292,75 +297,118 @@ export default function PromptBuildPage() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
+
+        const handleSseBlock = (rawChunk: string) => {
+          const chunk = parseLemnityAiSseChunk(rawChunk);
+          if (!chunk) return;
+          const ev = sseEventName(chunk.event);
+
+          if (ev === "done") {
+            setProgress(100);
+            setMode("idle");
+            setStage("ready");
+            return;
+          }
+
+          if (!chunk.data) return;
+          try {
+            if (ev === "delta") {
+              const data = JSON.parse(chunk.data) as { content?: string; text?: string };
+              const piece =
+                typeof data.content === "string"
+                  ? data.content
+                  : typeof data.text === "string"
+                    ? data.text
+                    : "";
+              const trimmed = piece.trim();
+              if (trimmed) {
+                push("assistant", trimmed);
+                setProgress((prev) => Math.min(95, Math.max(prev, 45)));
+              }
+              return;
+            }
+
+            if (ev === "message") {
+              const data = JSON.parse(chunk.data) as LemnityAiChatMessageEvent & { text?: string };
+              const roleRaw = data.role?.toLowerCase();
+              const content =
+                typeof data.content === "string"
+                  ? data.content
+                  : typeof data.text === "string"
+                    ? data.text
+                    : "";
+              const trimmed = content.trim();
+              if (!trimmed) return;
+              if (roleRaw === "user") return;
+              if (roleRaw === "assistant" || roleRaw === undefined) {
+                push("assistant", trimmed);
+                setProgress((prev) => Math.min(95, Math.max(prev, 45)));
+              }
+              return;
+            }
+
+            if (ev === "step") {
+              const data = JSON.parse(chunk.data) as LemnityAiStepEvent;
+              applyStreamLog({
+                type: "step",
+                id: data.id || "step",
+                description: data.description || "Шаг",
+                status: mapLemnityAiStepStatus(data.status)
+              });
+              setProgress((prev) => Math.min(92, Math.max(prev, prev + 5)));
+              return;
+            }
+
+            if (ev === "tool") {
+              const data = JSON.parse(chunk.data) as LemnityAiToolEvent;
+              applyStreamLog({
+                type: "tool",
+                name: data.name || "tool",
+                status: data.status === "called" ? "called" : "calling"
+              });
+              return;
+            }
+
+            if (ev === "title") {
+              const data = JSON.parse(chunk.data) as { title?: string };
+              if (data.title?.trim()) {
+                setIdea((prev) => (prev.trim() ? prev : data.title!.trim()));
+              }
+              return;
+            }
+
+            if (ev === "error") {
+              const data = JSON.parse(chunk.data) as { error?: string };
+              push("assistant", `❌ ${data.error || "Ошибка Lemnity AI"}`);
+              setMode("idle");
+              setStage("ready");
+            }
+          } catch {
+            // ignore invalid sse payloads
+          }
+        };
+
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
           if (!mountedRef.current || controller.signal.aborted) break;
-          buffer += decoder.decode(value, { stream: true });
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
+          }
+          if (done) {
+            buffer += decoder.decode();
+            break;
+          }
+          buffer = buffer.replace(/\r\n/g, "\n");
           const chunks = buffer.split("\n\n");
           buffer = chunks.pop() ?? "";
           for (const rawChunk of chunks) {
-            const chunk = parseLemnityAiSseChunk(rawChunk);
-            if (!chunk) continue;
-
-            if (chunk.event === "done") {
-              setProgress(100);
-              setMode("idle");
-              setStage("ready");
-              continue;
-            }
-
-            if (!chunk.data) continue;
-            try {
-              if (chunk.event === "message") {
-                const data = JSON.parse(chunk.data) as LemnityAiChatMessageEvent;
-                if (data.role === "assistant" && typeof data.content === "string" && data.content.trim()) {
-                  push("assistant", data.content);
-                  setProgress((prev) => Math.min(95, Math.max(prev, 45)));
-                }
-                continue;
-              }
-
-              if (chunk.event === "step") {
-                const data = JSON.parse(chunk.data) as LemnityAiStepEvent;
-                applyStreamLog({
-                  type: "step",
-                  id: data.id || "step",
-                  description: data.description || "Шаг",
-                  status: mapLemnityAiStepStatus(data.status)
-                });
-                setProgress((prev) => Math.min(92, Math.max(prev, prev + 5)));
-                continue;
-              }
-
-              if (chunk.event === "tool") {
-                const data = JSON.parse(chunk.data) as LemnityAiToolEvent;
-                applyStreamLog({
-                  type: "tool",
-                  name: data.name || "tool",
-                  status: data.status === "called" ? "called" : "calling"
-                });
-                continue;
-              }
-
-              if (chunk.event === "title") {
-                const data = JSON.parse(chunk.data) as { title?: string };
-                if (data.title?.trim()) {
-                  setIdea((prev) => (prev.trim() ? prev : data.title!.trim()));
-                }
-                continue;
-              }
-
-              if (chunk.event === "error") {
-                const data = JSON.parse(chunk.data) as { error?: string };
-                push("assistant", `❌ ${data.error || "Ошибка Lemnity AI"}`);
-                setMode("idle");
-                setStage("ready");
-              }
-            } catch {
-              // ignore invalid sse payloads
-            }
+            if (rawChunk.trim()) handleSseBlock(rawChunk);
           }
+        }
+
+        buffer = buffer.replace(/\r\n/g, "\n");
+        if (buffer.trim()) {
+          handleSseBlock(buffer);
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
