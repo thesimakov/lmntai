@@ -29,7 +29,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { SANDBOX_UPSTREAM_REPO_URL } from "@/lib/sandbox-upstream";
 import { cn } from "@/lib/utils";
 
 export type BuildWorkspaceTab = "preview" | "settings" | "code";
@@ -169,8 +168,9 @@ export function BuildPreviewChrome({
             variant="ghost"
             size="icon"
             className="h-8 w-8 shrink-0 text-muted-foreground"
+            disabled={publishDisabled}
             aria-label={t("build_aria_github_sandbox")}
-            onClick={() => window.open(SANDBOX_UPSTREAM_REPO_URL, "_blank", "noopener,noreferrer")}
+            onClick={onPublish}
           >
             <Github className="h-4 w-4" />
           </Button>

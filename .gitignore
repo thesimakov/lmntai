@@ -1,5 +1,9 @@
 .next
 node_modules
+
+# Локальный store pnpm в корне репо — не коммитить (файлы >100MB ломают push на GitHub)
+.pnpm-store/
+pnpm-debug.log
 .env
 .env.local
 dist
