@@ -22,10 +22,19 @@ npm run prisma:generate
 npx prisma migrate deploy
 npm run build
 
+if [[ -f services/lemnity-builder/package.json ]]; then
+  npm ci --prefix services/lemnity-builder
+  npm run build --prefix services/lemnity-builder
+fi
+
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
   pm2 restart "$APP_NAME" --update-env
 else
   pm2 start ecosystem.config.cjs --only "$APP_NAME" --update-env
+fi
+
+if pm2 describe lemnity-builder >/dev/null 2>&1; then
+  pm2 restart lemnity-builder --update-env
 fi
 
 pm2 save

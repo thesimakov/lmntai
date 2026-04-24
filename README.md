@@ -74,6 +74,18 @@ LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8000
 
 Клиент узнаёт режим через `GET /api/lemnity-ai/bootstrap` (пересборка не обязательна).
 
+### Встроенный upstream `lemnity-builder` (рекомендуется вместо Docker Manus)
+
+Сервис в репозитории: `services/lemnity-builder` (Node.js, Postgres для сессий, вызовы LLM через **RouterAI**).
+
+```bash
+# из корня репо, с теми же AI_GATEWAY_* и DATABASE_URL, что у Next
+npm run builder:install
+npm run builder:dev
+```
+
+В `.env` / `production.env` выставьте `LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8787` (или порт из `LEMNITY_BUILDER_PORT`). Опционально один и тот же `LEMNITY_AI_UPSTREAM_BEARER_TOKEN` и `LEMNITY_BUILDER_BEARER_TOKEN`. Прод: `npm run builder:build`, затем PM2-процесс `lemnity-builder` в `ecosystem.config.cjs` (см. комментарии в файле).
+
 ### Поднять upstream Docker Compose
 
 Интерфейс сборки — `/playground/build` в Lemnity. Каталог с `docker-compose.yml` upstream **не входит в этот репозиторий**: положите его где угодно на сервере и задайте **абсолютный путь** в переменной `LEMNITY_AI_STACK_DIR` (или устар. `MANUS_REPO_DIR`).
