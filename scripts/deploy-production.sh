@@ -21,11 +21,12 @@ npm ci
 npm run prisma:generate
 npx prisma migrate deploy
 rm -rf .next
-npm run build
+# Явно production: если в ENV_FILE есть NODE_ENV=development, без этого ломается пререндер /404 (Next 15).
+NODE_ENV=production npm run build
 
 if [[ -f services/lemnity-builder/package.json ]]; then
   npm ci --prefix services/lemnity-builder
-  npm run build --prefix services/lemnity-builder
+  NODE_ENV=production npm run build --prefix services/lemnity-builder
 fi
 
 if pm2 describe "$APP_NAME" >/dev/null 2>&1; then

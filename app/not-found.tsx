@@ -2,6 +2,9 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 
+/** Нужен для Next 15: иначе при `next build` с динамическим not-found возможен пререндер через Pages `/_error` и ошибка `<Html> should not be imported…`. */
+export const dynamic = "force-static";
+
 export default function NotFound() {
   return (
     <main className="flex min-h-screen items-center justify-center p-6">

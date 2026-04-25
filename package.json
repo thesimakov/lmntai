@@ -8,7 +8,7 @@
     "dev:clean": "rm -rf .next && next dev",
     "dev:clean:3002": "rm -rf .next && next dev -p 3002",
     "dev:poll": "WATCHPACK_POLLING=true next dev",
-    "build": "next build",
+    "build": "NODE_ENV=production next build",
     "build:clean": "rm -rf .next && next build",
     "start": "next start",
     "lint": "next lint",
