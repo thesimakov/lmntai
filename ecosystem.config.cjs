@@ -28,8 +28,9 @@ function parseEnvFile(absPath) {
     raw = raw.slice(1);
   }
   for (const line of raw.split(/\r?\n/)) {
-    const trimmed = line.trim();
+    let trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
+    trimmed = trimmed.replace(/^export\s+/i, "");
     const eq = trimmed.indexOf("=");
     if (eq <= 0) continue;
     const key = trimmed.slice(0, eq).trim();
