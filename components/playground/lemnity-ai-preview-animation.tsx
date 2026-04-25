@@ -123,7 +123,7 @@ export function LemnityAiWireframeBlocks({
 }) {
   return (
     <motion.div
-      className={`pointer-events-none mx-auto w-full max-w-lg space-y-3 ${className}`}
+      className={`pointer-events-none mx-auto flex w-full max-w-lg flex-col items-center space-y-3 ${className}`}
       initial={{ opacity: 0, y: 8 }}
       animate={
         animated
@@ -136,13 +136,13 @@ export function LemnityAiWireframeBlocks({
           : { duration: 0.4 }
       }
     >
-      <div className="h-3 w-1/3 rounded-md bg-foreground/15" />
-      <div className="grid grid-cols-5 gap-2">
+      <div className="h-3 w-1/3 max-w-[12rem] rounded-md bg-foreground/15" />
+      <div className="grid w-full grid-cols-5 gap-2">
         <div className={`col-span-3 h-28 ${blockClass}`} />
         <div className={`col-span-2 h-28 ${blockClass}`} />
       </div>
       <div className={`h-16 w-full ${blockClass}`} />
-      <div className="flex gap-2">
+      <div className="flex w-full gap-2">
         <div className="h-2 flex-1 rounded bg-foreground/12" />
         <div className="h-2 flex-1 rounded bg-foreground/12" />
         <div className="h-2 flex-1 rounded bg-foreground/12" />

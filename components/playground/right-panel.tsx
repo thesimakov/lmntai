@@ -131,12 +131,16 @@ function GeneratingState({
             </motion.div>
           </div>
         ) : null}
-        <p className="max-w-md text-base font-medium text-foreground">{t(lineKey)}</p>
-        <p className="mt-2 max-w-md text-sm text-muted-foreground">{t("playground_right_generating_line2")}</p>
-        <div className="relative z-10 mt-3 w-full max-h-[min(48vh,340px)] min-h-[180px]">
-          <CodepenIsometricBuildLoader />
+        <p className="max-w-md text-balance text-base font-medium text-foreground">{t(lineKey)}</p>
+        <p className="mt-2 max-w-md text-balance text-sm text-muted-foreground">
+          {t("playground_right_generating_line2")}
+        </p>
+        <div className="relative z-10 mt-3 flex w-full max-w-lg flex-col items-center">
+          <div className="w-full max-h-[min(48vh,340px)] min-h-[180px]">
+            <CodepenIsometricBuildLoader />
+          </div>
+          <LemnityAiWireframeBlocks animated className="mt-3 w-full" />
         </div>
-        <LemnityAiWireframeBlocks animated className="mt-3" />
         <div className="absolute bottom-0 left-0 right-0 border-t border-border/80 bg-background/80 px-4 py-3 backdrop-blur-sm">
           <div className="mx-auto flex max-w-md items-center gap-3">
             <span className="text-xs text-muted-foreground">{t("playground_right_build_label")}</span>

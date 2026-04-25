@@ -10,7 +10,7 @@ const LAYER_PX = 48;
 export function CodepenIsometricBuildLoader() {
   return (
     <div
-      className="flex h-[200px] w-full min-w-0 max-w-sm flex-col items-center justify-center gap-0"
+      className="mx-auto flex h-[200px] w-full min-w-0 max-w-sm flex-col items-center justify-center gap-0"
       role="img"
       aria-label="Идёт сборка интерфейса"
     >

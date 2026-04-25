@@ -60,59 +60,64 @@ async function postGenerateStream(req: NextRequest) {
   });
 
   const sandboxTitle = rawPrompt.slice(0, 120);
-  let sandboxId: string | undefined;
-  let routerRes: Response;
-  try {
-    const created = await sandboxManager.createSandbox(sandboxTitle, user.id);
-    sandboxId = created.sandboxId;
-    routerRes = await requestRouterAIStream({
-      prompt,
-      model: agent.modelId,
-      settings: agent.settings.stream,
-      user: user.id
-    });
-  } catch (e) {
-    if (sandboxId) await destroySandbox(sandboxId).catch(() => {});
-    const message = e instanceof Error ? e.message : String(e);
-    return new Response(message, { status: 500 });
-  }
-
-  if (!routerRes.ok || !routerRes.body) {
-    await destroySandbox(sandboxId!);
-    const errText = await routerRes.text().catch(() => "RouterAI error");
-    return new Response(errText, { status: 502 });
-  }
-
-  const reader = routerRes.body.getReader();
-  const decoder = new TextDecoder();
-
-  let raw = "";
-  let assembledText = "";
-  let lineCarry = "";
-  let usageFromStream: TokenUsage | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
       const mode = getSandboxMode();
-      sse(controller, {
-        type: "step",
-        id: "sandbox",
-        description: mode === "docker" ? "Песочница Docker (Lemnity AI)" : "Песочница (локальный прототип)",
-        status: "running"
-      });
-      sse(controller, { type: "log", content: "🎯 Анализирую запрос..." });
-      sse(controller, { type: "progress", value: 18 });
-      sse(controller, { type: "log", content: "📐 Подбираю структуру..." });
-      sse(controller, { type: "progress", value: 32 });
-      sse(controller, { type: "log", content: "🧩 Генерирую UI и код..." });
-      sse(controller, {
-        type: "step",
-        id: "llm",
-        description: "Стриминг ответа модели",
-        status: "running"
-      });
+      let sandboxId: string | undefined;
+      let raw = "";
+      let assembledText = "";
+      let lineCarry = "";
+      let usageFromStream: TokenUsage | null = null;
 
       try {
+        // До этого ответа клиент держит прогресс ~8%: отдаём SSE сразу, тяжёлое — ниже.
+        sse(controller, { type: "log", content: "🧰 Создаю песочницу…" });
+        sse(controller, { type: "progress", value: 10 });
+
+        const created = await sandboxManager.createSandbox(sandboxTitle, user.id);
+        sandboxId = created.sandboxId;
+
+        sse(controller, {
+          type: "step",
+          id: "sandbox",
+          description: mode === "docker" ? "Песочница Docker (Lemnity AI)" : "Песочница (локальный прототип)",
+          status: "running"
+        });
+        sse(controller, { type: "progress", value: 14 });
+        sse(controller, { type: "log", content: "🤖 Подключаюсь к модели…" });
+        sse(controller, { type: "progress", value: 16 });
+
+        const routerRes = await requestRouterAIStream({
+          prompt,
+          model: agent.modelId,
+          settings: agent.settings.stream,
+          user: user.id
+        });
+
+        if (!routerRes.ok || !routerRes.body) {
+          await destroySandbox(sandboxId).catch(() => {});
+          const errText = await routerRes.text().catch(() => "RouterAI error");
+          sse(controller, { type: "error", message: errText });
+          controller.close();
+          return;
+        }
+
+        const reader = routerRes.body.getReader();
+        const decoder = new TextDecoder();
+
+        sse(controller, { type: "log", content: "🎯 Анализирую запрос..." });
+        sse(controller, { type: "progress", value: 18 });
+        sse(controller, { type: "log", content: "📐 Подбираю структуру..." });
+        sse(controller, { type: "progress", value: 32 });
+        sse(controller, { type: "log", content: "🧩 Генерирую UI и код..." });
+        sse(controller, {
+          type: "step",
+          id: "llm",
+          description: "Стриминг ответа модели",
+          status: "running"
+        });
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
