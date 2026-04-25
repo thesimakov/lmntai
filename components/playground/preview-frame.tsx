@@ -9,7 +9,11 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
-import { attachVisualPreviewEditor, serializeIframeDocument } from "@/lib/visual-preview-editor";
+import {
+  attachVisualPreviewEditor,
+  formatVisualPickLabel,
+  serializeIframeDocument
+} from "@/lib/visual-preview-editor";
 import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -60,6 +64,7 @@ export function PreviewFrame({
   const [savePending, setSavePending] = useState(false);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeSrc, setIframeSrc] = useState(previewUrl);
+  const [visualPickLabel, setVisualPickLabel] = useState<string | null>(null);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const detachEditorRef = useRef<(() => void) | null>(null);
@@ -81,6 +86,7 @@ export function PreviewFrame({
       detachEditorRef.current?.();
       detachEditorRef.current = null;
       setIframeBlocked(false);
+      setVisualPickLabel(null);
       return;
     }
 
@@ -98,6 +104,9 @@ export function PreviewFrame({
         onImageActivate: (img) => {
           imgTargetRef.current = img;
           fileInputRef.current?.click();
+        },
+        onSelectionChange: (info) => {
+          setVisualPickLabel(info ? formatVisualPickLabel(info) : null);
         }
       });
     }
@@ -466,8 +475,8 @@ export function PreviewFrame({
           {iframeBlocked
             ? t("build_visual_no_iframe_access")
             : visualEditPersist
-              ? t("build_visual_edit_hint")
-              : t("build_visual_read_only_hint")}
+              ? `${t("build_visual_edit_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`
+              : `${t("build_visual_read_only_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`}
         </p>
       ) : null}
 

@@ -14,7 +14,8 @@ import { saveBuilderHandoff } from "@/lib/landing-handoff";
 import {
   getShowcaseCardHref,
   LANDING_SHOWCASE_ITEMS,
-  type LandingShowcaseCategory
+  type LandingShowcaseCategory,
+  type ShowcaseImageEntry
 } from "@/lib/landing-showcase";
 import { MarketingSiteHeader } from "@/components/marketing/marketing-site-header";
 import { setPostLoginRedirect } from "@/lib/post-login-redirect";
@@ -64,6 +65,7 @@ export function LandingPage() {
   const [typed, setTyped] = useState("");
   const [showcaseFilter, setShowcaseFilter] = useState<"all" | LandingShowcaseCategory>("all");
   const [heroProjectKind, setHeroProjectKind] = useState<ProjectKind | null>(null);
+  const [showcaseBySlug, setShowcaseBySlug] = useState<Record<string, ShowcaseImageEntry> | null>(null);
 
   const placeholderPhrase = useMemo(() => t("landing_simple_placeholder"), [t]);
 
@@ -101,6 +103,21 @@ export function LandingPage() {
       setShowcaseFilter("all");
     }
   }, [showShowcaseFilter, showcaseFilter, showcaseCategoryCounts]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/showcase-images")
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((body: { bySlug?: Record<string, ShowcaseImageEntry> }) => {
+        if (!cancelled && body?.bySlug && typeof body.bySlug === "object") {
+          setShowcaseBySlug(body.bySlug);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (prompt.trim().length > 0 || isFocused) {
@@ -332,27 +349,70 @@ export function LandingPage() {
           ) : null}
 
           <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {showcaseItemsFiltered.map((item) => (
-              <a
-                key={item.slug}
-                href={getShowcaseCardHref(item)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group block outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f4f4f3]"
-              >
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-zinc-200 shadow-sm ring-1 ring-zinc-200/80">
-                  <Image
-                    src={item.imageSrc}
-                    alt=""
-                    fill
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                    className="object-cover transition duration-300 ease-out group-hover:scale-[1.03]"
-                  />
+            {showcaseItemsFiltered.map((item) => {
+              const resolved = showcaseBySlug?.[item.slug];
+              const imageSrc = resolved?.url ?? item.imageSrc;
+              const credit = resolved?.credit;
+              const cardHref = getShowcaseCardHref(item);
+              const titleText = t(item.titleKey as MessageKey);
+              return (
+                <div
+                  key={item.slug}
+                  className="group block outline-none focus-within:ring-2 focus-within:ring-zinc-400 focus-within:ring-offset-2 focus-within:ring-offset-[#f4f4f3] rounded-2xl"
+                >
+                  <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-zinc-200 shadow-sm ring-1 ring-zinc-200/80">
+                    <a
+                      href={cardHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="absolute inset-0 z-0 block"
+                      aria-label={titleText}
+                    >
+                      <Image
+                        src={imageSrc}
+                        alt={titleText}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover transition duration-300 ease-out group-hover:scale-[1.03]"
+                      />
+                    </a>
+                    {credit ? (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-black/70 via-black/25 to-transparent px-2 pb-2 pt-10 text-left">
+                        <p className="pointer-events-auto text-[10px] leading-snug text-white/95">
+                          <span className="text-white/80">{t("landing_showcase_photo_prefix")} </span>
+                          <a
+                            href={credit.profileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-white underline decoration-white/50 underline-offset-2 hover:decoration-white"
+                          >
+                            {credit.name}
+                          </a>
+                          <span className="text-white/70"> · </span>
+                          <a
+                            href={credit.photoPageUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-white underline decoration-white/50 underline-offset-2 hover:decoration-white"
+                          >
+                            Unsplash
+                          </a>
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                  <a
+                    href={cardHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 block rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-zinc-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#f4f4f3]"
+                  >
+                    <h3 className="text-base font-semibold text-zinc-900">{titleText}</h3>
+                    <p className="mt-1 text-sm leading-snug text-zinc-500">{t(item.descKey as MessageKey)}</p>
+                  </a>
                 </div>
-                <h3 className="mt-4 text-base font-semibold text-zinc-900">{t(item.titleKey as MessageKey)}</h3>
-                <p className="mt-1 text-sm leading-snug text-zinc-500">{t(item.descKey as MessageKey)}</p>
-              </a>
-            ))}
+              );
+            })}
           </div>
         </section>
       </main>

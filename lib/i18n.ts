@@ -145,6 +145,7 @@ export const messages = {
     landing_showcase_item_commerce_desc: 'Каталог и оформление заявки',
     landing_showcase_item_team_title: 'Хаб команды и проектов',
     landing_showcase_item_team_desc: 'Роли, задачи и статусы',
+    landing_showcase_photo_prefix: 'Фото:',
     workspace_title: 'Рабочая область',
     workspace_desc: 'Playground, проекты и настройки',
     nav_playground: 'Главная',
@@ -614,7 +615,8 @@ export const messages = {
     build_editor_aria: 'Редактор',
     build_editor_label: 'Редактор',
     build_visual_edit_hint:
-      'Клик по тексту — правка. По картинке — замена файлом. Сохраните, чтобы записать в песочницу.',
+      'Наведите и кликните элемент — выделение (как Select element). Двойной клик по тексту — правка. По картинке — замена файлом. Сохраните макет в песочницу.',
+    build_visual_pick_selected: '· Выбрано: {tag}',
     build_visual_read_only_hint:
       'Правка в окне превью доступна; сохранение на сервер для этой сборки недоступно — скачайте HTML или экспорт.',
     build_visual_save: 'Сохранить макет',
@@ -889,6 +891,7 @@ export const messages = {
     landing_showcase_item_commerce_desc: 'Catalog and checkout flow',
     landing_showcase_item_team_title: 'Team and projects hub',
     landing_showcase_item_team_desc: 'Roles, tasks, and status',
+    landing_showcase_photo_prefix: 'Photo:',
     workspace_title: 'Workspace',
     workspace_desc: 'Playground, projects, and settings',
     nav_playground: 'Home',
@@ -1356,7 +1359,8 @@ export const messages = {
     build_editor_aria: 'Editor',
     build_editor_label: 'Editor',
     build_visual_edit_hint:
-      'Click text to edit. Click an image to replace it with a file. Save to write to the sandbox.',
+      'Hover and click to select an element (like Select element). Double-click text to edit. Click an image to replace it. Save to write to the sandbox.',
+    build_visual_pick_selected: '· Selected: {tag}',
     build_visual_read_only_hint:
       'You can edit in the preview; saving to the server is not available for this build — export HTML instead.',
     build_visual_save: 'Save layout',
@@ -1630,6 +1634,7 @@ export const messages = {
     landing_showcase_item_commerce_desc: 'Каталог ва дархост',
     landing_showcase_item_team_title: 'Ҳаби даста ва лоиҳаҳо',
     landing_showcase_item_team_desc: 'Нақшҳо, вазифаҳо, ҳолат',
+    landing_showcase_photo_prefix: 'Акс:',
     workspace_title: 'Фазои корӣ',
     workspace_desc: 'Playground, лоиҳаҳо ва танзимот',
     nav_playground: 'Асосӣ',
@@ -2099,7 +2104,8 @@ export const messages = {
     build_editor_aria: 'Муҳаррир',
     build_editor_label: 'Муҳаррир',
     build_visual_edit_hint:
-      'Матнро клик кунед — тағйир. Аксро клик кунед — иваз бо файл. Барои сабт дар песочница нигоҳ доред.',
+      'Элементро бо клик интихоб кунед. Барои матн — ду клик. Барои акс — иваз. Барои сабт дар песочница нигоҳ доред.',
+    build_visual_pick_selected: '· Интихоб: {tag}',
     build_visual_read_only_hint:
       'Дар пешнамоиш тағйир додан мумкин аст; сабт дар сервер барои ин ҷамъсозӣ нест — HTML-ро боргирӣ кунед.',
     build_visual_save: 'Нигоҳ доштани макет',
