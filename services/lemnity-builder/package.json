@@ -9,6 +9,7 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "pdf-lib": "^1.17.1",
     "pg": "^8.13.1",
     "pptxgenjs": "^3.12.0"
   },

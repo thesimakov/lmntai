@@ -130,8 +130,15 @@ async function postPromptBuilder(req: NextRequest) {
     const fallback = getPromptBuilderFallbackQuestions();
 
     try {
+      let text: string;
+      let usage:
+        | { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+        | undefined;
+      let billedModel: string;
+      let debugAttempted: string[];
+
       const modelChain = buildPromptModelFallbackChain(agent.modelId);
-      const { text, usage, model, requestedModel } = await requestRouterAIJsonWithFallback(
+      const res = await requestRouterAIJsonWithFallback(
         {
           prompt: `${systemPrompt}${kindCtx}\n\nИдея пользователя:\n${idea}`,
           settings: agent.settings.json,
@@ -139,12 +146,15 @@ async function postPromptBuilder(req: NextRequest) {
         },
         modelChain
       );
+      text = res.text;
+      usage = res.usage;
+      billedModel = res.model ?? res.requestedModel ?? agent.modelId;
+      debugAttempted = modelChain;
 
       const parsed = safeJsonParse<{ questions: string[] }>(text);
       const questions = parsed?.questions?.filter(Boolean).slice(0, 12) ?? fallback;
 
       const fallbackUsage = estimateUsageFromText(idea, text);
-      const billedModel = model ?? requestedModel ?? agent.modelId;
       const charge = await chargeTokensSafely({
         userId: user.id,
         usage: usage ?? fallbackUsage,
@@ -160,7 +170,7 @@ async function postPromptBuilder(req: NextRequest) {
           ? {}
           : {
               debug_model: billedModel,
-              debug_attempted_models: modelChain
+              debug_attempted_models: debugAttempted
             })
       });
     } catch {
@@ -193,8 +203,15 @@ async function postPromptBuilder(req: NextRequest) {
 Верни только текст промпта, без префиксов и объяснений.${kindCtx}`;
 
     try {
+      let text: string;
+      let usage:
+        | { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+        | undefined;
+      let billedModel: string;
+      let debugAttempted: string[];
+
       const modelChain = buildPromptModelFallbackChain(agent.modelId);
-      const { text, usage, model, requestedModel } = await requestRouterAIJsonWithFallback(
+      const res = await requestRouterAIJsonWithFallback(
         {
           prompt: `${composePrompt}\n\nИдея:\n${idea}\n\nОтветы пользователя:\n${packed}`,
           settings: agent.settings.json,
@@ -202,11 +219,14 @@ async function postPromptBuilder(req: NextRequest) {
         },
         modelChain
       );
+      text = res.text;
+      usage = res.usage;
+      billedModel = res.model ?? res.requestedModel ?? agent.modelId;
+      debugAttempted = modelChain;
 
       const finalPrompt = text.trim() || `${idea}\n\n${packed}`;
 
       const fallbackUsage = estimateUsageFromText(`${idea}\n${packed}`, finalPrompt);
-      const billedModel = model ?? requestedModel ?? agent.modelId;
       const charge = await chargeTokensSafely({
         userId: user.id,
         usage: usage ?? fallbackUsage,
@@ -222,7 +242,7 @@ async function postPromptBuilder(req: NextRequest) {
           ? {}
           : {
               debug_model: billedModel,
-              debug_attempted_models: modelChain
+              debug_attempted_models: debugAttempted
             })
       });
     } catch {

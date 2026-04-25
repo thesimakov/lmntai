@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -88,6 +89,7 @@ export function AgentChat({
   agentTask = "generate-stream",
   onModelHintChange
 }: AgentChatProps) {
+  const { t } = useI18n();
   const [value, setValue] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const modelAnchorRef = useRef<HTMLButtonElement | null>(null);
@@ -115,6 +117,14 @@ export function AgentChat({
     () => getAgentOptionsForUi({ plan, projectKind, task: agentTask }),
     [plan, projectKind, agentTask]
   );
+  const availableModelOptions = useMemo(
+    () => modelOptions.filter((m) => m.available),
+    [modelOptions]
+  );
+  const lockedModelOptions = useMemo(
+    () => modelOptions.filter((m) => !m.available),
+    [modelOptions]
+  );
   const recommendedModel = useMemo<AgentUiLabel>(() => {
     return modelOptions.find((x) => x.recommended && x.available)?.label ?? "GPT-4.1";
   }, [modelOptions]);
@@ -128,7 +138,9 @@ export function AgentChat({
   useEffect(() => {
     try {
       const stored = parseAgentUiLabel(localStorage.getItem("lemnity.chat.model"));
-      const isStoredAvailable = Boolean(stored && modelOptions.some((x) => x.label === stored && x.available));
+      const isStoredAvailable = Boolean(
+        stored && modelOptions.some((x) => x.label === stored && x.available)
+      );
       setModel(isStoredAvailable && stored ? stored : recommendedModel);
     } catch {
       setModel(recommendedModel);
@@ -161,9 +173,9 @@ export function AgentChat({
       if (!el) return;
       const r = el.getBoundingClientRect();
       const gap = 8;
-      const menuW = 224; // w-56
+      const menuW = 240; // w-60
       const margin = 8;
-      const estimatedH = 120;
+      const estimatedH = 220;
       const left = Math.round(
         Math.min(Math.max(r.left, margin), window.innerWidth - menuW - margin)
       );
@@ -217,25 +229,27 @@ export function AgentChat({
     >
       {modelOpen && modelMenuPos ? (
         <div
-          className="fixed z-[9999] w-56 rounded-2xl border bg-popover text-popover-foreground p-1 shadow-xl"
+          className="fixed z-[9999] max-h-[min(70vh,420px)] w-60 overflow-y-auto rounded-2xl border bg-popover text-popover-foreground p-1 shadow-xl"
           style={{
             left: modelMenuPos.left,
             top: modelMenuPos.top,
             transform: modelMenuPos.place === "above" ? "translateY(-100%)" : undefined
           }}
         >
-          {modelOptions.map((m) => (
+          {availableModelOptions.length > 0 ? (
+            <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("playground_agents_section_tariff")}
+            </div>
+          ) : null}
+          {availableModelOptions.map((m) => (
             <button
               key={m.label}
               type="button"
               className={cn(
                 "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                m.label === model && "bg-accent text-accent-foreground",
-                !m.available && "cursor-not-allowed opacity-60 hover:bg-transparent hover:text-muted-foreground"
+                m.label === model && "bg-accent text-accent-foreground"
               )}
-              disabled={!m.available}
               onClick={() => {
-                if (!m.available) return;
                 setModel(m.label);
                 setModelOpen(false);
               }}
@@ -243,15 +257,35 @@ export function AgentChat({
               <span className="truncate">{m.label}</span>
               {m.label === model ? (
                 <span className="text-xs text-muted-foreground">выбрано</span>
-              ) : !m.available || m.proOnly ? (
-                <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-purple-400">
-                  Pro
-                </span>
               ) : m.recommended ? (
                 <span className="text-[10px] uppercase tracking-wide text-emerald-500">рекомендуем</span>
               ) : null}
             </button>
           ))}
+          {lockedModelOptions.length > 0 ? (
+            <>
+              <div className="mx-1 my-1 h-px bg-border" />
+              <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("playground_agents_section_pro")}
+              </div>
+              {lockedModelOptions.map((m) => (
+                <button
+                  key={m.label}
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground",
+                    "cursor-not-allowed opacity-60 hover:bg-transparent"
+                  )}
+                  disabled
+                >
+                  <span className="truncate">{m.label}</span>
+                  <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-purple-400">
+                    Pro
+                  </span>
+                </button>
+              ))}
+            </>
+          ) : null}
         </div>
       ) : null}
 

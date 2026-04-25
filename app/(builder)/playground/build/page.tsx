@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, ArrowLeftRight, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, ChevronDown, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -55,6 +55,7 @@ type LemnityAiSessionPayload = {
       sandboxId?: string;
       mimeType?: string;
       filename?: string | null;
+      pdfExport?: { previewUrl?: string; filename?: string };
       id?: string;
       description?: string;
       status?: string;
@@ -93,6 +94,7 @@ type LemnityAiPreviewEvent = {
   sandboxId?: string;
   mimeType?: string;
   filename?: string | null;
+  pdfExport?: { previewUrl?: string; filename?: string };
 };
 
 function mapLemnityAiStepStatus(status?: string): "pending" | "running" | "completed" | "failed" {
@@ -150,9 +152,13 @@ export default function PromptBuildPage() {
   const [sandboxId, setSandboxId] = useState<string | null>(null);
   const [previewArtifactMime, setPreviewArtifactMime] = useState<string | null>(null);
   const [previewDownloadFilename, setPreviewDownloadFilename] = useState<string | null>(null);
+  const [presentationPdfExport, setPresentationPdfExport] = useState<{
+    url: string;
+    filename: string;
+  } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
   const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
-  const [chatEditorMode, setChatEditorMode] = useState(false);
+  const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -165,6 +171,8 @@ export default function PromptBuildPage() {
   const [promptCoachLoading, setPromptCoachLoading] = useState(false);
   const [promptCoachDebugLine, setPromptCoachDebugLine] = useState<string | null>(null);
   const [promptBuilderDebugLine, setPromptBuilderDebugLine] = useState<string | null>(null);
+  const [coachDetailOpen, setCoachDetailOpen] = useState(false);
+  const [coachSlowHint, setCoachSlowHint] = useState(false);
   const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
@@ -175,6 +183,17 @@ export default function PromptBuildPage() {
 
   const { steps: streamSteps, toolLine: streamToolLine, reset: resetStreamLog, applyEvent: applyStreamLog } =
     useBuildStreamLog();
+
+  const visualEditPersist = useMemo(
+    () =>
+      Boolean(
+        sandboxId &&
+          !sandboxId.startsWith("artifact_") &&
+          typeof previewUrl === "string" &&
+          previewUrl.startsWith("/api/sandbox/")
+      ),
+    [sandboxId, previewUrl]
+  );
 
   const streamHint = useMemo(() => {
     if (streamToolLine) return streamToolLine;
@@ -393,6 +412,12 @@ export default function PromptBuildPage() {
           setPreviewDownloadFilename(
             typeof lastPreview.filename === "string" ? lastPreview.filename : null
           );
+          const pe = lastPreview.pdfExport;
+          if (pe?.previewUrl && pe?.filename) {
+            setPresentationPdfExport({ url: pe.previewUrl, filename: pe.filename });
+          } else {
+            setPresentationPdfExport(null);
+          }
           setMode("preview");
           setProgress(100);
         }
@@ -469,6 +494,7 @@ export default function PromptBuildPage() {
       setProgress(10);
       setPreviewArtifactMime(null);
       setPreviewDownloadFilename(null);
+      setPresentationPdfExport(null);
 
       requestAbortRef.current?.abort();
       const controller = new AbortController();
@@ -635,6 +661,12 @@ export default function PromptBuildPage() {
                 setSandboxId(data.sandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
                 setPreviewDownloadFilename(typeof data.filename === "string" ? data.filename : null);
+                const pe = data.pdfExport;
+                if (pe?.previewUrl && pe?.filename) {
+                  setPresentationPdfExport({ url: pe.previewUrl, filename: pe.filename });
+                } else {
+                  setPresentationPdfExport(null);
+                }
                 setShareIsPublic(false);
                 setMode("preview");
                 setStage("ready");
@@ -849,6 +881,16 @@ export default function PromptBuildPage() {
   }, []);
 
   useEffect(() => {
+    if (!promptCoachLoading) {
+      setCoachSlowHint(false);
+      setCoachDetailOpen(false);
+      return;
+    }
+    const t = window.setTimeout(() => setCoachSlowHint(true), 12_000);
+    return () => window.clearTimeout(t);
+  }, [promptCoachLoading]);
+
+  useEffect(() => {
     if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
     if (!requestedSessionId) return;
     setLemnityAiSessionId(requestedSessionId);
@@ -1045,6 +1087,7 @@ export default function PromptBuildPage() {
     setSandboxId(null);
     setPreviewArtifactMime(null);
     setPreviewDownloadFilename(null);
+    setPresentationPdfExport(null);
     setShareIsPublic(false);
 
     requestAbortRef.current?.abort();
@@ -1283,8 +1326,6 @@ export default function PromptBuildPage() {
               disabled={isGenerating || promptCoachLoading || !lemnityAiBridgeReady}
               onSend={onSend}
               placeholder="Отправить сообщение Lemnity…"
-              isEditor={chatEditorMode}
-              onIsEditorChange={setChatEditorMode}
               plan={session?.user?.plan ?? null}
               projectKind={projectKind}
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
@@ -1303,9 +1344,56 @@ export default function PromptBuildPage() {
                     <span className="min-w-0 truncate">Сборка интерфейса · {Math.round(progress)}%</span>
                   </div>
                 ) : promptCoachLoading ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                    <span className="min-w-0 truncate">Коуч промпта уточняет детали…</span>
+                  <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 text-left"
+                      aria-expanded={coachDetailOpen}
+                      onClick={() => setCoachDetailOpen((v) => !v)}
+                    >
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span className="min-w-0 flex-1">
+                        {coachSlowHint ? t("playground_coach_loading_slow") : t("playground_coach_loading")}
+                      </span>
+                      <ChevronDown
+                        className={cn(
+                          "h-4 w-4 shrink-0 opacity-70 transition-transform",
+                          coachDetailOpen && "rotate-180"
+                        )}
+                        aria-hidden
+                      />
+                    </button>
+                    {coachDetailOpen ? (
+                      <div className="mt-2 space-y-1.5 border-t border-border/70 pt-2 text-[11px] leading-snug">
+                        <p>{t("playground_coach_details")}</p>
+                        <p className="text-muted-foreground/95">
+                          {coachAwaitingConfirm
+                            ? t("playground_coach_stage_confirm")
+                            : t("playground_coach_stage_questions")}
+                        </p>
+                        <p className="text-muted-foreground/95">
+                          {t("playground_coach_model_prefix")} {agentHint}
+                        </p>
+                        <button
+                          type="button"
+                          className="text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                          onClick={() => setCoachDetailOpen(false)}
+                        >
+                          {t("playground_coach_collapse")}
+                        </button>
+                        {process.env.NODE_ENV !== "production" && promptCoachDebugLine ? (
+                          <p className="font-mono text-[10px] text-muted-foreground">{promptCoachDebugLine}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="mt-1 text-[11px] font-medium text-primary underline-offset-2 hover:underline"
+                        onClick={() => setCoachDetailOpen(true)}
+                      >
+                        {t("playground_coach_expand")}
+                      </button>
+                    )}
                   </div>
                 ) : process.env.NODE_ENV !== "production" && promptCoachDebugLine ? (
                   <div className="truncate rounded-lg border border-dashed border-border bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
@@ -1368,7 +1456,7 @@ export default function PromptBuildPage() {
               tab={tab}
               onTabChange={(next) => {
                 setTab(next);
-                if (next !== "preview") setChatEditorMode(false);
+                if (next !== "preview") setVisualLayoutEditor(false);
               }}
               sandboxId={sandboxId}
               shareMenu={
@@ -1387,8 +1475,8 @@ export default function PromptBuildPage() {
               previewEditorToggle={
                 tab === "preview"
                   ? {
-                      active: chatEditorMode,
-                      onToggle: () => setChatEditorMode((v) => !v)
+                      active: visualLayoutEditor,
+                      onToggle: () => setVisualLayoutEditor((v) => !v)
                     }
                   : undefined
               }
@@ -1407,9 +1495,13 @@ export default function PromptBuildPage() {
                     progress={progress}
                     previewUrl={previewUrl}
                     sandboxId={sandboxId}
+                    projectKind={projectKind}
                     streamHint={mode === "generating" ? streamHint : null}
                     previewMimeType={previewArtifactMime}
                     previewDownloadFilename={previewDownloadFilename}
+                    visualEditMode={visualLayoutEditor}
+                    visualEditPersist={visualEditPersist}
+                    presentationPdfExport={presentationPdfExport}
                   />
                 </div>
               ) : tab === "settings" ? (

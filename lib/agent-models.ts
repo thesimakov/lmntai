@@ -1,7 +1,12 @@
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 
-export type AgentUiLabel = "Kimi K2.6" | "Gemini 3 Pro" | "GPT-4.1" | "Claude Sonnet";
+export type AgentUiLabel =
+  | "Kimi K2.6"
+  | "Gemini 3 Pro"
+  | "GPT-4.1"
+  | "Claude Sonnet"
+  | "DeepSeek";
 export type AgentTask =
   | "generate-stream"
   | "prompt-questions"
@@ -62,6 +67,16 @@ export const AGENT_PROFILES: Record<AgentUiLabel, AgentProfile> = {
       stream: { temperature: 0.35, top_p: 0.9, max_completion_tokens: 8_192 },
       json: { temperature: 0.2, top_p: 0.85, max_completion_tokens: 1_600 }
     }
+  },
+  /** RouterAI: https://routerai.ru/models/deepseek/deepseek-v4-flash — промпт, коуч, вопросы. */
+  DeepSeek: {
+    uiLabel: "DeepSeek",
+    modelId: "deepseek/deepseek-v4-flash",
+    proOnly: false,
+    settings: {
+      stream: { temperature: 0.45, top_p: 0.9, max_completion_tokens: 8_192 },
+      json: { temperature: 0.25, top_p: 0.9, max_completion_tokens: 2_048 }
+    }
   }
 };
 
@@ -99,7 +114,8 @@ export function parseAgentUiLabel(raw: string | null | undefined): AgentUiLabel 
     raw === "Kimi K2.6" ||
     raw === "Gemini 3 Pro" ||
     raw === "GPT-4.1" ||
-    raw === "Claude Sonnet"
+    raw === "Claude Sonnet" ||
+    raw === "DeepSeek"
   ) {
     return raw;
   }
@@ -115,8 +131,12 @@ export function resolveAgentForTask(input: {
   const plan = normalizePlanId(input.plan);
   const kind = fallbackKind(input.projectKind);
 
-  // Questions intentionally stay lightweight for both trial/pro.
+  // Вопросы по умолчанию — лёгкая модель; при явном выборе DeepSeek — RouterAI deepseek-v4-flash.
   if (input.task === "prompt-questions") {
+    const hintQs = parseAgentUiLabel(input.hint);
+    if (hintQs === "DeepSeek" && canUseAgent(plan, "DeepSeek")) {
+      return AGENT_PROFILES["DeepSeek"];
+    }
     return AGENT_PROFILES["GPT-4.1"];
   }
 
@@ -140,10 +160,18 @@ export function getAgentOptionsForUi(input: {
     task: input.task
   });
 
-  return (Object.keys(AGENT_PROFILES) as AgentUiLabel[]).map((label) => ({
+  const rows = (Object.keys(AGENT_PROFILES) as AgentUiLabel[]).map((label) => ({
     label,
     proOnly: AGENT_PROFILES[label].proOnly,
     available: canUseAgent(plan, label),
     recommended: label === resolved.uiLabel
   }));
+
+  const byAvailability = (a: (typeof rows)[0], b: (typeof rows)[0]) => {
+    if (a.available !== b.available) return a.available ? -1 : 1;
+    if (a.recommended !== b.recommended) return a.recommended ? -1 : 1;
+    return a.label.localeCompare(b.label, "ru");
+  };
+
+  return [...rows].sort(byAvailability);
 }

@@ -82,8 +82,15 @@ async function postPromptCoach(req: NextRequest) {
     const inputDigest = messages.map((m) => `${m.role}:${m.content}`).join("\n");
 
     try {
+      let text: string;
+      let usage:
+        | { prompt_tokens: number; completion_tokens: number; total_tokens: number }
+        | undefined;
+      let billedModel: string;
+      let debugAttempted: string[];
+
       const modelChain = buildPromptModelFallbackChain(agent.modelId);
-      const { text, usage, model, requestedModel } = await requestRouterAIJsonWithFallback(
+      const res = await requestRouterAIJsonWithFallback(
         {
           messages: routerMessages,
           settings: agent.settings.json,
@@ -91,6 +98,10 @@ async function postPromptCoach(req: NextRequest) {
         },
         modelChain
       );
+      text = res.text;
+      usage = res.usage;
+      billedModel = res.model ?? res.requestedModel ?? agent.modelId;
+      debugAttempted = modelChain;
 
       const parsed = parsePromptCoachJson(text);
       if (!parsed) {
@@ -107,7 +118,6 @@ async function postPromptCoach(req: NextRequest) {
       }
 
       const fallbackUsage = estimateUsageFromText(`${systemContent}\n${inputDigest}`, text);
-      const billedModel = model ?? requestedModel ?? agent.modelId;
       const charge = await chargeTokensSafely({
         userId: user.id,
         usage: usage ?? fallbackUsage,
@@ -123,7 +133,7 @@ async function postPromptCoach(req: NextRequest) {
           ? {}
           : {
               debug_model: billedModel,
-              debug_attempted_models: modelChain
+              debug_attempted_models: debugAttempted
             })
       });
     } catch (err) {

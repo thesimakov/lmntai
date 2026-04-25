@@ -11,6 +11,8 @@ describe("agent models catalog", () => {
     expect(parseAgentUiLabel("GPT-4.1")).toBe("GPT-4.1");
     expect(parseAgentUiLabel("Kimi K2.6")).toBe("Kimi K2.6");
     expect(parseAgentUiLabel("Gemini 3 Pro")).toBe("Gemini 3 Pro");
+    expect(parseAgentUiLabel("Claude Sonnet")).toBe("Claude Sonnet");
+    expect(parseAgentUiLabel("DeepSeek")).toBe("DeepSeek");
     expect(parseAgentUiLabel("unknown")).toBeNull();
   });
 

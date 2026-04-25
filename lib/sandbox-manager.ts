@@ -392,6 +392,41 @@ export const sandboxManager = {
     return { previewUrl: `/api/sandbox/${sandboxId}` };
   },
 
+  /** Полная замена index.html (визуальный редактор превью). */
+  async updateIndexHtml(sandboxId: string, html: string) {
+    const trimmed = html.trim();
+    if (!trimmed) {
+      throw new Error("Пустой HTML.");
+    }
+    if (isLemnityAiSandboxDockerEnabled()) {
+      const rec = dockerRegistry.get(sandboxId);
+      if (!rec) {
+        throw new Error("Песочница не найдена (возможно, истёк TTL).");
+      }
+      const base = containerBaseUrl(rec.ip);
+      const wd = workdirInContainer();
+      const indexPath = `${wd}/index.html`;
+      const writeRes = await lemnityBuilderFileWrite(base, indexPath, trimmed, { append: false });
+      assertBuilderSandboxSuccess(writeRes, "file/write index.html");
+      rec.updatedAt = Date.now();
+      return;
+    }
+    const previous = memoryStore.get(sandboxId);
+    if (!previous) {
+      throw new Error("Песочница не найдена.");
+    }
+    const next: MemoryState = {
+      ...previous,
+      updatedAt: Date.now(),
+      html: trimmed,
+      files: {
+        ...previous.files,
+        "index.html": trimmed
+      }
+    };
+    memoryStore.set(sandboxId, next);
+  },
+
   async getPreviewUrl(sandboxId: string) {
     if (isLemnityAiSandboxDockerEnabled()) {
       return getDockerPreviewUrl(sandboxId);

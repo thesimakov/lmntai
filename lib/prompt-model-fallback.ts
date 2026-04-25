@@ -22,10 +22,10 @@ function uniqModels(items: Array<string | null | undefined>): string[] {
 }
 
 /**
- * Цепочка для prompt-stage:
- * 1) DeepSeek free
- * 2) openrouter/free (случайная free-модель)
- * 3) текущая выбранная модель пользователя
+ * Цепочка для prompt-stage (коуч / builder):
+ * 1) free-модель (по умолчанию deepseek-r1:free, см. ROUTERAI_PROMPT_FREE_MODEL)
+ * 2) openrouter/free
+ * 3) выбранная модель (например deepseek/deepseek-v4-flash при выборе DeepSeek в UI)
  */
 export function buildPromptModelFallbackChain(userSelectedModel: string): string[] {
   const primary = process.env.ROUTERAI_PROMPT_FREE_MODEL?.trim() || DEFAULT_PROMPT_FREE_MODEL;

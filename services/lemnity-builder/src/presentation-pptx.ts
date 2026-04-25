@@ -7,16 +7,15 @@ import { ARTIFACT_MIME_PPTX } from "./types.js";
 export { ARTIFACT_MIME_PPTX };
 
 const require = createRequire(import.meta.url);
-// CJS bundle: module.exports is the constructor (NodeNext ESM import typing is wrong).
 const PptxGenJS = require("pptxgenjs") as new () => import("pptxgenjs").default;
 
-type SlideOutline = {
+export type SlideOutline = {
   title: string;
   subtitle?: string;
   bullets?: string[];
 };
 
-type PresentationOutline = {
+export type PresentationOutline = {
   deck_title: string;
   slides: SlideOutline[];
 };
@@ -26,7 +25,7 @@ function stripCodeFence(text: string): string {
   return m?.[1]?.trim() ?? text.trim();
 }
 
-function sanitizeFilename(name: string): string {
+export function sanitizeFilename(name: string): string {
   const s = name
     .trim()
     .slice(0, 80)
@@ -102,19 +101,24 @@ function parseOutline(json: string, message: string, plan: BuilderPlan): Present
   };
 }
 
-export async function generatePresentationPptx(input: {
+/** Один вызов модели: структура слайдов для .pptx и .pdf. */
+export async function getPresentationOutline(input: {
   message: string;
   plan: BuilderPlan;
   model: string;
   user?: string;
-}): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+}): Promise<PresentationOutline> {
   const jsonText = await requestJsonCompletion({
     model: input.model,
     prompt: outlinePrompt(input.message, input.plan),
     user: input.user
   });
-  const outline = parseOutline(jsonText, input.message, input.plan);
+  return parseOutline(jsonText, input.message, input.plan);
+}
 
+export async function buildPptxFromOutline(
+  outline: PresentationOutline
+): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
   const pptx = new PptxGenJS();
   pptx.title = outline.deck_title;
   pptx.subject = outline.deck_title;
@@ -159,4 +163,14 @@ export async function generatePresentationPptx(input: {
   const buffer = Buffer.isBuffer(out) ? out : Buffer.from(out as ArrayBuffer);
   const filename = `${sanitizeFilename(outline.deck_title)}.pptx`;
   return { buffer, filename, mimeType: ARTIFACT_MIME_PPTX };
+}
+
+export async function generatePresentationPptx(input: {
+  message: string;
+  plan: BuilderPlan;
+  model: string;
+  user?: string;
+}): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
+  const outline = await getPresentationOutline(input);
+  return buildPptxFromOutline(outline);
 }

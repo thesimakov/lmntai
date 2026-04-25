@@ -3,7 +3,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { MemorySessionStore, PgSessionStore, type SessionStore } from "./store.js";
 import type { SessionRecord } from "./types.js";
 import { toEnvelopeData } from "./types.js";
-import { generatePresentationPptx } from "./presentation-pptx.js";
+import { buildPdfFromOutline } from "./presentation-pdf.js";
+import { buildPptxFromOutline, getPresentationOutline } from "./presentation-pptx.js";
 import {
   createPlan,
   executePlanToHtml,
@@ -228,13 +229,17 @@ export async function main() {
         const previewPath = `/api/lemnity-ai/artifacts/`;
 
         if (plan.artifact_kind === "presentation") {
-          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "running" });
-          const { buffer, filename, mimeType } = await generatePresentationPptx({
+          emit("step", { id: "outline", description: "Структура слайдов", status: "running" });
+          const outline = await getPresentationOutline({
             message: userMessage,
             plan,
             model,
             user: routerUser
           });
+          emit("step", { id: "outline", description: "Структура слайдов", status: "completed" });
+
+          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "running" });
+          const { buffer, filename, mimeType } = await buildPptxFromOutline(outline);
           const artifact = await store.createArtifact(id, {
             kind: "binary",
             data: buffer,
@@ -250,11 +255,34 @@ export async function main() {
             args: { format: "pptx", file: filename },
             content: { path: `${previewPath}${artifact.artifact_id}` }
           });
+
+          emit("step", { id: "pdf", description: "Экспорт PDF", status: "running" });
+          const pdfFile = await buildPdfFromOutline(outline);
+          const artifactPdf = await store.createArtifact(id, {
+            kind: "binary",
+            data: pdfFile.buffer,
+            mimeType: pdfFile.mimeType,
+            filename: pdfFile.filename
+          });
+          emit("step", { id: "pdf", description: "Экспорт PDF", status: "completed" });
+          emit("tool", {
+            tool_call_id: `export-${artifactPdf.artifact_id}`,
+            name: "file",
+            status: "called",
+            function: "artifact_export",
+            args: { format: "pdf", file: pdfFile.filename },
+            content: { path: `${previewPath}${artifactPdf.artifact_id}` }
+          });
+
           emit("preview", {
             previewUrl: `${previewPath}${artifact.artifact_id}`,
             sandboxId: artifact.artifact_id,
             mimeType,
-            filename
+            filename,
+            pdfExport: {
+              previewUrl: `${previewPath}${artifactPdf.artifact_id}`,
+              filename: pdfFile.filename
+            }
           });
         } else {
           const html = await executePlanToHtml({

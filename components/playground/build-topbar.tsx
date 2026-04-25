@@ -10,8 +10,8 @@ import {
   History,
   MoreHorizontal,
   Printer,
+  PenLine,
   RotateCw,
-  Send,
   Settings2,
   Upload
 } from "lucide-react";
@@ -44,7 +44,7 @@ type BuildPreviewChromeProps = {
   publishDisabled?: boolean;
   addressPath: string;
   onRefresh?: () => void;
-  /** На вкладке «Превью» — переключатель многострочного ввода в чате */
+  /** На вкладке «Превью» — визуальный редактор макета в iframe */
   previewEditorToggle?: {
     active: boolean;
     onToggle: () => void;
@@ -117,7 +117,7 @@ export function BuildPreviewChrome({
               aria-pressed={previewEditorToggle.active}
               onClick={previewEditorToggle.onToggle}
             >
-              <Send className="h-3.5 w-3.5 shrink-0" />
+              <PenLine className="h-3.5 w-3.5 shrink-0" />
               {t("build_editor_label")}
             </button>
           ) : null}
