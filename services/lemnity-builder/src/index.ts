@@ -91,7 +91,11 @@ async function buildStore(): Promise<SessionStore> {
     return new MemorySessionStore();
   }
   const { default: pg } = await import("pg");
-  const pool = new pg.Pool({ connectionString: url });
+  const pool = new pg.Pool({
+    connectionString: url,
+    connectionTimeoutMillis: 10_000,
+    max: 10
+  });
   const store = new PgSessionStore(pool);
   await store.ensureSchema();
   return store;
@@ -114,8 +118,12 @@ function eventData(event: ReturnType<typeof makeEvent>): Record<string, unknown>
 }
 
 export async function main() {
-  const store = await buildStore();
   const port = Number(process.env.LEMNITY_BUILDER_PORT ?? process.env.PORT ?? "8787");
+  /** Не блокируем listen: после reboot Postgres поднимается позже, иначе PM2 «молчит» минутами. */
+  const storePromise = buildStore().then((s) => {
+    console.log("[lemnity-builder] session store ready");
+    return s;
+  });
 
   const server = createServer(async (req, res) => {
     if (!authOk(req)) {
@@ -129,6 +137,15 @@ export async function main() {
 
     if (method === "GET" && parts.length === 1 && parts[0] === "health") {
       json(res, 200, { ok: true, service: "lemnity-builder" });
+      return;
+    }
+
+    let store: SessionStore;
+    try {
+      store = await storePromise;
+    } catch (e) {
+      console.error("[lemnity-builder] store init failed", e);
+      json(res, 503, { code: 503, msg: "database_unavailable", data: null });
       return;
     }
 
