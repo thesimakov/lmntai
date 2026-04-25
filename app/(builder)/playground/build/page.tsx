@@ -98,9 +98,24 @@ type LemnityAiPreviewEvent = {
 };
 
 function mapLemnityAiStepStatus(status?: string): "pending" | "running" | "completed" | "failed" {
-  if (status === "pending") return "pending";
-  if (status === "completed") return "completed";
-  if (status === "failed") return "failed";
+  if (!status) return "running";
+  const s = status.toLowerCase();
+  if (s === "pending" || s === "queued" || s === "waiting") return "pending";
+  if (
+    s === "completed" ||
+    s === "complete" ||
+    s === "done" ||
+    s === "success" ||
+    s === "succeeded" ||
+    s === "finished" ||
+    s === "ok"
+  ) {
+    return "completed";
+  }
+  if (s === "failed" || s === "error" || s === "cancelled" || s === "canceled") return "failed";
+  if (s === "running" || s === "in_progress" || s === "in-progress" || s === "active" || s === "working") {
+    return "running";
+  }
   return "running";
 }
 
