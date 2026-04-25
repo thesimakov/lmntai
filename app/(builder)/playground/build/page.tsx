@@ -12,6 +12,7 @@ import { BuildPublishDialog } from "@/components/playground/build-publish-dialog
 import { BuildPreviewChrome } from "@/components/playground/build-topbar";
 import { BuildSettings } from "@/components/playground/build-settings";
 import { MenuDrawer } from "@/components/playground/menu-drawer";
+import { isPptxArtifact } from "@/components/playground/preview-frame";
 import { RightPanel } from "@/components/playground/right-panel";
 import { PageTransition } from "@/components/page-transition";
 import { useI18n } from "@/components/i18n-provider";
@@ -140,6 +141,26 @@ function sseEventName(event: string): string {
   return event.trim().toLowerCase();
 }
 
+/** Для строки «Был собран за …» */
+function formatInterfaceBuildTotalRu(ms: number): string {
+  if (ms < 1000) return "менее 1 с";
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s} с`;
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (r === 0) return `${m} мин`;
+  return `${m} мин ${r} с`;
+}
+
+/** Тикер во время сборки (мм:сс или только секунды) */
+function formatInterfaceBuildElapsedRu(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  if (m === 0) return `${sec} с`;
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
 export default function PromptBuildPage() {
   const { t } = useI18n();
   const router = useRouter();
@@ -162,6 +183,10 @@ export default function PromptBuildPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mode, setMode] = useState<"idle" | "generating" | "preview">("idle");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [buildTimerTick, setBuildTimerTick] = useState(0);
+  const [lastInterfaceBuildMs, setLastInterfaceBuildMs] = useState<number | null>(null);
+  const interfaceBuildStartedAtRef = useRef<number | null>(null);
+  const interfaceBuildGotPreviewRef = useRef(false);
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sandboxId, setSandboxId] = useState<string | null>(null);
@@ -199,16 +224,49 @@ export default function PromptBuildPage() {
   const { steps: streamSteps, toolLine: streamToolLine, reset: resetStreamLog, applyEvent: applyStreamLog } =
     useBuildStreamLog();
 
-  const visualEditPersist = useMemo(
-    () =>
-      Boolean(
-        sandboxId &&
-          !sandboxId.startsWith("artifact_") &&
-          typeof previewUrl === "string" &&
-          previewUrl.startsWith("/api/sandbox/")
-      ),
-    [sandboxId, previewUrl]
-  );
+  const visualEditPersist = useMemo(() => {
+    if (!sandboxId || typeof previewUrl !== "string") return false;
+    if (isPptxArtifact(previewArtifactMime)) return false;
+    if (sandboxId.startsWith("artifact_") && previewUrl.includes("/api/lemnity-ai/artifacts/")) {
+      return true;
+    }
+    if (!sandboxId.startsWith("artifact_") && previewUrl.startsWith("/api/sandbox/")) {
+      return true;
+    }
+    return false;
+  }, [sandboxId, previewUrl, previewArtifactMime]);
+
+  const beginInterfaceBuildTiming = useCallback(() => {
+    interfaceBuildStartedAtRef.current = Date.now();
+    interfaceBuildGotPreviewRef.current = false;
+    setLastInterfaceBuildMs(null);
+  }, []);
+
+  const finalizeInterfaceBuildTiming = useCallback(() => {
+    const start = interfaceBuildStartedAtRef.current;
+    interfaceBuildStartedAtRef.current = null;
+    if (start == null) return;
+    const ms = Date.now() - start;
+    if (interfaceBuildGotPreviewRef.current) {
+      setLastInterfaceBuildMs(ms);
+    } else {
+      setLastInterfaceBuildMs(null);
+    }
+    interfaceBuildGotPreviewRef.current = false;
+  }, []);
+
+  useEffect(() => {
+    if (!isGenerating) return;
+    const id = window.setInterval(() => setBuildTimerTick((n) => n + 1), 250);
+    return () => clearInterval(id);
+  }, [isGenerating]);
+
+  const interfaceBuildElapsedLabel = useMemo(() => {
+    void buildTimerTick;
+    const start = interfaceBuildStartedAtRef.current;
+    if (!isGenerating || start == null) return null;
+    return formatInterfaceBuildElapsedRu(Date.now() - start);
+  }, [isGenerating, buildTimerTick]);
 
   const streamHint = useMemo(() => {
     if (streamToolLine) return streamToolLine;
@@ -517,6 +575,7 @@ export default function PromptBuildPage() {
         return;
       }
 
+      beginInterfaceBuildTiming();
       setIsGenerating(true);
       setMode("generating");
       setStage("generating");
@@ -686,6 +745,7 @@ export default function PromptBuildPage() {
             if (ev === "preview") {
               const data = JSON.parse(chunk.data) as LemnityAiPreviewEvent;
               if (data.previewUrl && data.sandboxId) {
+                interfaceBuildGotPreviewRef.current = true;
                 setPreviewUrl(data.previewUrl);
                 setSandboxId(data.sandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
@@ -746,10 +806,14 @@ export default function PromptBuildPage() {
         if (isCurrentRequest()) {
           bridgeAssistantMessageIdRef.current = null;
           bridgeSawDeltaRef.current = false;
+          finalizeInterfaceBuildTiming();
           setIsGenerating(false);
           setMode((prev) => (prev === "generating" ? "idle" : prev));
           setStage((prev) => (prev === "generating" ? "ready" : prev));
           void loadLemnityAiSession(sid);
+        } else {
+          interfaceBuildStartedAtRef.current = null;
+          interfaceBuildGotPreviewRef.current = false;
         }
       }
     },
@@ -757,7 +821,9 @@ export default function PromptBuildPage() {
       agentHint,
       appendBridgeAssistantChunk,
       applyStreamLog,
+      beginInterfaceBuildTiming,
       ensureLemnityAiSession,
+      finalizeInterfaceBuildTiming,
       loadLemnityAiSession,
       projectKind,
       push,
@@ -924,6 +990,27 @@ export default function PromptBuildPage() {
       requestAbortRef.current?.abort();
     };
   }, []);
+
+  /** Подтягивает summary сессии в Prisma (previewArtifactId), чтобы PATCH артефакта не получал 404 сразу после превью. */
+  useEffect(() => {
+    if (!shouldUseLemnityAiBridge || !lemnityAiSessionId) return;
+    if (!sandboxId?.startsWith("artifact_")) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await fetch(
+          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(lemnityAiSessionId)}`,
+          { method: "GET", credentials: "include" }
+        );
+      } catch {
+        // ignore
+      }
+      if (cancelled) return;
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [sandboxId, lemnityAiSessionId, shouldUseLemnityAiBridge]);
 
   useEffect(() => {
     if (!promptCoachLoading) {
@@ -1134,6 +1221,7 @@ export default function PromptBuildPage() {
 
     pushRecent(idea.trim() || prompt.slice(0, 120));
     resetStreamLog();
+    beginInterfaceBuildTiming();
     setIsGenerating(true);
     setMode("generating");
     setStage("generating");
@@ -1186,6 +1274,7 @@ export default function PromptBuildPage() {
         if (eventData.type === "log") push("assistant", eventData.content);
         if (eventData.type === "progress") setProgress(eventData.value);
         if (eventData.type === "preview") {
+          interfaceBuildGotPreviewRef.current = true;
           setPreviewUrl(eventData.previewUrl);
           setSandboxId(eventData.sandboxId);
           setMode("preview");
@@ -1240,9 +1329,13 @@ export default function PromptBuildPage() {
       }
     } finally {
       if (isCurrentRequest()) {
+        finalizeInterfaceBuildTiming();
         setIsGenerating(false);
         setMode((prev) => (prev === "generating" ? "idle" : prev));
         setStage((prev) => (prev === "generating" ? "ready" : prev));
+      } else {
+        interfaceBuildStartedAtRef.current = null;
+        interfaceBuildGotPreviewRef.current = false;
       }
     }
   }
@@ -1397,7 +1490,13 @@ export default function PromptBuildPage() {
                 isGenerating ? (
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                    <span className="min-w-0 truncate">Сборка интерфейса · {Math.round(progress)}%</span>
+                    <span className="min-w-0 truncate">
+                      Сборка интерфейса · {interfaceBuildElapsedLabel ?? "0 с"}
+                    </span>
+                  </div>
+                ) : lastInterfaceBuildMs != null ? (
+                  <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+                    Был собран за {formatInterfaceBuildTotalRu(lastInterfaceBuildMs)}
                   </div>
                 ) : promptCoachLoading ? (
                   <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
@@ -1549,6 +1648,7 @@ export default function PromptBuildPage() {
                   <RightPanel
                     mode={mode}
                     progress={progress}
+                    buildElapsedLabel={mode === "generating" ? interfaceBuildElapsedLabel : null}
                     previewUrl={previewUrl}
                     sandboxId={sandboxId}
                     projectKind={projectKind}

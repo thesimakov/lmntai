@@ -20,7 +20,7 @@ const modeStyles: Record<DeviceMode, string> = {
   mobile: "mx-auto h-full min-h-0 w-[390px] max-w-full"
 };
 
-function isPptxArtifact(mimeType: string | null | undefined): boolean {
+export function isPptxArtifact(mimeType: string | null | undefined): boolean {
   if (!mimeType) return false;
   return mimeType.includes("presentationml") || mimeType.includes("ms-powerpoint");
 }
@@ -282,11 +282,21 @@ export function PreviewFrame({
     setSavePending(true);
     try {
       const html = serializeIframeDocument(doc);
-      const res = await fetch(`/api/sandbox/${sandboxId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ html })
-      });
+      const isBridgeArtifact =
+        sandboxId.startsWith("artifact_") || previewUrl.includes("/api/lemnity-ai/artifacts/");
+      const res = isBridgeArtifact
+        ? await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ html })
+          })
+        : await fetch(`/api/sandbox/${sandboxId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ html })
+          });
       if (!res.ok) {
         const msg =
           res.status === 413

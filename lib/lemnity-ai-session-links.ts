@@ -82,6 +82,20 @@ export async function ensureLemnityAiSessionOwnership(userId: string, upstreamSe
   return row;
 }
 
+/** HTML-артефакт превью (artifact_…) должен совпадать с привязкой сессии пользователя. */
+export async function ensureUserCanEditLemnityArtifact(userId: string, artifactId: string) {
+  if (!artifactId.startsWith("artifact_")) {
+    throw new Error("LEMNITY_AI_ARTIFACT_INVALID");
+  }
+  const row = await prisma.manusSessionLink.findFirst({
+    where: { userId, previewArtifactId: artifactId }
+  });
+  if (!row) {
+    throw new Error("LEMNITY_AI_ARTIFACT_FORBIDDEN");
+  }
+  return row;
+}
+
 export async function deleteLemnityAiSessionForUser(userId: string, upstreamSessionId: string) {
   await prisma.manusSessionLink.deleteMany({
     where: { userId, manusSessionId: upstreamSessionId }

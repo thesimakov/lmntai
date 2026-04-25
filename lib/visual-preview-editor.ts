@@ -90,6 +90,10 @@ export function attachVisualPreviewEditor(
     styleEl = doc.createElement("style");
     styleEl.id = LEMNITY_VISUAL_EDIT_STYLE_ID;
     styleEl.textContent = `
+      .lemnity-visual-edit-mode, .lemnity-visual-edit-mode * {
+        -webkit-user-select: text !important;
+        user-select: text !important;
+      }
       .lemnity-visual-edit-mode img { cursor: pointer !important; outline: 2px dashed rgba(168,85,247,.75) !important; }
       .lemnity-visual-edit-mode [data-lemnity-editing="1"] { outline: 2px solid rgb(59,130,246) !important; outline-offset: 2px; }
       .lemnity-visual-edit-mode { cursor: text; }

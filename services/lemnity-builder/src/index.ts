@@ -5,9 +5,11 @@ import type { SessionRecord } from "./types.js";
 import { toEnvelopeData } from "./types.js";
 import { buildPdfFromOutline } from "./presentation-pdf.js";
 import { buildPptxFromOutline, getPresentationOutline } from "./presentation-pptx.js";
+import { excerptHtmlForPlanner } from "./prompts.js";
 import {
   createPlan,
   executePlanToHtml,
+  formatBuilderTranscript,
   generateSummary,
   makeEvent
 } from "./workflow.js";
@@ -52,6 +54,34 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 function parsePath(pathname: string): string[] {
   return pathname.replace(/^\/+|\/+$/g, "").split("/").filter(Boolean);
+}
+
+/** Последний HTML-превью артефакт из событий сессии (не .pptx). */
+async function getLatestHtmlArtifactHtml(
+  store: SessionStore,
+  rec: SessionRecord
+): Promise<string | null> {
+  for (let i = rec.events.length - 1; i >= 0; i--) {
+    const e = rec.events[i];
+    if (e?.event !== "preview" || !e.data) continue;
+    const sandboxId = typeof e.data.sandboxId === "string" ? e.data.sandboxId : "";
+    if (!sandboxId.startsWith("artifact_")) continue;
+    const mime = typeof e.data.mimeType === "string" ? e.data.mimeType : "";
+    if (
+      mime.includes("presentationml") ||
+      mime.includes("ms-powerpoint") ||
+      /\bpptx\b/i.test(mime)
+    ) {
+      continue;
+    }
+    const art = await store.getArtifact(sandboxId);
+    if (!art) continue;
+    if (art.file_data && art.file_data.length > 0) continue;
+    const html = art.html?.trim();
+    if (!html) continue;
+    return html;
+  }
+  return null;
 }
 
 async function buildStore(): Promise<SessionStore> {
@@ -104,6 +134,28 @@ export async function main() {
 
     if (method === "GET" && parts.length === 1 && parts[0] === "sessions") {
       json(res, 200, envelope({ sessions: [] as unknown[] }));
+      return;
+    }
+
+    if (method === "PATCH" && parts.length === 2 && parts[0] === "artifacts") {
+      const artifactId = parts[1];
+      const body = (await readJsonBody(req)) as { html?: string } | null;
+      const html = typeof body?.html === "string" ? body.html : null;
+      if (html == null) {
+        json(res, 400, { code: 400, msg: "bad_request", data: null });
+        return;
+      }
+      if (html.length > 2_000_000) {
+        json(res, 413, { code: 413, msg: "payload_too_large", data: null });
+        return;
+      }
+      const ok = await store.updateArtifactHtml(artifactId, html);
+      if (!ok) {
+        json(res, 404, { code: 404, msg: "not_found", data: null });
+        return;
+      }
+      res.writeHead(204);
+      res.end();
       return;
     }
 
@@ -196,6 +248,9 @@ export async function main() {
       rec.status = "running";
       await store.replaceSession(rec);
 
+      const priorHtml = await getLatestHtmlArtifactHtml(store, rec);
+      const transcript = formatBuilderTranscript(rec.events, 14_000);
+
       res.writeHead(200, sseHeaders());
 
       const emit = (eventName: string, data: Record<string, unknown>, persist = true) => {
@@ -212,7 +267,11 @@ export async function main() {
         const plan = await createPlan({
           message: userMessage,
           model,
-          user: routerUser
+          user: routerUser,
+          sessionContext: {
+            transcript,
+            priorHtmlExcerpt: priorHtml ? excerptHtmlForPlanner(priorHtml) : null
+          }
         });
         rec.title = plan.title || rec.title;
         emit("title", { title: rec.title });
@@ -234,7 +293,8 @@ export async function main() {
             message: userMessage,
             plan,
             model,
-            user: routerUser
+            user: routerUser,
+            conversationContext: transcript.length > 40 ? transcript : undefined
           });
           emit("step", { id: "outline", description: "Структура слайдов", status: "completed" });
 
@@ -290,6 +350,7 @@ export async function main() {
             model,
             plan,
             user: routerUser,
+            priorHtml,
             emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
           });
           const artifact = await store.createArtifact(id, { kind: "html", html });

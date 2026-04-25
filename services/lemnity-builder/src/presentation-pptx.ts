@@ -34,8 +34,17 @@ export function sanitizeFilename(name: string): string {
   return s || "presentation";
 }
 
-function outlinePrompt(message: string, plan: BuilderPlan): string {
+function outlinePrompt(message: string, plan: BuilderPlan, conversationContext?: string): string {
   const isRu = plan.language === "ru" || /[\u0400-\u04FF]/.test(message);
+  const ctx =
+    typeof conversationContext === "string" && conversationContext.trim().length > 30
+      ? [
+          "",
+          "Same session — prior chat (keep deck topic; revise slides per the latest request):",
+          conversationContext.trim(),
+          ""
+        ].join("\n")
+      : "";
   return [
     "You output ONLY valid JSON for a Microsoft PowerPoint deck (.pptx structure as data). No markdown, no prose.",
     "TypeScript shape:",
@@ -49,7 +58,8 @@ function outlinePrompt(message: string, plan: BuilderPlan): string {
     "- 4 to 12 slides. Slide 1 is the title slide (big title; optional subtitle).",
     isRu ? "- All slide text in Russian." : "- Slide text in the same language as the user message.",
     "- bullets: at most 6 strings per slide; keep lines short.",
-    "",
+    "- If conversation context is present, treat the latest user message as an edit to the SAME deck (adjust titles/bullets), not a brand-new unrelated presentation.",
+    ctx,
     `Session / deck title hint: ${plan.title}`,
     `Goal: ${plan.goal}`,
     "",
@@ -107,10 +117,11 @@ export async function getPresentationOutline(input: {
   plan: BuilderPlan;
   model: string;
   user?: string;
+  conversationContext?: string;
 }): Promise<PresentationOutline> {
   const jsonText = await requestJsonCompletion({
     model: input.model,
-    prompt: outlinePrompt(input.message, input.plan),
+    prompt: outlinePrompt(input.message, input.plan, input.conversationContext),
     user: input.user
   });
   return parseOutline(jsonText, input.message, input.plan);

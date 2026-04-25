@@ -10,6 +10,8 @@ export interface SessionStore {
   deleteSession(id: string): Promise<void>;
   createArtifact(sessionId: string, input: CreateArtifactInput): Promise<ArtifactRecord>;
   getArtifact(id: string): Promise<ArtifactRecord | null>;
+  /** Только HTML-артефакты (без file_data). */
+  updateArtifactHtml(id: string, html: string): Promise<boolean>;
 }
 
 function emptyRecord(id: string): SessionRecord {
@@ -81,6 +83,15 @@ export class MemorySessionStore implements SessionStore {
       clone.file_data = Buffer.from(v.file_data);
     }
     return clone;
+  }
+
+  async updateArtifactHtml(id: string, html: string): Promise<boolean> {
+    const v = this.artifacts.get(id);
+    if (!v) return false;
+    if (v.file_data && v.file_data.length > 0) return false;
+    v.html = html;
+    this.artifacts.set(id, structuredClone(v));
+    return true;
   }
 }
 
@@ -234,5 +245,14 @@ export class PgSessionStore implements SessionStore {
       file_data: row.file_data ? Buffer.from(row.file_data) : null,
       created_at: row.created_at.toISOString()
     };
+  }
+
+  async updateArtifactHtml(id: string, html: string): Promise<boolean> {
+    const res = await this.pool.query(
+      `UPDATE lemnity_builder_artifact SET html = $2
+       WHERE id = $1 AND file_data IS NULL`,
+      [id, html]
+    );
+    return (res.rowCount ?? 0) > 0;
   }
 }

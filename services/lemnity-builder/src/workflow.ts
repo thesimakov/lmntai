@@ -6,10 +6,27 @@ import {
   fallbackPlan,
   normalizeArtifactKind,
   summarizePrompt,
+  truncateHtmlForRevision,
   type BuilderPlan
 } from "./prompts.js";
 import { requestJsonCompletion, streamChatCompletion } from "./routerai.js";
 import type { BuilderEvent } from "./types.js";
+
+/** История диалога для планировщика / презентаций (только message-события). */
+export function formatBuilderTranscript(events: BuilderEvent[], maxChars: number): string {
+  const parts: string[] = [];
+  for (const e of events) {
+    if (e.event !== "message" || !e.data) continue;
+    const roleRaw = e.data.role;
+    const role = roleRaw === "assistant" ? "Assistant" : "User";
+    const content = typeof e.data.content === "string" ? e.data.content.trim() : "";
+    if (!content) continue;
+    parts.push(`${role}: ${content}`);
+  }
+  const full = parts.join("\n\n");
+  if (full.length <= maxChars) return full;
+  return `…(earlier messages truncated)\n\n${full.slice(full.length - maxChars)}`;
+}
 
 type Emit = (event: string, data: Record<string, unknown>) => void;
 
@@ -82,10 +99,15 @@ export function extractHtmlArtifact(text: string): string {
   ].join("\n");
 }
 
-export async function createPlan(input: { message: string; model: string; user?: string }): Promise<BuilderPlan> {
+export async function createPlan(input: {
+  message: string;
+  model: string;
+  user?: string;
+  sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+}): Promise<BuilderPlan> {
   const text = await requestJsonCompletion({
     model: input.model,
-    prompt: createPlanPrompt({ message: input.message }),
+    prompt: createPlanPrompt({ message: input.message, sessionContext: input.sessionContext }),
     user: input.user
   });
   return parsePlan(text, input.message);
@@ -113,9 +135,15 @@ export async function executePlanToHtml(input: {
   plan: BuilderPlan;
   user?: string;
   emit: Emit;
+  /** HTML прошлой сборки — итеративное обновление. */
+  priorHtml?: string | null;
 }): Promise<string> {
   let html = "";
-  const prompt = executeUiPrompt({ message: input.message, plan: input.plan });
+  const prompt = executeUiPrompt({
+    message: input.message,
+    plan: input.plan,
+    priorHtml: input.priorHtml ? truncateHtmlForRevision(input.priorHtml) : null
+  });
   const mainStep = input.plan.steps.find((s) => /html|preview|интерфейс|превью|design/i.test(s.description)) ?? input.plan.steps[input.plan.steps.length - 1];
   if (mainStep) {
     input.emit("step", {

@@ -195,11 +195,60 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
   return blocks[kind] ?? blocks.other;
 }
 
-export function createPlanPrompt(input: { message: string; attachments?: string }): string {
+export function excerptHtmlForPlanner(html: string, maxTotal = 12_000): string {
+  const t = html.trim();
+  if (t.length <= maxTotal) return t;
+  const head = Math.floor(maxTotal * 0.65);
+  const tail = maxTotal - head - 80;
+  return `${t.slice(0, head)}\n\n<!-- … ${t.length - head - tail} chars omitted … -->\n\n${t.slice(t.length - tail)}`;
+}
+
+export function truncateHtmlForRevision(html: string, max = 180_000): string {
+  const t = html.trim();
+  if (t.length <= max) return t;
+  const head = 120_000;
+  const tail = max - head - 120;
+  return `${t.slice(0, head)}\n<!-- … truncated ${t.length - head - tail} chars … -->\n${t.slice(t.length - tail)}`;
+}
+
+export function createPlanPrompt(input: {
+  message: string;
+  attachments?: string;
+  sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+}): string {
+  const rev = input.sessionContext?.priorHtmlExcerpt?.trim();
+  const trans = input.sessionContext?.transcript?.trim();
+  const revisionBlock =
+    rev && rev.length > 0
+      ? [
+          "",
+          "SESSION CONTINUITY (critical):",
+          "- This chat already has a generated HTML preview in this session.",
+          "- The latest user message is a FOLLOW-UP: iterate on that same project (layout, copy, colors, sections).",
+          "- Do NOT plan a completely new unrelated website or change the product type unless the user clearly asks to pivot.",
+          "- Keep the same artifact_kind as fits the EXISTING build (see HTML excerpt below), unless the user explicitly requests a different deliverable type.",
+          "- Steps must describe incremental edits (what to change in the current UI), not 'build a new site from scratch'.",
+          "",
+          "Excerpt of the current HTML preview (reference only; full document is sent to the executor):",
+          "```html",
+          rev,
+          "```",
+          ""
+        ].join("\n")
+      : trans && trans.length > 20
+        ? [
+            "",
+            "CONVERSATION SO FAR (same session — keep topic and deliverable consistent):",
+            trans,
+            ""
+          ].join("\n")
+        : "";
+
   return [
     LEMNITY_SYSTEM_PROMPT,
     "",
     "Create a compact execution plan for generating the visual preview.",
+    revisionBlock,
     "Return only valid JSON matching this TypeScript interface:",
     "```typescript",
     "type ArtifactKind =",
@@ -241,9 +290,12 @@ export function executeUiPrompt(input: {
   message: string;
   plan: BuilderPlan;
   modelContext?: string;
+  /** Полный HTML прошлой сборки — режим правки, а не «с нуля». */
+  priorHtml?: string | null;
 }): string {
   const steps = input.plan.steps.map((s) => `${s.id}. ${s.description}`).join("\n");
   const kindGuidance = artifactKindExecutionGuidance(input.plan.artifact_kind, input.plan.language);
+  const prior = input.priorHtml?.trim();
 
   return [
     LEMNITY_SYSTEM_PROMPT,
@@ -252,6 +304,20 @@ export function executeUiPrompt(input: {
     "",
     kindGuidance,
     "",
+    prior
+      ? [
+          "ITERATIVE EDIT (mandatory):",
+          "Below is the EXISTING HTML from this session. Apply the user's new request as changes to this document.",
+          "Output ONE complete updated HTML5 document.",
+          "Preserve all sections, structure, copy, and styling that the user did NOT ask to change.",
+          "Do not replace the project with an unrelated design unless the user explicitly asked for a full redesign or a different product.",
+          "",
+          "--- EXISTING HTML (edit this) ---",
+          prior,
+          "--- END EXISTING HTML ---",
+          ""
+        ].join("\n")
+      : "",
     "Strict output rules:",
     "- Return exactly one complete HTML document.",
     "- Start with <!doctype html> or <html>.",

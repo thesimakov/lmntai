@@ -13,6 +13,7 @@ import {
   createLemnityAiSessionLink,
   deleteLemnityAiSessionForUser,
   ensureLemnityAiSessionOwnership,
+  ensureUserCanEditLemnityArtifact,
   listLemnityAiSessionsForUser,
   syncLemnityAiSessionSummary
 } from "@/lib/lemnity-ai-session-links";
@@ -319,6 +320,30 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   const user = guard.data.user;
   if (!path?.length) {
     return new Response("Not found", { status: 404 });
+  }
+
+  if (path[0] === "artifacts" && path.length === 2 && req.method === "PATCH") {
+    const artifactId = path[1];
+    try {
+      await ensureUserCanEditLemnityArtifact(user.id, artifactId);
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
+    let bodyText: string;
+    try {
+      bodyText = await req.text();
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+    const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
+      method: "PATCH",
+      headers: withLemnityAiUpstreamAuthHeaders({
+        "Content-Type": req.headers.get("content-type") || "application/json"
+      }),
+      body: bodyText
+    });
+    if (upstream.status === 204) return new Response(null, { status: 204 });
+    return passthrough(upstream);
   }
 
   if (path[0] === "artifacts" && path.length === 2 && req.method === "GET") {

@@ -23,6 +23,8 @@ import { cn } from "@/lib/utils";
 type RightPanelProps = {
   mode: "idle" | "generating" | "preview";
   progress: number;
+  /** Время с начала сборки (текст), вместо процентов */
+  buildElapsedLabel?: string | null;
   previewUrl: string | null;
   sandboxId: string | null;
   /** Подсказка из стрима (шаг / инструмент) */
@@ -80,10 +82,12 @@ function generatingLineKey(kind: ProjectKind | null | undefined): MessageKey {
 
 function GeneratingState({
   progress,
+  buildElapsedLabel,
   streamHint,
   projectKind
 }: {
   progress: number;
+  buildElapsedLabel?: string | null;
   streamHint?: string | null;
   projectKind?: ProjectKind | null;
 }) {
@@ -145,7 +149,9 @@ function GeneratingState({
           <div className="mx-auto flex max-w-md items-center gap-3">
             <span className="text-xs text-muted-foreground">{t("playground_right_build_label")}</span>
             <Progress value={progress} className="h-1.5 flex-1" />
-            <span className="text-xs tabular-nums text-muted-foreground">{Math.round(progress)}%</span>
+            <span className="text-xs tabular-nums text-muted-foreground">
+              {buildElapsedLabel?.trim() ? buildElapsedLabel : "0 с"}
+            </span>
           </div>
         </div>
       </div>
@@ -156,6 +162,7 @@ function GeneratingState({
 export function RightPanel({
   mode,
   progress,
+  buildElapsedLabel = null,
   previewUrl,
   sandboxId,
   streamHint,
@@ -168,7 +175,12 @@ export function RightPanel({
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
-      <GeneratingState progress={progress} streamHint={streamHint} projectKind={projectKind} />
+      <GeneratingState
+        progress={progress}
+        buildElapsedLabel={buildElapsedLabel}
+        streamHint={streamHint}
+        projectKind={projectKind}
+      />
     );
   }
 
