@@ -60,16 +60,25 @@ async function postGenerateStream(req: NextRequest) {
   });
 
   const sandboxTitle = rawPrompt.slice(0, 120);
-  const { sandboxId } = await sandboxManager.createSandbox(sandboxTitle, user.id);
+  let sandboxId: string | undefined;
+  let routerRes: Response;
+  try {
+    const created = await sandboxManager.createSandbox(sandboxTitle, user.id);
+    sandboxId = created.sandboxId;
+    routerRes = await requestRouterAIStream({
+      prompt,
+      model: agent.modelId,
+      settings: agent.settings.stream,
+      user: user.id
+    });
+  } catch (e) {
+    if (sandboxId) await destroySandbox(sandboxId).catch(() => {});
+    const message = e instanceof Error ? e.message : String(e);
+    return new Response(message, { status: 500 });
+  }
 
-  const routerRes = await requestRouterAIStream({
-    prompt,
-    model: agent.modelId,
-    settings: agent.settings.stream,
-    user: user.id
-  });
   if (!routerRes.ok || !routerRes.body) {
-    await destroySandbox(sandboxId);
+    await destroySandbox(sandboxId!);
     const errText = await routerRes.text().catch(() => "RouterAI error");
     return new Response(errText, { status: 502 });
   }

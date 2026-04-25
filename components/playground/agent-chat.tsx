@@ -7,6 +7,7 @@ import {
   Copy,
   Film,
   Image as ImageIcon,
+  Lock,
   MoreHorizontal,
   Paperclip,
   SendHorizontal,
@@ -449,8 +450,13 @@ export function AgentChat({
                     <div
                       key={a.id}
                       className="flex max-w-full items-center gap-2 rounded-xl border border-border/80 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
+                      aria-label={`Файл прикреплён: ${a.name}`}
                     >
-                      <span className="truncate">
+                      <Lock
+                        className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500"
+                        aria-hidden
+                      />
+                      <span className="min-w-0 truncate" title={`${a.type}: ${a.name}`}>
                         {a.type}: {a.name}
                       </span>
                       <button
@@ -598,8 +604,13 @@ export function AgentChat({
                 <div
                   key={a.id}
                   className="flex max-w-full items-center gap-2 rounded-2xl border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground"
+                  aria-label={`Файл прикреплён: ${a.name}`}
                 >
-                  <span className="truncate">
+                  <Lock
+                    className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500"
+                    aria-hidden
+                  />
+                  <span className="min-w-0 truncate" title={`${a.type}: ${a.name}`}>
                     {a.type}: {a.name}
                   </span>
                   <button
