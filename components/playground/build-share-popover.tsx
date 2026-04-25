@@ -1,7 +1,15 @@
 "use client";
 
 import { Check, Globe, Link2, Lock, Share2 } from "lucide-react";
-import { cloneElement, isValidElement, useCallback, useEffect, useState, type ReactElement } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useState,
+  type HTMLAttributes,
+  type ReactElement
+} from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -17,7 +25,7 @@ type BuildSharePopoverProps = {
   onShareIsPublicChange: (v: boolean) => void;
   t: (key: MessageKey) => string;
   /** Кастомная кнопка-триггер (Radix asChild). По умолчанию — компактная кнопка «Поделиться». */
-  trigger?: ReactElement;
+  trigger?: ReactElement<HTMLAttributes<HTMLElement>>;
 };
 
 /**
@@ -132,8 +140,7 @@ export function BuildSharePopover({
   const triggerNode =
     trigger && isValidElement(trigger)
       ? cloneElement(trigger, {
-          "aria-label":
-            (trigger.props as { "aria-label"?: string })["aria-label"] ?? t("playground_build_share_label")
+          "aria-label": trigger.props["aria-label"] ?? t("playground_build_share_label")
         })
       : defaultTrigger;
 
