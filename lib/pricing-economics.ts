@@ -13,7 +13,12 @@ export const MODEL_COGS_RUB_PER_1M: Record<string, number> = {
   // GPT-4.1 baseline may vary by account; default approximates current OpenAI flagship tier.
   [AGENT_PROFILES["GPT-4.1"].modelId]: parseRubPerMillion(process.env.ECON_COGS_GPT41_RUB_PER_1M, 670),
   [AGENT_PROFILES["Gemini 3 Pro"].modelId]: parseRubPerMillion(process.env.ECON_COGS_GEMINI3PRO_RUB_PER_1M, 536),
-  [AGENT_PROFILES["Claude Sonnet"].modelId]: parseRubPerMillion(process.env.ECON_COGS_CLAUDE_SONNET_RUB_PER_1M, 702),
+  [AGENT_PROFILES["Claude Sonnet 4.5"].modelId]: parseRubPerMillion(
+    process.env.ECON_COGS_CLAUDE_SONNET_45_RUB_PER_1M,
+    parseRubPerMillion(process.env.ECON_COGS_CLAUDE_SONNET_RUB_PER_1M, 702)
+  ),
+  [AGENT_PROFILES["Claude Haiku 4.5"].modelId]: parseRubPerMillion(process.env.ECON_COGS_CLAUDE_HAIKU_45_RUB_PER_1M, 220),
+  [AGENT_PROFILES["Claude Opus 4.6"].modelId]: parseRubPerMillion(process.env.ECON_COGS_CLAUDE_OPUS_46_RUB_PER_1M, 920),
   [AGENT_PROFILES["Kimi K2.6"].modelId]: parseRubPerMillion(process.env.ECON_COGS_KIMI_RUB_PER_1M, 167)
 };
 

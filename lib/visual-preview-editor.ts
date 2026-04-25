@@ -36,6 +36,8 @@ const TEXT_HOST_TAGS = new Set([
   "H5",
   "H6",
   "LI",
+  "UL",
+  "OL",
   "TD",
   "TH",
   "BLOCKQUOTE",
@@ -60,8 +62,19 @@ const TEXT_HOST_TAGS = new Set([
   "NAV",
   "MAIN",
   "ASIDE",
-  "BUTTON"
+  "BUTTON",
+  "DD",
+  "DT",
+  "TIME",
+  "MARK"
 ]);
+
+/** Клик по видимому тексту даёт target = Text — иначе редактор не включался. */
+function eventTargetToElement(target: EventTarget | null): Element | null {
+  if (target instanceof Element) return target;
+  if (target instanceof Text) return target.parentElement;
+  return null;
+}
 
 export function attachVisualPreviewEditor(
   doc: Document,
@@ -106,8 +119,8 @@ export function attachVisualPreviewEditor(
   }
 
   function onPointerDown(ev: PointerEvent) {
-    const target = ev.target;
-    if (!(target instanceof Element)) return;
+    const target = eventTargetToElement(ev.target);
+    if (!target) return;
 
     if (target instanceof HTMLImageElement) {
       ev.preventDefault();
@@ -142,12 +155,14 @@ export function attachVisualPreviewEditor(
     }
   }
 
-  function onFocusOut() {
-    window.setTimeout(() => {
+  function onFocusOut(ev: FocusEvent) {
+    const related = ev.relatedTarget;
+    window.requestAnimationFrame(() => {
       if (!activeHost) return;
+      if (related instanceof Node && activeHost.contains(related)) return;
       if (doc.activeElement && activeHost.contains(doc.activeElement)) return;
       deactivateHost();
-    }, 80);
+    });
   }
 
   body.addEventListener("pointerdown", onPointerDown, true);

@@ -11,7 +11,7 @@ import {
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
 import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
 import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
-import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
+import { chargeTokensSafely, estimateUsageFromText, normalizeUsage } from "@/lib/token-billing";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -120,8 +120,10 @@ async function postPromptCoach(req: NextRequest) {
         return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
       }
 
+      const usageOut = normalizeUsage(usage ?? fallbackUsage);
       return Response.json({
         ...parsed,
+        usage: usageOut,
         ...(process.env.NODE_ENV === "production"
           ? {}
           : {

@@ -196,9 +196,11 @@ async function postGenerateStream(req: NextRequest) {
           model: agent.modelId
         });
         if (!charge.charged && charge.reason === "insufficient_balance") {
+          const need = charge.usage.total_tokens;
+          const bal = charge.balance;
           sse(controller, {
             type: "log",
-            content: "⚠️ Баланс токенов изменился параллельно. Списание пропущено, запрос завершён."
+            content: `⚠️ Превью уже собрано, но списание не выполнено: по этому запросу нужно ${need.toLocaleString("ru-RU")} ток., на балансе ${bal.toLocaleString("ru-RU")}. Пополните баланс или не запускайте несколько сборок одновременно (вкладки / шаги коуча + генерация).`
           });
         }
 

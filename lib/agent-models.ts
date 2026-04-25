@@ -5,7 +5,9 @@ export type AgentUiLabel =
   | "Kimi K2.6"
   | "Gemini 3 Pro"
   | "GPT-4.1"
-  | "Claude Sonnet"
+  | "Claude Sonnet 4.5"
+  | "Claude Haiku 4.5"
+  | "Claude Opus 4.6"
   | "DeepSeek";
 export type AgentTask =
   | "generate-stream"
@@ -44,7 +46,7 @@ export const AGENT_PROFILES: Record<AgentUiLabel, AgentProfile> = {
   "Gemini 3 Pro": {
     uiLabel: "Gemini 3 Pro",
     modelId: "google/gemini-3.1-pro-preview",
-    proOnly: true,
+    proOnly: false,
     settings: {
       stream: { temperature: 0.45, top_p: 0.9, max_completion_tokens: 8_192 },
       json: { temperature: 0.35, top_p: 0.9, max_completion_tokens: 2_048 }
@@ -59,13 +61,31 @@ export const AGENT_PROFILES: Record<AgentUiLabel, AgentProfile> = {
       json: { temperature: 0.25, top_p: 0.9, max_completion_tokens: 1_600 }
     }
   },
-  "Claude Sonnet": {
-    uiLabel: "Claude Sonnet",
-    modelId: "anthropic/claude-sonnet-4.6",
+  "Claude Sonnet 4.5": {
+    uiLabel: "Claude Sonnet 4.5",
+    modelId: "anthropic/claude-sonnet-4.5",
     proOnly: true,
     settings: {
       stream: { temperature: 0.35, top_p: 0.9, max_completion_tokens: 8_192 },
       json: { temperature: 0.2, top_p: 0.85, max_completion_tokens: 1_600 }
+    }
+  },
+  "Claude Haiku 4.5": {
+    uiLabel: "Claude Haiku 4.5",
+    modelId: "anthropic/claude-haiku-4.5",
+    proOnly: true,
+    settings: {
+      stream: { temperature: 0.4, top_p: 0.9, max_completion_tokens: 8_192 },
+      json: { temperature: 0.25, top_p: 0.9, max_completion_tokens: 2_048 }
+    }
+  },
+  "Claude Opus 4.6": {
+    uiLabel: "Claude Opus 4.6",
+    modelId: "anthropic/claude-opus-4.6",
+    proOnly: true,
+    settings: {
+      stream: { temperature: 0.3, top_p: 0.9, max_completion_tokens: 8_192 },
+      json: { temperature: 0.15, top_p: 0.85, max_completion_tokens: 1_600 }
     }
   },
   /** RouterAI: https://routerai.ru/models/deepseek/deepseek-v4-flash — промпт, коуч, вопросы. */
@@ -81,7 +101,7 @@ export const AGENT_PROFILES: Record<AgentUiLabel, AgentProfile> = {
 };
 
 const PROJECT_KIND_DEFAULTS_PRO: Record<ProjectKind, AgentUiLabel> = {
-  website: "Claude Sonnet",
+  website: "Claude Sonnet 4.5",
   presentation: "Gemini 3 Pro",
   resume: "GPT-4.1",
   design: "Gemini 3 Pro",
@@ -90,9 +110,9 @@ const PROJECT_KIND_DEFAULTS_PRO: Record<ProjectKind, AgentUiLabel> = {
 
 const PROJECT_KIND_DEFAULTS_FREE: Record<ProjectKind, AgentUiLabel> = {
   website: "GPT-4.1",
-  presentation: "Kimi K2.6",
+  presentation: "Gemini 3 Pro",
   resume: "GPT-4.1",
-  design: "Kimi K2.6",
+  design: "Gemini 3 Pro",
   visitcard: "GPT-4.1"
 };
 
@@ -110,11 +130,15 @@ function canUseAgent(plan: PlanId, agent: AgentUiLabel) {
 }
 
 export function parseAgentUiLabel(raw: string | null | undefined): AgentUiLabel | null {
+  if (!raw) return null;
+  if (raw === "Claude Sonnet") return "Claude Sonnet 4.5";
   if (
     raw === "Kimi K2.6" ||
     raw === "Gemini 3 Pro" ||
     raw === "GPT-4.1" ||
-    raw === "Claude Sonnet" ||
+    raw === "Claude Sonnet 4.5" ||
+    raw === "Claude Haiku 4.5" ||
+    raw === "Claude Opus 4.6" ||
     raw === "DeepSeek"
   ) {
     return raw;

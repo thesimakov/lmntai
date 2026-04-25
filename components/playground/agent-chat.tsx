@@ -21,6 +21,14 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
@@ -32,10 +40,32 @@ import {
 } from "@/lib/agent-models";
 import { cn } from "@/lib/utils";
 
+function formatActionDurationMs(ms: number): string {
+  if (!Number.isFinite(ms) || ms < 0) return "";
+  if (ms < 1000) return `${Math.round(ms)} мс`;
+  const sec = ms / 1000;
+  const label = sec >= 10 ? `${Math.round(sec)}` : `${Math.round(sec * 10) / 10}`.replace(/\.0$/, "");
+  return `${label} с`;
+}
+
+function formatTokenTotal(n: number | undefined): string {
+  if (n == null || !Number.isFinite(n)) return "";
+  return Math.round(n).toLocaleString("ru-RU");
+}
+
 export type ChatMessage = {
   id: string;
   role: "assistant" | "user" | "system";
   content: string;
+  /** Лайк / меню — только у финального промпта, не под каждым ответом */
+  showActions?: boolean;
+  /** Полный текст промпта для копирования (если в `content` обрезка) */
+  promptPlainText?: string;
+  /** Для меню «⋯»: время запроса и токены с бэкенда */
+  actionMeta?: {
+    durationMs: number;
+    totalTokens?: number;
+  };
 };
 
 type AgentChatProps = {
@@ -92,6 +122,7 @@ export function AgentChat({
 }: AgentChatProps) {
   const { t } = useI18n();
   const [value, setValue] = useState("");
+  const [promptFeedback, setPromptFeedback] = useState<Record<string, "up" | "down">>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const modelAnchorRef = useRef<HTMLButtonElement | null>(null);
   const fileInputImageRef = useRef<HTMLInputElement | null>(null);
@@ -332,31 +363,98 @@ export function AgentChat({
               >
                 {m.content}
               </div>
-              {m.role === "assistant" ? (
-                <div className="mr-auto mt-2 flex items-center gap-2 text-muted-foreground">
-                  <button type="button" className="rounded-lg p-1 hover:bg-accent" aria-label="Лайк">
+              {m.role === "assistant" && m.showActions ? (
+                <div className="mr-auto mt-2 flex items-center gap-1 text-muted-foreground">
+                  <button
+                    type="button"
+                    className={cn(
+                      "rounded-lg p-1.5 hover:bg-accent",
+                      promptFeedback[m.id] === "up" && "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                    )}
+                    aria-label={t("playground_prompt_feedback_like")}
+                    aria-pressed={promptFeedback[m.id] === "up"}
+                    title={t("playground_prompt_feedback_like")}
+                    onClick={() =>
+                      setPromptFeedback((prev) => {
+                        if (prev[m.id] === "up") {
+                          const { [m.id]: _, ...rest } = prev;
+                          return rest;
+                        }
+                        return { ...prev, [m.id]: "up" };
+                      })
+                    }
+                  >
                     <ThumbsUp className="h-4 w-4" />
-                  </button>
-                  <button type="button" className="rounded-lg p-1 hover:bg-accent" aria-label="Дизлайк">
-                    <ThumbsDown className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
-                    className="rounded-lg p-1 hover:bg-accent"
-                    aria-label="Копировать"
-                    onClick={() => {
-                      try {
-                        void navigator.clipboard.writeText(m.content);
-                      } catch {
-                        // ignore
-                      }
-                    }}
+                    className={cn(
+                      "rounded-lg p-1.5 hover:bg-accent",
+                      promptFeedback[m.id] === "down" && "bg-destructive/15 text-destructive"
+                    )}
+                    aria-label={t("playground_prompt_feedback_dislike")}
+                    aria-pressed={promptFeedback[m.id] === "down"}
+                    title={t("playground_prompt_feedback_dislike")}
+                    onClick={() =>
+                      setPromptFeedback((prev) => {
+                        if (prev[m.id] === "down") {
+                          const { [m.id]: _, ...rest } = prev;
+                          return rest;
+                        }
+                        return { ...prev, [m.id]: "down" };
+                      })
+                    }
                   >
-                    <Copy className="h-4 w-4" />
+                    <ThumbsDown className="h-4 w-4" />
                   </button>
-                  <button type="button" className="rounded-lg p-1 hover:bg-accent" aria-label="Ещё">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className="rounded-lg p-1.5 hover:bg-accent"
+                        aria-label={t("playground_prompt_stats_title")}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-64">
+                      <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                        {t("playground_prompt_stats_title")}
+                      </DropdownMenuLabel>
+                      <div className="space-y-1.5 px-2 py-1.5 text-sm">
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">{t("playground_prompt_stats_duration")}</span>
+                          <span className="tabular-nums text-foreground">
+                            {m.actionMeta?.durationMs != null
+                              ? formatActionDurationMs(m.actionMeta.durationMs) || t("playground_prompt_stats_na")
+                              : t("playground_prompt_stats_na")}
+                          </span>
+                        </div>
+                        <div className="flex justify-between gap-2">
+                          <span className="text-muted-foreground">{t("playground_prompt_stats_tokens")}</span>
+                          <span className="tabular-nums text-foreground">
+                            {formatTokenTotal(m.actionMeta?.totalTokens) || t("playground_prompt_stats_na")}
+                          </span>
+                        </div>
+                      </div>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="gap-2"
+                        onSelect={() => {
+                          const text = (m.promptPlainText ?? m.content).trim();
+                          if (!text) return;
+                          try {
+                            void navigator.clipboard.writeText(text);
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                      >
+                        <Copy className="h-4 w-4" />
+                        {t("playground_prompt_copy_full")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ) : null}
             </motion.div>

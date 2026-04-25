@@ -11,7 +11,8 @@ describe("agent models catalog", () => {
     expect(parseAgentUiLabel("GPT-4.1")).toBe("GPT-4.1");
     expect(parseAgentUiLabel("Kimi K2.6")).toBe("Kimi K2.6");
     expect(parseAgentUiLabel("Gemini 3 Pro")).toBe("Gemini 3 Pro");
-    expect(parseAgentUiLabel("Claude Sonnet")).toBe("Claude Sonnet");
+    expect(parseAgentUiLabel("Claude Sonnet")).toBe("Claude Sonnet 4.5");
+    expect(parseAgentUiLabel("Claude Sonnet 4.5")).toBe("Claude Sonnet 4.5");
     expect(parseAgentUiLabel("DeepSeek")).toBe("DeepSeek");
     expect(parseAgentUiLabel("unknown")).toBeNull();
   });
@@ -66,7 +67,7 @@ describe("agent models catalog", () => {
       task: "prompt-questions"
     });
 
-    expect(website.uiLabel).toBe("Claude Sonnet");
+    expect(website.uiLabel).toBe("Claude Sonnet 4.5");
     expect(presentation.uiLabel).toBe("Gemini 3 Pro");
     expect(resume.uiLabel).toBe("GPT-4.1");
     expect(questions.uiLabel).toBe("GPT-4.1");
@@ -108,14 +109,14 @@ describe("agent models catalog", () => {
       task: "generate-stream"
     });
     const gemini = options.find((x) => x.label === "Gemini 3 Pro");
-    const claude = options.find((x) => x.label === "Claude Sonnet");
+    const claude = options.find((x) => x.label === "Claude Sonnet 4.5");
     const gpt = options.find((x) => x.label === "GPT-4.1");
     const kimi = options.find((x) => x.label === "Kimi K2.6");
 
-    expect(gemini?.available).toBe(false);
+    expect(gemini?.available).toBe(true);
     expect(claude?.available).toBe(false);
     expect(gpt?.available).toBe(true);
     expect(kimi?.available).toBe(true);
-    expect(kimi?.recommended).toBe(true);
+    expect(gemini?.recommended).toBe(true);
   });
 });

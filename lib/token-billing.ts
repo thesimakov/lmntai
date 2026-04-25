@@ -6,9 +6,10 @@ export type TokenUsage = {
   total_tokens: number;
 };
 
-type ChargeResult =
+export type ChargeResult =
   | { ok: true; charged: true; usage: TokenUsage }
-  | { ok: true; charged: false; usage: TokenUsage; reason: "zero" | "insufficient_balance" };
+  | { ok: true; charged: false; usage: TokenUsage; reason: "zero" }
+  | { ok: true; charged: false; usage: TokenUsage; reason: "insufficient_balance"; balance: number };
 
 function positiveInt(value: number) {
   if (!Number.isFinite(value) || value <= 0) return 0;
@@ -54,7 +55,12 @@ export async function chargeTokensSafely(input: {
       data: { tokenBalance: { decrement: usage.total_tokens } }
     });
     if (updated.count === 0) {
-      return { ok: true, charged: false, usage, reason: "insufficient_balance" } as const;
+      const row = await tx.user.findUnique({
+        where: { id: input.userId },
+        select: { tokenBalance: true }
+      });
+      const balance = typeof row?.tokenBalance === "number" ? row.tokenBalance : 0;
+      return { ok: true, charged: false, usage, reason: "insufficient_balance", balance } as const;
     }
     await tx.tokenUsageLog.create({
       data: {

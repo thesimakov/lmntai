@@ -15,7 +15,7 @@ describe("pricing economics", () => {
   });
 
   it("computes weighted cogs for plans", () => {
-    expect(weightedCogsRubPer1M("FREE")).toBeCloseTo(493.95, 5);
+    expect(weightedCogsRubPer1M("FREE")).toBeCloseTo(623.1, 5);
     expect(weightedCogsRubPer1M("PRO")).toBeCloseTo(635.9, 5);
     expect(weightedCogsRubPer1M("TEAM")).toBeCloseTo(635.9, 5);
   });
@@ -28,7 +28,7 @@ describe("pricing economics", () => {
     const team = rows.find((x) => x.plan === "TEAM");
     const free = rows.find((x) => x.plan === "FREE");
 
-    expect(free?.projectedMonthlyCogsRub).toBeCloseTo(4.94, 2);
+    expect(free?.projectedMonthlyCogsRub).toBeCloseTo(6.23, 2);
     expect(pro?.projectedMonthlyCogsRub).toBeCloseTo(317.95, 2);
     expect(team?.projectedMonthlyCogsRub).toBeCloseTo(1271.8, 1);
     expect(pro?.projectedMarginRub).toBeGreaterThan(0);

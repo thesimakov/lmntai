@@ -321,16 +321,30 @@ export default function PromptBuildPage() {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }, []);
 
-  const push = useCallback((role: ChatMessage["role"], content: string) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: createMessageId(),
-        role,
-        content
+  const push = useCallback(
+    (
+      role: ChatMessage["role"],
+      content: string,
+      opts?: {
+        showActions?: boolean;
+        promptPlainText?: string;
+        actionMeta?: { durationMs: number; totalTokens?: number };
       }
-    ]);
-  }, [createMessageId]);
+    ) => {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: createMessageId(),
+          role,
+          content,
+          ...(opts?.showActions ? { showActions: true as const } : {}),
+          ...(opts?.promptPlainText ? { promptPlainText: opts.promptPlainText } : {}),
+          ...(opts?.actionMeta ? { actionMeta: opts.actionMeta } : {})
+        }
+      ]);
+    },
+    [createMessageId]
+  );
 
   const appendBridgeAssistantChunk = useCallback((chunk: string) => {
     if (!chunk) return;
@@ -765,6 +779,7 @@ export default function PromptBuildPage() {
       try {
         setPromptCoachLoading(true);
         setPromptBuilderDebugLine(null);
+        const coachStarted = performance.now();
         const res = await fetch("/api/prompt-coach", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -793,9 +808,11 @@ export default function PromptBuildPage() {
           reply?: string;
           phase?: string;
           technical_prompt?: string | null;
+          usage?: { total_tokens?: number };
           debug_model?: string;
           debug_attempted_models?: string[];
         };
+        const coachDurationMs = Math.round(performance.now() - coachStarted);
 
         if (!mountedRef.current || controller.signal.aborted) return;
 
@@ -823,14 +840,27 @@ export default function PromptBuildPage() {
           }
         }
 
-        push("assistant", reply);
-
-        if (
+        const isFinalPromptConfirm =
           data.phase === "confirm" &&
           typeof data.technical_prompt === "string" &&
-          data.technical_prompt.trim()
-        ) {
-          const tp = data.technical_prompt.trim();
+          data.technical_prompt.trim();
+        const tp = isFinalPromptConfirm ? data.technical_prompt.trim() : "";
+        push(
+          "assistant",
+          reply,
+          isFinalPromptConfirm
+            ? {
+                showActions: true,
+                promptPlainText: tp,
+                actionMeta: {
+                  durationMs: coachDurationMs,
+                  totalTokens: typeof data.usage?.total_tokens === "number" ? data.usage.total_tokens : undefined
+                }
+              }
+            : undefined
+        );
+
+        if (isFinalPromptConfirm) {
           setFinalPrompt(tp);
           setCoachAwaitingConfirm(true);
           setPendingTechnicalPrompt(tp);
@@ -1027,6 +1057,7 @@ export default function PromptBuildPage() {
     requestAbortRef.current = controller;
     const qaPayload = qaOverride ?? qa;
 
+    const composeStarted = performance.now();
     let res: Response;
     try {
       res = await fetch("/api/prompt-builder", {
@@ -1057,9 +1088,11 @@ export default function PromptBuildPage() {
 
     const data = (await res.json()) as {
       finalPrompt: string;
+      usage?: { total_tokens?: number };
       debug_model?: string;
       debug_attempted_models?: string[];
     };
+    const composeDurationMs = Math.round(performance.now() - composeStarted);
     if (process.env.NODE_ENV !== "production") {
       const debugModel =
         typeof data.debug_model === "string" && data.debug_model.trim()
@@ -1081,7 +1114,15 @@ export default function PromptBuildPage() {
     setStage("ready");
     push(
       "assistant",
-      `✅ Промпт собран. Запускаю генерацию.\n\n${data.finalPrompt.length > 700 ? `${data.finalPrompt.slice(0, 700)}…` : data.finalPrompt}`
+      `✅ Промпт собран. Запускаю генерацию.\n\n${data.finalPrompt.length > 700 ? `${data.finalPrompt.slice(0, 700)}…` : data.finalPrompt}`,
+      {
+        showActions: true,
+        promptPlainText: data.finalPrompt,
+        actionMeta: {
+          durationMs: composeDurationMs,
+          totalTokens: typeof data.usage?.total_tokens === "number" ? data.usage.total_tokens : undefined
+        }
+      }
     );
     void handleGenerate(data.finalPrompt);
   }

@@ -6,7 +6,7 @@ import { resolveAgentForTask } from "@/lib/agent-models";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
 import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
-import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
+import { chargeTokensSafely, estimateUsageFromText, normalizeUsage } from "@/lib/token-billing";
 import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
@@ -222,8 +222,10 @@ async function postPromptBuilder(req: NextRequest) {
         return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
       }
 
+      const usageOut = normalizeUsage(usage ?? fallbackUsage);
       return Response.json({
         finalPrompt,
+        usage: usageOut,
         ...(process.env.NODE_ENV === "production"
           ? {}
           : {
@@ -232,7 +234,12 @@ async function postPromptBuilder(req: NextRequest) {
             })
       });
     } catch {
-      return Response.json({ finalPrompt: composePromptBuilderOfflineDemo(idea, packed), fallback: true });
+      const demoText = composePromptBuilderOfflineDemo(idea, packed);
+      return Response.json({
+        finalPrompt: demoText,
+        usage: normalizeUsage(estimateUsageFromText(`${idea}\n${packed}`, demoText)),
+        fallback: true
+      });
     }
   }
 

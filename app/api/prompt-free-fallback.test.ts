@@ -33,10 +33,14 @@ vi.mock("@/lib/agent-models", () => ({
 vi.mock("@/lib/routerai-client", () => ({
   requestRouterAIJsonWithFallback: mocks.requestRouterAIJsonWithFallback
 }));
-vi.mock("@/lib/token-billing", () => ({
-  chargeTokensSafely: mocks.chargeTokensSafely,
-  estimateUsageFromText: mocks.estimateUsageFromText
-}));
+vi.mock("@/lib/token-billing", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/token-billing")>();
+  return {
+    ...actual,
+    chargeTokensSafely: mocks.chargeTokensSafely,
+    estimateUsageFromText: mocks.estimateUsageFromText
+  };
+});
 vi.mock("@/lib/lemnity-ai-bridge-config", () => ({
   isLemnityAiBridgeEnabledServer: mocks.isLemnityAiBridgeEnabledServer
 }));

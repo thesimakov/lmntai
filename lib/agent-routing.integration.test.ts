@@ -22,7 +22,7 @@ describe("agent routing integration", () => {
 
     expect(website.modelId).not.toBe(presentation.modelId);
     expect(presentation.modelId).not.toBe(resume.modelId);
-    expect(website.modelId).toBe("anthropic/claude-sonnet-4.6");
+    expect(website.modelId).toBe("anthropic/claude-sonnet-4.5");
     expect(presentation.modelId).toBe("google/gemini-3.1-pro-preview");
     expect(resume.modelId).toBe("openai/gpt-4.1");
   });

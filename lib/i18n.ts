@@ -230,7 +230,8 @@ export const messages = {
       'Попробовать интерфейс при жёстких лимитах — с явным стимулом перейти на Pro.',
     pricing_plan_starter_feat_1: '10 000 токенов в месяц',
     pricing_plan_starter_feat_2: 'Песочница: предпросмотр, водяной знак',
-    pricing_plan_starter_feat_3: 'Низкий приоритет, без экспорта',
+    pricing_plan_starter_feat_3:
+      'GPT-4.1, Kimi K2.6 и Gemini 3 Pro; линейка Anthropic (Claude) — в Pro. Низкий приоритет, без экспорта',
     pricing_plan_starter_cta: 'Текущий план',
 
     pricing_plan_pro_name: 'Pro',
@@ -242,7 +243,8 @@ export const messages = {
       'Основное решение для фрилансера и микробизнеса: 2–3 качественных лендинга в месяц — достаточно для регулярной работы с клиентами.',
     pricing_plan_pro_feat_1: '500 000 токенов в месяц',
     pricing_plan_pro_feat_2: 'Полный экспорт кода, без водяного знака',
-    pricing_plan_pro_feat_3: 'Модели GPT-4.1, Claude Sonnet, Gemini 3 Pro и Kimi K2.6',
+    pricing_plan_pro_feat_3:
+      'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; плюс GPT-4.1, Gemini 3 Pro и Kimi K2.6',
     pricing_plan_pro_feat_4: 'До 10 активных проектов, история версий',
     pricing_plan_pro_cta: 'Выбрать Pro',
 
@@ -670,6 +672,13 @@ export const messages = {
     playground_right_generating_line1_visitcard: 'Lemnity собирает визитку. Чуть-чуть подождите…',
     playground_agents_section_tariff: 'В вашем тарифе',
     playground_agents_section_pro: 'Тариф Pro',
+    playground_prompt_feedback_like: 'Нравится промпт',
+    playground_prompt_feedback_dislike: 'Не нравится промпт',
+    playground_prompt_stats_title: 'Статистика',
+    playground_prompt_stats_duration: 'Время работы',
+    playground_prompt_stats_tokens: 'Потрачено токенов',
+    playground_prompt_copy_full: 'Копировать текст промпта',
+    playground_prompt_stats_na: '—',
     playground_coach_loading: 'Lemnity уточняет задачу и готовит промпт…',
     playground_coach_loading_slow:
       'Уточняем детали у ИИ… Сложные запросы могут занять до минуты.',
@@ -890,7 +899,8 @@ export const messages = {
       'Try the product with tight limits — enough to learn the UI, with a clear path to Pro.',
     pricing_plan_starter_feat_1: '10,000 tokens per month',
     pricing_plan_starter_feat_2: 'Sandbox: preview + watermark',
-    pricing_plan_starter_feat_3: 'Low priority, no export',
+    pricing_plan_starter_feat_3:
+      'GPT-4.1, Kimi K2.6, and Gemini 3 Pro; Anthropic (Claude) models are Pro-only. Low priority, no export',
     pricing_plan_starter_cta: 'Current plan',
 
     pricing_plan_pro_name: 'Pro',
@@ -902,7 +912,8 @@ export const messages = {
       'Main plan for freelancers and micro-businesses: about 2–3 quality landing pages per month — enough for steady client work.',
     pricing_plan_pro_feat_1: '500,000 tokens per month',
     pricing_plan_pro_feat_2: 'Full code export, no watermark',
-    pricing_plan_pro_feat_3: 'GPT-4.1, Claude Sonnet, Gemini 3 Pro, and Kimi K2.6',
+    pricing_plan_pro_feat_3:
+      'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; plus GPT-4.1, Gemini 3 Pro, and Kimi K2.6',
     pricing_plan_pro_feat_4: 'Up to 10 active projects, version history',
     pricing_plan_pro_cta: 'Choose Pro',
 
@@ -1327,6 +1338,13 @@ export const messages = {
     playground_right_generating_line1_visitcard: 'Lemnity is building your business card. One moment…',
     playground_agents_section_tariff: 'Included in your plan',
     playground_agents_section_pro: 'Pro plan',
+    playground_prompt_feedback_like: 'Like this prompt',
+    playground_prompt_feedback_dislike: 'Dislike this prompt',
+    playground_prompt_stats_title: 'Stats',
+    playground_prompt_stats_duration: 'Duration',
+    playground_prompt_stats_tokens: 'Tokens used',
+    playground_prompt_copy_full: 'Copy full prompt text',
+    playground_prompt_stats_na: '—',
     playground_coach_loading: 'Lemnity is refining your request and preparing the prompt…',
     playground_coach_loading_slow:
       'Still working with the model… Complex requests can take up to a minute.',
@@ -1547,7 +1565,8 @@ export const messages = {
       'Интерфейсро дар шароити маҳдуд санҷед — роҳи равшан ба Pro.',
     pricing_plan_starter_feat_1: '10 000 токен дар як моҳ',
     pricing_plan_starter_feat_2: 'Песочница: пешнамоиш, watermark',
-    pricing_plan_starter_feat_3: 'Афзалияти поин, бе экспорт',
+    pricing_plan_starter_feat_3:
+      'GPT-4.1, Kimi K2.6 ва Gemini 3 Pro; Claude (Anthropic) — танҳо дар Pro. Афзалияти поин, бе экспорт',
     pricing_plan_starter_cta: 'Нақшаи ҷорӣ',
 
     pricing_plan_pro_name: 'Pro',
@@ -1559,7 +1578,8 @@ export const messages = {
       'Барои фрилансер ва микробизнес: 2–3 лендинги сифатнок дар моҳ — барои кори мунтазам бо мизоҷ кофӣ аст.',
     pricing_plan_pro_feat_1: '500 000 токен дар як моҳ',
     pricing_plan_pro_feat_2: 'Экспорти пурраи код, бе watermark',
-    pricing_plan_pro_feat_3: 'Моделҳои GPT-4.1, Claude Sonnet, Gemini 3 Pro ва Kimi K2.6',
+    pricing_plan_pro_feat_3:
+      'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; инчунин GPT-4.1, Gemini 3 Pro ва Kimi K2.6',
     pricing_plan_pro_feat_4: 'То 10 лоиҳаи фаъол, таърихи версия',
     pricing_plan_pro_cta: 'Интихоби Pro',
 
@@ -1987,6 +2007,13 @@ export const messages = {
     playground_right_generating_line1_visitcard: 'Lemnity визитка месозад. Сабр кунед…',
     playground_agents_section_tariff: 'Дар тарифи шумо',
     playground_agents_section_pro: 'Тариф Pro',
+    playground_prompt_feedback_like: 'Ин промптро писанд аст',
+    playground_prompt_feedback_dislike: 'Ин промптро намеписанд',
+    playground_prompt_stats_title: 'Омор',
+    playground_prompt_stats_duration: 'Давомнокӣ',
+    playground_prompt_stats_tokens: 'Токенҳои сарфшуда',
+    playground_prompt_copy_full: 'Нусха бардоштани матни пурраи промпт',
+    playground_prompt_stats_na: '—',
     playground_coach_loading: 'Lemnity вазифаро уто мекунад ва промптро омода мекунад…',
     playground_coach_loading_slow:
       'Бо модел кор мекунем… дархостҳои мураккаб то як дақиқа вақт мегиранд.',
