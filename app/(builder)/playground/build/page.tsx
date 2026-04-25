@@ -840,11 +840,11 @@ export default function PromptBuildPage() {
           }
         }
 
+        const technicalPromptTrimmed =
+          typeof data.technical_prompt === "string" ? data.technical_prompt.trim() : "";
         const isFinalPromptConfirm =
-          data.phase === "confirm" &&
-          typeof data.technical_prompt === "string" &&
-          data.technical_prompt.trim();
-        const tp = isFinalPromptConfirm ? data.technical_prompt.trim() : "";
+          data.phase === "confirm" && technicalPromptTrimmed.length > 0;
+        const tp = isFinalPromptConfirm ? technicalPromptTrimmed : "";
         push(
           "assistant",
           reply,
