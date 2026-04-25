@@ -109,6 +109,69 @@ function normalizePickTarget(doc: Document, start: Element | null): Element | nu
   return null;
 }
 
+/**
+ * Координаты для doc.elementsFromPoint: в большинстве случаев clientX/Y уже относительно iframe,
+ * но если view события не совпадает с документом превью — переводим через getBoundingClientRect рамки.
+ */
+function viewportPointForVisualPick(ev: PointerEvent | MouseEvent, doc: Document): { x: number; y: number } {
+  const win = doc.defaultView;
+  if (!win) return { x: ev.clientX, y: ev.clientY };
+  if (ev.view === win) return { x: ev.clientX, y: ev.clientY };
+  const frame = win.frameElement;
+  if (frame) {
+    const r = frame.getBoundingClientRect();
+    return { x: ev.clientX - r.left, y: ev.clientY - r.top };
+  }
+  return { x: ev.clientX, y: ev.clientY };
+}
+
+/** Обход перекрывающих full-screen слоёв: elementFromPoint часто попадает только в верхний div. */
+function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Element | null {
+  let stack: Element[];
+  try {
+    stack = doc.elementsFromPoint(x, y) as Element[];
+  } catch {
+    return null;
+  }
+  if (!stack?.length) return null;
+
+  for (const node of stack) {
+    if (node instanceof HTMLImageElement) return node;
+  }
+
+  function meaningful(el: Element): boolean {
+    if (el instanceof HTMLImageElement) return true;
+    if (NON_TEXT_TAGS.has(el.tagName) && el.tagName !== "IMG") return false;
+    if (el.tagName === "BODY" || el.tagName === "HTML") return false;
+    if (TEXT_HOST_TAGS.has(el.tagName)) {
+      if (el.textContent?.trim()) return true;
+      if (el.querySelector("img,svg,video,canvas,picture")) return true;
+      const html = el as HTMLElement;
+      try {
+        const r = html.getBoundingClientRect();
+        if (r.width >= 8 && r.height >= 8) return true;
+      } catch {
+        /* ignore */
+      }
+    }
+    return false;
+  }
+
+  for (const node of stack) {
+    if (!(node instanceof Element)) continue;
+    const normalized = normalizePickTarget(doc, node);
+    if (!normalized) continue;
+    if (meaningful(normalized)) return normalized;
+  }
+
+  for (const node of stack) {
+    if (!(node instanceof Element)) continue;
+    const normalized = normalizePickTarget(doc, node);
+    if (normalized && !PICK_SKIP_TAGS.has(normalized.tagName)) return normalized;
+  }
+  return null;
+}
+
 function describePickTarget(el: Element): VisualPickInfo {
   const tagName = el.tagName.toLowerCase();
   const html = el as HTMLElement;
@@ -254,8 +317,8 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     rafHover = requestAnimationFrame(() => {
       rafHover = 0;
       if (activeHost) return;
-      const raw = doc.elementFromPoint(ev.clientX, ev.clientY);
-      const el = normalizePickTarget(doc, raw instanceof Element ? raw : null);
+      const { x, y } = viewportPointForVisualPick(ev, doc);
+      const el = pickInteractiveTargetAtPoint(doc, x, y);
       if (el instanceof HTMLImageElement || el === selectedEl) {
         setHover(null);
       } else {
@@ -269,9 +332,10 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
       return;
     }
 
-    const raw = eventTargetToElement(ev.target);
-    const atPoint = doc.elementFromPoint(ev.clientX, ev.clientY);
-    const pick = normalizePickTarget(doc, atPoint instanceof Element ? atPoint : raw);
+    const { x, y } = viewportPointForVisualPick(ev, doc);
+    const pick =
+      pickInteractiveTargetAtPoint(doc, x, y) ??
+      normalizePickTarget(doc, eventTargetToElement(ev.target));
 
     if (pick instanceof HTMLImageElement) {
       lastTextHostPointer = null;
@@ -317,8 +381,8 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
 
   function onDoubleClick(ev: MouseEvent) {
     if (activeHost) return;
-    const atPoint = doc.elementFromPoint(ev.clientX, ev.clientY);
-    const raw = normalizePickTarget(doc, atPoint instanceof Element ? atPoint : eventTargetToElement(ev.target));
+    const { x, y } = viewportPointForVisualPick(ev, doc);
+    const raw = pickInteractiveTargetAtPoint(doc, x, y) ?? eventTargetToElement(ev.target);
     const host = resolveTextHost(raw);
     if (!host) return;
     ev.preventDefault();

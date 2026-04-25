@@ -76,7 +76,7 @@ type AgentChatProps = {
   subtitle?: string;
   placeholder?: string;
   disabled?: boolean;
-  onSend: (text: string) => void;
+  onSend: (text: string, files?: File[]) => void | Promise<void>;
   /** Раскладка «студии»: шапка и поле ввода в одной капсуле */
   variant?: "default" | "studio";
   /** Над полем ввода — прогресс / статус */
@@ -129,7 +129,9 @@ export function AgentChat({
   const fileInputVideoRef = useRef<HTMLInputElement | null>(null);
   const fileInputAnyRef = useRef<HTMLInputElement | null>(null);
 
-  const [attachments, setAttachments] = useState<Array<{ id: string; name: string; type: "image" | "video" | "file" }>>([]);
+  const [attachments, setAttachments] = useState<
+    Array<{ id: string; file: File; kind: "image" | "video" | "file" }>
+  >([]);
   const isEditor = onIsEditorChange != null ? Boolean(isEditorProp) : false;
   const [model, setModel] = useState<AgentUiLabel>("GPT-4.1");
   const [modelOpen, setModelOpen] = useState(false);
@@ -225,21 +227,22 @@ export function AgentChat({
     };
   }, [modelOpen]);
 
-  function submit() {
+  async function submit() {
     const text = value.trim();
-    if (!text || disabled) return;
+    const files = attachments.map((a) => a.file);
+    if ((!text && files.length === 0) || disabled) return;
     setValue("");
     setAttachments([]);
     setModelOpen(false);
-    onSend(text);
+    await Promise.resolve(onSend(text, files.length ? files : undefined));
   }
 
   function addFiles(files: FileList | null, kind: "image" | "video" | "file") {
     if (!files?.length) return;
     const next = Array.from(files).map((f) => ({
       id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      name: f.name,
-      type: kind
+      file: f,
+      kind
     }));
     setAttachments((prev) => [...prev, ...next].slice(0, 10));
   }
@@ -518,7 +521,7 @@ export function AgentChat({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                       e.preventDefault();
-                      submit();
+                      void submit();
                     }
                   }}
                   placeholder={placeholder}
@@ -532,7 +535,7 @@ export function AgentChat({
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      submit();
+                      void submit();
                     }
                   }}
                   placeholder={placeholder}
@@ -548,14 +551,14 @@ export function AgentChat({
                     <div
                       key={a.id}
                       className="flex max-w-full items-center gap-2 rounded-xl border border-border/80 bg-muted/30 px-2.5 py-1 text-xs text-muted-foreground"
-                      aria-label={`Файл прикреплён: ${a.name}`}
+                      aria-label={`Файл прикреплён: ${a.file.name}`}
                     >
                       <Lock
                         className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500"
                         aria-hidden
                       />
-                      <span className="min-w-0 truncate" title={`${a.type}: ${a.name}`}>
-                        {a.type}: {a.name}
+                      <span className="min-w-0 truncate" title={`${a.kind}: ${a.file.name}`}>
+                        {a.kind}: {a.file.name}
                       </span>
                       <button
                         type="button"
@@ -650,9 +653,9 @@ export function AgentChat({
                   className="h-10 w-10 shrink-0 rounded-full bg-foreground text-background shadow-sm hover:bg-foreground/90"
                   onClick={() => {
                     if (disabled) return;
-                    submit();
+                    void submit();
                   }}
-                  disabled={!disabled && !value.trim()}
+                  disabled={!disabled && !value.trim() && attachments.length === 0}
                   aria-label={disabled ? "Остановить (скоро)" : "Отправить"}
                 >
                   {disabled ? <Square className="h-4 w-4 fill-current" /> : <ArrowUp className="h-5 w-5 stroke-[2.5]" />}
@@ -675,7 +678,11 @@ export function AgentChat({
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") submit();
+                      if (e.key === "Enter") {
+                        if (!value.trim() && attachments.length === 0) return;
+                        e.preventDefault();
+                        void submit();
+                      }
                     }}
                     placeholder={placeholder}
                     className="h-10 rounded-2xl px-3 shadow-none"
@@ -687,8 +694,8 @@ export function AgentChat({
               <Button
                 size="icon"
                 className="h-10 w-10 shrink-0 rounded-2xl"
-                onClick={submit}
-                disabled={disabled || !value.trim()}
+                onClick={() => void submit()}
+                disabled={disabled || (!value.trim() && attachments.length === 0)}
                 aria-label="Начать"
               >
                 <SendHorizontal className="h-5 w-5" />
@@ -702,14 +709,14 @@ export function AgentChat({
                 <div
                   key={a.id}
                   className="flex max-w-full items-center gap-2 rounded-2xl border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground"
-                  aria-label={`Файл прикреплён: ${a.name}`}
+                  aria-label={`Файл прикреплён: ${a.file.name}`}
                 >
                   <Lock
                     className="h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-500"
                     aria-hidden
                   />
-                  <span className="min-w-0 truncate" title={`${a.type}: ${a.name}`}>
-                    {a.type}: {a.name}
+                  <span className="min-w-0 truncate" title={`${a.kind}: ${a.file.name}`}>
+                    {a.kind}: {a.file.name}
                   </span>
                   <button
                     type="button"

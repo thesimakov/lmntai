@@ -32,6 +32,11 @@ import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
 import { isAffirmativeUserReply } from "@/lib/affirmative-reply";
+import {
+  formatAttachmentsForLemnityChat,
+  mergeUserMessageWithAttachments,
+  playgroundUserDisplayContent
+} from "@/lib/chat-attachments";
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
@@ -598,8 +603,8 @@ export default function PromptBuildPage() {
   }, [lemnityAiSessionId, router]);
 
   const sendLemnityAiChat = useCallback(
-    async (messageText: string) => {
-      pushRecent(messageText.slice(0, 120));
+    async (messagePayload: string) => {
+      pushRecent(messagePayload.slice(0, 120));
       const sid = await ensureLemnityAiSession();
       if (!sid) {
         push("assistant", "❌ Не удалось создать сессию Lemnity AI.");
@@ -636,7 +641,7 @@ export default function PromptBuildPage() {
           headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
           credentials: "include",
           body: JSON.stringify({
-            message: messageText,
+            message: messagePayload,
             timestamp: Math.floor(Date.now() / 1000),
             event_id: eventId,
             agent_hint: agentHint,
@@ -871,7 +876,10 @@ export default function PromptBuildPage() {
 
       const apiMessages = thread
         .filter((m) => m.role === "user" || m.role === "assistant")
-        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.promptPlainText ?? m.content
+        }));
 
       try {
         setPromptCoachLoading(true);
@@ -1371,17 +1379,30 @@ export default function PromptBuildPage() {
     }
   }
 
-  function onSend(text: string) {
+  async function onSend(text: string, files?: File[]) {
     if (!lemnityAiBridgeReady) {
       toast.message("Загрузка режима сборки…");
       return;
     }
     if (shouldUseLemnityAiBridge) {
       const trimmed = text.trim();
-      if (!trimmed) return;
+      const hasFiles = (files?.length ?? 0) > 0;
+      if (!trimmed && !hasFiles) return;
+
+      const annex = await formatAttachmentsForLemnityChat(files ?? []);
+      const userOutbound = mergeUserMessageWithAttachments(trimmed, annex);
+      if (!userOutbound.trim()) return;
+      const displayContent = playgroundUserDisplayContent(text, files);
+      const userExtras =
+        userOutbound !== displayContent ? { promptPlainText: userOutbound } : {};
 
       if (coachAwaitingConfirm && pendingTechnicalPrompt) {
-        const userMsg: ChatMessage = { id: createMessageId(), role: "user", content: trimmed };
+        const userMsg: ChatMessage = {
+          id: createMessageId(),
+          role: "user",
+          content: displayContent,
+          ...userExtras
+        };
         const nextThread = [...messages, userMsg];
         setMessages(nextThread);
         if (isAffirmativeUserReply(trimmed)) {
@@ -1389,7 +1410,7 @@ export default function PromptBuildPage() {
           setCoachAwaitingConfirm(false);
           setPendingTechnicalPrompt(null);
           setPromptCoachDebugLine(null);
-          void sendLemnityAiChat(p);
+          void sendLemnityAiChat(mergeUserMessageWithAttachments(p, annex));
           return;
         }
         setCoachAwaitingConfirm(false);
@@ -1399,16 +1420,21 @@ export default function PromptBuildPage() {
       }
 
       if (stage === "ready") {
-        push("user", trimmed);
+        push("user", displayContent);
         setPromptCoachDebugLine(null);
-        void sendLemnityAiChat(trimmed);
+        void sendLemnityAiChat(userOutbound);
         return;
       }
 
-      const userMsg: ChatMessage = { id: createMessageId(), role: "user", content: trimmed };
+      const userMsg: ChatMessage = {
+        id: createMessageId(),
+        role: "user",
+        content: displayContent,
+        ...userExtras
+      };
       const nextThread = [...messages, userMsg];
       setMessages(nextThread);
-      if (!idea.trim()) setIdea(trimmed);
+      if (!idea.trim()) setIdea(trimmed || displayContent);
       if (stage === "idea") setStage("questions");
       void runPromptCoach(nextThread);
       return;
