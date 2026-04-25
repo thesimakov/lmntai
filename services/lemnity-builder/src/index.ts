@@ -1,9 +1,14 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 
 import { MemorySessionStore, PgSessionStore, type SessionStore } from "./store.js";
-import { streamChatCompletion } from "./routerai.js";
 import type { SessionRecord } from "./types.js";
 import { toEnvelopeData } from "./types.js";
+import {
+  createPlan,
+  executePlanToHtml,
+  generateSummary,
+  makeEvent
+} from "./workflow.js";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -71,6 +76,10 @@ function sseWrite(res: ServerResponse, event: string, data: object) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
 }
 
+function eventData(event: ReturnType<typeof makeEvent>): Record<string, unknown> {
+  return event.data ?? {};
+}
+
 export async function main() {
   const store = await buildStore();
   const port = Number(process.env.LEMNITY_BUILDER_PORT ?? process.env.PORT ?? "8787");
@@ -92,6 +101,20 @@ export async function main() {
 
     if (method === "GET" && parts.length === 1 && parts[0] === "sessions") {
       json(res, 200, envelope({ sessions: [] as unknown[] }));
+      return;
+    }
+
+    if (method === "GET" && parts.length === 2 && parts[0] === "artifacts") {
+      const artifact = await store.getArtifact(parts[1]);
+      if (!artifact) {
+        json(res, 404, { code: 404, msg: "not_found", data: null });
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store"
+      });
+      res.end(artifact.html);
       return;
     }
 
@@ -162,26 +185,66 @@ export async function main() {
 
       res.writeHead(200, sseHeaders());
 
-      let assistant = "";
-      try {
-        for await (const chunk of streamChatCompletion({
-          model,
-          userMessage,
-          user: routerUser
-        })) {
-          assistant += chunk;
-          sseWrite(res, "delta", { content: chunk });
+      const emit = (eventName: string, data: Record<string, unknown>, persist = true) => {
+        const event = makeEvent(eventName, data);
+        sseWrite(res, event.event, eventData(event));
+        if (persist) {
+          rec.events.push(event);
         }
-        rec.events.push({ event: "message", data: { role: "assistant", content: assistant } });
+        return event;
+      };
+
+      try {
+        emit("step", { id: "planner", description: "Планирование сборки", status: "running" });
+        const plan = await createPlan({
+          message: userMessage,
+          model,
+          user: routerUser
+        });
+        rec.title = plan.title || rec.title;
+        emit("title", { title: rec.title });
+        emit("plan", {
+          steps: plan.steps.map((step) => ({
+            id: step.id,
+            description: step.description,
+            status: "pending"
+          }))
+        });
+        emit("step", { id: "planner", description: "Планирование сборки", status: "completed" });
+        await store.replaceSession(rec);
+
+        const html = await executePlanToHtml({
+          message: userMessage,
+          model,
+          plan,
+          user: routerUser,
+          emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
+        });
+        const artifact = await store.createArtifact(id, html);
+        emit("tool", {
+          tool_call_id: `preview-${artifact.artifact_id}`,
+          name: "browser",
+          status: "called",
+          function: "preview_render",
+          args: { artifact: "index.html" },
+          content: { screenshot: `/api/lemnity-ai/artifacts/${artifact.artifact_id}` }
+        });
+        emit("preview", {
+          previewUrl: `/api/lemnity-ai/artifacts/${artifact.artifact_id}`,
+          sandboxId: artifact.artifact_id
+        });
+        const assistant = await generateSummary({ message: userMessage, model, plan, user: routerUser });
+        emit("message", { role: "assistant", content: assistant });
         rec.status = "completed";
         await store.replaceSession(rec);
-        sseWrite(res, "message", { role: "assistant", content: assistant });
-        sseWrite(res, "done", {});
+        emit("done", {});
       } catch (e) {
         rec.status = "failed";
+        const event = makeEvent("error", { error: e instanceof Error ? e.message : "chat_failed" });
+        rec.events.push(event);
         await store.replaceSession(rec);
-        sseWrite(res, "error", { error: e instanceof Error ? e.message : "chat_failed" });
-        sseWrite(res, "done", {});
+        sseWrite(res, event.event, eventData(event));
+        sseWrite(res, "done", eventData(makeEvent("done")));
       }
       res.end();
       return;

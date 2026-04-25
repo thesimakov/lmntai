@@ -26,6 +26,15 @@ export function BuildCode({ sandboxId, className }: BuildCodeProps) {
       setLoading(true);
       setError(null);
       try {
+        if (sandboxId.startsWith("artifact_")) {
+          const res = await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`);
+          if (!res.ok) {
+            const msg = await res.text();
+            throw new Error(msg || res.statusText);
+          }
+          if (!cancelled) setText(`/* --- index.html --- */\n${await res.text()}`);
+          return;
+        }
         const res = await fetch(`/api/sandbox/${sandboxId}?format=json`);
         if (!res.ok) {
           const msg = await res.text();

@@ -9,13 +9,16 @@ export function getGatewayConfig(): GatewayConfig {
   return { baseUrl: rawBase.replace(/\/+$/, ""), apiKey };
 }
 
-export async function* streamChatCompletion(input: {
+type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+async function requestChat(input: {
   model: string;
-  userMessage: string;
+  messages: ChatMessage[];
+  stream: boolean;
   user?: string;
-}): AsyncGenerator<string> {
+}) {
   const { baseUrl, apiKey } = getGatewayConfig();
-  const res = await fetch(`${baseUrl}/chat/completions`, {
+  return fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${apiKey}`,
@@ -23,11 +26,47 @@ export async function* streamChatCompletion(input: {
     },
     body: JSON.stringify({
       model: input.model,
-      messages: [{ role: "user", content: input.userMessage }],
-      stream: true,
-      stream_options: { include_usage: true },
+      messages: input.messages,
+      stream: input.stream,
+      ...(input.stream ? { stream_options: { include_usage: true } } : {}),
       ...(input.user ? { user: input.user } : {})
     })
+  });
+}
+
+export async function requestJsonCompletion(input: {
+  model: string;
+  prompt: string;
+  user?: string;
+}): Promise<string> {
+  const res = await requestChat({
+    model: input.model,
+    messages: [{ role: "user", content: input.prompt }],
+    stream: false,
+    user: input.user
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "RouterAI error");
+    throw new Error(text.slice(0, 2000));
+  }
+
+  const json = (await res.json()) as { choices?: Array<{ message?: { content?: unknown } }> };
+  const text = json.choices?.[0]?.message?.content;
+  return typeof text === "string" ? text : "";
+}
+
+export async function* streamChatCompletion(input: {
+  model: string;
+  userMessage?: string;
+  prompt?: string;
+  user?: string;
+}): AsyncGenerator<string> {
+  const res = await requestChat({
+    model: input.model,
+    messages: [{ role: "user", content: input.prompt ?? input.userMessage ?? "" }],
+    stream: true,
+    user: input.user
   });
 
   if (!res.ok) {

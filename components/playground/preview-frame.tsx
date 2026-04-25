@@ -35,16 +35,23 @@ export function PreviewFrame({ previewUrl, sandboxId }: PreviewFrameProps) {
   async function handleExport() {
     setIsExporting(true);
     try {
-      const response = await fetch(`/api/sandbox/${sandboxId}?format=json`);
-      if (!response.ok) {
-        throw new Error(`Export failed: ${response.status}`);
-      }
-      const payload = (await response.json()) as { files: Record<string, string> };
       const zip = new JSZip();
-
-      Object.entries(payload.files ?? {}).forEach(([path, content]) => {
-        zip.file(path, content);
-      });
+      if (previewUrl.includes("/api/lemnity-ai/artifacts/") || sandboxId.startsWith("artifact_")) {
+        const response = await fetch(previewUrl);
+        if (!response.ok) {
+          throw new Error(`Export failed: ${response.status}`);
+        }
+        zip.file("index.html", await response.text());
+      } else {
+        const response = await fetch(`/api/sandbox/${sandboxId}?format=json`);
+        if (!response.ok) {
+          throw new Error(`Export failed: ${response.status}`);
+        }
+        const payload = (await response.json()) as { files: Record<string, string> };
+        Object.entries(payload.files ?? {}).forEach(([path, content]) => {
+          zip.file(path, content);
+        });
+      }
 
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);

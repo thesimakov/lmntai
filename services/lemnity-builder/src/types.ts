@@ -1,5 +1,12 @@
 export type BuilderEvent = { event: string; data?: Record<string, unknown> };
 
+export type ArtifactRecord = {
+  artifact_id: string;
+  session_id: string;
+  html: string;
+  created_at: string;
+};
+
 export type SessionRecord = {
   session_id: string;
   title: string | null;

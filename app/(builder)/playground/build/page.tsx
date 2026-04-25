@@ -44,7 +44,23 @@ type LemnityAiBridgeEnvelope<T> = {
 type LemnityAiSessionPayload = {
   session_id: string;
   title?: string | null;
-  events?: Array<{ event?: string; data?: { role?: "user" | "assistant"; content?: string; title?: string } }>;
+  events?: Array<{
+    event?: string;
+    data?: {
+      role?: "user" | "assistant";
+      content?: string;
+      title?: string;
+      previewUrl?: string;
+      sandboxId?: string;
+      id?: string;
+      description?: string;
+      status?: string;
+      name?: string;
+      function?: string;
+      args?: Record<string, unknown>;
+      steps?: Array<{ id?: string; description?: string; status?: string }>;
+    };
+  }>;
 };
 
 type LemnityAiChatMessageEvent = {
@@ -61,10 +77,23 @@ type LemnityAiStepEvent = {
 type LemnityAiToolEvent = {
   name?: string;
   status?: string;
+  function?: string;
+  args?: Record<string, unknown>;
 };
 
-function mapLemnityAiStepStatus(status?: string): "running" | "completed" {
+type LemnityAiPlanEvent = {
+  steps?: Array<{ id?: string; description?: string; status?: string }>;
+};
+
+type LemnityAiPreviewEvent = {
+  previewUrl?: string;
+  sandboxId?: string;
+};
+
+function mapLemnityAiStepStatus(status?: string): "pending" | "running" | "completed" | "failed" {
+  if (status === "pending") return "pending";
   if (status === "completed") return "completed";
+  if (status === "failed") return "failed";
   return "running";
 }
 
@@ -300,11 +329,52 @@ export default function PromptBuildPage() {
           setMessages(nextMessages);
           setStage("ready");
         }
+        const lastPreview = [...(payload.events ?? [])]
+          .reverse()
+          .find((event) => event?.event === "preview" && typeof event.data?.previewUrl === "string")?.data;
+        if (lastPreview?.previewUrl && lastPreview.sandboxId) {
+          setPreviewUrl(lastPreview.previewUrl);
+          setSandboxId(lastPreview.sandboxId);
+          setMode("preview");
+          setProgress(100);
+        }
+        for (const event of payload.events ?? []) {
+          if (event?.event === "plan") {
+            for (const step of event.data?.steps ?? []) {
+              if (!step.id && !step.description) continue;
+              applyStreamLog({
+                type: "step",
+                id: step.id || "step",
+                description: step.description || "Шаг",
+                status: mapLemnityAiStepStatus(step.status)
+              });
+            }
+          }
+          if (event?.event === "step") {
+            applyStreamLog({
+              type: "step",
+              id: event.data?.id || "step",
+              description: event.data?.description || "Шаг",
+              status: mapLemnityAiStepStatus(event.data?.status)
+            });
+          }
+          if (event?.event === "tool") {
+            applyStreamLog({
+              type: "tool",
+              name: event.data?.name || "tool",
+              status: event.data?.status === "called" ? "called" : "calling",
+              detail:
+                typeof event.data?.function === "string"
+                  ? event.data.function
+                  : undefined
+            });
+          }
+        }
       } catch {
         // ignore
       }
     },
-    []
+    [applyStreamLog]
   );
 
   const ensureLemnityAiSession = useCallback(async (): Promise<string | null> => {
@@ -399,7 +469,7 @@ export default function PromptBuildPage() {
           if (!chunk.data) return;
           try {
             if (ev === "delta") {
-              const data = JSON.parse(chunk.data) as { content?: string; text?: string };
+              const data = JSON.parse(chunk.data) as { content?: string; text?: string; kind?: string };
               const piece =
                 typeof data.content === "string"
                   ? data.content
@@ -407,8 +477,10 @@ export default function PromptBuildPage() {
                     ? data.text
                     : "";
               if (piece.length > 0) {
-                bridgeSawDeltaRef.current = true;
-                appendBridgeAssistantChunk(piece);
+                if (data.kind !== "artifact") {
+                  bridgeSawDeltaRef.current = true;
+                  appendBridgeAssistantChunk(piece);
+                }
                 setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
               return;
@@ -449,11 +521,34 @@ export default function PromptBuildPage() {
 
             if (ev === "tool") {
               const data = JSON.parse(chunk.data) as LemnityAiToolEvent;
+              const argDetail =
+                data.args && typeof data.args === "object"
+                  ? Object.values(data.args).find((value) => typeof value === "string")
+                  : undefined;
               applyStreamLog({
                 type: "tool",
                 name: data.name || "tool",
-                status: data.status === "called" ? "called" : "calling"
+                status: data.status === "called" ? "called" : "calling",
+                detail:
+                  typeof data.function === "string"
+                    ? `${data.function}${typeof argDetail === "string" ? ` ${argDetail}` : ""}`
+                    : typeof argDetail === "string"
+                      ? argDetail
+                      : undefined
               });
+              return;
+            }
+
+            if (ev === "plan") {
+              const data = JSON.parse(chunk.data) as LemnityAiPlanEvent;
+              for (const step of data.steps ?? []) {
+                applyStreamLog({
+                  type: "step",
+                  id: step.id || "step",
+                  description: step.description || "Шаг",
+                  status: mapLemnityAiStepStatus(step.status)
+                });
+              }
               return;
             }
 
@@ -470,6 +565,20 @@ export default function PromptBuildPage() {
               push("assistant", `❌ ${data.error || "Ошибка Lemnity AI"}`);
               setMode("idle");
               setStage("ready");
+              return;
+            }
+
+            if (ev === "preview") {
+              const data = JSON.parse(chunk.data) as LemnityAiPreviewEvent;
+              if (data.previewUrl && data.sandboxId) {
+                setPreviewUrl(data.previewUrl);
+                setSandboxId(data.sandboxId);
+                setShareIsPublic(false);
+                setMode("preview");
+                setStage("ready");
+                setProgress(100);
+                push("assistant", "✅ Превью готово. Можешь написать, что изменить — я обновлю сборку следующим шагом.");
+              }
             }
           } catch {
             // ignore invalid sse payloads

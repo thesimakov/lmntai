@@ -296,6 +296,16 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     return new Response("Not found", { status: 404 });
   }
 
+  if (path[0] === "artifacts" && path.length === 2 && req.method === "GET") {
+    const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
+      method: "GET",
+      headers: withLemnityAiUpstreamAuthHeaders({
+        Accept: req.headers.get("accept") || "text/html"
+      })
+    });
+    return passthrough(upstream);
+  }
+
   if (path.length === 1 && path[0] === "sessions") {
     if (req.method === "GET") {
       const sessions = await listLemnityAiSessionsForUser(user.id);
