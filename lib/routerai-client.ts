@@ -13,7 +13,9 @@ export function getGatewayConfig() {
 }
 
 export type RouterAIPayload = {
-  prompt: string;
+  /** Используется, если не задано `messages`. */
+  prompt?: string;
+  messages?: Array<{ role: "system" | "user" | "assistant"; content: string }>;
   model?: string;
   settings?: {
     temperature?: number;
@@ -26,14 +28,30 @@ export type RouterAIPayload = {
   user?: string;
 };
 
+export type RouterAIUsage = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+};
+
+export type RouterAIJsonResult = {
+  text: string;
+  usage?: RouterAIUsage;
+  model?: string;
+};
+
 function buildRequestBody(
   payload: RouterAIPayload,
   stream: boolean
 ): Record<string, unknown> {
   const targetModel = payload.model ?? DEFAULT_MODEL;
+  const messages =
+    payload.messages && payload.messages.length > 0
+      ? payload.messages.map((m) => ({ role: m.role, content: m.content }))
+      : [{ role: "user", content: payload.prompt ?? "" }];
   const body: Record<string, unknown> = {
     model: targetModel,
-    messages: [{ role: "user", content: payload.prompt }],
+    messages,
     stream
   };
   if (stream) {
@@ -78,7 +96,7 @@ export async function requestRouterAIStream(payload: RouterAIPayload) {
 
 export async function requestRouterAIJson(
   payload: RouterAIPayload
-): Promise<{ text: string; usage?: { prompt_tokens: number; completion_tokens: number; total_tokens: number } }> {
+): Promise<RouterAIJsonResult> {
   const { baseUrl, apiKey } = getGatewayConfig();
 
   const res = await fetch(`${baseUrl}/chat/completions`, {
@@ -97,6 +115,7 @@ export async function requestRouterAIJson(
 
   type RouterAiChatCompletionJson = {
     choices?: Array<{ message?: { content?: unknown } }>;
+    model?: unknown;
     usage?: {
       prompt_tokens?: unknown;
       completion_tokens?: unknown;
@@ -107,6 +126,7 @@ export async function requestRouterAIJson(
   const json = (await res.json()) as RouterAiChatCompletionJson;
   const textRaw = json.choices?.[0]?.message?.content;
   const text = typeof textRaw === "string" ? textRaw : "";
+  const model = typeof json.model === "string" ? json.model : undefined;
 
   const usageRaw = json.usage;
   const usage =
@@ -121,5 +141,42 @@ export async function requestRouterAIJson(
         }
       : undefined;
 
-  return { text, usage };
+  return { text, usage, model };
+}
+
+function uniqModels(candidates: Array<string | null | undefined>): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of candidates) {
+    const model = raw?.trim();
+    if (!model || seen.has(model)) continue;
+    seen.add(model);
+    result.push(model);
+  }
+  return result;
+}
+
+export async function requestRouterAIJsonWithFallback(
+  payload: RouterAIPayload,
+  modelChain: string[]
+): Promise<RouterAIJsonResult & { requestedModel: string; attemptedModels: string[] }> {
+  const attemptedModels =
+    modelChain.length > 0
+      ? uniqModels([...modelChain, payload.model])
+      : uniqModels([payload.model, DEFAULT_MODEL]);
+  let lastError: unknown = null;
+
+  for (const requestedModel of attemptedModels) {
+    try {
+      const response = await requestRouterAIJson({ ...payload, model: requestedModel });
+      return { ...response, requestedModel, attemptedModels };
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (lastError instanceof Error) {
+    throw lastError;
+  }
+  throw new Error("RouterAI error");
 }

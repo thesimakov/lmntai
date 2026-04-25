@@ -3,12 +3,14 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { MemorySessionStore, PgSessionStore, type SessionStore } from "./store.js";
 import type { SessionRecord } from "./types.js";
 import { toEnvelopeData } from "./types.js";
+import { generatePresentationPptx } from "./presentation-pptx.js";
 import {
   createPlan,
   executePlanToHtml,
   generateSummary,
   makeEvent
 } from "./workflow.js";
+import { ARTIFACT_MIME_HTML } from "./types.js";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -110,8 +112,18 @@ export async function main() {
         json(res, 404, { code: 404, msg: "not_found", data: null });
         return;
       }
+      if (artifact.file_data && artifact.file_data.length > 0) {
+        const safeName = (artifact.filename || "file").replace(/[/\\?%*:|"<>]/g, "_");
+        res.writeHead(200, {
+          "Content-Type": artifact.mime_type,
+          "Content-Disposition": `attachment; filename="${safeName}"`,
+          "Cache-Control": "no-store"
+        });
+        res.end(artifact.file_data);
+        return;
+      }
       res.writeHead(200, {
-        "Content-Type": "text/html; charset=utf-8",
+        "Content-Type": ARTIFACT_MIME_HTML,
         "Cache-Control": "no-store"
       });
       res.end(artifact.html);
@@ -213,26 +225,61 @@ export async function main() {
         emit("step", { id: "planner", description: "Планирование сборки", status: "completed" });
         await store.replaceSession(rec);
 
-        const html = await executePlanToHtml({
-          message: userMessage,
-          model,
-          plan,
-          user: routerUser,
-          emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
-        });
-        const artifact = await store.createArtifact(id, html);
-        emit("tool", {
-          tool_call_id: `preview-${artifact.artifact_id}`,
-          name: "browser",
-          status: "called",
-          function: "preview_render",
-          args: { artifact: "index.html" },
-          content: { screenshot: `/api/lemnity-ai/artifacts/${artifact.artifact_id}` }
-        });
-        emit("preview", {
-          previewUrl: `/api/lemnity-ai/artifacts/${artifact.artifact_id}`,
-          sandboxId: artifact.artifact_id
-        });
+        const previewPath = `/api/lemnity-ai/artifacts/`;
+
+        if (plan.artifact_kind === "presentation") {
+          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "running" });
+          const { buffer, filename, mimeType } = await generatePresentationPptx({
+            message: userMessage,
+            plan,
+            model,
+            user: routerUser
+          });
+          const artifact = await store.createArtifact(id, {
+            kind: "binary",
+            data: buffer,
+            mimeType,
+            filename
+          });
+          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "completed" });
+          emit("tool", {
+            tool_call_id: `export-${artifact.artifact_id}`,
+            name: "file",
+            status: "called",
+            function: "artifact_export",
+            args: { format: "pptx", file: filename },
+            content: { path: `${previewPath}${artifact.artifact_id}` }
+          });
+          emit("preview", {
+            previewUrl: `${previewPath}${artifact.artifact_id}`,
+            sandboxId: artifact.artifact_id,
+            mimeType,
+            filename
+          });
+        } else {
+          const html = await executePlanToHtml({
+            message: userMessage,
+            model,
+            plan,
+            user: routerUser,
+            emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
+          });
+          const artifact = await store.createArtifact(id, { kind: "html", html });
+          emit("tool", {
+            tool_call_id: `preview-${artifact.artifact_id}`,
+            name: "browser",
+            status: "called",
+            function: "preview_render",
+            args: { artifact: "index.html" },
+            content: { screenshot: `${previewPath}${artifact.artifact_id}` }
+          });
+          emit("preview", {
+            previewUrl: `${previewPath}${artifact.artifact_id}`,
+            sandboxId: artifact.artifact_id,
+            mimeType: ARTIFACT_MIME_HTML,
+            filename: null
+          });
+        }
         const assistant = await generateSummary({ message: userMessage, model, plan, user: routerUser });
         emit("message", { role: "assistant", content: assistant });
         rec.status = "completed";

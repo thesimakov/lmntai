@@ -4,6 +4,7 @@ import {
   createPlanPrompt,
   executeUiPrompt,
   fallbackPlan,
+  normalizeArtifactKind,
   summarizePrompt,
   type BuilderPlan
 } from "./prompts.js";
@@ -35,7 +36,7 @@ function stripCodeFence(text: string): string {
 
 function parsePlan(text: string, message: string): BuilderPlan {
   try {
-    const raw = JSON.parse(stripCodeFence(text)) as Partial<BuilderPlan>;
+    const raw = JSON.parse(stripCodeFence(text)) as Partial<BuilderPlan> & { artifactKind?: unknown };
     const steps = Array.isArray(raw.steps)
       ? raw.steps
           .map((s, index) => ({
@@ -48,11 +49,14 @@ function parsePlan(text: string, message: string): BuilderPlan {
           .slice(0, 8)
       : [];
     if (!steps.length) return fallbackPlan(message);
+    const artifact_kind = normalizeArtifactKind(raw.artifact_kind ?? raw.artifactKind, message);
+    const fb = fallbackPlan(message);
     return {
       message: typeof raw.message === "string" ? raw.message : "",
       language: typeof raw.language === "string" ? raw.language : /[\u0400-\u04FF]/.test(message) ? "ru" : "en",
-      goal: typeof raw.goal === "string" && raw.goal.trim() ? raw.goal.trim() : fallbackPlan(message).goal,
-      title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : fallbackPlan(message).title,
+      goal: typeof raw.goal === "string" && raw.goal.trim() ? raw.goal.trim() : fb.goal,
+      title: typeof raw.title === "string" && raw.title.trim() ? raw.title.trim().slice(0, 120) : fb.title,
+      artifact_kind,
       steps
     };
   } catch {

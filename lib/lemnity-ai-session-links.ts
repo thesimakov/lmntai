@@ -9,6 +9,8 @@ export type LemnityAiSessionListItem = {
   status?: string | null;
   unread_message_count?: number | null;
   is_shared?: boolean | null;
+  created_at?: string | null;
+  preview_artifact_id?: string | null;
 };
 
 function toDateFromUnix(value: number | null | undefined): Date | null {
@@ -24,6 +26,8 @@ export function asLemnityAiListItem(link: {
   status: string;
   unreadMessageCount: number;
   isShared: boolean;
+  createdAt: Date;
+  previewArtifactId: string | null;
 }): LemnityAiSessionListItem {
   return {
     session_id: link.manusSessionId,
@@ -32,7 +36,9 @@ export function asLemnityAiListItem(link: {
     latest_message_at: link.latestMessageAt ? Math.floor(link.latestMessageAt.getTime() / 1000) : null,
     status: link.status,
     unread_message_count: link.unreadMessageCount,
-    is_shared: link.isShared
+    is_shared: link.isShared,
+    created_at: link.createdAt.toISOString(),
+    preview_artifact_id: link.previewArtifactId
   };
 }
 
@@ -91,6 +97,7 @@ export async function syncLemnityAiSessionSummary(input: {
   status?: string | null;
   unreadMessageCount?: number | null;
   isShared?: boolean | null;
+  previewArtifactId?: string | null;
 }) {
   const latestAt =
     input.latestMessageAt instanceof Date
@@ -98,6 +105,11 @@ export async function syncLemnityAiSessionSummary(input: {
       : typeof input.latestMessageAt === "number"
         ? toDateFromUnix(input.latestMessageAt)
         : null;
+
+  const previewArtifactId =
+    typeof input.previewArtifactId === "string" && input.previewArtifactId.trim()
+      ? input.previewArtifactId.trim()
+      : undefined;
 
   await prisma.manusSessionLink.upsert({
     where: { manusSessionId: input.upstreamSessionId },
@@ -109,7 +121,8 @@ export async function syncLemnityAiSessionSummary(input: {
       status: input.status ?? undefined,
       unreadMessageCount:
         typeof input.unreadMessageCount === "number" ? Math.max(0, Math.floor(input.unreadMessageCount)) : undefined,
-      isShared: typeof input.isShared === "boolean" ? input.isShared : undefined
+      isShared: typeof input.isShared === "boolean" ? input.isShared : undefined,
+      ...(previewArtifactId !== undefined ? { previewArtifactId } : {})
     },
     create: {
       userId: input.userId,
@@ -120,7 +133,8 @@ export async function syncLemnityAiSessionSummary(input: {
       status: input.status ?? "pending",
       unreadMessageCount:
         typeof input.unreadMessageCount === "number" ? Math.max(0, Math.floor(input.unreadMessageCount)) : 0,
-      isShared: Boolean(input.isShared)
+      isShared: Boolean(input.isShared),
+      previewArtifactId: previewArtifactId ?? null
     }
   });
 }

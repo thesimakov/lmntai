@@ -121,6 +121,8 @@ model ManusSessionLink {
   unreadMessageCount Int      @default(0)
   status             String   @default("pending")
   isShared           Boolean  @default(false)
+  /// Последний HTML-артефакт lemnity-builder (sandboxId вида artifact_…) для превью в списке проектов.
+  previewArtifactId  String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 

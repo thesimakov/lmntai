@@ -31,7 +31,7 @@ type BridgeUpstreamSessionData = {
   session_id: string;
   title?: string | null;
   status?: string | null;
-  events?: Array<{ event?: string; data?: { role?: string; content?: string } }>;
+  events?: Array<{ event?: string; data?: Record<string, unknown> }>;
   is_shared?: boolean;
 };
 
@@ -71,8 +71,22 @@ function summarizeLatestAssistant(events: BridgeUpstreamSessionData["events"]): 
   if (!events?.length) return null;
   for (let i = events.length - 1; i >= 0; i -= 1) {
     const e = events[i];
-    if (e?.event === "message" && e.data?.role === "assistant" && typeof e.data.content === "string") {
-      return e.data.content;
+    const role = e?.data?.role;
+    const content = e?.data?.content;
+    if (e?.event === "message" && role === "assistant" && typeof content === "string") {
+      return content;
+    }
+  }
+  return null;
+}
+
+function lastPreviewArtifactFromEvents(events: BridgeUpstreamSessionData["events"]): string | null {
+  if (!events?.length) return null;
+  for (let i = events.length - 1; i >= 0; i -= 1) {
+    const e = events[i];
+    if (e?.event === "preview") {
+      const sid = e.data?.sandboxId;
+      if (typeof sid === "string" && sid.startsWith("artifact_")) return sid;
     }
   }
   return null;
@@ -190,6 +204,7 @@ async function proxyChatStream(input: {
   let title: string | null = null;
   let latestAssistant: string | null = null;
   let status = "running";
+  let previewArtifactId: string | null = null;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -216,7 +231,16 @@ async function proxyChatStream(input: {
             }
             if (!parsed.data) continue;
             try {
-              const payload = JSON.parse(parsed.data) as { role?: string; content?: string; title?: string };
+              const payload = JSON.parse(parsed.data) as {
+                role?: string;
+                content?: string;
+                title?: string;
+                sandboxId?: string;
+              };
+              if (parsed.event === "preview" && typeof payload.sandboxId === "string" && payload.sandboxId.startsWith("artifact_")) {
+                previewArtifactId = payload.sandboxId;
+                continue;
+              }
               if (parsed.event === "message" && payload.role === "assistant" && typeof payload.content === "string") {
                 assistantText += `${assistantText ? "\n" : ""}${payload.content}`;
                 latestAssistant = payload.content;
@@ -256,7 +280,8 @@ async function proxyChatStream(input: {
           upstreamSessionId: input.upstreamSessionId,
           title,
           latestMessage: latestAssistant,
-          status
+          status,
+          ...(previewArtifactId ? { previewArtifactId } : {})
         });
       } catch {
         await syncLemnityAiSessionSummary({
@@ -359,13 +384,15 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     const upstream = await lemnityAiUpstreamFetch(upstreamPath, { method: "GET" });
     const envelope = await readLemnityAiUpstreamEnvelope<BridgeUpstreamSessionData>(upstream.clone());
     if (upstream.ok && envelope?.code === 0 && envelope.data) {
+      const artifact = lastPreviewArtifactFromEvents(envelope.data.events);
       await syncLemnityAiSessionSummary({
         userId: user.id,
         upstreamSessionId,
         title: envelope.data.title ?? null,
         latestMessage: summarizeLatestAssistant(envelope.data.events),
         status: envelope.data.status ?? null,
-        isShared: envelope.data.is_shared ?? null
+        isShared: envelope.data.is_shared ?? null,
+        ...(artifact ? { previewArtifactId: artifact } : {})
       });
     }
     return passthrough(upstream);

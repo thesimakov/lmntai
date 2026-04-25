@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
@@ -26,13 +26,15 @@ export function BuildStreamSteps({ steps, toolLine, className }: BuildStreamStep
 
   return (
     <div className={cn("bg-muted/15", className)}>
-      <ul className="max-h-32 overflow-y-auto px-3 py-2 text-xs">
+      <ul className="max-h-[min(40vh,280px)] overflow-y-auto px-3 py-2 text-xs">
         {steps.map((s) => (
           <li key={s.id} className="flex items-start gap-2 py-0.5 text-foreground/90">
             {s.status === "completed" ? (
               <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" aria-hidden />
             ) : s.status === "running" ? (
               <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin text-primary" aria-hidden />
+            ) : s.status === "failed" ? (
+              <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" aria-hidden />
             ) : (
               <Circle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
             )}

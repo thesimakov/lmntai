@@ -6,18 +6,35 @@ import { cn } from "@/lib/utils";
 
 type BuildCodeProps = {
   sandboxId: string | null;
+  /** Если артефакт — бинарный (.pptx), исходник в редакторе не показываем */
+  artifactMimeType?: string | null;
   className?: string;
 };
 
-export function BuildCode({ sandboxId, className }: BuildCodeProps) {
+function isPptxMime(m: string | null | undefined): boolean {
+  if (!m) return false;
+  return m.includes("presentationml") || m.includes("ms-powerpoint");
+}
+
+export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeProps) {
   const [text, setText] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isPptxArtifact, setIsPptxArtifact] = useState(false);
 
   useEffect(() => {
     if (!sandboxId) {
       setText("");
       setError(null);
+      setIsPptxArtifact(false);
+      return;
+    }
+
+    if (sandboxId.startsWith("artifact_") && isPptxMime(artifactMimeType)) {
+      setText("");
+      setError(null);
+      setIsPptxArtifact(true);
+      setLoading(false);
       return;
     }
 
@@ -25,12 +42,21 @@ export function BuildCode({ sandboxId, className }: BuildCodeProps) {
     (async () => {
       setLoading(true);
       setError(null);
+      setIsPptxArtifact(false);
       try {
         if (sandboxId.startsWith("artifact_")) {
           const res = await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`);
           if (!res.ok) {
             const msg = await res.text();
             throw new Error(msg || res.statusText);
+          }
+          const ct = res.headers.get("content-type") || "";
+          if (ct.includes("presentationml") || ct.includes("ms-powerpoint")) {
+            if (!cancelled) {
+              setIsPptxArtifact(true);
+              setText("");
+            }
+            return;
           }
           if (!cancelled) setText(`/* --- index.html --- */\n${await res.text()}`);
           return;
@@ -54,7 +80,7 @@ export function BuildCode({ sandboxId, className }: BuildCodeProps) {
     return () => {
       cancelled = true;
     };
-  }, [sandboxId]);
+  }, [sandboxId, artifactMimeType]);
 
   if (!sandboxId) {
     return (
@@ -76,6 +102,20 @@ export function BuildCode({ sandboxId, className }: BuildCodeProps) {
     return (
       <div className={cn("rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive", className)}>
         {error}
+      </div>
+    );
+  }
+
+  if (isPptxArtifact && sandboxId.startsWith("artifact_")) {
+    return (
+      <div
+        className={cn(
+          "flex h-full min-h-[200px] flex-col items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground",
+          className
+        )}
+      >
+        <p className="font-medium text-foreground">Двоичный артефакт (.pptx)</p>
+        <p>Исходный код недоступен. Скачай презентацию на вкладке «Превью».</p>
       </div>
     );
   }

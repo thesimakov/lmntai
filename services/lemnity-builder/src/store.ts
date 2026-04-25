@@ -1,13 +1,14 @@
 import { randomUUID } from "node:crypto";
 
-import type { ArtifactRecord, SessionRecord } from "./types.js";
+import type { ArtifactRecord, CreateArtifactInput, SessionRecord } from "./types.js";
+import { ARTIFACT_MIME_HTML } from "./types.js";
 
 export interface SessionStore {
   createSession(): Promise<string>;
   getSession(id: string): Promise<SessionRecord | null>;
   replaceSession(rec: SessionRecord): Promise<void>;
   deleteSession(id: string): Promise<void>;
-  createArtifact(sessionId: string, html: string): Promise<ArtifactRecord>;
+  createArtifact(sessionId: string, input: CreateArtifactInput): Promise<ArtifactRecord>;
   getArtifact(id: string): Promise<ArtifactRecord | null>;
 }
 
@@ -44,20 +45,42 @@ export class MemorySessionStore implements SessionStore {
     this.map.delete(id);
   }
 
-  async createArtifact(sessionId: string, html: string): Promise<ArtifactRecord> {
-    const artifact: ArtifactRecord = {
-      artifact_id: `artifact_${randomUUID()}`,
-      session_id: sessionId,
-      html,
-      created_at: new Date().toISOString()
-    };
-    this.artifacts.set(artifact.artifact_id, structuredClone(artifact));
-    return artifact;
+  async createArtifact(sessionId: string, input: CreateArtifactInput): Promise<ArtifactRecord> {
+    const id = `artifact_${randomUUID()}`;
+    let rec: ArtifactRecord;
+    if (input.kind === "html") {
+      rec = {
+        artifact_id: id,
+        session_id: sessionId,
+        mime_type: ARTIFACT_MIME_HTML,
+        filename: null,
+        html: input.html,
+        file_data: null,
+        created_at: new Date().toISOString()
+      };
+    } else {
+      rec = {
+        artifact_id: id,
+        session_id: sessionId,
+        mime_type: input.mimeType,
+        filename: input.filename,
+        html: "",
+        file_data: Buffer.from(input.data),
+        created_at: new Date().toISOString()
+      };
+    }
+    this.artifacts.set(id, structuredClone(rec));
+    return rec;
   }
 
   async getArtifact(id: string): Promise<ArtifactRecord | null> {
     const v = this.artifacts.get(id);
-    return v ? structuredClone(v) : null;
+    if (!v) return null;
+    const clone = structuredClone(v) as ArtifactRecord;
+    if (v.file_data) {
+      clone.file_data = Buffer.from(v.file_data);
+    }
+    return clone;
   }
 }
 
@@ -77,12 +100,20 @@ export class PgSessionStore implements SessionStore {
       CREATE TABLE IF NOT EXISTS lemnity_builder_artifact (
         id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
-        html TEXT NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        html TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        mime_type TEXT NOT NULL DEFAULT 'text/html; charset=utf-8',
+        file_name TEXT,
+        file_data BYTEA
       );
 
       CREATE INDEX IF NOT EXISTS lemnity_builder_artifact_session_id_created_at_idx
         ON lemnity_builder_artifact (session_id, created_at DESC);
+    `);
+    await this.pool.query(`
+      ALTER TABLE lemnity_builder_artifact ADD COLUMN IF NOT EXISTS mime_type TEXT NOT NULL DEFAULT 'text/html; charset=utf-8';
+      ALTER TABLE lemnity_builder_artifact ADD COLUMN IF NOT EXISTS file_name TEXT;
+      ALTER TABLE lemnity_builder_artifact ADD COLUMN IF NOT EXISTS file_data BYTEA;
     `);
   }
 
@@ -126,26 +157,70 @@ export class PgSessionStore implements SessionStore {
     await this.pool.query(`DELETE FROM lemnity_builder_session WHERE id = $1`, [id]);
   }
 
-  async createArtifact(sessionId: string, html: string): Promise<ArtifactRecord> {
+  async createArtifact(sessionId: string, input: CreateArtifactInput): Promise<ArtifactRecord> {
     const id = `artifact_${randomUUID()}`;
-    const { rows } = await this.pool.query<{ id: string; session_id: string; html: string; created_at: Date }>(
-      `INSERT INTO lemnity_builder_artifact (id, session_id, html, created_at)
-       VALUES ($1, $2, $3, NOW())
-       RETURNING id, session_id, html, created_at`,
-      [id, sessionId, html]
+    if (input.kind === "html") {
+      const { rows } = await this.pool.query<{
+        id: string;
+        session_id: string;
+        html: string;
+        created_at: Date;
+        mime_type: string;
+        file_name: string | null;
+      }>(
+        `INSERT INTO lemnity_builder_artifact (id, session_id, html, mime_type, file_name, file_data, created_at)
+         VALUES ($1, $2, $3, $4, NULL, NULL, NOW())
+         RETURNING id, session_id, html, created_at, mime_type, file_name`,
+        [id, sessionId, input.html, ARTIFACT_MIME_HTML]
+      );
+      const row = rows[0];
+      return {
+        artifact_id: row.id,
+        session_id: row.session_id,
+        mime_type: row.mime_type,
+        filename: row.file_name,
+        html: row.html,
+        file_data: null,
+        created_at: row.created_at.toISOString()
+      };
+    }
+
+    const { rows } = await this.pool.query<{
+      id: string;
+      session_id: string;
+      html: string;
+      created_at: Date;
+      mime_type: string;
+      file_name: string | null;
+    }>(
+      `INSERT INTO lemnity_builder_artifact (id, session_id, html, mime_type, file_name, file_data, created_at)
+       VALUES ($1, $2, '', $3, $4, $5, NOW())
+       RETURNING id, session_id, html, created_at, mime_type, file_name`,
+      [id, sessionId, input.mimeType, input.filename, input.data]
     );
     const row = rows[0];
     return {
       artifact_id: row.id,
       session_id: row.session_id,
+      mime_type: row.mime_type,
+      filename: row.file_name,
       html: row.html,
+      file_data: null,
       created_at: row.created_at.toISOString()
     };
   }
 
   async getArtifact(id: string): Promise<ArtifactRecord | null> {
-    const { rows } = await this.pool.query<{ id: string; session_id: string; html: string; created_at: Date }>(
-      `SELECT id, session_id, html, created_at FROM lemnity_builder_artifact WHERE id = $1`,
+    const { rows } = await this.pool.query<{
+      id: string;
+      session_id: string;
+      html: string;
+      created_at: Date;
+      mime_type: string;
+      file_name: string | null;
+      file_data: Buffer | null;
+    }>(
+      `SELECT id, session_id, html, created_at, mime_type, file_name, file_data FROM lemnity_builder_artifact WHERE id = $1`,
       [id]
     );
     const row = rows[0];
@@ -153,7 +228,10 @@ export class PgSessionStore implements SessionStore {
     return {
       artifact_id: row.id,
       session_id: row.session_id,
+      mime_type: row.mime_type,
+      filename: row.file_name,
       html: row.html,
+      file_data: row.file_data ? Buffer.from(row.file_data) : null,
       created_at: row.created_at.toISOString()
     };
   }

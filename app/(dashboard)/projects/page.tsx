@@ -2,19 +2,23 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { FolderKanban, Loader2, Rocket } from "lucide-react";
+import { Frame, Loader2, Pencil, Rocket, Sparkles } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
 import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 
 type RuntimeProject = {
   id: string;
   name: string;
   status: string;
+  createdAt: string;
   updatedAt: string;
-  previewUrl: string;
+  embedUrl: string | null;
+  editUrl: string;
+  openUrl: string;
 };
 
 export default function ProjectsPage() {
@@ -54,7 +58,7 @@ export default function ProjectsPage() {
     };
   }, [t]);
 
-  function formatUpdatedAt(raw: string) {
+  function formatCreatedAt(raw: string) {
     const date = new Date(raw);
     if (Number.isNaN(date.getTime())) return raw;
     return date.toLocaleString(dateLocale, {
@@ -72,7 +76,7 @@ export default function ProjectsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-3xl font-semibold">{t("projects_title")}</h1>
-            <p className="text-sm text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               {projects.length} {t("projects_count")}
             </p>
           </div>
@@ -106,24 +110,58 @@ export default function ProjectsPage() {
         ) : null}
 
         {!isLoading && !loadError && projects.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => (
-              <Card key={project.id} className="transition-all hover:-translate-y-1 hover:border-white/30">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <FolderKanban className="h-4 w-4 text-fuchsia-300" />
-                    {project.name}
-                  </CardTitle>
-                  <CardDescription>{formatUpdatedAt(project.updatedAt)}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-zinc-300">
-                    {project.status}
+              <Card
+                key={project.id}
+                className={cn(
+                  "overflow-hidden border-border/80 p-0 shadow-sm transition-all",
+                  "hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                )}
+              >
+                <div className="relative aspect-video w-full overflow-hidden bg-muted/50">
+                  {project.embedUrl ? (
+                    <iframe
+                      title={project.name}
+                      src={project.embedUrl}
+                      className="pointer-events-none h-full min-h-[140px] w-full border-0 bg-background select-none"
+                      sandbox="allow-scripts allow-same-origin"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full min-h-[140px] flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
+                      <Frame className="h-10 w-10 opacity-40" strokeWidth={1.25} />
+                      <span className="text-xs">{t("projects_preview_placeholder")}</span>
+                    </div>
+                  )}
+                  <div
+                    className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5 dark:ring-white/10"
+                    aria-hidden
+                  />
+                </div>
+
+                <CardContent className="space-y-3 p-4 pt-3">
+                  <div className="flex items-start gap-2">
+                    <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
+                    <h2 className="line-clamp-2 min-h-[2.5rem] text-base font-semibold leading-snug text-foreground">
+                      {project.name}
+                    </h2>
                   </div>
-                  <div>
-                    <Button asChild size="sm" variant="secondary" className="w-full">
-                      <Link href={project.previewUrl} target="_blank" rel="noreferrer">
-                        {t("projects_open")}
+
+                  <p className="text-xs text-muted-foreground">
+                    {t("projects_created_label")}: {formatCreatedAt(project.createdAt)}
+                  </p>
+
+                  <div className="flex gap-2 pt-1">
+                    <Button asChild size="sm" className="flex-1 gap-1.5">
+                      <Link href={project.editUrl}>
+                        <Pencil className="h-3.5 w-3.5" />
+                        {t("projects_edit")}
+                      </Link>
+                    </Button>
+                    <Button asChild size="sm" variant="secondary" className="flex-1">
+                      <Link href={project.openUrl} target="_blank" rel="noreferrer">
+                        {t("projects_go")}
                       </Link>
                     </Button>
                   </div>

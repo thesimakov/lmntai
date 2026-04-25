@@ -1,0 +1,99 @@
+import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+
+export type PromptCoachPhase = "gathering" | "confirm";
+
+export type PromptCoachModelJson = {
+  reply: string;
+  phase: PromptCoachPhase;
+  technical_prompt: string | null;
+};
+
+export function buildPromptCoachSystemPrompt(kindCtx: string, ideaHint: string): string {
+  const ideaBlock = ideaHint.trim()
+    ? `\nИсходная формулировка (контекст, может дублировать первое сообщение):\n${ideaHint.trim()}\n`
+    : "";
+
+  return `Ты — AI-коуч по сборке технического промпта для Lemnity Builder (один артефакт: HTML, презентация и т.п. в зависимости от типа проекта).
+${kindCtx}
+${ideaBlock}
+Правила:
+- Пока не хватает данных: phase="gathering", technical_prompt=null. В reply — 1–3 коротких уточняющих вопроса или просьба конкретизировать (без длинного финального ТЗ).
+- Когда информации достаточно: phase="confirm", technical_prompt — полный технический промпт на русском для генератора (секции/слайды, стиль, контент, CTA, языки, ограничения).
+- В reply при phase="confirm" кратко объясни пользователю, что будет сделано, приведи сформулированное ТЗ; ОБЯЗАТЕЛЬНО заверши ответ ровно двумя переносами строки и фразой: «Всё верно? Запускать?» (с буквой «ё»).
+Ответь СТРОГО одним JSON без markdown и без текста вокруг:
+{"reply":"...","phase":"gathering"|"confirm","technical_prompt":null|"..."}`;
+}
+
+export function stripMarkdownJsonFence(text: string): string {
+  let t = text.trim();
+  if (t.startsWith("```")) {
+    t = t.replace(/^```(?:json)?\s*\n?/i, "").replace(/\n?```\s*$/i, "");
+  }
+  return t.trim();
+}
+
+const CONFIRM_SUFFIX = "\n\nВсё верно? Запускать?";
+
+export function parsePromptCoachJson(text: string): PromptCoachModelJson | null {
+  const raw = stripMarkdownJsonFence(text);
+  try {
+    const j = JSON.parse(raw) as Record<string, unknown>;
+    const replyRaw = typeof j.reply === "string" ? j.reply.trim() : "";
+    if (!replyRaw) return null;
+    const phase: PromptCoachPhase = j.phase === "confirm" ? "confirm" : "gathering";
+    const tp = j.technical_prompt;
+    let technical_prompt: string | null = null;
+    if (typeof tp === "string" && tp.trim()) {
+      technical_prompt = tp.trim();
+    } else if (tp !== null && tp !== undefined) {
+      return null;
+    }
+    if (phase === "confirm" && !technical_prompt) return null;
+    if (phase === "gathering") {
+      technical_prompt = null;
+    }
+
+    let reply = replyRaw;
+    if (phase === "confirm" && !reply.includes("Запускать?")) {
+      reply = `${reply.replace(/\s+$/, "")}${CONFIRM_SUFFIX}`;
+    }
+
+    return { reply, phase, technical_prompt };
+  } catch {
+    return null;
+  }
+}
+
+export function coachOfflineDemoReply(
+  messages: Array<{ role: string; content: string }>,
+  projectKind: ProjectKind | null
+): PromptCoachModelJson {
+  const lastUser = [...messages].reverse().find((m) => m.role === "user" && m.content?.trim());
+  const seed = lastUser?.content?.trim() ?? "лендинг";
+  const kindLabel =
+    projectKind === "presentation"
+      ? "презентация (слайды: титул, проблема, решение, продукт, кейсы, CTA)"
+      : projectKind === "resume"
+        ? "резюме (блоки: контакты, опыт, навыки, образование)"
+        : "одностраничный лендинг";
+
+  const technical_prompt = [
+    `Тип: ${kindLabel}.`,
+    `Задача (из запроса пользователя): ${seed}`,
+    "Стек: один HTML-файл, Tailwind CDN, светлая тема, аккуратная типографика, секции с явными заголовками.",
+    "Добавить форму заявки (имя, email, сообщение) и блок FAQ из 4 пунктов.",
+    "Язык интерфейса: русский."
+  ].join("\n");
+
+  return {
+    reply: [
+      "В офлайн-демо я собрал черновик технического промпта по вашему последнему сообщению.",
+      "",
+      technical_prompt,
+      "",
+      "Всё верно? Запускать?"
+    ].join("\n"),
+    phase: "confirm",
+    technical_prompt
+  };
+}

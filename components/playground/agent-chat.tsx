@@ -49,6 +49,12 @@ type AgentChatProps = {
   variant?: "default" | "studio";
   /** Над полем ввода — прогресс / статус */
   footerSlot?: React.ReactNode;
+  /** Внутри прокрутки чата — над сообщениями (например карточка промпта) */
+  threadPromptSlot?: React.ReactNode;
+  /** Внутри прокрутки чата — под сообщениями (например шаги сборки) */
+  threadStatusSlot?: React.ReactNode;
+  /** Меняется при обновлении треда — докрутка вниз (длина не хватает для слотов) */
+  threadScrollKey?: string | number;
   /** Многострочный режим ввода; при передаче `onIsEditorChange` состояние контролируется снаружи */
   isEditor?: boolean;
   onIsEditorChange?: (value: boolean) => void;
@@ -72,6 +78,9 @@ export function AgentChat({
   onSend,
   variant = "default",
   footerSlot,
+  threadPromptSlot,
+  threadStatusSlot,
+  threadScrollKey,
   isEditor: isEditorProp,
   onIsEditorChange,
   plan = null,
@@ -114,7 +123,7 @@ export function AgentChat({
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [visible.length]);
+  }, [visible.length, threadScrollKey]);
 
   useEffect(() => {
     try {
@@ -250,7 +259,7 @@ export function AgentChat({
         {headerSlot ? <div className={cn(isStudio ? "mb-2" : "mb-3")}>{headerSlot}</div> : null}
         {isStudio ? (
           <div className="flex flex-col gap-1">
-            <h2 className="truncate text-xs font-medium text-muted-foreground">{subtitle ?? title}</h2>
+            <h2 className="truncate text-xs font-semibold text-foreground">{title}</h2>
           </div>
         ) : (
           <>
@@ -263,10 +272,12 @@ export function AgentChat({
       <div
         ref={scrollRef}
         className={cn(
-          "flex-1 overflow-auto",
-          isStudio ? "space-y-3 bg-gradient-to-b from-zinc-100/40 to-zinc-50/30 p-3 dark:from-zinc-950/40 dark:to-zinc-900/30" : "space-y-2 p-3"
+          "flex min-h-0 flex-1 flex-col gap-3 overflow-auto",
+          isStudio ? "bg-gradient-to-b from-zinc-100/40 to-zinc-50/30 p-3 dark:from-zinc-950/40 dark:to-zinc-900/30" : "space-y-2 p-3"
         )}
       >
+        {threadPromptSlot ? <div className="shrink-0">{threadPromptSlot}</div> : null}
+
         <AnimatePresence mode="popLayout">
           {visible.map((m) => (
             <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
@@ -319,6 +330,17 @@ export function AgentChat({
             </motion.div>
           ))}
         </AnimatePresence>
+
+        {threadStatusSlot ? (
+          <div
+            className={cn(
+              "shrink-0 rounded-2xl border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80",
+              isStudio && "border-zinc-200/80"
+            )}
+          >
+            {threadStatusSlot}
+          </div>
+        ) : null}
       </div>
 
       <div className={cn("border-t", isStudio ? "border-0 bg-background p-0" : "p-2")}>

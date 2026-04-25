@@ -30,6 +30,7 @@ import {
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
+import { isAffirmativeUserReply } from "@/lib/affirmative-reply";
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
@@ -52,6 +53,8 @@ type LemnityAiSessionPayload = {
       title?: string;
       previewUrl?: string;
       sandboxId?: string;
+      mimeType?: string;
+      filename?: string | null;
       id?: string;
       description?: string;
       status?: string;
@@ -88,6 +91,8 @@ type LemnityAiPlanEvent = {
 type LemnityAiPreviewEvent = {
   previewUrl?: string;
   sandboxId?: string;
+  mimeType?: string;
+  filename?: string | null;
 };
 
 function mapLemnityAiStepStatus(status?: string): "pending" | "running" | "completed" | "failed" {
@@ -131,6 +136,7 @@ export default function PromptBuildPage() {
   const sessionLoadSeqRef = useRef(0);
   const bridgeAssistantMessageIdRef = useRef<string | null>(null);
   const bridgeSawDeltaRef = useRef(false);
+  const coachRequestSeqRef = useRef(0);
   const [idea, setIdea] = useState("");
   const [stage, setStage] = useState<"idea" | "questions" | "ready" | "generating">("idea");
   const [questions, setQuestions] = useState<string[]>([]);
@@ -142,6 +148,8 @@ export default function PromptBuildPage() {
   const [progress, setProgress] = useState(0);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [sandboxId, setSandboxId] = useState<string | null>(null);
+  const [previewArtifactMime, setPreviewArtifactMime] = useState<string | null>(null);
+  const [previewDownloadFilename, setPreviewDownloadFilename] = useState<string | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
   const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
   const [chatEditorMode, setChatEditorMode] = useState(false);
@@ -152,6 +160,11 @@ export default function PromptBuildPage() {
   const [leftWidth, setLeftWidth] = useState(400);
   const [projectKind, setProjectKind] = useState<ProjectKind | null>(null);
   const [agentHint, setAgentHint] = useState<AgentUiLabel>("GPT-4.1");
+  const [coachAwaitingConfirm, setCoachAwaitingConfirm] = useState(false);
+  const [pendingTechnicalPrompt, setPendingTechnicalPrompt] = useState<string | null>(null);
+  const [promptCoachLoading, setPromptCoachLoading] = useState(false);
+  const [promptCoachDebugLine, setPromptCoachDebugLine] = useState<string | null>(null);
+  const [promptBuilderDebugLine, setPromptBuilderDebugLine] = useState<string | null>(null);
   const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
@@ -169,12 +182,53 @@ export default function PromptBuildPage() {
     return last ? `${last.id}: ${last.description}` : null;
   }, [streamToolLine, streamSteps]);
 
+  const chatThreadScrollKey = useMemo(
+    () =>
+      `${stage}:${idea.length}:${finalPrompt.length}:${streamSteps.map((s) => `${s.id}:${s.status}`).join("|")}:${streamToolLine ?? ""}:${isGenerating}:${promptCoachLoading}:${Math.round(progress)}:${messages.length}:${coachAwaitingConfirm}`,
+    [
+      stage,
+      idea,
+      finalPrompt,
+      streamSteps,
+      streamToolLine,
+      isGenerating,
+      promptCoachLoading,
+      progress,
+      messages.length,
+      coachAwaitingConfirm
+    ]
+  );
+
+  const chatPromptSlot = useMemo(() => {
+    const promptText =
+      stage === "ready" || stage === "generating"
+        ? finalPrompt.trim() || idea.trim()
+        : idea.trim();
+    if (!promptText) return null;
+    const label =
+      stage === "questions"
+        ? "Идея проекта"
+        : stage === "idea"
+          ? "Идея"
+          : stage === "ready" || stage === "generating"
+            ? "Промпт"
+            : "Запрос";
+    return (
+      <div className="mr-auto w-full max-w-[min(92%,32rem)] rounded-2xl border border-zinc-200/80 bg-white/90 px-4 py-3 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900/85">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <p className="mt-2 whitespace-pre-wrap leading-relaxed text-foreground [word-break:break-word]">{promptText}</p>
+      </div>
+    );
+  }, [stage, idea, finalPrompt]);
+
   const header = useMemo(() => {
-    if (stage === "questions") return "Шаг 1/3 — Уточняющие вопросы";
+    if (shouldUseLemnityAiBridge && coachAwaitingConfirm) return "Шаг 2/3 — Подтверждение промпта";
+    if (stage === "questions")
+      return shouldUseLemnityAiBridge ? "Шаг 1/3 — Диалог с ИИ" : "Шаг 1/3 — Уточняющие вопросы";
     if (stage === "ready") return "Шаг 2/3 — Финальный промпт";
     if (stage === "generating") return "Шаг 3/3 — Генерация";
     return "Сборка промпта";
-  }, [stage]);
+  }, [stage, shouldUseLemnityAiBridge, coachAwaitingConfirm]);
 
   const addressPath = useMemo(() => {
     if (!previewUrl) return "/";
@@ -335,6 +389,10 @@ export default function PromptBuildPage() {
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
           setPreviewUrl(lastPreview.previewUrl);
           setSandboxId(lastPreview.sandboxId);
+          setPreviewArtifactMime(typeof lastPreview.mimeType === "string" ? lastPreview.mimeType : null);
+          setPreviewDownloadFilename(
+            typeof lastPreview.filename === "string" ? lastPreview.filename : null
+          );
           setMode("preview");
           setProgress(100);
         }
@@ -409,6 +467,8 @@ export default function PromptBuildPage() {
       setMode("generating");
       setStage("generating");
       setProgress(10);
+      setPreviewArtifactMime(null);
+      setPreviewDownloadFilename(null);
 
       requestAbortRef.current?.abort();
       const controller = new AbortController();
@@ -573,11 +633,20 @@ export default function PromptBuildPage() {
               if (data.previewUrl && data.sandboxId) {
                 setPreviewUrl(data.previewUrl);
                 setSandboxId(data.sandboxId);
+                setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
+                setPreviewDownloadFilename(typeof data.filename === "string" ? data.filename : null);
                 setShareIsPublic(false);
                 setMode("preview");
                 setStage("ready");
                 setProgress(100);
-                push("assistant", "✅ Превью готово. Можешь написать, что изменить — я обновлю сборку следующим шагом.");
+                const isPptx =
+                  typeof data.mimeType === "string" && data.mimeType.includes("presentationml");
+                push(
+                  "assistant",
+                  isPptx
+                    ? "✅ Презентация PowerPoint (.pptx) готова — скачай файл справа. Напиши, что поменять в содержании или структуре слайдов."
+                    : "✅ Превью готово. Можешь написать, что изменить — я обновлю сборку следующим шагом."
+                );
               }
             }
           } catch {
@@ -635,6 +704,110 @@ export default function PromptBuildPage() {
     ]
   );
 
+  const runPromptCoach = useCallback(
+    async (thread: ChatMessage[]) => {
+      requestAbortRef.current?.abort();
+      const controller = new AbortController();
+      requestAbortRef.current = controller;
+      const seq = ++coachRequestSeqRef.current;
+
+      const apiMessages = thread
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+      try {
+        setPromptCoachLoading(true);
+        setPromptBuilderDebugLine(null);
+        const res = await fetch("/api/prompt-coach", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: apiMessages,
+            idea: idea.trim() || undefined,
+            projectKind: projectKind ?? undefined,
+            agentHint
+          }),
+          signal: controller.signal
+        });
+
+        if (!mountedRef.current || controller.signal.aborted) return;
+
+        if (!res.ok) {
+          const msg = await res.text().catch(() => "");
+          if (!mountedRef.current || controller.signal.aborted) return;
+          push("assistant", `❌ ${msg || "Не удалось получить ответ коуча"}`);
+          setCoachAwaitingConfirm(false);
+          setPendingTechnicalPrompt(null);
+          setStage("questions");
+          return;
+        }
+
+        const data = (await res.json()) as {
+          reply?: string;
+          phase?: string;
+          technical_prompt?: string | null;
+          debug_model?: string;
+          debug_attempted_models?: string[];
+        };
+
+        if (!mountedRef.current || controller.signal.aborted) return;
+
+        const reply = typeof data.reply === "string" ? data.reply.trim() : "";
+        if (!reply) {
+          push("assistant", "❌ Пустой ответ. Попробуй ещё раз.");
+          return;
+        }
+
+        if (process.env.NODE_ENV !== "production") {
+          const debugModel =
+            typeof data.debug_model === "string" && data.debug_model.trim()
+              ? data.debug_model.trim()
+              : null;
+          const attempted =
+            Array.isArray(data.debug_attempted_models) && data.debug_attempted_models.length > 0
+              ? data.debug_attempted_models.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+              : [];
+          if (debugModel) {
+            setPromptCoachDebugLine(
+              attempted.length > 0
+                ? `DEV · prompt model: ${debugModel} · chain: ${attempted.join(" -> ")}`
+                : `DEV · prompt model: ${debugModel}`
+            );
+          }
+        }
+
+        push("assistant", reply);
+
+        if (
+          data.phase === "confirm" &&
+          typeof data.technical_prompt === "string" &&
+          data.technical_prompt.trim()
+        ) {
+          const tp = data.technical_prompt.trim();
+          setFinalPrompt(tp);
+          setCoachAwaitingConfirm(true);
+          setPendingTechnicalPrompt(tp);
+          setStage("ready");
+        } else {
+          setCoachAwaitingConfirm(false);
+          setPendingTechnicalPrompt(null);
+          setStage("questions");
+        }
+      } catch (error) {
+        if ((error as Error).name === "AbortError") return;
+        if (!mountedRef.current) return;
+        push("assistant", "❌ Ошибка запроса к коучу промпта");
+        setCoachAwaitingConfirm(false);
+        setPendingTechnicalPrompt(null);
+      } finally {
+        if (mountedRef.current && coachRequestSeqRef.current === seq) {
+          setPromptCoachLoading(false);
+        }
+      }
+    },
+    [agentHint, idea, projectKind, push]
+  );
+
   useEffect(() => {
     if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
     if (requestedSessionId) return;
@@ -656,11 +829,16 @@ export default function PromptBuildPage() {
 
     if (handoff?.projectKind) setProjectKind(handoff.projectKind);
     setIdea(fromStorage);
-    setStage("ready");
-    push("user", fromStorage);
-    void sendLemnityAiChat(fromStorage);
+    setStage("questions");
+    setCoachAwaitingConfirm(false);
+    setPendingTechnicalPrompt(null);
+    setPromptCoachDebugLine(null);
+    setPromptBuilderDebugLine(null);
+    const msg: ChatMessage = { id: createMessageId(), role: "user", content: fromStorage };
+    setMessages([msg]);
+    void runPromptCoach([msg]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge, requestedSessionId, sendLemnityAiChat]);
+  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge, requestedSessionId, runPromptCoach]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -725,6 +903,7 @@ export default function PromptBuildPage() {
 
     pushRecent(currentIdea);
     setStage("questions");
+    setPromptBuilderDebugLine(null);
 
     let res: Response;
     try {
@@ -755,7 +934,28 @@ export default function PromptBuildPage() {
       return;
     }
 
-    const data = (await res.json()) as { questions: string[] };
+    const data = (await res.json()) as {
+      questions: string[];
+      debug_model?: string;
+      debug_attempted_models?: string[];
+    };
+    if (process.env.NODE_ENV !== "production") {
+      const debugModel =
+        typeof data.debug_model === "string" && data.debug_model.trim()
+          ? data.debug_model.trim()
+          : null;
+      const attempted =
+        Array.isArray(data.debug_attempted_models) && data.debug_attempted_models.length > 0
+          ? data.debug_attempted_models.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+          : [];
+      if (debugModel) {
+        setPromptBuilderDebugLine(
+          attempted.length > 0
+            ? `DEV · prompt-builder model: ${debugModel} · chain: ${attempted.join(" -> ")}`
+            : `DEV · prompt-builder model: ${debugModel}`
+        );
+      }
+    }
     setQuestions(data.questions);
     setQa(data.questions.map((q) => ({ q, a: "" })));
     setQuestionIndex(0);
@@ -798,7 +998,28 @@ export default function PromptBuildPage() {
       return;
     }
 
-    const data = (await res.json()) as { finalPrompt: string };
+    const data = (await res.json()) as {
+      finalPrompt: string;
+      debug_model?: string;
+      debug_attempted_models?: string[];
+    };
+    if (process.env.NODE_ENV !== "production") {
+      const debugModel =
+        typeof data.debug_model === "string" && data.debug_model.trim()
+          ? data.debug_model.trim()
+          : null;
+      const attempted =
+        Array.isArray(data.debug_attempted_models) && data.debug_attempted_models.length > 0
+          ? data.debug_attempted_models.filter((x): x is string => typeof x === "string" && x.trim().length > 0)
+          : [];
+      if (debugModel) {
+        setPromptBuilderDebugLine(
+          attempted.length > 0
+            ? `DEV · prompt-builder model: ${debugModel} · chain: ${attempted.join(" -> ")}`
+            : `DEV · prompt-builder model: ${debugModel}`
+        );
+      }
+    }
     setFinalPrompt(data.finalPrompt);
     setStage("ready");
     push(
@@ -822,6 +1043,8 @@ export default function PromptBuildPage() {
     setProgress(8);
     setPreviewUrl(null);
     setSandboxId(null);
+    setPreviewArtifactMime(null);
+    setPreviewDownloadFilename(null);
     setShareIsPublic(false);
 
     requestAbortRef.current?.abort();
@@ -931,8 +1154,40 @@ export default function PromptBuildPage() {
       return;
     }
     if (shouldUseLemnityAiBridge) {
-      push("user", text);
-      void sendLemnityAiChat(text);
+      const trimmed = text.trim();
+      if (!trimmed) return;
+
+      if (coachAwaitingConfirm && pendingTechnicalPrompt) {
+        const userMsg: ChatMessage = { id: createMessageId(), role: "user", content: trimmed };
+        const nextThread = [...messages, userMsg];
+        setMessages(nextThread);
+        if (isAffirmativeUserReply(trimmed)) {
+          const p = pendingTechnicalPrompt;
+          setCoachAwaitingConfirm(false);
+          setPendingTechnicalPrompt(null);
+          setPromptCoachDebugLine(null);
+          void sendLemnityAiChat(p);
+          return;
+        }
+        setCoachAwaitingConfirm(false);
+        setPendingTechnicalPrompt(null);
+        void runPromptCoach(nextThread);
+        return;
+      }
+
+      if (stage === "ready") {
+        push("user", trimmed);
+        setPromptCoachDebugLine(null);
+        void sendLemnityAiChat(trimmed);
+        return;
+      }
+
+      const userMsg: ChatMessage = { id: createMessageId(), role: "user", content: trimmed };
+      const nextThread = [...messages, userMsg];
+      setMessages(nextThread);
+      if (!idea.trim()) setIdea(trimmed);
+      if (stage === "idea") setStage("questions");
+      void runPromptCoach(nextThread);
       return;
     }
     push("user", text);
@@ -1024,21 +1279,41 @@ export default function PromptBuildPage() {
             <AgentChat
               variant="studio"
               title={header}
-              subtitle={idea.trim() ? idea.trim().slice(0, 96) + (idea.trim().length > 96 ? "…" : "") : undefined}
               messages={messages}
-              disabled={isGenerating || !lemnityAiBridgeReady}
+              disabled={isGenerating || promptCoachLoading || !lemnityAiBridgeReady}
               onSend={onSend}
               placeholder="Отправить сообщение Lemnity…"
               isEditor={chatEditorMode}
               onIsEditorChange={setChatEditorMode}
               plan={session?.user?.plan ?? null}
               projectKind={projectKind}
+              agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
               onModelHintChange={setAgentHint}
+              threadPromptSlot={chatPromptSlot}
+              threadStatusSlot={
+                streamSteps.length > 0 || streamToolLine ? (
+                  <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="border-0 bg-transparent" />
+                ) : null
+              }
+              threadScrollKey={chatThreadScrollKey}
               footerSlot={
                 isGenerating ? (
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                     <span className="min-w-0 truncate">Сборка интерфейса · {Math.round(progress)}%</span>
+                  </div>
+                ) : promptCoachLoading ? (
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                    <span className="min-w-0 truncate">Коуч промпта уточняет детали…</span>
+                  </div>
+                ) : process.env.NODE_ENV !== "production" && promptCoachDebugLine ? (
+                  <div className="truncate rounded-lg border border-dashed border-border bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
+                    {promptCoachDebugLine}
+                  </div>
+                ) : process.env.NODE_ENV !== "production" && promptBuilderDebugLine ? (
+                  <div className="truncate rounded-lg border border-dashed border-border bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
+                    {promptBuilderDebugLine}
                   </div>
                 ) : null
               }
@@ -1127,13 +1402,14 @@ export default function PromptBuildPage() {
             >
               {tab === "preview" ? (
                 <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-background">
-                  <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="shrink-0" />
                   <RightPanel
                     mode={mode}
                     progress={progress}
                     previewUrl={previewUrl}
                     sandboxId={sandboxId}
                     streamHint={mode === "generating" ? streamHint : null}
+                    previewMimeType={previewArtifactMime}
+                    previewDownloadFilename={previewDownloadFilename}
                   />
                 </div>
               ) : tab === "settings" ? (
@@ -1142,7 +1418,7 @@ export default function PromptBuildPage() {
                 </div>
               ) : (
                 <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background p-4">
-                  <BuildCode sandboxId={sandboxId} />
+                  <BuildCode sandboxId={sandboxId} artifactMimeType={previewArtifactMime} />
                 </div>
               )}
             </div>

@@ -15,13 +15,29 @@ async function getProjects(req: NextRequest) {
 
   if (isLemnityAiBridgeEnabledServer()) {
     const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
-    const projects = sessions.map((row) => ({
-      id: row.session_id,
-      name: row.title || "New Session",
-      status: row.status || "pending",
-      updatedAt: row.latest_message_at ? new Date(row.latest_message_at * 1000).toISOString() : new Date().toISOString(),
-      previewUrl: `/playground/build?sessionId=${encodeURIComponent(row.session_id)}`
-    }));
+    const projects = sessions.map((row) => {
+      const sessionId = row.session_id;
+      const artifact =
+        typeof row.preview_artifact_id === "string" && row.preview_artifact_id.startsWith("artifact_")
+          ? row.preview_artifact_id
+          : null;
+      const embedUrl = artifact ? `/api/lemnity-ai/artifacts/${encodeURIComponent(artifact)}` : null;
+      const updatedAt = row.latest_message_at
+        ? new Date(row.latest_message_at * 1000).toISOString()
+        : new Date().toISOString();
+      const createdAt =
+        typeof row.created_at === "string" && row.created_at.length > 0 ? row.created_at : updatedAt;
+      return {
+        id: sessionId,
+        name: row.title?.trim() || "Проект",
+        status: row.status || "pending",
+        createdAt,
+        updatedAt,
+        embedUrl,
+        editUrl: `/playground/build?sessionId=${encodeURIComponent(sessionId)}`,
+        openUrl: embedUrl ?? `/playground/build?sessionId=${encodeURIComponent(sessionId)}`
+      };
+    });
     return Response.json({ projects });
   }
 
@@ -30,8 +46,11 @@ async function getProjects(req: NextRequest) {
     id: row.sandboxId,
     name: row.title || "Новый проект",
     status: row.updatedAt === row.createdAt ? "Черновик" : "Готов",
+    createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),
-    previewUrl: row.previewUrl
+    embedUrl: `/api/sandbox/${row.sandboxId}`,
+    editUrl: "/playground/build",
+    openUrl: `/api/sandbox/${row.sandboxId}`
   }));
 
   return Response.json({ projects });

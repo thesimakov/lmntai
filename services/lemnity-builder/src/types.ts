@@ -1,9 +1,18 @@
 export type BuilderEvent = { event: string; data?: Record<string, unknown> };
 
+export const ARTIFACT_MIME_HTML = "text/html; charset=utf-8";
+export const ARTIFACT_MIME_PPTX =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
 export type ArtifactRecord = {
   artifact_id: string;
   session_id: string;
+  mime_type: string;
+  /** Имя файла для Content-Disposition (например презентация.pptx) */
+  filename: string | null;
+  /** HTML-тело превью; для бинарных артефактов может быть пустым */
   html: string;
+  file_data: Buffer | null;
   created_at: string;
 };
 
@@ -32,3 +41,7 @@ export function toEnvelopeData(rec: SessionRecord): SessionEnvelopeData {
     is_shared: rec.is_shared ?? false
   };
 }
+
+export type CreateArtifactInput =
+  | { kind: "html"; html: string }
+  | { kind: "binary"; data: Buffer; mimeType: string; filename: string };

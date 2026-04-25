@@ -21,6 +21,8 @@ type RightPanelProps = {
   sandboxId: string | null;
   /** Подсказка из стрима (шаг / инструмент) */
   streamHint?: string | null;
+  previewMimeType?: string | null;
+  previewDownloadFilename?: string | null;
 };
 
 function IdleState() {
@@ -86,20 +88,30 @@ function GeneratingState({ progress, streamHint }: { progress: number; streamHin
   );
 }
 
-export function RightPanel({ mode, progress, previewUrl, sandboxId, streamHint }: RightPanelProps) {
-  if (mode === "idle") {
-    return <IdleState />;
-  }
-
+export function RightPanel({
+  mode,
+  progress,
+  previewUrl,
+  sandboxId,
+  streamHint,
+  previewMimeType,
+  previewDownloadFilename
+}: RightPanelProps) {
   if (mode === "generating") {
     return <GeneratingState progress={progress} streamHint={streamHint} />;
   }
 
-  if (mode === "preview" && previewUrl && sandboxId) {
+  /** Готовая сборка: показываем файл/превью, даже если mode ещё «idle» (рассинхрон или после ошибки сброса режима). */
+  if (previewUrl && sandboxId) {
     return (
       <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         <LemnityAiPreviewChrome>
-          <PreviewFrame previewUrl={previewUrl} sandboxId={sandboxId} />
+          <PreviewFrame
+            previewUrl={previewUrl}
+            sandboxId={sandboxId}
+            mimeType={previewMimeType}
+            downloadFilename={previewDownloadFilename}
+          />
         </LemnityAiPreviewChrome>
       </div>
     );

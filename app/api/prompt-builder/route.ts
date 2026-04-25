@@ -4,7 +4,8 @@ import { getSafeServerSession } from "@/lib/auth";
 import { requireDbUser } from "@/lib/auth-guards";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
-import { requestRouterAIJson } from "@/lib/routerai-client";
+import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
+import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
 import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
 import { hasEnoughTokens } from "@/lib/token-manager";
@@ -129,27 +130,39 @@ async function postPromptBuilder(req: NextRequest) {
     const fallback = getPromptBuilderFallbackQuestions();
 
     try {
-      const { text, usage } = await requestRouterAIJson({
-        prompt: `${systemPrompt}${kindCtx}\n\nИдея пользователя:\n${idea}`,
-        model: agent.modelId,
-        settings: agent.settings.json,
-        user: user.id
-      });
+      const modelChain = buildPromptModelFallbackChain(agent.modelId);
+      const { text, usage, model, requestedModel } = await requestRouterAIJsonWithFallback(
+        {
+          prompt: `${systemPrompt}${kindCtx}\n\nИдея пользователя:\n${idea}`,
+          settings: agent.settings.json,
+          user: user.id
+        },
+        modelChain
+      );
 
       const parsed = safeJsonParse<{ questions: string[] }>(text);
       const questions = parsed?.questions?.filter(Boolean).slice(0, 12) ?? fallback;
 
       const fallbackUsage = estimateUsageFromText(idea, text);
+      const billedModel = model ?? requestedModel ?? agent.modelId;
       const charge = await chargeTokensSafely({
         userId: user.id,
         usage: usage ?? fallbackUsage,
-        model: agent.modelId
+        model: billedModel
       });
       if (!charge.charged && charge.reason === "insufficient_balance") {
         return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
       }
 
-      return Response.json({ questions });
+      return Response.json({
+        questions,
+        ...(process.env.NODE_ENV === "production"
+          ? {}
+          : {
+              debug_model: billedModel,
+              debug_attempted_models: modelChain
+            })
+      });
     } catch {
       // RouterAI не настроен/временно недоступен — не ломаем UX
       return Response.json({ questions: fallback, fallback: true });
@@ -180,26 +193,38 @@ async function postPromptBuilder(req: NextRequest) {
 Верни только текст промпта, без префиксов и объяснений.${kindCtx}`;
 
     try {
-      const { text, usage } = await requestRouterAIJson({
-        prompt: `${composePrompt}\n\nИдея:\n${idea}\n\nОтветы пользователя:\n${packed}`,
-        model: agent.modelId,
-        settings: agent.settings.json,
-        user: user.id
-      });
+      const modelChain = buildPromptModelFallbackChain(agent.modelId);
+      const { text, usage, model, requestedModel } = await requestRouterAIJsonWithFallback(
+        {
+          prompt: `${composePrompt}\n\nИдея:\n${idea}\n\nОтветы пользователя:\n${packed}`,
+          settings: agent.settings.json,
+          user: user.id
+        },
+        modelChain
+      );
 
       const finalPrompt = text.trim() || `${idea}\n\n${packed}`;
 
       const fallbackUsage = estimateUsageFromText(`${idea}\n${packed}`, finalPrompt);
+      const billedModel = model ?? requestedModel ?? agent.modelId;
       const charge = await chargeTokensSafely({
         userId: user.id,
         usage: usage ?? fallbackUsage,
-        model: agent.modelId
+        model: billedModel
       });
       if (!charge.charged && charge.reason === "insufficient_balance") {
         return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
       }
 
-      return Response.json({ finalPrompt });
+      return Response.json({
+        finalPrompt,
+        ...(process.env.NODE_ENV === "production"
+          ? {}
+          : {
+              debug_model: billedModel,
+              debug_attempted_models: modelChain
+            })
+      });
     } catch {
       return Response.json({ finalPrompt: composePromptBuilderOfflineDemo(idea, packed), fallback: true });
     }
