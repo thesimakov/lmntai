@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState, type ReactNode } from "react"
+import Link from "next/link"
 import { motion } from "framer-motion"
 import { ExternalLink, Settings, Sparkles } from "lucide-react"
 import { useSession } from "next-auth/react"
@@ -347,13 +348,50 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
   }
 }
 
-export function Integrations() {
+export type IntegrationsProps = {
+  /** Встроенный вид (настройки студии): те же данные и localStorage, что и в /integrations */
+  embedded?: boolean
+  /** Показать только перечисленные интеграции (по id). */
+  integrationIdsFilter?: string[]
+  /** Исключить id из списка (дополнительно к скрытым по умолчанию). */
+  integrationIdsOmit?: string[]
+  /** Баннер виджетов Lemnity (по умолчанию для embedded — показывается). */
+  showWidgetsBanner?: boolean
+  /** Нижний блок «скоро»; по умолчанию скрыт в узком режиме `integrationIdsFilter`. */
+  showComingSoonFooter?: boolean
+  /** Заголовок и ссылка в кабинет (для embedded). */
+  showPageIntro?: boolean
+}
+
+export function Integrations({
+  embedded = false,
+  integrationIdsFilter,
+  integrationIdsOmit,
+  showWidgetsBanner: showWidgetsBannerProp,
+  showComingSoonFooter: showComingSoonFooterProp,
+  showPageIntro: showPageIntroProp
+}: IntegrationsProps) {
   const { t, lang } = useI18n()
   const { data: session } = useSession()
-  const visibleIntegrations = useMemo(
-    () => integrations.filter((integration) => !TEMP_HIDDEN_INTEGRATION_IDS.has(integration.id)),
-    []
-  )
+  const showWidgetsBanner = showWidgetsBannerProp !== false
+  const showComingSoonFooter =
+    showComingSoonFooterProp !== undefined
+      ? showComingSoonFooterProp
+      : !integrationIdsFilter?.length
+  const showPageIntro = showPageIntroProp !== false
+
+  const visibleIntegrations = useMemo(() => {
+    let list = integrations.filter((integration) => !TEMP_HIDDEN_INTEGRATION_IDS.has(integration.id))
+    if (integrationIdsFilter?.length) {
+      const allow = new Set(integrationIdsFilter)
+      list = list.filter((integration) => allow.has(integration.id))
+    }
+    if (integrationIdsOmit?.length) {
+      const omit = new Set(integrationIdsOmit)
+      list = list.filter((integration) => !omit.has(integration.id))
+    }
+    return list
+  }, [integrationIdsFilter, integrationIdsOmit])
   const settingsConfig = useMemo(() => buildSettingsConfig(lang), [lang])
   const hasProAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM"
   const ymEnabledByEnv = useMemo(() => {
@@ -463,25 +501,39 @@ export function Integrations() {
     )
   }
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4 }}
-    >
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold text-foreground">{t("integrations_title")}</h1>
-        <p className="mt-1 text-muted-foreground">
-          {t("integrations_subtitle")}
-        </p>
+  const pageIntro = embedded ? (
+    <div className="mb-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-semibold tracking-tight text-foreground">{t("integrations_title")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("integrations_subtitle")}</p>
+        </div>
+        <Button variant="outline" size="sm" className="shrink-0 rounded-lg" asChild>
+          <Link href="/integrations">{t("build_settings_integrations_open_dashboard")}</Link>
+        </Button>
       </div>
+    </div>
+  ) : (
+    <div className="mb-8">
+      <h1 className="text-2xl font-semibold text-foreground">{t("integrations_title")}</h1>
+      <p className="mt-1 text-muted-foreground">{t("integrations_subtitle")}</p>
+    </div>
+  )
 
+  const inner = (
+    <>
+      {showPageIntro ? pageIntro : null}
+
+      {showWidgetsBanner ? (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="glass mb-6 rounded-2xl border border-primary/20 p-5"
+        initial={embedded ? false : { opacity: 0, y: 20 }}
+        animate={embedded ? undefined : { opacity: 1, y: 0 }}
+        transition={embedded ? undefined : { duration: 0.4 }}
+        className={
+          embedded
+            ? "mb-4 rounded-2xl border border-primary/20 bg-card/40 p-5 backdrop-blur-sm"
+            : "glass mb-6 rounded-2xl border border-primary/20 p-5"
+        }
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="flex items-start gap-3">
@@ -541,9 +593,10 @@ export function Integrations() {
           </div>
         ) : null}
       </motion.div>
+      ) : null}
 
       {/* Integrations Grid */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4">
         {visibleIntegrations.map((integration, index) => {
           const lockedByPlan =
             PRO_REQUIRED_INTEGRATION_IDS.has(integration.id) && !hasProAccess
@@ -552,11 +605,15 @@ export function Integrations() {
           return (
           <motion.div
             key={integration.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
-            whileHover={{ y: -2 }}
-            className="glass glass-hover rounded-2xl p-5 transition-all duration-300"
+            initial={embedded ? false : { opacity: 0, y: 20 }}
+            animate={embedded ? undefined : { opacity: 1, y: 0 }}
+            transition={embedded ? undefined : { duration: 0.4, delay: index * 0.1 }}
+            whileHover={embedded ? undefined : { y: -2 }}
+            className={
+              embedded
+                ? "rounded-2xl border border-border/80 bg-card/50 p-5 transition-all duration-300 hover:bg-card/70"
+                : "glass glass-hover rounded-2xl p-5 transition-all duration-300"
+            }
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -667,11 +724,16 @@ export function Integrations() {
       </div>
 
       {/* Coming Soon */}
+      {showComingSoonFooter ? (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.5 }}
-        className="glass mt-8 rounded-2xl p-6 text-center"
+        initial={embedded ? false : { opacity: 0, y: 20 }}
+        animate={embedded ? undefined : { opacity: 1, y: 0 }}
+        transition={embedded ? undefined : { duration: 0.4, delay: 0.5 }}
+        className={
+          embedded
+            ? "mt-6 rounded-2xl border border-border/80 bg-muted/20 p-5 text-center"
+            : "glass mt-8 rounded-2xl p-6 text-center"
+        }
       >
         <p className="text-muted-foreground">
           {t("integrations_soon")}
@@ -680,6 +742,21 @@ export function Integrations() {
           {t("integrations_metrika_hint")}
         </p>
       </motion.div>
+      ) : null}
+    </>
+  )
+
+  if (embedded) {
+    return <div className="min-w-0">{inner}</div>
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+    >
+      {inner}
     </motion.div>
   )
 }

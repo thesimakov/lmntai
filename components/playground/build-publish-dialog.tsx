@@ -14,6 +14,11 @@ import {
   DialogTitle
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  PUBLISH_BUILTIN_BASE_DOMAIN,
+  normalizePublishSubdomainLabel,
+  suggestPublishSubdomain
+} from "@/lib/publish-host";
 import { copyTextToClipboard } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
 
@@ -26,24 +31,6 @@ type BuildPublishDialogProps = {
   seedText?: string;
   hasCustomDomainAccess: boolean;
 };
-
-const BASE_DOMAIN = "lemnity.com";
-
-function normalizeLabel(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9-]+/g, "-")
-    .replace(/-{2,}/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 40);
-}
-
-function suggestSubdomain(seedText: string | undefined, sandboxId: string | null): string {
-  const fromSeed = normalizeLabel(seedText ?? "");
-  if (fromSeed) return fromSeed;
-  const suffix = sandboxId ? sandboxId.slice(0, 6).toLowerCase() : "demo";
-  return `project-${suffix}`;
-}
 
 function buildNginxCommands(hostname: string, sandboxId: string | null): string {
   const targetPath = sandboxId ? `/share/${encodeURIComponent(sandboxId)}` : "/share/<sandbox-id>";
@@ -93,16 +80,16 @@ export function BuildPublishDialog({
 
   useEffect(() => {
     if (!open) return;
-    setSubdomain((prev) => prev || suggestSubdomain(seedText, sandboxId));
+    setSubdomain((prev) => prev || suggestPublishSubdomain(seedText, sandboxId));
   }, [open, seedText, sandboxId]);
 
   const cleanSubdomain = useMemo(() => {
-    const normalized = normalizeLabel(subdomain);
-    return normalized || suggestSubdomain(seedText, sandboxId);
+    const normalized = normalizePublishSubdomainLabel(subdomain);
+    return normalized || suggestPublishSubdomain(seedText, sandboxId);
   }, [subdomain, seedText, sandboxId]);
 
-  const defaultHost = `${cleanSubdomain}.${BASE_DOMAIN}`;
-  const manualHost = normalizeLabel(customDomain);
+  const defaultHost = `${cleanSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
+  const manualHost = normalizePublishSubdomainLabel(customDomain);
   const publishHost = hasCustomDomainAccess && manualHost ? customDomain.toLowerCase().trim() : defaultHost;
   const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
 
@@ -140,7 +127,7 @@ export function BuildPublishDialog({
                   autoCapitalize="off"
                   autoCorrect="off"
                 />
-                <span className="shrink-0 text-3xl text-muted-foreground">.{BASE_DOMAIN}</span>
+                <span className="shrink-0 text-3xl text-muted-foreground">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span>
               </div>
               <Button
                 type="button"

@@ -31,7 +31,7 @@ async function getShare(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ sandboxId }) => {
     try {
       const state = await getSandboxShareState(sandboxId);
-      return Response.json({ isPublic: state.isPublic });
+      return Response.json({ isPublic: state.isPublic, hideLemnityHeader: state.hideLemnityHeader });
     } catch (e) {
       const msg = getAuthDatabaseUserMessage(e);
       if (msg) {

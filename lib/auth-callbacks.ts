@@ -22,6 +22,7 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
         token.demoOffline = true;
         token.role = "USER";
         token.plan = "FREE";
+        token.shareBrandingRemovalPaid = false;
         return token;
       }
       // OAuth: иногда в первом круге `user.email` пуст, хотя в БД уже создан User.
@@ -29,12 +30,13 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
         try {
           const row = await prisma.user.findUnique({
             where: { id: user.id },
-            select: { email: true, role: true, plan: true, name: true }
+            select: { email: true, role: true, plan: true, name: true, shareBrandingRemovalPaidAt: true }
           });
           if (row?.email) {
             token.email = row.email.toLowerCase();
             token.role = toUserRole(row.role);
             token.plan = toPlan(row.plan);
+            token.shareBrandingRemovalPaid = Boolean(row.shareBrandingRemovalPaidAt);
             if (typeof row.name === "string") {
               token.name = row.name;
             }
@@ -56,12 +58,13 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
       try {
         const byId = await prisma.user.findUnique({
           where: { id: userId },
-          select: { email: true, role: true, plan: true, name: true }
+          select: { email: true, role: true, plan: true, name: true, shareBrandingRemovalPaidAt: true }
         });
         if (byId?.email) {
           token.email = byId.email.toLowerCase();
           token.role = toUserRole(byId.role);
           token.plan = toPlan(byId.plan);
+          token.shareBrandingRemovalPaid = Boolean(byId.shareBrandingRemovalPaidAt);
           if (typeof byId.name === "string") {
             token.name = byId.name;
           }
@@ -82,6 +85,7 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
           token.userId = dbUser.id;
           token.role = toUserRole(dbUser.role);
           token.plan = toPlan(dbUser.plan);
+          token.shareBrandingRemovalPaid = Boolean(dbUser.shareBrandingRemovalPaidAt);
           if (typeof dbUser.name === "string") {
             token.name = dbUser.name;
           }
@@ -99,6 +103,7 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
       session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
       session.user.plan = (token.plan as "FREE" | "PRO" | "TEAM") ?? "FREE";
       session.user.demoOffline = Boolean(token.demoOffline);
+      session.user.shareBrandingRemovalPaid = Boolean(token.shareBrandingRemovalPaid);
       if (token.email) {
         session.user.email = token.email as string;
       }

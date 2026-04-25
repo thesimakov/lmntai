@@ -13,6 +13,8 @@ declare module "next-auth" {
       plan: Plan;
       /** Вход без PostgreSQL (локальная разработка) */
       demoOffline?: boolean;
+      /** Разовая оплата снятия «Сделано на Lemnity» на /share (тариф FREE). */
+      shareBrandingRemovalPaid?: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -24,5 +26,6 @@ declare module "next-auth/jwt" {
     role?: UserRole;
     plan?: Plan;
     demoOffline?: boolean;
+    shareBrandingRemovalPaid?: boolean;
   }
 }

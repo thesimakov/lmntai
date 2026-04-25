@@ -197,6 +197,7 @@ export default function PromptBuildPage() {
     filename: string;
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
+  const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
@@ -331,6 +332,13 @@ export default function PromptBuildPage() {
       return "/";
     }
   }, [previewUrl]);
+
+  const settingsProjectTitle = useMemo(() => {
+    const raw = finalPrompt.trim() || idea.trim();
+    if (!raw) return "";
+    if (raw.length > 120) return `${raw.slice(0, 117)}…`;
+    return raw;
+  }, [finalPrompt, idea]);
 
   const handlePublishPreview = useCallback(() => {
     setPublishDialogOpen(true);
@@ -1661,8 +1669,20 @@ export default function PromptBuildPage() {
                   />
                 </div>
               ) : tab === "settings" ? (
-                <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-border bg-background p-4">
-                  <BuildSettings />
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background">
+                  <BuildSettings
+                    className="min-h-0"
+                    projectTitle={settingsProjectTitle}
+                    studioOpenedAt={studioSettingsOpenedAt}
+                    sandboxId={sandboxId}
+                    hasPreview={Boolean(previewUrl)}
+                    shareIsPublic={shareIsPublic}
+                    onShareIsPublicChange={setShareIsPublic}
+                    hasProPlan={hasCustomDomainAccess}
+                    shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
+                    publishSeedText={idea}
+                    onOpenPublishDialog={() => setPublishDialogOpen(true)}
+                  />
                 </div>
               ) : (
                 <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background p-4">

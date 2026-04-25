@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Globe, Link2, Lock, Share2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { cloneElement, isValidElement, useCallback, useEffect, useState, type ReactElement } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ type BuildSharePopoverProps = {
   shareIsPublic: boolean;
   onShareIsPublicChange: (v: boolean) => void;
   t: (key: MessageKey) => string;
+  /** Кастомная кнопка-триггер (Radix asChild). По умолчанию — компактная кнопка «Поделиться». */
+  trigger?: ReactElement;
 };
 
 /**
@@ -26,7 +28,8 @@ export function BuildSharePopover({
   hasPreview,
   shareIsPublic,
   onShareIsPublicChange,
-  t
+  t,
+  trigger
 }: BuildSharePopoverProps) {
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -111,24 +114,41 @@ export function BuildSharePopover({
     }
   };
 
-  const disabled = !hasPreview || !sandboxId;
+  const canShare = Boolean(sandboxId && hasPreview);
+
+  const defaultTrigger = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      className="h-8 min-w-0 max-w-full shrink rounded-lg px-2 sm:px-3"
+      aria-label={t("playground_build_share_label")}
+    >
+      {t("playground_build_share_label")}
+      <Share2 className="ml-1.5 h-3.5 w-3.5" />
+    </Button>
+  );
+
+  const triggerNode =
+    trigger && isValidElement(trigger)
+      ? cloneElement(trigger, {
+          "aria-label":
+            (trigger.props as { "aria-label"?: string })["aria-label"] ?? t("playground_build_share_label")
+        })
+      : defaultTrigger;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 min-w-0 max-w-full shrink rounded-lg px-2 sm:px-3"
-          disabled={disabled}
-          aria-label={t("playground_build_share_label")}
-        >
-          {t("playground_build_share_label")}
-          <Share2 className="ml-1.5 h-3.5 w-3.5" />
-        </Button>
-      </PopoverTrigger>
+      <PopoverTrigger asChild>{triggerNode}</PopoverTrigger>
       <PopoverContent align="end" className="p-0">
+        {!canShare ? (
+          <div className="max-w-[min(100vw-2rem,20rem)] px-4 py-4">
+            <p className="text-sm font-medium text-foreground">{t("playground_build_share_label")}</p>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              {t("playground_build_share_popover_need_preview")}
+            </p>
+          </div>
+        ) : (
         <div className="flex flex-col px-4 pb-4 pt-3">
           <div
             className={cn("flex cursor-pointer items-center gap-2.5 rounded-md px-2 py-2 hover:bg-muted/80", sharing && "pointer-events-none opacity-50")}
@@ -201,6 +221,7 @@ export function BuildSharePopover({
             </Button>
           )}
         </div>
+        )}
       </PopoverContent>
     </Popover>
   );

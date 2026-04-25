@@ -9,12 +9,14 @@ datasource db {
 
 /// Публичный доступ к превью песочницы по ссылке /share/:sandboxId.
 model SandboxShare {
-  id        String   @id @default(cuid())
-  sandboxId String   @unique
-  ownerId   String
-  isPublic  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                  String   @id @default(cuid())
+  sandboxId           String   @unique
+  ownerId             String
+  isPublic            Boolean  @default(false)
+  /// Скрыть ссылку «Lemnity» в шапке /share (для FREE — после разовой оплаты).
+  hideLemnityHeader   Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@index([ownerId])
 }
@@ -39,6 +41,8 @@ model User {
   tokenBalance   Int             @default(0)
   tokenLimit     Int             @default(0)
   plan           String          @default("FREE")
+  /// Разовая оплата снятия брендинга на публичном превью (тариф FREE / «Стандарт»).
+  shareBrandingRemovalPaidAt DateTime?
   role           String          @default("USER")
   apiKey         String?         @unique
   createdAt      DateTime        @default(now())

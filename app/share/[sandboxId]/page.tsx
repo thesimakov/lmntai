@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { SharePreviewClient } from "./share-preview-client";
-import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
+import { getSandboxShareHeaderBranding, isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { hasSandboxInRegistry } from "@/lib/sandbox-stores";
 
 type SharePageProps = {
@@ -22,5 +22,6 @@ export default async function PublicSharePage({ params }: SharePageProps) {
   if (!ok) {
     notFound();
   }
-  return <SharePreviewClient sandboxId={id} />;
+  const { showLemnityBranding } = await getSandboxShareHeaderBranding(id);
+  return <SharePreviewClient sandboxId={id} showLemnityBranding={showLemnityBranding} />;
 }

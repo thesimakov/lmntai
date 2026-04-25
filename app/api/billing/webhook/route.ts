@@ -8,6 +8,7 @@ import {
 } from "@/lib/billing-webhook";
 import { prisma } from "@/lib/prisma";
 import { applyReferralRevenueFromPayment } from "@/lib/referral-revenue";
+import { SHARE_BRANDING_REMOVAL_PLAN_ID } from "@/lib/share-branding";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 async function postBillingWebhook(req: NextRequest) {
@@ -47,6 +48,14 @@ async function postBillingWebhook(req: NextRequest) {
       await prisma.user.update({
         where: { id: user.id },
         data: { tokenBalance: { increment: payload.tokens } }
+      });
+    }
+
+    const planTag = (payload.planId ?? "").trim().toUpperCase();
+    if (planTag === SHARE_BRANDING_REMOVAL_PLAN_ID) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { shareBrandingRemovalPaidAt: new Date() }
       });
     }
 
