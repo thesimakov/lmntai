@@ -204,7 +204,7 @@ async function postGenerateStream(req: NextRequest) {
 
         controller.close();
       } catch (e) {
-        await destroySandbox(sandboxId).catch(() => {});
+        if (sandboxId) await destroySandbox(sandboxId).catch(() => {});
         sse(controller, { type: "error", message: e instanceof Error ? e.message : "Ошибка стрима" });
         controller.close();
       }
