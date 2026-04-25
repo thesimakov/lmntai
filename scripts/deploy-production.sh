@@ -20,6 +20,7 @@ git pull --ff-only
 npm ci
 npm run prisma:generate
 npx prisma migrate deploy
+rm -rf .next
 npm run build
 
 if [[ -f services/lemnity-builder/package.json ]]; then
