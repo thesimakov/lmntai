@@ -98,13 +98,7 @@ export function AgentChat({
   const fileInputAnyRef = useRef<HTMLInputElement | null>(null);
 
   const [attachments, setAttachments] = useState<Array<{ id: string; name: string; type: "image" | "video" | "file" }>>([]);
-  const [internalEditor, setInternalEditor] = useState(false);
-  const editorControlled = onIsEditorChange != null;
-  const isEditor = editorControlled ? Boolean(isEditorProp) : internalEditor;
-  const setEditor = (next: boolean) => {
-    if (editorControlled) onIsEditorChange(next);
-    else setInternalEditor(next);
-  };
+  const isEditor = onIsEditorChange != null ? Boolean(isEditorProp) : false;
   const [model, setModel] = useState<AgentUiLabel>("GPT-4.1");
   const [modelOpen, setModelOpen] = useState(false);
   const [modelMenuPos, setModelMenuPos] = useState<{
@@ -294,6 +288,9 @@ export function AgentChat({
         {isStudio ? (
           <div className="flex flex-col gap-1">
             <h2 className="truncate text-xs font-semibold text-foreground">{title}</h2>
+            {subtitle?.trim() ? (
+              <p className="line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
+            ) : null}
           </div>
         ) : (
           <>

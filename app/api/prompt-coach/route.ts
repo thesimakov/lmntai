@@ -82,13 +82,6 @@ async function postPromptCoach(req: NextRequest) {
     const inputDigest = messages.map((m) => `${m.role}:${m.content}`).join("\n");
 
     try {
-      let text: string;
-      let usage:
-        | { prompt_tokens: number; completion_tokens: number; total_tokens: number }
-        | undefined;
-      let billedModel: string;
-      let debugAttempted: string[];
-
       const modelChain = buildPromptModelFallbackChain(agent.modelId);
       const res = await requestRouterAIJsonWithFallback(
         {
@@ -98,10 +91,10 @@ async function postPromptCoach(req: NextRequest) {
         },
         modelChain
       );
-      text = res.text;
-      usage = res.usage;
-      billedModel = res.model ?? res.requestedModel ?? agent.modelId;
-      debugAttempted = modelChain;
+      const text = res.text;
+      const usage = res.usage;
+      const billedModel = res.model ?? res.requestedModel ?? agent.modelId;
+      const debugAttempted = modelChain;
 
       const parsed = parsePromptCoachJson(text);
       if (!parsed) {
