@@ -49,8 +49,9 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
   const kind = projectKind && PROJECT_KINDS.includes(projectKind) ? projectKind : null;
 
   const baseHeader = [
-    "You are a UI generation assistant for the Lemnity preview (single HTML, Tailwind-friendly CSS).",
+    "You are a document/UI generation assistant for Lemnity.",
     `Working language for visible copy: **${lang === "ru" ? "Russian" : "English"}** (match the user's language in headings and body).`,
+    "The user edits in a live HTML preview, but **resume and presentation workstreams target real office documents**, not marketing websites: structure content so Word/PDF or PowerPoint/PDF exports stay professional.",
     "Output: one complete HTML5 document, embedded CSS (or Tailwind CDN), no external JS frameworks unless a tiny inline script is required.",
     "Accessibility: logical heading order, button/link labels, sufficient contrast."
   ];
@@ -65,17 +66,17 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         ];
       case "presentation":
         return [
-          "Deliverable: **Slide-style page** (present as full-viewport “slides” in one HTML file).",
-          "Layout: 5–8 sections, each is one “slide” — use `data-slide=\"n\"` on a wrapper, min-height ~100vh or large blocks, one main idea per slide, large title, bullets sparingly.",
-          "Optional: light keyboard hint in comments; progress dots or page numbers in footer of each slide.",
-          "No speaker notes panel unless asked — focus on on-screen design."
+          "Canonical deliverables: **PowerPoint (.pptx)** and **PDF** (Lemnity Pro/Team can download both when the deck is built on the document pipeline).",
+          "This HTML preview is the **editable storyboard**: 5–8 slide sections, each wrapper with `data-slide=\"n\"`, min-height ~100vh or large blocks, one main idea per slide, big title, tight bullets — structure must map cleanly to slide titles/body in PPTX/PDF.",
+          "Optional: keyboard hint in comments; slide numbers or progress dots in the footer.",
+          "No marketing-site hero or pricing clichés unless the user asked for a pitch deck that needs them."
         ];
       case "resume":
         return [
-          "Deliverable: **One-page resume / CV** in HTML (printable).",
-          "Structure: top name + title + contact row; then Experience (reverse chrono), Education, Skills, optional Projects, Languages.",
-          "Add `@media print` rules: A4 width, break-inside: avoid for sections, page-break-after sparingly.",
-          "Professional typography, scannable, no stock Lorem in headings."
+          "Canonical deliverables: **Word (.docx)** and **PDF** — the user exports from Lemnity; HTML is the **editable document preview**, not a landing page.",
+          "Structure like a real CV: header (name, role, contacts), Experience (reverse chrono), Education, Skills, optional Projects & Languages — no hero banners or startup-marketing sections.",
+          "`@media print`: A4/Letter width, `break-inside: avoid` on sections, sensible page breaks.",
+          "Professional typography, scannable, no fake Lorem in headings."
         ];
       case "design":
         return [
@@ -121,8 +122,9 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
     website:
       "маркетинговый/продуктовый сайт: страница с секциями, навигация, hero, CTA, контакты.",
     presentation:
-      "презентация в виде полноэкранных слайдов в одном HTML, по одной мысли на слайд.",
-    resume: "одностраничное резюме/ CV, печатная вёрстка, опыт, навыки, контакты.",
+      "презентация как документ: целевые форматы PPTX/PDF; в HTML — редактируемые полноэкранные слайды по одной мысли.",
+    resume:
+      "резюме как документ: целевые форматы DOCX/PDF; в HTML — редактируемая печатная вёрстка CV, не лендинг.",
     design: "UI/UX-концепт, дизайн-система, варианты компонентов и состояний.",
     visitcard: "цифровая визитка, компактный экран, контакты и ссылки."
   };

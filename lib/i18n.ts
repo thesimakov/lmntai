@@ -634,6 +634,17 @@ export const messages = {
     build_export_docx_error: 'Не удалось создать DOCX',
     build_export_pdf_error: 'Не удалось сохранить PDF',
     build_export_failed: 'Ошибка экспорта',
+    build_export_presentation_pro_required: 'Тариф Pro или Team',
+    build_export_presentation_pro_required_desc:
+      'Скачивание презентации в PDF и PowerPoint (.pptx) доступно на тарифах Pro и Team. Оформите подписку в разделе «Тарифы».',
+    build_export_pptx_html_hint_title: 'Файл PowerPoint (.pptx)',
+    build_export_pptx_html_hint_desc:
+      'В этой сборке превью — HTML-слайды. Чтобы получить настоящий .pptx и PDF из одной структуры, соберите презентацию в режиме Lemnity AI (чат): платформа сгенерирует PPTX и PDF.',
+    build_pptx_file_banner:
+      'Файл PowerPoint (.pptx) — скачайте и откройте в Keynote, PowerPoint или Google Slides (импорт).',
+    build_pptx_ready_title: 'Презентация готова',
+    build_pptx_ready_desc:
+      'HTML-превью для .pptx недоступно. Скачайте файл и откройте в редакторе презентаций — там же можно править слайды.',
     build_settings_title: 'Настройки сборки',
     build_settings_intro:
       'Параметры превью, экспорта и среды текущей студии. Публикация проекта и домены — через «Опубликовать» в шапке.',
@@ -648,7 +659,7 @@ export const messages = {
     build_settings_export_intro: 'Файлы скачиваются во вкладке «Превью», панель действий над окном превью.',
     build_settings_export_zip: 'ZIP — исходники или единый HTML, в зависимости от типа сборки.',
     build_settings_export_formats:
-      'DOCX / PDF — для резюме, визитки и HTML-презентаций; отдельно — PPTX и PDF презентации, когда сгенерированы.',
+      'Резюме: DOC и PDF. Презентация: PDF и PPTX — на тарифах Pro и Team; в режиме Lemnity AI выдаётся нативный PPTX + PDF.',
     build_settings_roadmap_title: 'Дальше в продукте',
     build_settings_roadmap_intro: 'Эти опции пока недоступны — появятся в следующих версиях.',
     build_settings_roadmap_autodeploy: 'Автодеплой превью после каждого ответа агента',
@@ -1378,6 +1389,17 @@ export const messages = {
     build_export_docx_error: 'Could not create DOCX',
     build_export_pdf_error: 'Could not save PDF',
     build_export_failed: 'Export failed',
+    build_export_presentation_pro_required: 'Pro or Team plan',
+    build_export_presentation_pro_required_desc:
+      'Presentation downloads as PDF and PowerPoint (.pptx) are available on Pro and Team. Upgrade under Pricing.',
+    build_export_pptx_html_hint_title: 'PowerPoint file (.pptx)',
+    build_export_pptx_html_hint_desc:
+      'This build is an HTML slide preview. For a real .pptx and PDF from one structure, build the deck in Lemnity AI chat mode — the platform generates PPTX and PDF.',
+    build_pptx_file_banner:
+      'PowerPoint (.pptx) — download and open in Keynote, PowerPoint, or Google Slides (import).',
+    build_pptx_ready_title: 'Presentation ready',
+    build_pptx_ready_desc:
+      'No HTML preview for .pptx. Download the file and open it in a presentation app to edit slides.',
     build_settings_title: 'Build settings',
     build_settings_intro:
       'Preview, export, and environment for this studio session. Publishing and domains use Publish in the header.',
@@ -1392,7 +1414,7 @@ export const messages = {
     build_settings_export_intro: 'Downloads are on the Preview tab, in the toolbar above the iframe.',
     build_settings_export_zip: 'ZIP bundles sources or a single HTML file, depending on the build type.',
     build_settings_export_formats:
-      'DOCX / PDF for resume, business card, and HTML presentation flows; separate PPTX/PDF when generated.',
+      'Resume: DOC and PDF. Presentation: PDF and PPTX on Pro/Team; Lemnity AI mode emits native PPTX + PDF.',
     build_settings_roadmap_title: 'Coming next',
     build_settings_roadmap_intro: 'These options are not available yet — planned for upcoming releases.',
     build_settings_roadmap_autodeploy: 'Auto-deploy preview after each agent reply',
@@ -2123,6 +2145,17 @@ export const messages = {
     build_export_docx_error: 'DOCX сохта нашуд',
     build_export_pdf_error: 'PDF нигоҳ дошта нашуд',
     build_export_failed: 'Хатои экспорт',
+    build_export_presentation_pro_required: 'Тарифи Pro ё Team',
+    build_export_presentation_pro_required_desc:
+      'Боргирии презентация ба PDF ва PowerPoint (.pptx) дар Pro ва Team дастрас аст. Дар «Нархҳо» обуна шавед.',
+    build_export_pptx_html_hint_title: 'Файли PowerPoint (.pptx)',
+    build_export_pptx_html_hint_desc:
+      'Ин ҷамъсозӣ — слайдҳои HTML. Барои .pptx ва PDF-и воқеӣ дар як сохтор, презентацияро дар чати Lemnity AI ҷамъ кунед.',
+    build_pptx_file_banner:
+      'PowerPoint (.pptx) — боргирӣ кунед ва дар Keynote / PowerPoint / Google Slides кушоед.',
+    build_pptx_ready_title: 'Презентатсия омода аст',
+    build_pptx_ready_desc:
+      'Пешнамоиши HTML барои .pptx нест. Файлро боргирӣ кунед ва дар барномаи презентатсия кушоед.',
     build_settings_title: 'Танзимоти ҷамъсозӣ',
     build_settings_intro:
       'Пешнамоиш, экспорт ва муҳити ин сессияи студия. Нашр ва доменҳо тавассути «Нашр» дар сарбанд.',
@@ -2137,7 +2170,7 @@ export const messages = {
     build_settings_export_intro: 'Боргириҳо дар варақаи «Пешнамоиш», панели болои iframe.',
     build_settings_export_zip: 'ZIP — файлҳо ё як HTML, вобаста ба навъи ҷамъсозӣ.',
     build_settings_export_formats:
-      'DOCX / PDF барои резюме, визитка ва презентацияи HTML; ҷудо PPTX/PDF ҳангоми сохтан.',
+      'Резюме: DOC ва PDF. Презентатсия: PDF ва PPTX дар Pro/Team; реҷаи Lemnity AI — PPTX + PDF-и нативӣ.',
     build_settings_roadmap_title: 'Оянда',
     build_settings_roadmap_intro: 'Ин имконот ҳоло нестанд — дар навсозиҳои оянда.',
     build_settings_roadmap_autodeploy: 'Автопешнамоиш баъд аз ҳар ҷавоби агент',

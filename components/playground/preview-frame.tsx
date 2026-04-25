@@ -44,6 +44,8 @@ type PreviewFrameProps = {
   projectKind?: ProjectKind | null;
   /** PDF той же презентации с сервера (Lemnity AI) */
   presentationPdfExport?: { url: string; filename: string } | null;
+  /** Экспорт презентации в PDF / скачивание .pptx (тарифы Pro и Team) */
+  presentationExportsPaid?: boolean;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -56,7 +58,8 @@ export function PreviewFrame({
   visualEditMode = false,
   visualEditPersist = false,
   projectKind = null,
-  presentationPdfExport = null
+  presentationPdfExport = null,
+  presentationExportsPaid = false
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -76,6 +79,21 @@ export function PreviewFrame({
 
   const showResumeExports = projectKind === "resume" && !isPptx;
   const showPresentationHtmlPdf = projectKind === "presentation" && !isPptx;
+
+  function guardPresentationExportPaid(): boolean {
+    if (presentationExportsPaid) return true;
+    toast.error(t("build_export_presentation_pro_required"), {
+      description: t("build_export_presentation_pro_required_desc")
+    });
+    return false;
+  }
+
+  function handlePresentationPptxFromHtmlHint() {
+    if (!guardPresentationExportPaid()) return;
+    toast.message(t("build_export_pptx_html_hint_title"), {
+      description: t("build_export_pptx_html_hint_desc")
+    });
+  }
 
   useEffect(() => {
     setIframeSrc(previewUrl);
@@ -162,6 +180,7 @@ export function PreviewFrame({
   }
 
   async function handleDownloadPptx() {
+    if (!guardPresentationExportPaid()) return;
     setExportTask("pptx");
     try {
       const response = await fetch(previewUrl, { credentials: "include" });
@@ -177,6 +196,7 @@ export function PreviewFrame({
   }
 
   async function handleDownloadServerPdf() {
+    if (!guardPresentationExportPaid()) return;
     if (!presentationPdfExport) return;
     setExportTask("pdfServer");
     try {
@@ -255,6 +275,10 @@ export function PreviewFrame({
   }
 
   async function handleClientPdf() {
+    if (projectKind === "presentation" && !presentationExportsPaid) {
+      guardPresentationExportPaid();
+      return;
+    }
     const doc = iframeRef.current?.contentDocument;
     const root = doc?.body;
     if (!root) {
@@ -373,7 +397,7 @@ export function PreviewFrame({
           : (
             <span className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <Presentation className="h-4 w-4 shrink-0 text-primary" />
-              Файл PowerPoint (.pptx) — скачайте и откройте в Keynote / PowerPoint / Google Slides (импорт).
+              {t("build_pptx_file_banner")}
             </span>
             )}
 
@@ -415,15 +439,26 @@ export function PreviewFrame({
             </>
           ) : null}
           {showPresentationHtmlPdf ? (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="h-8"
-              disabled={exportBusy}
-              onClick={() => void handleClientPdf()}
-            >
-              {exportTask === "pdfClient" ? "…" : t("build_export_pdf")}
-            </Button>
+            <>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8"
+                disabled={exportBusy}
+                onClick={() => void handleClientPdf()}
+              >
+                {exportTask === "pdfClient" ? "…" : t("build_export_pdf")}
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="h-8"
+                disabled={exportBusy}
+                onClick={() => handlePresentationPptxFromHtmlHint()}
+              >
+                {t("build_export_pptx")}
+              </Button>
+            </>
           ) : null}
           {isPptx ? (
             <>
@@ -484,10 +519,8 @@ export function PreviewFrame({
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-border bg-muted/20 p-8 text-center">
           <Presentation className="h-16 w-16 text-primary/80" strokeWidth={1.25} />
           <div className="max-w-md space-y-2">
-            <p className="text-base font-medium text-foreground">Презентация готова</p>
-            <p className="text-sm text-muted-foreground">
-              Превью HTML для .pptx недоступно. Скачайте файл и откройте в редакторе презентаций.
-            </p>
+            <p className="text-base font-medium text-foreground">{t("build_pptx_ready_title")}</p>
+            <p className="text-sm text-muted-foreground">{t("build_pptx_ready_desc")}</p>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-2">
             <Button size="lg" onClick={() => void handleDownloadPptx()} disabled={exportBusy} className="gap-2">

@@ -38,6 +38,8 @@ type RightPanelProps = {
   visualEditPersist?: boolean;
   /** Второй файл презентации: PDF (сервер Lemnity AI) */
   presentationPdfExport?: { url: string; filename: string } | null;
+  /** PDF и PPTX презентации — тарифы Pro / Team */
+  presentationExportsPaid?: boolean;
 };
 
 function IdleState() {
@@ -171,7 +173,8 @@ export function RightPanel({
   projectKind,
   visualEditMode = false,
   visualEditPersist = false,
-  presentationPdfExport = null
+  presentationPdfExport = null,
+  presentationExportsPaid = false
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
@@ -198,6 +201,7 @@ export function RightPanel({
             visualEditPersist={visualEditPersist}
             projectKind={projectKind}
             presentationPdfExport={presentationPdfExport}
+            presentationExportsPaid={presentationExportsPaid}
           />
         </LemnityAiPreviewChrome>
       </div>

@@ -7,6 +7,7 @@ export type PlanStep = {
 export type ArtifactKind =
   | "landing"
   | "presentation"
+  | "resume"
   | "dashboard"
   | "web_app"
   | "documentation"
@@ -26,20 +27,22 @@ export type BuilderPlan = {
 };
 
 export const LEMNITY_SYSTEM_PROMPT = [
-  "You are Lemnity Builder, an AI interface-generation agent embedded in the Lemnity platform.",
-  "Your job is to turn the user's request into a polished, working visual preview in ONE self-contained HTML file.",
+  "You are Lemnity Builder, an AI agent embedded in the Lemnity platform.",
+  "Your job is to turn the user's request into a polished artifact. Usually that is ONE self-contained HTML preview file for live editing — except **presentation**, where the platform emits a real **.pptx** and **PDF** from structured slide data (not an HTML-first deck).",
+  "For **resume / CV**, treat the HTML as an **editable document preview**: the user's canonical exports are **Word (.docx)** and **PDF** — structure content as a print-ready CV, not a marketing website (no hero, no pricing blocks).",
   "You do not have a shell, browser automation, or external sandbox. Do not claim to run commands or inspect websites.",
   "You may plan work, show progress, and produce a complete artifact.",
-  "CRITICAL: Infer the deliverable TYPE from the user's words. Examples: «презентация», «pptx», «PowerPoint», «слайды», «deck» → presentation (real .pptx file, not HTML); «дашборд», «метрики» → dashboard; «документация», «wiki» → docs layout; «магазин», «каталог» → ecommerce; «портфолио» → portfolio; «приложение», «админка» → web app; «лендинг», «посадочная» → marketing landing; «сайт», «несколько страниц», «блог» → multi-section site or blog_or_multipage, NOT a single hero landing unless they ask for marketing landing.",
+  "CRITICAL: Infer the deliverable TYPE from the user's words. Examples: «презентация», «pptx», «PowerPoint», «слайды», «deck» → presentation (real .pptx + PDF, not HTML slides as primary); «резюме», «CV», «curriculum vitae» → resume (document layout for DOCX/PDF export); «дашборд», «метрики» → dashboard; «документация», «wiki» → docs layout; «магазин», «каталог» → ecommerce; «портфолио» → portfolio; «приложение», «админка» → web app; «лендинг», «посадочная» → marketing landing; «сайт», «несколько страниц», «блог» → multi-section site or blog_or_multipage, NOT a single hero landing unless they ask for marketing landing.",
   "Do NOT default to a SaaS marketing landing (hero + 3 features + pricing) unless the user clearly wants a promotional landing or product marketing page.",
   "Visible copy in the generated UI must use the user's language.",
-  "Prefer production-quality UI: responsive where appropriate, semantic HTML, accessible labels, strong hierarchy, realistic content, no lorem ipsum unless asked.",
-  "The final artifact must be one self-contained HTML5 document with embedded CSS and optional small inline JavaScript only when useful (e.g. slide navigation)."
+  "Prefer production-quality typography and semantic HTML; accessible labels; strong hierarchy; realistic content, no lorem ipsum unless asked.",
+  "The HTML preview (when used) must be one self-contained HTML5 document with embedded CSS and optional small inline JavaScript only when useful (e.g. slide navigation in non-presentation HTML previews)."
 ].join("\n");
 
 const ARTIFACT_KIND_SET = new Set<string>([
   "landing",
   "presentation",
+  "resume",
   "dashboard",
   "web_app",
   "documentation",
@@ -52,6 +55,13 @@ const ARTIFACT_KIND_SET = new Set<string>([
 /** Эвристика, если модель не вернула kind или JSON битый. */
 export function inferArtifactKindFromMessage(message: string): ArtifactKind {
   const m = message.toLowerCase();
+  if (
+    /\bрезюме\b|\bcv\b|curriculum\s*vitae|summary\s+for\s+(a\s+)?job|поиск\s+работы.*резюм|cover\s+letter\s*\+\s*cv|сопроводительн.*ваканс|ваканс.*резюме|составить\s+резюме/i.test(
+      m
+    )
+  ) {
+    return "resume";
+  }
   if (
     /\bpptx\b|power\s*point|powerpoint|пауэрпоинт|презентац|слайд|слайды|доклад|deck|pitch|keynote|google\s*slides|спикер|защит[аы]\s+(проект|диплом)/.test(
       m
@@ -99,6 +109,9 @@ export function normalizeArtifactKind(raw: unknown, message: string): ArtifactKi
     slides: "presentation",
     slide_deck: "presentation",
     deck: "presentation",
+    resume: "resume",
+    cv: "resume",
+    curriculum_vitae: "resume",
     dashboard: "dashboard",
     admin: "web_app",
     web_app: "web_app",
@@ -130,10 +143,18 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
 
   const blocks: Record<ArtifactKind, string> = {
     presentation: [
-      "ARTIFACT TYPE: MICROSOFT POWERPOINT (.pptx).",
-      "The runtime builds a real .pptx via pptxgen (not an HTML slide page).",
+      "ARTIFACT TYPE: MICROSOFT POWERPOINT (.pptx) + PDF companion.",
+      "The runtime builds a real .pptx via pptxgen and a matching PDF — not an HTML-first slide deck.",
       copyNote,
+      "- Slides: clear titles, concise bullets, one idea per slide; structure must survive export to PPTX/PDF.",
       "- If this guidance were applied to HTML (it is not for presentation kind), ignore; the executor skips HTML for this artifact_kind."
+    ].join("\n"),
+    resume: [
+      "ARTIFACT TYPE: RESUME / CV — canonical exports: Word (.docx) and PDF via Lemnity (HTML is the editable preview).",
+      copyNote,
+      "- Layout: header with name, title, contacts; Experience (reverse chronological); Education; Skills; optional Projects, Languages, Certificates.",
+      "- Print/document typography; @media print friendly; avoid landing-page chrome, heroes, pricing, or marketing sections.",
+      "- Single-column or restrained two-column; scannable, realistic content."
     ].join("\n"),
     dashboard: [
       "ARTIFACT TYPE: DASHBOARD / ANALYTICS (not a marketing landing).",
@@ -253,7 +274,8 @@ export function createPlanPrompt(input: {
     "```typescript",
     "type ArtifactKind =",
     '  | "landing"              // маркетинговый лендинг, посадочная, воронка',
-    '  | "presentation"       // PowerPoint .pptx: презентация, слайды, pptx, deck',
+    '  | "presentation"       // PowerPoint .pptx + PDF: презентация, слайды, pptx, deck',
+    '  | "resume"             // резюме/CV: HTML-превью → экспорт DOCX/PDF',
     '  | "dashboard"          // дашборд, метрики, аналитика',
     '  | "web_app"            // интерфейс приложения, админка, CRM',
     '  | "documentation"      // документация, wiki, база знаний',
@@ -272,7 +294,7 @@ export function createPlanPrompt(input: {
     "```",
     "",
     "Rules:",
-    "- Choose artifact_kind from the user's wording (Russian and English). If they want PowerPoint / презентацию / pptx, use presentation (file export), not landing.",
+    "- Choose artifact_kind from the user's wording (Russian and English). PowerPoint / презентацию / pptx → presentation (not landing). Резюме / CV → resume (not landing).",
     "- Use 3 to 6 atomic steps tailored to that artifact_kind.",
     "- Steps describe UI generation work, not advice to the user.",
     "- If the user asks in Russian, use Russian for message/title/steps.",
@@ -379,6 +401,19 @@ export function fallbackPlan(message: string): BuilderPlan {
             { id: "export", description: "Emit downloadable .pptx" }
           ];
     }
+    if (kind === "resume") {
+      return isRu
+        ? [
+            { id: "structure", description: "Структура резюме под DOCX/PDF: блоки и иерархия" },
+            { id: "layout", description: "Типографика и сетка как у печатного документа" },
+            { id: "html", description: "HTML-превью для правок в Lemnity (без лендинговых шаблонов)" }
+          ]
+        : [
+            { id: "structure", description: "Resume structure for DOCX/PDF: sections and hierarchy" },
+            { id: "layout", description: "Print-like typography and grid" },
+            { id: "html", description: "HTML preview for in-app editing (no landing clichés)" }
+          ];
+    }
     if (kind === "dashboard") {
       return isRu
         ? [
@@ -417,6 +452,10 @@ export function fallbackPlan(message: string): BuilderPlan {
         ? isRu
           ? "Файл презентации PowerPoint (.pptx) по запросу пользователя"
           : "PowerPoint presentation file (.pptx) per user request"
+        : kind === "resume"
+          ? isRu
+            ? "Резюме (DOCX/PDF) по запросу — редактируемое HTML-превью"
+            : "Resume (DOCX/PDF) per request — editable HTML preview"
         : kind === "dashboard"
           ? isRu
             ? "Дашборд с метриками по запросу"

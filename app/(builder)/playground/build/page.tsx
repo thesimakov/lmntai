@@ -1666,6 +1666,7 @@ export default function PromptBuildPage() {
                     visualEditMode={visualLayoutEditor}
                     visualEditPersist={visualEditPersist}
                     presentationPdfExport={presentationPdfExport}
+                    presentationExportsPaid={hasCustomDomainAccess}
                   />
                 </div>
               ) : tab === "settings" ? (
