@@ -9,6 +9,8 @@ pnpm-debug.log
 dist
 coverage
 *.log
+# Локальные цели SSH-деплоя (scripts/deploy-remote.sh)
+scripts/deploy-remote.env
 tsconfig.tsbuildinfo
 prisma/dev.db
 prisma/dev.db-journal

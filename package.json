@@ -24,6 +24,7 @@
     "db:setup": "npm run db:up && npm run db:wait && prisma migrate deploy",
     "db:reset": "docker compose down -v && npm run db:setup",
     "deploy:production": "bash scripts/deploy-production.sh",
+    "deploy:remote": "bash scripts/deploy-remote.sh",
     "builder:install": "npm ci --prefix services/lemnity-builder",
     "builder:dev": "npm run dev --prefix services/lemnity-builder",
     "builder:build": "npm run build --prefix services/lemnity-builder",
