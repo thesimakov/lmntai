@@ -1,4 +1,4 @@
-/** Визуальное редактирование HTML внутри iframe превью (тот же origin). Режим «выбор элемента»: наведение, клик — выделение, двойной клик — правка текста. */
+/** Визуальное редактирование HTML внутри iframe превью (тот же origin). Выбор элемента: hover + клик. Текст: второй клик по тому же блоку (~0,42 с) или dblclick — правка (preventDefault на pointerdown ломает нативный dblclick у части браузеров). */
 
 export const LEMNITY_VISUAL_EDIT_STYLE_ID = "lemnity-visual-edit-style";
 
@@ -79,8 +79,12 @@ const TEXT_HOST_TAGS = new Set([
   "DD",
   "DT",
   "TIME",
-  "MARK"
+  "MARK",
+  "CAPTION"
 ]);
+
+/** Обёртки таблицы (без TABLE — иначе клик вылезает к секции снаружи). */
+const TEXT_HOST_TRANSPARENT = new Set(["TR", "TBODY", "THEAD", "TFOOT", "COLGROUP", "COL"]);
 
 export type VisualPickInfo = {
   tagName: string;
@@ -173,6 +177,9 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
   let hoverEl: Element | null = null;
   let selectedEl: Element | null = null;
   let rafHover = 0;
+  /** Двойной клик по тексту: preventDefault на pointerdown ломает нативный dblclick в части браузеров. */
+  let lastTextHostPointer: HTMLElement | null = null;
+  let lastTextHostPointerAt = 0;
 
   function notifySelection(el: Element | null) {
     handlers.onSelectionChange?.(el ? describePickTarget(el) : null);
@@ -201,11 +208,19 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
   }
 
   function resolveTextHost(start: Element | null): HTMLElement | null {
+    if (start?.closest) {
+      const cell = start.closest("td, th, caption");
+      if (cell instanceof HTMLElement) start = cell;
+    }
     let el: Element | null = start;
     while (el && el !== body) {
       const tag = el.tagName;
       if (NON_TEXT_TAGS.has(tag)) return null;
       if (tag === "IMG") return null;
+      if (TEXT_HOST_TRANSPARENT.has(tag)) {
+        el = el.parentElement;
+        continue;
+      }
       if (TEXT_HOST_TAGS.has(tag)) return el as HTMLElement;
       el = el.parentElement;
     }
@@ -259,6 +274,8 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     const pick = normalizePickTarget(doc, atPoint instanceof Element ? atPoint : raw);
 
     if (pick instanceof HTMLImageElement) {
+      lastTextHostPointer = null;
+      lastTextHostPointerAt = 0;
       ev.preventDefault();
       ev.stopPropagation();
       deactivateHost();
@@ -272,6 +289,27 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
 
     ev.preventDefault();
     ev.stopPropagation();
+
+    const textHost = resolveTextHost(pick);
+    if (textHost) {
+      const now = Date.now();
+      if (textHost === lastTextHostPointer && now - lastTextHostPointerAt < 420) {
+        lastTextHostPointer = null;
+        lastTextHostPointerAt = 0;
+        setHover(null);
+        enterTextEdit(textHost);
+        return;
+      }
+      lastTextHostPointer = textHost;
+      lastTextHostPointerAt = now;
+      deactivateHost();
+      setHover(null);
+      setSelected(textHost);
+      return;
+    }
+
+    lastTextHostPointer = null;
+    lastTextHostPointerAt = 0;
     deactivateHost();
     setHover(null);
     setSelected(pick);
@@ -279,11 +317,14 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
 
   function onDoubleClick(ev: MouseEvent) {
     if (activeHost) return;
-    const raw = eventTargetToElement(ev.target);
+    const atPoint = doc.elementFromPoint(ev.clientX, ev.clientY);
+    const raw = normalizePickTarget(doc, atPoint instanceof Element ? atPoint : eventTargetToElement(ev.target));
     const host = resolveTextHost(raw);
     if (!host) return;
     ev.preventDefault();
     ev.stopPropagation();
+    lastTextHostPointer = null;
+    lastTextHostPointerAt = 0;
     enterTextEdit(host);
   }
 

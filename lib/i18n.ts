@@ -615,7 +615,7 @@ export const messages = {
     build_editor_aria: 'Редактор',
     build_editor_label: 'Редактор',
     build_visual_edit_hint:
-      'Наведите и кликните элемент — выделение (как Select element). Двойной клик по тексту — правка. По картинке — замена файлом. Сохраните макет в песочницу.',
+      'Наведите и кликните элемент — выделение. По тексту: второй клик по тому же блоку за ~0,4 с или двойной клик — правка. По картинке — замена файлом. Сохраните макет в песочницу.',
     build_visual_pick_selected: '· Выбрано: {tag}',
     build_visual_read_only_hint:
       'Правка в окне превью доступна; сохранение на сервер для этой сборки недоступно — скачайте HTML или экспорт.',
@@ -1359,7 +1359,7 @@ export const messages = {
     build_editor_aria: 'Editor',
     build_editor_label: 'Editor',
     build_visual_edit_hint:
-      'Hover and click to select an element (like Select element). Double-click text to edit. Click an image to replace it. Save to write to the sandbox.',
+      'Hover and click to select. For text: click the same block again within ~0.4s or double-click to edit. Click an image to replace it. Save to write to the sandbox.',
     build_visual_pick_selected: '· Selected: {tag}',
     build_visual_read_only_hint:
       'You can edit in the preview; saving to the server is not available for this build — export HTML instead.',
@@ -2104,7 +2104,7 @@ export const messages = {
     build_editor_aria: 'Муҳаррир',
     build_editor_label: 'Муҳаррир',
     build_visual_edit_hint:
-      'Элементро бо клик интихоб кунед. Барои матн — ду клик. Барои акс — иваз. Барои сабт дар песочница нигоҳ доред.',
+      'Элементро интихоб кунед. Барои матн — клики дуюм ба ҳамон блок (~0,4 с) ё ду клик. Барои акс — иваз. Сабт дар песочница.',
     build_visual_pick_selected: '· Интихоб: {tag}',
     build_visual_read_only_hint:
       'Дар пешнамоиш тағйир додан мумкин аст; сабт дар сервер барои ин ҷамъсозӣ нест — HTML-ро боргирӣ кунед.',
