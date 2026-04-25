@@ -46,6 +46,8 @@ type PreviewFrameProps = {
   presentationPdfExport?: { url: string; filename: string } | null;
   /** Экспорт презентации в PDF / скачивание .pptx (тарифы Pro и Team) */
   presentationExportsPaid?: boolean;
+  /** Отдельный режим «Редактор документа»: без эмуляции устройств, фокус на печатной области */
+  previewVariant?: "default" | "document";
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -59,7 +61,8 @@ export function PreviewFrame({
   visualEditPersist = false,
   projectKind = null,
   presentationPdfExport = null,
-  presentationExportsPaid = false
+  presentationExportsPaid = false,
+  previewVariant = "default"
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -79,6 +82,7 @@ export function PreviewFrame({
 
   const showResumeExports = projectKind === "resume" && !isPptx;
   const showPresentationHtmlPdf = projectKind === "presentation" && !isPptx;
+  const isDocumentChrome = previewVariant === "document" && !isPptx;
 
   function guardPresentationExportPaid(): boolean {
     if (presentationExportsPaid) return true;
@@ -379,21 +383,28 @@ export function PreviewFrame({
 
       <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-1.5">
         {!isPptx
-          ? controlButtons.map((row) => {
-              const RowIcon = row.icon;
-              return (
-                <Button
-                  key={row.id}
-                  size="sm"
-                  variant={deviceMode === row.id ? "default" : "outline"}
-                  className="h-8"
-                  onClick={() => setDeviceMode(row.id)}
-                >
-                  <RowIcon className="h-4 w-4" />
-                  {row.label}
-                </Button>
-              );
-            })
+          ? isDocumentChrome
+            ? (
+                <div className="flex min-w-0 max-w-full flex-1 flex-col gap-0.5 py-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+                  <p className="shrink-0 text-xs font-semibold text-foreground">{t("build_document_editor_title")}</p>
+                  <p className="min-w-0 text-[11px] leading-snug text-muted-foreground">{t("build_document_editor_subtitle")}</p>
+                </div>
+              )
+            : controlButtons.map((row) => {
+                const RowIcon = row.icon;
+                return (
+                  <Button
+                    key={row.id}
+                    size="sm"
+                    variant={deviceMode === row.id ? "default" : "outline"}
+                    className="h-8"
+                    onClick={() => setDeviceMode(row.id)}
+                  >
+                    <RowIcon className="h-4 w-4" />
+                    {row.label}
+                  </Button>
+                );
+              })
           : (
             <span className="flex items-center gap-2 px-1 text-xs text-muted-foreground">
               <Presentation className="h-4 w-4 shrink-0 text-primary" />
@@ -483,12 +494,12 @@ export function PreviewFrame({
                 </Button>
               ) : null}
             </>
-          ) : (
+          ) : !isDocumentChrome ? (
             <Button size="sm" className="h-8" onClick={() => void handleExportZip()} disabled={exportBusy}>
               <Download className="h-4 w-4" />
               {exportTask === "zip" ? "…" : t("build_export_zip")}
             </Button>
-          )}
+          ) : null}
           {!isPptx ? (
             <Button size="sm" variant="outline" className="h-8" onClick={() => window.open(previewUrl, "_blank")}>
               <ExternalLink className="h-4 w-4" />
@@ -542,14 +553,28 @@ export function PreviewFrame({
           </div>
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-muted/20 p-2">
-          <div className={cn(modeStyles[deviceMode], "relative min-h-0 flex-1")}>
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border p-2",
+            isDocumentChrome ? "bg-zinc-200/70 dark:bg-zinc-900/60" : "bg-muted/20"
+          )}
+        >
+          <div
+            className={cn(
+              "relative min-h-0 flex-1",
+              isDocumentChrome ? modeStyles.desktop : modeStyles[deviceMode],
+              isDocumentChrome && "mx-auto w-full max-w-4xl shadow-xl ring-1 ring-black/5 dark:ring-white/10"
+            )}
+          >
             <iframe
               ref={iframeRef}
               key={iframeSrc}
               src={iframeSrc}
-              title="Lemnity Preview"
-              className="absolute inset-0 h-full w-full rounded-md border-0 bg-background"
+              title={isDocumentChrome ? "Lemnity Document" : "Lemnity Preview"}
+              className={cn(
+                "absolute inset-0 h-full w-full border-0 bg-background",
+                isDocumentChrome ? "rounded-lg" : "rounded-md"
+              )}
             />
           </div>
         </div>

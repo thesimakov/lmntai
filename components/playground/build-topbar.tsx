@@ -6,6 +6,7 @@ import {
   Database,
   Eye,
   FileSearch,
+  FileText,
   Github,
   History,
   MoreHorizontal,
@@ -31,11 +32,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-export type BuildWorkspaceTab = "preview" | "settings" | "code";
+export type BuildWorkspaceTab = "preview" | "document" | "settings" | "code";
 
 type BuildPreviewChromeProps = {
   tab: BuildWorkspaceTab;
   onTabChange: (t: BuildWorkspaceTab) => void;
+  /** Вкладка «Документ» — резюме / HTML-презентация с редактированием */
+  documentTabVisible?: boolean;
   /** Панель «Поделиться» (Popover студии) */
   shareMenu: ReactNode;
   /** Текущая песочница — для «Файлы задания» */
@@ -55,6 +58,7 @@ type BuildPreviewChromeProps = {
 export function BuildPreviewChrome({
   tab,
   onTabChange,
+  documentTabVisible = false,
   shareMenu,
   sandboxId = null,
   onPublish,
@@ -82,6 +86,21 @@ export function BuildPreviewChrome({
               <Eye className="h-4 w-4 shrink-0" />
               <span className="hidden sm:inline">{t("build_tab_preview")}</span>
             </Button>
+            {documentTabVisible ? (
+              <Button
+                type="button"
+                size="sm"
+                variant={tab === "document" ? "default" : "ghost"}
+                className={cn(
+                  "h-8 gap-1.5 rounded-md px-2.5 text-xs sm:text-sm",
+                  tab !== "document" && "text-muted-foreground"
+                )}
+                onClick={() => onTabChange("document")}
+              >
+                <FileText className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">{t("build_tab_document")}</span>
+              </Button>
+            ) : null}
             <Button
               type="button"
               size="sm"
@@ -104,7 +123,7 @@ export function BuildPreviewChrome({
             </Button>
           </div>
 
-          {previewEditorToggle ? (
+          {previewEditorToggle && (tab === "preview" || tab === "document") ? (
             <button
               type="button"
               className={cn(
@@ -199,7 +218,7 @@ export function BuildPreviewChrome({
         </div>
       </div>
 
-      {tab === "preview" ? (
+      {tab === "preview" || tab === "document" ? (
         <div className="flex items-center gap-2 border-t border-border/70 px-3 py-2">
           <Button
             type="button"

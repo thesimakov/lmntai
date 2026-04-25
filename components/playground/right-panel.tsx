@@ -40,6 +40,8 @@ type RightPanelProps = {
   presentationPdfExport?: { url: string; filename: string } | null;
   /** PDF и PPTX презентации — тарифы Pro / Team */
   presentationExportsPaid?: boolean;
+  /** Режим отдельного редактора документа (вкладка «Документ») */
+  previewVariant?: "default" | "document";
 };
 
 function IdleState() {
@@ -174,7 +176,8 @@ export function RightPanel({
   visualEditMode = false,
   visualEditPersist = false,
   presentationPdfExport = null,
-  presentationExportsPaid = false
+  presentationExportsPaid = false,
+  previewVariant = "default"
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
@@ -202,6 +205,7 @@ export function RightPanel({
             projectKind={projectKind}
             presentationPdfExport={presentationPdfExport}
             presentationExportsPaid={presentationExportsPaid}
+            previewVariant={previewVariant}
           />
         </LemnityAiPreviewChrome>
       </div>

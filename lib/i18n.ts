@@ -610,8 +610,12 @@ export const messages = {
     sidebar_open_pricing: 'Открыть тарифы',
     sidebar_aria_open_menu: 'Открыть меню',
     build_tab_preview: 'Превью',
+    build_tab_document: 'Документ',
     build_tab_code: 'Код',
     build_tab_workspace: 'Настройки',
+    build_document_editor_title: 'Редактор документа',
+    build_document_editor_subtitle:
+      'Правки в макете как в Word/слайдах; включите «Редактор» в шапке и сохраните при необходимости. Экспорт — справа.',
     build_editor_aria: 'Редактор',
     build_editor_label: 'Редактор',
     build_visual_edit_hint:
@@ -1365,8 +1369,12 @@ export const messages = {
     sidebar_open_pricing: 'View pricing',
     sidebar_aria_open_menu: 'Open menu',
     build_tab_preview: 'Preview',
+    build_tab_document: 'Document',
     build_tab_code: 'Code',
     build_tab_workspace: 'Settings',
+    build_document_editor_title: 'Document editor',
+    build_document_editor_subtitle:
+      'Edit layout like a print deck; use Editor in the header and save when needed. Export from the toolbar.',
     build_editor_aria: 'Editor',
     build_editor_label: 'Editor',
     build_visual_edit_hint:
@@ -2121,8 +2129,12 @@ export const messages = {
     sidebar_open_pricing: 'Кушодани нархгузорӣ',
     sidebar_aria_open_menu: 'Кушодани меню',
     build_tab_preview: 'Пешнамоиш',
+    build_tab_document: 'Ҳуҷҷат',
     build_tab_code: 'Код',
     build_tab_workspace: 'Танзимот',
+    build_document_editor_title: 'Муҳаррири ҳуҷҷат',
+    build_document_editor_subtitle:
+      'Тағйирот дар макет; «Муҳаррир»-ро дар сарбанд фаъол кунед. Экспорт аз панел.',
     build_editor_aria: 'Муҳаррир',
     build_editor_label: 'Муҳаррир',
     build_visual_edit_hint:

@@ -198,7 +198,7 @@ export default function PromptBuildPage() {
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
   const [studioSettingsOpenedAt] = useState(() => new Date());
-  const [tab, setTab] = useState<"preview" | "settings" | "code">("preview");
+  const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
@@ -382,6 +382,29 @@ export default function PromptBuildPage() {
   }, [previewUrl, sandboxId, shareIsPublic, t]);
 
   const hasCustomDomainAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM";
+
+  const documentTabVisible = useMemo(
+    () =>
+      Boolean(
+        previewUrl &&
+          sandboxId &&
+          (projectKind === "resume" || projectKind === "presentation") &&
+          !isPptxArtifact(previewArtifactMime)
+      ),
+    [previewUrl, sandboxId, projectKind, previewArtifactMime]
+  );
+
+  useEffect(() => {
+    if (!documentTabVisible && tab === "document") {
+      setTab("preview");
+    }
+  }, [documentTabVisible, tab]);
+
+  useEffect(() => {
+    if (tab === "document") {
+      setVisualLayoutEditor(true);
+    }
+  }, [tab]);
 
   const createMessageId = useCallback(() => {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -1617,9 +1640,10 @@ export default function PromptBuildPage() {
           <section className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-muted/30">
             <BuildPreviewChrome
               tab={tab}
+              documentTabVisible={documentTabVisible}
               onTabChange={(next) => {
                 setTab(next);
-                if (next !== "preview") setVisualLayoutEditor(false);
+                if (next !== "preview" && next !== "document") setVisualLayoutEditor(false);
               }}
               sandboxId={sandboxId}
               shareMenu={
@@ -1636,7 +1660,7 @@ export default function PromptBuildPage() {
               onHistoryClick={() => router.push("/projects")}
               addressPath={addressPath}
               previewEditorToggle={
-                tab === "preview"
+                tab === "preview" || tab === "document"
                   ? {
                       active: visualLayoutEditor,
                       onToggle: () => setVisualLayoutEditor((v) => !v)
@@ -1648,10 +1672,10 @@ export default function PromptBuildPage() {
             <div
               className={cn(
                 "flex min-h-0 flex-1 flex-col overflow-hidden",
-                tab === "preview" ? "gap-0 p-0" : "gap-2 p-2 pt-1"
+                tab === "preview" || tab === "document" ? "gap-0 p-0" : "gap-2 p-2 pt-1"
               )}
             >
-              {tab === "preview" ? (
+              {tab === "preview" || tab === "document" ? (
                 <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-background">
                   <RightPanel
                     mode={mode}
@@ -1667,6 +1691,7 @@ export default function PromptBuildPage() {
                     visualEditPersist={visualEditPersist}
                     presentationPdfExport={presentationPdfExport}
                     presentationExportsPaid={hasCustomDomainAccess}
+                    previewVariant={tab === "document" ? "document" : "default"}
                   />
                 </div>
               ) : tab === "settings" ? (
