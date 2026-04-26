@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
+
 const mocks = vi.hoisted(() => {
   return {
     requireDbUser: vi.fn(),
@@ -11,7 +13,8 @@ const mocks = vi.hoisted(() => {
     estimateUsageFromText: vi.fn(),
     isLemnityAiBridgeEnabledServer: vi.fn(),
     getProjectKindPromptBuilderContextRu: vi.fn(),
-    isProjectKind: vi.fn()
+    isProjectKind: vi.fn(),
+    getEffectivePromptBuilderMinimum: vi.fn()
   };
 });
 
@@ -48,6 +51,13 @@ vi.mock("@/lib/lemnity-ai-prompt-spec", () => ({
   getProjectKindPromptBuilderContextRu: mocks.getProjectKindPromptBuilderContextRu,
   isProjectKind: mocks.isProjectKind
 }));
+vi.mock("@/lib/platform-plan-settings", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/platform-plan-settings")>();
+  return {
+    ...actual,
+    getEffectivePromptBuilderMinimum: mocks.getEffectivePromptBuilderMinimum
+  };
+});
 
 describe("prompt API free fallback chain", () => {
   beforeEach(() => {
@@ -76,6 +86,7 @@ describe("prompt API free fallback chain", () => {
     mocks.isLemnityAiBridgeEnabledServer.mockReturnValue(false);
     mocks.getProjectKindPromptBuilderContextRu.mockReturnValue("");
     mocks.isProjectKind.mockReturnValue(false);
+    mocks.getEffectivePromptBuilderMinimum.mockResolvedValue(MIN_TOKENS_PROMPT_BUILDER);
   });
 
   it("bills prompt-coach using actual fallback model", async () => {
