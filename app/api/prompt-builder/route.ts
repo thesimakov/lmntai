@@ -9,7 +9,12 @@ import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText, normalizeUsage } from "@/lib/token-billing";
 import { getEffectivePromptBuilderMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
-import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+import {
+  getProjectKindPromptBuilderContextRu,
+  isProjectKind,
+  shouldUseLovableBundler,
+  type ProjectKind
+} from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 function safeJsonParse<T>(text: string): T | null {
@@ -20,18 +25,28 @@ function safeJsonParse<T>(text: string): T | null {
   }
 }
 
-function composePromptBuilderOfflineDemo(idea: string, packed: string): string {
+function composePromptBuilderOfflineDemo(idea: string, packed: string, multifile: boolean): string {
+  if (!multifile) {
+    return [
+      `Проект: ${idea}`,
+      "",
+      "Требования (документ/превью в одном HTML по типу, Tailwind при необходимости):",
+      "- Структура согласно уточнениям; читаемая типографика, светлая или заданная тема",
+      "",
+      "Контекст (ответы пользователя):",
+      packed || "—"
+    ].join("\n");
+  }
   return [
     `Проект: ${idea}`,
     "",
-    "Требования:",
-    "- Next.js + Tailwind",
-    "- Светлая тема, аккуратная типографика, rounded-2xl/3xl",
-    "- Секции: hero, преимущества, кейсы/отзывы, тарифы, FAQ, контакты, форма заявки",
+    "Требования (как в репозитории Vite+React+TS, не один монолитный index.html):",
+    "- main: `src/main.tsx`, корень: `src/App.tsx`, секции/повторы — `src/components/*.tsx`, утилиты — `src/lib/` или `lib/`",
+    "- Tailwind через `className` (в превью подключён CDN), мобайл-first",
+    "- Секции: hero, преимущества, кейсы/отзывы, тарифы, FAQ, контакты, форма заявки — из компонентов",
     "",
     "Детали:",
-    "- Чёткий CTA, понятная навигация",
-    "- Добавить место под интеграции (Telegram/CRM) в будущем",
+    "- Чёткий CTA, понятная навигация; место под будущие интеграции (Telegram/CRM) в копей или форме",
     "",
     "Контекст (ответы пользователя):",
     packed || "—"
@@ -89,8 +104,9 @@ async function postPromptBuilder(req: NextRequest) {
           .filter((x) => x.q && x.a)
           .map((x) => `Q: ${x.q}\nA: ${x.a}`)
           .join("\n\n");
+        const pkEarly = isProjectKind(body?.projectKind) ? (body.projectKind as ProjectKind) : null;
         return Response.json({
-          finalPrompt: composePromptBuilderOfflineDemo(ideaEarly, packed),
+          finalPrompt: composePromptBuilderOfflineDemo(ideaEarly, packed, shouldUseLovableBundler(pkEarly)),
           fallback: true,
           noDb: true
         });
@@ -111,6 +127,11 @@ async function postPromptBuilder(req: NextRequest) {
   const kindCtx = isProjectKind(body?.projectKind)
     ? getProjectKindPromptBuilderContextRu(body.projectKind)
     : "";
+  const pkResolved: ProjectKind | null = isProjectKind(body?.projectKind) ? body.projectKind : null;
+  const multifile = shouldUseLovableBundler(pkResolved);
+  const resultModeHint = multifile
+    ? "Типичный артефакт: **многофайловый** React+TypeScript (папки `src/`, `src/components/`), превью как у Vite — не один монолитный HTML."
+    : "Артефакт по типу проекта: для презентации/резюме — структура и HTML-превью под документ, не веб-приложение в нескольких tsx, если не оговорено иное.";
 
   if (body?.mode === "questions") {
     const agent = resolveAgentForTask({
@@ -120,11 +141,12 @@ async function postPromptBuilder(req: NextRequest) {
       hint: body?.agentHint
     });
 
-    const systemPrompt = `Ты — продакт/UX-стратег для генерации интерфейса в Lemnity (план/goal в духе Lemnity AI builder, но результат — один HTML-прототип).
+    const systemPrompt = `Ты — продакт/UX-стратег для генерации интерфейса в Lemnity (Lemnity AI builder).
+${resultModeHint}
 Сгенерируй 6–9 уточняющих вопросов, чтобы собрать промпт для AI-генератора.
 Требования:
 - вопросы короткие и конкретные; учитывай заданный тип доставляемого результата, если он указан
-- покрыть: цель, аудиторию, стиль, структуру блоков/слайдов/секций резюме, CTA, цвет/тон, контент/языки, интеграции
+- покрыть: цель, аудиторию, стиль, структуру блоков/слайдов/секций резюме, CTA, цвет/тон, контент/языки, интеграции${multifile ? "; при многофайловом — какие крупные компоненты/экраны выделить" : ""}
 - верни только JSON без текста вокруг:
 { "questions": ["...","..."] }`;
 
@@ -187,14 +209,20 @@ async function postPromptBuilder(req: NextRequest) {
       .map((x) => `Q: ${x.q}\nA: ${x.a}`)
       .join("\n\n");
 
-    const composePrompt = `Ты — senior prompt engineer для генерации HTML-интерфейса в Lemnity (конверт Lemnity AI: один результат, чёткий формат).
-Собери финальный ПРОМПТ для AI-генератора (один HTML, встроенные стили / Tailwind CDN, читаемая структура).
-Формат:
-- 1) Короткий заголовок проекта
-- 2) Ясные требования к дизайну/структуре/контенту
-- 3) Список секций или слайдов (в порядке) — в соответствии с типом проекта, если задан
-- 4) Важные детали (CTA, интеграции, тон, печать/экран)
-Верни только текст промпта, без префиксов и объяснений.${kindCtx}`;
+    const composePrompt = multifile
+      ? `Ты — senior prompt engineer для **многофайлового** React+TypeScript UI в Lemnity (Vite-стиль: \`src/main.tsx\`, \`src/App.tsx\`, \`src/components/*\` — как в настоящем репозитории; превью собирает платформа, Tailwind в className).
+Собери финальный ПРОМПТ для AI-генератора: иерархия **файлов/компонентов**, макет, контент, CTA, адаптив, язык.
+Формат ответа:
+- 1) Заголовок проекта
+- 2) Требования к дизайну (цвет, типографика, брейкпоинты)
+- 3) Список файлов/основных компонентов и что в каждом
+- 4) Порядок секций/экранов в App
+- 5) CTA, интеграции, тон, ограничения
+Верни только текст промпта, без префиксов и объяснений.${kindCtx}`
+      : `Ты — senior prompt engineer для генерации **HTML-интерфейса/документа** в Lemnity (превью в одном HTML там, где это тип проекта: слайды, резюме и т.д.).
+Собери финальный ПРОМПТ: структура, стили, контент, экспорт, язык.
+Формат: заголовок; требования; порядок блоков/слайдов; детали.
+Верни только текст промпта.${kindCtx}`;
 
     try {
       const modelChain = buildPromptModelFallbackChain(agent.modelId);
@@ -235,7 +263,7 @@ async function postPromptBuilder(req: NextRequest) {
             })
       });
     } catch {
-      const demoText = composePromptBuilderOfflineDemo(idea, packed);
+      const demoText = composePromptBuilderOfflineDemo(idea, packed, multifile);
       return Response.json({
         finalPrompt: demoText,
         usage: normalizeUsage(estimateUsageFromText(`${idea}\n${packed}`, demoText)),

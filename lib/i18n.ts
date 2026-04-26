@@ -441,7 +441,7 @@ export const messages = {
       'Попробуйте снова или вернитесь на главную. Если ошибка повторяется, удалите кэш сборки (`.next`) и перезапустите dev-сервер.',
     playground_title: 'Что создаём сегодня?',
     playground_prompt_placeholder:
-      'Опишите сайт, который хотите получить... (например, лендинг для кофейни в стиле минимализм)',
+      'Опишите сайт или интерфейс… (например, лендинг кофейни в минимализме; сборка — React+TS, папки src/)',
     playground_action_assemble: 'Собрать промт',
     playground_action_generating: 'Генерация...',
     playground_action_generate: 'Запустить генерацию',
@@ -471,6 +471,8 @@ export const messages = {
     playground_home_templates_pills_aria: 'Шаблоны типов проектов',
     playground_home_more: 'Ещё шаблоны',
     playground_home_coming_soon: 'В разработке',
+    playground_home_textarea_placeholder:
+      'Опишите задачу: какой сайт или интерфейс нужен. Сборка — проект React+TypeScript (src/, components), превью как у Vite…',
     playground_home_submit_hint: 'Enter — отправить · Shift+Enter — новая строка',
     playground_home_tokens: 'Токены:',
     playground_home_tokens_none: 'баланс не загружен',
@@ -480,7 +482,7 @@ export const messages = {
       'Презентация продукта: структура слайдов, ключевые тезисы, визуальный стиль и анимации.',
     playground_home_cat_website: 'Сайт',
     playground_home_val_website:
-      'Сайт: лендинг с hero, преимуществами, социальным доказательством и формой заявки.',
+      'Сайт: скролл-лендинг с hero, преимуществами, соцдоказательством и формой — в виде компонентов в `src/` (не один монолитный HTML).',
     playground_home_cat_resume: 'Резюме',
     playground_home_val_resume:
       'Одностраничное резюме: контакты, опыт, навыки, образование, портфолио, сильный CTA и печатная вёрстка.',
@@ -495,7 +497,7 @@ export const messages = {
       'Веб-приложение в стиле Lovable: React+TypeScript, компоненты в `src/`, Tailwind, превью как у Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
-      'Лендинг (одна длинная страница, скролл): яркий hero, ценностное предложение, блок преимуществ, логотипы клиентов или цифры, тариф/цена, отзывы, FAQ, футер с формой и контактами. Сфокусируйся на одной цели (лид) и мобильной вёрстке.',
+      'Маркетинговый лендинг (скролл): hero, УТП, преимущества, соцдоказательство, тариф, отзывы, FAQ, футер — в компонентах `src/`. Одна цель (лид), mobile-first.',
     playground_home_site_dashboard: 'Дашборд',
     playground_home_val_site_dashboard:
       'Веб-дашборд: навигация, виджеты метрик, таблицы, фильтры и детальные страницы.',
@@ -504,7 +506,7 @@ export const messages = {
       'Портфолио: обложка, проекты, процесс, отзывы клиентов, контакты и форма заявки.',
     playground_home_site_corporate: 'Корпоративный сайт',
     playground_home_val_site_corporate:
-      'Корпоративный многосекционный сайт (один HTML, чёткие разделы): шапка с навигацией по якорям, «О компании», направления/услуги, кейсы или проекты, команда, вакансии или новости (заглушка), карта/офис, контакты и форма. Строгий B2B-визуал, доверие и структура.',
+      'Корпоративный многосекционный сайт: шапка с навигацией, «О компании», услуги, кейсы, команда, новости/вакансии (заглушка), карта, контакты и форма — секции вынести в `src/components/`. Строгий B2B-визуал.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'SaaS-лендинг: продукт, интеграции, безопасность, тарифы, логотипы клиентов, регистрация.',
@@ -526,10 +528,6 @@ export const messages = {
     playground_home_tpl_cafe: 'Кафе',
     playground_home_tpl_cafe_prompt:
       'Лендинг для кофейни: меню, доставка, акции, отзывы, карта, кнопка «Заказать»',
-    playground_home_hint_0: 'Спросить Lemnity AI: лендинг для AI-аналитики с тарифами и FAQ…',
-    playground_home_hint_1: 'Сайт салона красоты: онлайн-запись, прайс, галерея работ…',
-    playground_home_hint_2: 'Дашборд для e-commerce: продажи, заказы, остатки и алерты…',
-    playground_home_hint_3: 'Портфолио фотографа: сетка съёмок, пакеты, бронь и контакты…',
     playground_toast_template_selected: 'Шаблон выбран',
     playground_toast_prompt_copied: 'Промпт скопирован',
     playground_toast_copy_failed: 'Не удалось скопировать',
@@ -1275,7 +1273,7 @@ export const messages = {
       'Try again or go back home. If it keeps happening, delete the build cache (`.next`) and restart the dev server.',
     playground_title: 'What are we building today?',
     playground_prompt_placeholder:
-      'Describe the website you want... (e.g., a minimal coffee shop landing page)',
+      'Describe the site or UI you want… (e.g. minimal coffee shop landing; build is React+TS under src/)',
     playground_action_assemble: 'Assemble prompt',
     playground_action_generating: 'Generating...',
     playground_action_generate: 'Start generation',
@@ -1305,6 +1303,8 @@ export const messages = {
     playground_home_templates_pills_aria: 'Project type templates',
     playground_home_more: 'More templates',
     playground_home_coming_soon: 'In development',
+    playground_home_textarea_placeholder:
+      'Describe what to build: site or UI. Output is a React+TypeScript project (src/, components), Vite-style preview…',
     playground_home_submit_hint: 'Enter to send · Shift+Enter for new line',
     playground_home_tokens: 'Tokens:',
     playground_home_tokens_none: 'balance unavailable',
@@ -1314,7 +1314,7 @@ export const messages = {
       'Product presentation: slide structure, key messages, visual style and motion.',
     playground_home_cat_website: 'Website',
     playground_home_val_website:
-      'Website: landing with hero, benefits, social proof, and a lead form.',
+      'Website: scroll landing with hero, benefits, social proof, lead form — built as components under `src/` (not one monolithic HTML file).',
     playground_home_cat_resume: 'Resume',
     playground_home_val_resume:
       'One-page CV: contacts, experience, skills, education, portfolio highlights, and print-friendly layout.',
@@ -1329,7 +1329,7 @@ export const messages = {
       'Lovable-style web app: React+TypeScript, files under `src/`, Tailwind, Vite-like preview.',
     playground_home_site_landing: 'Landing',
     playground_home_val_site_landing:
-      'Single-page marketing landing (long scroll): bold hero, value prop, benefits, social proof, pricing, testimonials, FAQ, footer CTA. One conversion goal, mobile-friendly.',
+      'Marketing landing (long scroll): hero, value prop, benefits, social proof, pricing, testimonials, FAQ, footer — as `src/` components. One goal, mobile-first.',
     playground_home_site_dashboard: 'Dashboard',
     playground_home_val_site_dashboard:
       'Web dashboard: navigation, metric widgets, tables, filters, and detail views.',
@@ -1338,7 +1338,7 @@ export const messages = {
       'Portfolio: cover, projects, process, client quotes, contacts, and inquiry form.',
     playground_home_site_corporate: 'Corporate website',
     playground_home_val_site_corporate:
-      'Multi-section corporate site in one HTML: top nav (anchors), about, services, case studies, team, news/careers placeholder, map/office, contact form. Professional B2B look.',
+      'Multi-section corporate site: top nav, about, services, case studies, team, news/careers placeholder, map/office, contact — split into `src/components/`. Professional B2B look.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'SaaS landing: product, integrations, security, pricing, customer logos, signup.',
@@ -1360,10 +1360,6 @@ export const messages = {
     playground_home_tpl_cafe: 'Cafe',
     playground_home_tpl_cafe_prompt:
       'Coffee shop landing: menu, delivery, promos, reviews, map, “Order” button',
-    playground_home_hint_0: 'Ask Lemnity AI: AI analytics landing with pricing and FAQ…',
-    playground_home_hint_1: 'Beauty salon site: online booking, pricing, gallery…',
-    playground_home_hint_2: 'E-commerce dashboard: sales, orders, inventory, alerts…',
-    playground_home_hint_3: 'Photographer portfolio: shoot grid, packages, booking, contact…',
     playground_toast_template_selected: 'Template selected',
     playground_toast_prompt_copied: 'Prompt copied',
     playground_toast_copy_failed: 'Copy failed',
@@ -2109,7 +2105,7 @@ export const messages = {
       'Аз нав кӯшиш кунед ё ба саҳифаи асосӣ баргардед. Агар хато такрор шавад, кеши build‑ро (`.next`) пок кунед ва dev‑серверро аз нав оғоз намоед.',
     playground_title: 'Имрӯз чӣ месозем?',
     playground_prompt_placeholder:
-      'Сайте, ки мехоҳед, тавсиф кунед... (масалан, лендинги қаҳвахона дар услуби минимализм)',
+      'Сайт ё UI-ро тавсиф кунед… (масалан лендинги қаҳвахона, минимализм; сохтор React+TS дар src/)',
     playground_action_assemble: 'Ҷамъ кардани промпт',
     playground_action_generating: 'Тавлид...',
     playground_action_generate: 'Оғози тавлид',
@@ -2139,6 +2135,8 @@ export const messages = {
     playground_home_templates_pills_aria: 'Намунаҳои намудҳои лоиҳа',
     playground_home_more: 'Шаблонҳои бештар',
     playground_home_coming_soon: 'Дар тараққиёт',
+    playground_home_textarea_placeholder:
+      'Вазифаро тавсиф кунед: кадом сайт ё UI лозимаст. Сохтор — лоиҳаи React+TypeScript (src/, components), пешнамоиш мисли Vite…',
     playground_home_submit_hint: 'Enter — фиристодан · Shift+Enter — сатри нав',
     playground_home_tokens: 'Токенҳо:',
     playground_home_tokens_none: 'баланс бор нашуд',
@@ -2148,7 +2146,7 @@ export const messages = {
       'Презентатсияи маҳсулот: сохтори слайдҳо, тезисҳо, услуби визуалӣ.',
     playground_home_cat_website: 'Сайт',
     playground_home_val_website:
-      'Сайт: лендинг бо hero, бартариҳо, исботи иҷтимоӣ ва формаи дархост.',
+      'Сайт: лендинги скролл бо hero, бартариҳо, исботи иҷтимоӣ, форма — ҳамчун компонент дар `src/` (на якто HTML-и ғафс).',
     playground_home_cat_resume: 'Резюме',
     playground_home_val_resume:
       'Резюме: тамос, таҷриба, малакаҳо, таҳсилот, портфолио, CTA, чопи дуруст.',
@@ -2163,7 +2161,7 @@ export const messages = {
       'Барномаи веб мисли Lovable: React+TypeScript, файлҳо дар `src/`, пешнамоиш чун Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
-      'Лендинг (як саҳ ва скролл): hero, афзалиятҳо, исботи иҷтимоӣ, нарх, фикрҳо, FAQ, поён бо форма. Мақсад — вориди лид, мобилӣ.',
+      'Лендинги маркетингӣ (скролл): hero, УМ, афзалиятҳо, нарх, фикрҳо, FAQ — дар компонентҳои `src/`. Мақсад — лид, мобилӣ.',
     playground_home_site_dashboard: 'Дашборд',
     playground_home_val_site_dashboard:
       'Дашборди веб: навигация, виҷетҳои метрик, ҷадвалҳо, филтрҳо.',
@@ -2172,7 +2170,7 @@ export const messages = {
       'Портфолио: муқова, лоиҳаҳо, раванд, фикрҳо, тамосҳо, форма.',
     playground_home_site_corporate: 'Сайти корпоративӣ',
     playground_home_val_site_corporate:
-      'Сайти корпоративии бисеквентӣ: меню, дар бораи ширкат, хизматҳо, кейсҳо, даста, ахбор/кор, харита, форма. Услуби B2B.',
+      'Сайти корпоративии бисеквентӣ: меню, дар бораи ширкат, хизматҳо, кейсҳо, даста, ахбор/кор, харита, форма — бастаҳоро ба `src/components/`. B2B.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'Лендинги SaaS: маҳсулот, интегратсияҳо, бехатарӣ, нархгузорӣ, сабти ном.',
@@ -2194,10 +2192,6 @@ export const messages = {
     playground_home_tpl_cafe: 'Қаҳвахона',
     playground_home_tpl_cafe_prompt:
       'Лендинг барои қаҳвахона: меню, расонидан, аксияҳо, фикрҳо, харита, тугмаи «Фармоиш»',
-    playground_home_hint_0: 'Lemnity AI: лендинги AI-аналитика бо нархгузорӣ ва FAQ…',
-    playground_home_hint_1: 'Сайти салони зебоӣ: сабти ном онлайн, нархҳо, галерея…',
-    playground_home_hint_2: 'Дашборди фурӯш: фурӯш, фармоишҳо, зохира…',
-    playground_home_hint_3: 'Портфолиои аккос: шабакаи корҳо, пакетҳо, брон…',
     playground_toast_template_selected: 'Шаблон интихоб шуд',
     playground_toast_prompt_copied: 'Промпт нусха шуд',
     playground_toast_copy_failed: 'Нусхабардорӣ нашуд',

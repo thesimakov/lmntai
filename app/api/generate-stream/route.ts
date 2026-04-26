@@ -9,7 +9,7 @@ import { chargeTokensSafely, estimateUsageFromText, normalizeUsage, type TokenUs
 import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
-import { buildRouterGenerationPrompt, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+import { buildRouterGenerationPrompt, isProjectKind, shouldUseLovableBundler } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -167,7 +167,7 @@ async function postGenerateStream(req: NextRequest) {
           description: mode === "docker" ? "Запись файлов в контейнер (FastAPI)" : "Запись в локальное хранилище",
           status: "running"
         });
-        const lovable = pk === "lovable";
+        const lovable = shouldUseLovableBundler(pk);
         sse(controller, {
           type: "tool",
           name: "file/write",

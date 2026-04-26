@@ -23,7 +23,6 @@ import {
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -159,13 +158,6 @@ const WEBSITE_TYPE_DEFS: Array<{
   }
 ];
 
-const HINT_KEYS: MessageKey[] = [
-  "playground_home_hint_0",
-  "playground_home_hint_1",
-  "playground_home_hint_2",
-  "playground_home_hint_3"
-];
-
 /** Все типы, кроме «Сайт», пока в разработке. */
 function isProjectKindComingSoon(id: ActionCategory): boolean {
   return id !== "website";
@@ -236,8 +228,6 @@ export function HomeHero({
     [t]
   );
 
-  const hintExamples = useMemo(() => HINT_KEYS.map((k) => t(k)), [t]);
-
   const canSubmit = useMemo(() => idea.trim().length > 0 && !disabled, [disabled, idea]);
   const [activeCategory, setActiveCategory] = useState<ActionCategory | null>(null);
   const websiteTypesScrollRef = useRef<HTMLDivElement>(null);
@@ -245,13 +235,10 @@ export function HomeHero({
   useEffect(() => {
     onActiveCategoryChange?.(activeCategory);
   }, [activeCategory, onActiveCategoryChange]);
-  const [hintIndex, setHintIndex] = useState(0);
 
   function openTemplatesUi() {
     onOpenTemplates();
   }
-  const [typed, setTyped] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
   const [tab, setTab] = useState<"templates" | "recent">("templates");
   const [refDialogOpen, setRefDialogOpen] = useState(false);
@@ -292,41 +279,6 @@ export function HomeHero({
     return () => window.removeEventListener("lemnity:recent-updated", readRecent);
   }, []);
 
-  useEffect(() => {
-    if (idea.trim().length > 0 || isFocused) {
-      setTyped("");
-      return;
-    }
-
-    let cancelled = false;
-    let charIndex = 0;
-    const phrase = hintExamples[hintIndex] ?? "";
-
-    function tick() {
-      if (cancelled) return;
-      charIndex += 1;
-      setTyped(phrase.slice(0, charIndex));
-
-      if (charIndex < phrase.length) {
-        window.setTimeout(tick, 18 + Math.random() * 22);
-        return;
-      }
-
-      // Пауза после полного набора, затем следующий пример
-      window.setTimeout(() => {
-        if (cancelled) return;
-        setHintIndex((prev) => (prev + 1) % hintExamples.length);
-      }, 900);
-    }
-
-    setTyped("");
-    window.setTimeout(tick, 280);
-
-    return () => {
-      cancelled = true;
-    };
-  }, [idea, isFocused, hintIndex, hintExamples]);
-
   const activePill = useMemo(
     () => (activeCategory ? actionPills.find((p) => p.id === activeCategory) ?? null : null),
     [activeCategory, actionPills]
@@ -358,45 +310,22 @@ export function HomeHero({
                 "text-left"
               )}
             >
-              <div className="relative pb-4">
+              <div>
                 <Textarea
                   value={idea}
                   onChange={(e) => onIdeaChange(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
                   onKeyDown={(e) => {
                     if (e.key !== "Enter" || e.shiftKey) return;
                     e.preventDefault();
                     if (canSubmit) onSubmit();
                   }}
-                  placeholder=""
+                  placeholder={t("playground_home_textarea_placeholder")}
                   rows={4}
                   className={cn(
-                    "min-h-[108px] w-full resize-none rounded-xl border-0 bg-muted/35 px-3 pb-3 pt-10 text-base shadow-none",
+                    "min-h-[108px] w-full resize-none rounded-xl border-0 bg-muted/35 px-3 py-3 text-base shadow-none",
                     "focus-visible:ring-0 focus-visible:ring-offset-0"
                   )}
                 />
-
-                <AnimatePresence mode="wait">
-                  {!idea.trim() && !isFocused ? (
-                    <motion.div
-                      key={hintIndex}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.28, ease: "easeOut" }}
-                      className="pointer-events-none absolute left-3 top-3 pr-8 text-base text-muted-foreground"
-                    >
-                      <span>{typed}</span>
-                      <motion.span
-                        aria-hidden
-                        className="ml-0.5 inline-block h-5 w-px align-[-3px] bg-muted-foreground/60"
-                        animate={{ opacity: [0, 1, 0] }}
-                        transition={{ duration: 1.1, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
-                      />
-                    </motion.div>
-                  ) : null}
-                </AnimatePresence>
               </div>
 
               <div className="border-t border-border/70 pt-4">

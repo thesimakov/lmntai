@@ -253,7 +253,8 @@ export async function main() {
       const userMessage = typeof body?.message === "string" ? body.message.trim() : "";
       const model = typeof body?.model === "string" && body.model.trim() ? body.model.trim() : "gpt-4o-mini";
       const pk = typeof body?.project_kind === "string" ? body.project_kind.trim().toLowerCase() : "";
-      const forceArtifactKind = pk === "lovable" ? ("lovable" as const) : null;
+      const forceArtifactKind =
+        pk === "lovable" || pk === "website" ? ("lovable" as const) : null;
       if (!userMessage) {
         json(res, 400, { code: 400, msg: "message_required", data: null });
         return;
@@ -309,7 +310,7 @@ export async function main() {
 
         const previewPath = `/api/lemnity-ai/artifacts/`;
 
-        if (plan.artifact_kind === "lovable") {
+        if (plan.artifact_kind === "lovable" || plan.artifact_kind === "landing") {
           const html = await executePlanToLovable({
             message: userMessage,
             model,

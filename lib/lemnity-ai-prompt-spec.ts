@@ -2,7 +2,7 @@
  * Спецификация промптов Lemnity AI (builder): план, шаги, форматы UI.
  * Совместима с контрактом upstream-планировщика (goal, title, language, steps).
  *
- * Здесь: типы плана + единый «конверт» для одношаговой HTML-генерации в RouterAI.
+ * Здесь: типы плана + «конверт» для RouterAI: по умолчанию **многофайловый React+TS (Vite/Lovable)**, HTML-документ — для резюме/презентаций и т.д.
  */
 
 /** Шаг плана (ответ планировщика). */
@@ -45,18 +45,32 @@ function detectWorkingLanguage(text: string): "ru" | "en" {
  * Собирает итоговый текст для RouterAI: сначала конверт (язык, формат, секции), затем запрос пользователя.
  * Сохраняет совместимость: если `projectKind` нет, только язык + общий веб-UI.
  */
+function isMultifileViteOutput(kind: ProjectKind | null): boolean {
+  if (kind == null) return true;
+  if (kind === "presentation" || kind === "resume") return false;
+  return true;
+}
+
+/** Превью через esbuild (многофайловый React); иначе — монолитный HTML. */
+export function shouldUseLovableBundler(projectKind?: ProjectKind | null): boolean {
+  if (projectKind === "resume" || projectKind === "presentation") return false;
+  return true;
+}
+
 export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: ProjectKind | null): string {
   const trimmed = userPrompt.trim();
   const lang = detectWorkingLanguage(trimmed);
   const kind = projectKind && PROJECT_KINDS.includes(projectKind) ? projectKind : null;
 
+  const multifile = isMultifileViteOutput(kind);
+
   const baseHeader = [
     "You are a document/UI generation assistant for Lemnity.",
     `Working language for visible copy: **${lang === "ru" ? "Russian" : "English"}** (match the user's language in headings and body).`,
-    "The user edits in a live HTML preview, but **resume and presentation workstreams target real office documents**, not marketing websites: structure content so Word/PDF or PowerPoint/PDF exports stay professional.",
-    kind === "lovable"
-      ? "Output for this mode: a **Lovable-style** React+TypeScript project as **multiple files** in markdown fences (not one big HTML). The platform will bundle with esbuild; Tailwind is applied via CDN in the preview — use `className` and Tailwind utility classes only. Use functional components, `import` between files with **relative** paths, entry at `src/main.tsx` (createRoot on `#root`). No `vite.config` in output unless asked — keep files under `src/`. **Strict:** each file must be ` ```tsx:src/...` or ` ```ts:src/...` on the opening fence line (path after colon), then the file body, then closing fence. Include `src/main.tsx` and at least `src/App.tsx`."
-      : "Output: one complete HTML5 document, embedded CSS (or Tailwind CDN), no external JS frameworks unless a tiny inline script is required.",
+    "The user sees a **live app preview** built from a small **file tree** (typical: `src/main.tsx`, `src/App.tsx`, optional `src/components/`, `lib/` as needed) — not a monolithic string export. **Resume and presentation** workstreams are the exception: they target real office documents (HTML preview as document/storyboard), not a React app layout.",
+    multifile
+      ? "Output for this mode: a **Vite/Lovable-style** React+TypeScript project as **multiple files** in markdown fences (not one big static HTML). The platform will bundle with esbuild; Tailwind is applied via CDN in the preview — use `className` and Tailwind utility classes only. Use functional components, `import` between files with **relative** paths, entry at `src/main.tsx` (createRoot on `#root`). Prefer splitting UI into `src/components/*.tsx` and shared bits under `lib/` or `src/lib/` when it keeps files readable. No `vite.config` in output unless asked — do not paste an entire `package.json` tree unless a file is required. **Strict:** each file must be ` ```tsx:path/to/File.tsx` or ` ```ts:path/to/file.ts` on the opening fence line (path after colon), then the file body, then closing fence. Include `src/main.tsx` and at least `src/App.tsx`."
+      : "Output: one complete HTML5 document (editable preview for document workstreams), embedded CSS (or Tailwind CDN), no React app unless the user explicitly asked for a component tree.",
     "Accessibility: logical heading order, button/link labels, sufficient contrast."
   ];
 
@@ -64,9 +78,9 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
     switch (kind) {
       case "website":
         return [
-          "Deliverable: **Marketing / product website** (scrolling page).",
-          "Structure: header/nav, hero, value props, social proof or logos strip, feature grid, pricing or CTA block, FAQ, footer with contact + legal placeholder.",
-          "Use sections with clear `id` or `data-section` for anchor nav."
+          "Deliverable: **Marketing / product website** as a **React+TS** app (same structure as a real repo: `src/App.tsx` composes sections; extract repeated blocks to `src/components/…`).",
+          "Structure: header/nav, hero, value props, social proof, feature grid, pricing or CTA block, FAQ, footer — implemented as components/sections, not one giant return.",
+          "Use semantic sections with clear `id` or `data-section` for anchor nav."
         ];
       case "presentation":
         return [
@@ -84,14 +98,14 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         ];
       case "design":
         return [
-          "Deliverable: **UI/UX design concept** page (design system / component gallery).",
-          "Include: color tokens, typography scale, button/input/card variants, empty and error states, spacing scale notes in comments.",
-          "Layout as a “story” page or split columns; emphasize hierarchy and component reuse, not final marketing copy."
+          "Deliverable: **UI/UX design concept** in React+TS: design system / component gallery as real components (e.g. `src/components/ui/`).",
+          "Include: color tokens, typography scale, button/input/card variants, empty and error states; spacing notes in comments.",
+          "Compose in `App.tsx` or a `src/pages/DesignSystem.tsx` story layout; emphasize hierarchy and reuse, not a marketing one-pager."
         ];
       case "visitcard":
         return [
-          "Deliverable: **Digital business card** — compact single screen, centered card layout.",
-          "Content: name, role, 1–2 line bio, contact links (as buttons), optional QR placeholder (styled box), messengers as icon-like buttons.",
+          "Deliverable: **Digital business card** — one compact screen in `App.tsx` (or `src/Visitcard.tsx`), centered card layout.",
+          "Content: name, role, 1–2 line bio, contact links (as buttons), optional QR placeholder, messengers as icon-like buttons.",
           "Maximize clarity on mobile width first; subtle shadow / rounded card on subtle background."
         ];
       case "lovable":
@@ -103,8 +117,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         ];
       default:
         return [
-          "Deliverable: **Landing / web interface** as appropriate to the user request.",
-          "Prefer a clear hero, scannable sections, and one primary CTA."
+          "Deliverable: **Landing or web interface** as a **multi-file** React+TS app (Vite/Lovable style) unless the user asked only for a static one-file HTML.",
+          "Prefer: `src/main.tsx` + `src/App.tsx` + `src/components/*`; split sections logically; one primary CTA; responsive layout (mobile-first) via Tailwind `className`."
         ];
     }
   })();
@@ -131,7 +145,7 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
   if (!kind) return "";
   const m: Record<ProjectKind, string> = {
     website:
-      "маркетинговый/продуктовый сайт: страница с секциями, навигация, hero, CTA, контакты.",
+      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML.",
     presentation:
       "презентация как документ: целевые форматы PPTX/PDF; в HTML — редактируемые полноэкранные слайды по одной мысли.",
     resume:
