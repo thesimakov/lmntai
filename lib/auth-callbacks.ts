@@ -125,22 +125,6 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
       }
     }
 
-    if (user) {
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
-        body: JSON.stringify({
-          sessionId: "f7c7f0",
-          hypothesisId: "E",
-          location: "lib/auth-callbacks.ts:jwt",
-          message: "jwt_after_signin",
-          data: { role: (token as { role?: string }).role ?? "unset" },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
-    }
     return token;
   },
   async session({ session, token }) {
