@@ -9,7 +9,7 @@ import Yandex from "next-auth/providers/yandex";
 import { getPostgresDatabaseUrlErrorMessage } from "@/lib/database-url";
 import { isDemoDatabaseBypassed, OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
-import { applyAdminEnvBootstrap } from "@/lib/admin-env-bootstrap";
+import { applyAdminEnvBootstrap, tryAdminEnvCredentialsLogin } from "@/lib/admin-env-bootstrap";
 import {
   ensureDemoUserWithPassword,
   ensureUser,
@@ -153,6 +153,10 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
 
           if (!password) {
             return null;
+          }
+          const adminFromEnv = await tryAdminEnvCredentialsLogin(emailLower, password);
+          if (adminFromEnv) {
+            return adminFromEnv;
           }
           const user = await loginWithPassword(emailLower, password);
           if (!user) {

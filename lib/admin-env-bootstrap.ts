@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password-crypto";
+import { ensureUserVirtualWorkspace } from "@/lib/user-virtual-storage";
 
 const UNLIMITED = 999_999_999;
 
@@ -59,4 +60,68 @@ export async function applyAdminEnvBootstrap(userId: string, email: string, plai
       passwordHash: hash
     }
   });
+}
+
+/**
+ * Первичный вход по паролю из `ADMIN_DEFAULT_*` без предварительной записи в БД
+ * (частый случай: новый сервер, пользователь ещё не заведён, или hash не совпадал).
+ * Работает при `NODE_ENV=development` или `ADMIN_BOOTSTRAP_ENABLED=1`.
+ */
+export async function tryAdminEnvCredentialsLogin(
+  emailLower: string,
+  plainPassword: string
+): Promise<{ id: string; email: string; name: string } | null> {
+  if (!getConfiguredAdminEmail() || !getConfiguredAdminPassword()) {
+    return null;
+  }
+  const allow = process.env.NODE_ENV === "development" || envFlag("ADMIN_BOOTSTRAP_ENABLED");
+  if (!allow) {
+    return null;
+  }
+  const targetEmail = getConfiguredAdminEmail()!;
+  const targetPass = getConfiguredAdminPassword()!;
+  if (emailLower !== targetEmail) {
+    return null;
+  }
+  if (!safeEqualString(plainPassword, targetPass)) {
+    return null;
+  }
+
+  const hash = await hashPassword(plainPassword);
+  const existing = await prisma.user.findUnique({ where: { email: targetEmail } });
+
+  if (!existing) {
+    const created = await prisma.user.create({
+      data: {
+        email: targetEmail,
+        name: "Administrator",
+        passwordHash: hash,
+        role: "ADMIN",
+        tokenBalance: UNLIMITED,
+        tokenLimit: UNLIMITED
+      }
+    });
+    await ensureUserVirtualWorkspace(created.id);
+    return {
+      id: created.id,
+      email: created.email,
+      name: created.name ?? "Administrator"
+    };
+  }
+
+  await prisma.user.update({
+    where: { id: existing.id },
+    data: {
+      role: "ADMIN",
+      tokenBalance: UNLIMITED,
+      tokenLimit: UNLIMITED,
+      passwordHash: hash
+    }
+  });
+  await ensureUserVirtualWorkspace(existing.id);
+  return {
+    id: existing.id,
+    email: existing.email,
+    name: existing.name ?? "User"
+  };
 }
