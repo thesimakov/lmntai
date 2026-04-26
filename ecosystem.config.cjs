@@ -9,8 +9,8 @@
  * `set -a && . /etc/lemnity/production.env && set +a && pm2 start ecosystem.config.cjs --only lemnity-builder`
  * (переменные AI_GATEWAY_* и DATABASE_URL должны быть в окружении).
  *
- * Ниже явно подмешиваются корневые `.env*` в env процессов PM2 — иначе `next start` под PM2
- * иногда стартует без `AI_GATEWAY_*` / `DATABASE_URL`, хотя `next build` уже видел `.env`.
+ * Ниже подмешиваются корневые `.env*` и при наличии `/etc/lemnity/production.env` (как в deploy:production)
+ * — иначе `next start` под PM2 не видел бы `ADMIN_*` / `DATABASE_URL`, заданные только вне репо.
  */
 const fs = require("fs");
 const path = require("path");
@@ -56,7 +56,9 @@ function loadRootEnv(dir) {
   return merged;
 }
 
-const fileEnv = loadRootEnv(__dirname);
+const ETC_PRODUCTION_ENV = "/etc/lemnity/production.env";
+/** Локальные .env* в репо, затем (если есть) secrets на сервере — как у deploy:production. */
+const fileEnv = { ...loadRootEnv(__dirname), ...parseEnvFile(ETC_PRODUCTION_ENV) };
 
 module.exports = {
   apps: [
