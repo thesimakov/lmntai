@@ -1,0 +1,202 @@
+import { redirect } from "next/navigation";
+
+import {
+  addTokensAction,
+  createUserAction,
+  deleteUserAction,
+  setPartnerAction,
+  setPlanAction
+} from "@/app/admin/actions";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { getTokenSpendLast30Days, listAdminUsers } from "@/lib/admin-service";
+import { requireStaffPermission } from "@/lib/auth-guards";
+import { canAccessStaff, parsePermissionList, type StaffPermission } from "@/lib/staff-permissions";
+import { USER_VIRTUAL_STORAGE_LIMIT_BYTES } from "@/lib/user-virtual-storage";
+
+function canDo(user: { role: string; adminPermissions: unknown }, perm: StaffPermission) {
+  return canAccessStaff(
+    user.role,
+    user.role === "MANAGER" ? parsePermissionList(user.adminPermissions) : null,
+    perm,
+    false
+  );
+}
+
+function formatStorage(used: bigint | null | undefined, limit: bigint | null | undefined) {
+  const usedValue = Number(used ?? 0n);
+  const limitValue = Number(limit ?? USER_VIRTUAL_STORAGE_LIMIT_BYTES);
+  const usedMb = (usedValue / (1024 * 1024)).toFixed(1);
+  const limitMb = (limitValue / (1024 * 1024)).toFixed(0);
+  return `${usedMb} / ${limitMb} MB`;
+}
+
+export default async function AdminUsersPage() {
+  const g = await requireStaffPermission("users.read");
+  if (!g.ok) {
+    redirect(g.status === 401 ? "/login" : "/playground");
+  }
+  const { user: me } = g.data;
+  const canWrite = canDo(me, "users.write");
+  const canDelete = canDo(me, "users.delete");
+
+  const users = await listAdminUsers();
+  const spend = await getTokenSpendLast30Days();
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold text-white">Пользователи</h1>
+        <p className="text-sm text-zinc-400">Email, баланс, план, виртуальная папка (1 GiB), действия. Расход токенов за 30 дн.:{" "}
+          <span className="text-zinc-200">{spend._sum.totalTokens ?? 0}</span>
+        </p>
+      </div>
+
+      {canWrite ? (
+        <Card className="border-white/10 bg-zinc-900/60">
+          <CardHeader>
+            <CardTitle className="text-base text-zinc-100">Добавить пользователя</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form action={createUserAction} className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <Input name="email" type="email" required placeholder="email" className="bg-zinc-950/50" />
+              <Input name="password" type="password" required minLength={8} placeholder="Пароль" className="bg-zinc-950/50" />
+              <Input name="name" placeholder="Имя" className="bg-zinc-950/50" />
+              <select
+                name="plan"
+                className="h-10 rounded-md border border-white/10 bg-zinc-950/50 px-3 text-sm"
+                defaultValue="FREE"
+              >
+                <option value="FREE">FREE</option>
+                <option value="PRO">PRO</option>
+                <option value="TEAM">TEAM</option>
+              </select>
+              <select
+                name="role"
+                className="h-10 rounded-md border border-white/10 bg-zinc-950/50 px-3 text-sm"
+                defaultValue="USER"
+              >
+                <option value="USER">Пользователь</option>
+                {me.role === "ADMIN" ? <option value="ADMIN">Администратор</option> : null}
+              </select>
+              <Input
+                name="tokenBalance"
+                type="number"
+                min={0}
+                defaultValue={10_000}
+                placeholder="Баланс токенов"
+                className="bg-zinc-950/50"
+              />
+              <div className="md:col-span-2">
+                <Button type="submit">Создать</Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card className="border-white/10 bg-zinc-900/60">
+        <CardHeader>
+          <CardTitle className="text-base text-zinc-100">Список</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead className="bg-white/5 text-left text-zinc-400">
+                <tr>
+                  <th className="p-2">Email</th>
+                  <th className="p-2">План</th>
+                  <th className="p-2">Баланс</th>
+                  <th className="p-2">Лимит</th>
+                  <th className="p-2">Вирт.папка</th>
+                  <th className="p-2">Партнёр</th>
+                  <th className="p-2">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u) => (
+                  <tr key={u.id} className="border-t border-white/10">
+                    <td className="p-2 text-zinc-200">
+                      {u.email}{" "}
+                      {u.role === "ADMIN" ? (
+                        <span className="ml-1 rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 text-xs text-fuchsia-200">
+                          ADMIN
+                        </span>
+                      ) : null}
+                      {u.role === "MANAGER" ? (
+                        <span className="ml-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 text-xs text-amber-200">
+                          MANAGER
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="p-2 text-zinc-300">
+                      {u.plan === "BUSINESS" ? "TEAM" : u.plan}
+                    </td>
+                    <td className="p-2 text-zinc-300">{u.tokenBalance}</td>
+                    <td className="p-2 text-zinc-300">{u.tokenLimit}</td>
+                    <td className="p-2 text-zinc-300">
+                      {formatStorage(u.virtualWorkspace?.usedBytes, u.virtualWorkspace?.limitBytes)}
+                    </td>
+                    <td className="p-2 text-zinc-300">
+                      {u.isPartner ? (
+                        <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-xs">да</span>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="p-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {canWrite ? (
+                          <>
+                            <form action={addTokensAction} className="flex items-center gap-1">
+                              <input type="hidden" name="userId" value={u.id} />
+                              <Input name="amount" className="h-8 w-20 bg-zinc-950/50" placeholder="+" />
+                              <Button size="sm" type="submit" variant="secondary">
+                                +токены
+                              </Button>
+                            </form>
+                            <form action={setPlanAction} className="flex items-center gap-1">
+                              <input type="hidden" name="userId" value={u.id} />
+                              <select
+                                name="plan"
+                                defaultValue={u.plan === "BUSINESS" ? "TEAM" : u.plan}
+                                className="h-8 max-w-[8rem] rounded border border-white/10 bg-zinc-950/50 text-xs"
+                              >
+                                <option value="FREE">FREE</option>
+                                <option value="PRO">PRO</option>
+                                <option value="TEAM">TEAM</option>
+                              </select>
+                              <Button size="sm" type="submit" variant="outline">
+                                план
+                              </Button>
+                            </form>
+                            <form action={setPartnerAction} className="flex items-center gap-1">
+                              <input type="hidden" name="userId" value={u.id} />
+                              <input type="hidden" name="isPartner" value={u.isPartner ? "false" : "true"} />
+                              <Button size="sm" type="submit" variant="ghost">
+                                {u.isPartner ? "снять партн." : "партнёр"}
+                              </Button>
+                            </form>
+                          </>
+                        ) : null}
+                        {canDelete && u.id !== me.id ? (
+                          <form action={deleteUserAction} className="inline">
+                            <input type="hidden" name="userId" value={u.id} />
+                            <Button size="sm" type="submit" variant="destructive">
+                              Удалить
+                            </Button>
+                          </form>
+                        ) : null}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

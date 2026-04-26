@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   PUBLISH_BUILTIN_BASE_DOMAIN,
+  normalizePublishCustomHost,
   normalizePublishSubdomainLabel,
   suggestPublishSubdomain
 } from "@/lib/publish-host";
@@ -30,6 +31,14 @@ type BuildPublishDialogProps = {
   sandboxId: string | null;
   seedText?: string;
   hasCustomDomainAccess: boolean;
+};
+
+type VerificationInfo = {
+  status: "PENDING" | "VERIFIED";
+  recordType: "TXT" | null;
+  recordName: string | null;
+  recordValue: string | null;
+  verifiedAt: string | null;
 };
 
 function buildNginxCommands(hostname: string, sandboxId: string | null): string {
@@ -77,10 +86,13 @@ export function BuildPublishDialog({
   const [subdomain, setSubdomain] = useState("");
   const [customDomainOpen, setCustomDomainOpen] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
+  const [bindingPending, setBindingPending] = useState(false);
+  const [verificationInfo, setVerificationInfo] = useState<VerificationInfo | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setSubdomain((prev) => prev || suggestPublishSubdomain(seedText, sandboxId));
+    setVerificationInfo(null);
   }, [open, seedText, sandboxId]);
 
   const cleanSubdomain = useMemo(() => {
@@ -89,8 +101,9 @@ export function BuildPublishDialog({
   }, [subdomain, seedText, sandboxId]);
 
   const defaultHost = `${cleanSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
-  const manualHost = normalizePublishSubdomainLabel(customDomain);
-  const publishHost = hasCustomDomainAccess && manualHost ? customDomain.toLowerCase().trim() : defaultHost;
+  const manualHost = normalizePublishCustomHost(customDomain);
+  const publishHost =
+    hasCustomDomainAccess && customDomainOpen && manualHost ? manualHost : defaultHost;
   const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
 
   async function copyValue(value: string, successText: string) {
@@ -99,6 +112,78 @@ export function BuildPublishDialog({
       toast.success(successText);
     } else {
       toast.error("Не удалось скопировать");
+    }
+  }
+
+  async function bindPublishHostBeforeOpen(): Promise<{ ok: boolean; verified: boolean }> {
+    if (!sandboxId) return { ok: true, verified: true };
+    try {
+      setBindingPending(true);
+      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: publishHost })
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        const code = body.error;
+        if (code === "forbidden_plan") {
+          toast.error("Свой домен доступен на тарифах Pro/Team.");
+        } else if (code === "forbidden_owner") {
+          toast.error("Этот домен уже привязан к другому проекту.");
+        } else if (code === "reserved_host") {
+          toast.error("Этот хост зарезервирован системой.");
+        } else {
+          toast.error("Не удалось привязать домен.");
+        }
+        return { ok: false, verified: false };
+      }
+      const data = (await res.json().catch(() => null)) as
+        | { verification?: VerificationInfo | null }
+        | null;
+      const verification = data?.verification ?? null;
+      setVerificationInfo(verification);
+      if (verification?.status === "PENDING") {
+        toast.message("Добавьте TXT-запись и нажмите «Проверить домен»");
+        return { ok: true, verified: false };
+      }
+      return { ok: true, verified: true };
+    } catch {
+      toast.error("Ошибка сети при привязке домена");
+      return { ok: false, verified: false };
+    } finally {
+      setBindingPending(false);
+    }
+  }
+
+  async function verifyDomainNow() {
+    if (!sandboxId) return;
+    try {
+      setBindingPending(true);
+      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: publishHost })
+      });
+      const data = (await res.json().catch(() => null)) as
+        | { verified?: boolean; verification?: VerificationInfo; error?: string }
+        | null;
+      if (!res.ok) {
+        toast.error("Не удалось проверить домен");
+        return;
+      }
+      if (data?.verification) {
+        setVerificationInfo(data.verification);
+      }
+      if (data?.verified) {
+        toast.success("Домен подтверждён");
+      } else {
+        toast.message("TXT-запись пока не найдена. Подождите 1-5 минут и проверьте снова.");
+      }
+    } catch {
+      toast.error("Ошибка сети при проверке домена");
+    } finally {
+      setBindingPending(false);
     }
   }
 
@@ -214,15 +299,57 @@ export function BuildPublishDialog({
               {nginxCommands}
             </pre>
           </section>
+
+          {verificationInfo?.status === "PENDING" && verificationInfo.recordName && verificationInfo.recordValue ? (
+            <section className="space-y-2 border-t pt-4">
+              <p className="text-sm font-semibold">Подтверждение домена (TXT)</p>
+              <p className="text-xs text-muted-foreground">
+                Добавьте DNS-запись и дождитесь обновления. После этого нажмите «Проверить домен».
+              </p>
+              <div className="rounded-xl border bg-muted/20 p-3 text-xs">
+                <p>
+                  <b>Type:</b> TXT
+                </p>
+                <p>
+                  <b>Name:</b> {verificationInfo.recordName}
+                </p>
+                <p className="break-all">
+                  <b>Value:</b> {verificationInfo.recordValue}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => void copyValue(verificationInfo.recordValue!, "TXT-значение скопировано")}
+                >
+                  Скопировать value
+                </Button>
+                <Button type="button" onClick={() => void verifyDomainNow()} disabled={bindingPending}>
+                  Проверить домен
+                </Button>
+              </div>
+            </section>
+          ) : null}
         </div>
 
         <DialogFooter className="border-t px-6 py-4 sm:justify-between">
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
-          <Button type="button" className="gap-1.5" disabled={publishPending} onClick={() => void onPublish()}>
+          <Button
+            type="button"
+            className="gap-1.5"
+            disabled={publishPending || bindingPending}
+            onClick={async () => {
+              const result = await bindPublishHostBeforeOpen();
+              if (!result.ok) return;
+              if (!result.verified) return;
+              await onPublish();
+            }}
+          >
             <ExternalLink className="h-4 w-4" />
-            {publishPending ? "Публикация…" : "Опубликовать"}
+            {publishPending || bindingPending ? "Публикация…" : "Опубликовать"}
           </Button>
         </DialogFooter>
       </DialogContent>

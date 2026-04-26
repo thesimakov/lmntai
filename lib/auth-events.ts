@@ -1,19 +1,22 @@
 import type { NextAuthOptions } from "next-auth";
 
-import { PLAN_LIMITS } from "@/lib/token-manager";
+import { getEffectiveMonthlyAllowance } from "@/lib/platform-plan-settings";
 import { prisma } from "@/lib/prisma";
 import { ensureUserReferralCode } from "@/lib/referrals";
 import { logAuthEvent } from "@/lib/request-log";
+import { ensureUserVirtualWorkspace } from "@/lib/user-virtual-storage";
 
 export const authEvents: NextAuthOptions["events"] = {
   async createUser({ user }) {
+    const freeLimit = await getEffectiveMonthlyAllowance("FREE");
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        tokenBalance: PLAN_LIMITS.FREE,
-        tokenLimit: PLAN_LIMITS.FREE
+        tokenBalance: freeLimit,
+        tokenLimit: freeLimit
       }
     });
+    await ensureUserVirtualWorkspace(user.id);
     try {
       await ensureUserReferralCode(user.id);
     } catch {

@@ -7,9 +7,15 @@ import VK from "next-auth/providers/vk";
 import Yandex from "next-auth/providers/yandex";
 
 import { getPostgresDatabaseUrlErrorMessage } from "@/lib/database-url";
-import { OFFLINE_DEMO_USER_ID, isOfflineDemoSession } from "@/lib/offline-demo-auth";
+import { isDemoDatabaseBypassed, OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
-import { ensureUser } from "@/lib/token-manager";
+import { applyAdminEnvBootstrap } from "@/lib/admin-env-bootstrap";
+import {
+  ensureDemoUserWithPassword,
+  ensureUser,
+  loginWithPassword,
+  registerUserWithPassword
+} from "@/lib/token-manager";
 import { normalizeEmail } from "@/lib/auth-normalizers";
 
 function smtpConfigured() {
@@ -30,7 +36,8 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
         email: { label: "Email", type: "email" },
         name: { label: "Имя", type: "text" },
         company: { label: "Компания", type: "text" },
-        password: { label: "Пароль", type: "password" }
+        password: { label: "Пароль", type: "password" },
+        intent: { label: "register | login", type: "text" }
       },
       async authorize(credentials) {
         if (!credentials?.email) {
@@ -44,25 +51,67 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
         const demoPass = process.env.DEMO_LOGIN_PASSWORD;
 
         if (demoOn && demoEmail && emailLower === demoEmail) {
+          const providedPw = (credentials as { password?: string }).password;
+          if (isDemoDatabaseBypassed(process.env, process.env.NODE_ENV, emailLower, providedPw)) {
+            const displayName =
+              (credentials.name?.trim() || process.env.DEMO_LOGIN_NAME?.trim() || "Демо") || "Демо";
+            return {
+              id: OFFLINE_DEMO_USER_ID,
+              email: emailLower,
+              name: displayName
+            };
+          }
+
           if (!demoPass && process.env.NODE_ENV !== "development") {
             return null;
           }
           if (demoPass) {
-            const pw = (credentials as { password?: string }).password ?? "";
+            const pw = providedPw ?? "";
             if (pw !== demoPass) {
               return null;
             }
+            try {
+              const company = (credentials as { company?: string }).company;
+              const user = await ensureDemoUserWithPassword(
+                emailLower,
+                credentials.name ?? null,
+                company,
+                pw
+              );
+              if (!user) {
+                return null;
+              }
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name ?? credentials.name ?? "Демо"
+              };
+            } catch (err) {
+              console.error("[auth] ensureDemoUserWithPassword failed:", err);
+              const dbMsg = getAuthDatabaseUserMessage(err);
+              if (dbMsg) {
+                throw new Error(dbMsg);
+              }
+              throw err;
+            }
+          } else {
+            try {
+              const company = (credentials as { company?: string }).company;
+              const user = await ensureUser(emailLower, credentials.name, company);
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name ?? credentials.name ?? "Демо"
+              };
+            } catch (err) {
+              console.error("[auth] ensureUser (demo, dev) failed:", err);
+              const dbMsg = getAuthDatabaseUserMessage(err);
+              if (dbMsg) {
+                throw new Error(dbMsg);
+              }
+              throw err;
+            }
           }
-        }
-
-        if (isOfflineDemoSession(process.env, process.env.NODE_ENV, emailLower)) {
-          const displayName =
-            (credentials.name?.trim() || process.env.DEMO_LOGIN_NAME?.trim() || "Демо") || "Демо";
-          return {
-            id: OFFLINE_DEMO_USER_ID,
-            email: emailLower,
-            name: displayName
-          };
         }
 
         const urlErr = getPostgresDatabaseUrlErrorMessage();
@@ -71,15 +120,56 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
         }
 
         try {
+          const password = (credentials as { password?: string }).password ?? "";
+          const intent =
+            (credentials as { intent?: string }).intent === "register" ? "register" : "login";
           const company = (credentials as { company?: string }).company;
-          const user = await ensureUser(emailLower, credentials.name, company);
+          const displayName = credentials.name?.trim();
+
+          if (intent === "register") {
+            if (!displayName) {
+              return null;
+            }
+            const created = await registerUserWithPassword(
+              emailLower,
+              password,
+              displayName,
+              company
+            );
+            if ("kind" in created) {
+              return null;
+            }
+            try {
+              await applyAdminEnvBootstrap(created.id, created.email, password);
+            } catch (e) {
+              console.error("[auth] admin env bootstrap (register) failed", e);
+            }
+            return {
+              id: created.id,
+              email: created.email,
+              name: created.name ?? displayName
+            };
+          }
+
+          if (!password) {
+            return null;
+          }
+          const user = await loginWithPassword(emailLower, password);
+          if (!user) {
+            return null;
+          }
+          try {
+            await applyAdminEnvBootstrap(user.id, user.email, password);
+          } catch (e) {
+            console.error("[auth] admin env bootstrap (login) failed", e);
+          }
           return {
             id: user.id,
             email: user.email,
-            name: user.name ?? credentials.name ?? "User"
+            name: user.name ?? "User"
           };
         } catch (err) {
-          console.error("[auth] ensureUser failed:", err);
+          console.error("[auth] credentials login/register failed:", err);
           const dbMsg = getAuthDatabaseUserMessage(err);
           if (dbMsg) {
             throw new Error(dbMsg);

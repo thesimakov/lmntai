@@ -19,8 +19,8 @@ import {
 } from "@/lib/lemnity-ai-session-links";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
-import { MIN_TOKENS_GENERATE_STREAM } from "@/lib/plan-config";
 import { estimateUsageFromText } from "@/lib/token-billing";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -447,7 +447,8 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   });
 
   if (tail[0] === "chat" && req.method === "POST") {
-    if (!hasEnoughTokens(user, MIN_TOKENS_GENERATE_STREAM)) {
+    const minStreamBalance = await getEffectiveStreamMinimum(user.plan);
+    if (!hasEnoughTokens(user, minStreamBalance)) {
       return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
     }
     await syncLemnityAiSessionSummary({

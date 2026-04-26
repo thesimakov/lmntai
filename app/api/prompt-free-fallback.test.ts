@@ -97,7 +97,7 @@ describe("prompt API free fallback chain", () => {
       body: JSON.stringify({ messages: [{ role: "user", content: "Сделай лендинг" }] }),
       headers: { "content-type": "application/json" }
     });
-    const res = await POST(req as never);
+    const res = await POST(req as never, undefined as never);
     const json = (await res.json()) as { debug_model?: string; debug_attempted_models?: string[] };
 
     expect(res.status).toBe(200);
@@ -132,7 +132,7 @@ describe("prompt API free fallback chain", () => {
       body: JSON.stringify({ mode: "questions", idea: "Сайт для турагентства" }),
       headers: { "content-type": "application/json" }
     });
-    const res = await POST(req as never);
+    const res = await POST(req as never, undefined as never);
     const json = (await res.json()) as {
       questions?: string[];
       debug_model?: string;

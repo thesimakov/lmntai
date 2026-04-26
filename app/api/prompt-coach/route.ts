@@ -9,7 +9,7 @@ import {
   parsePromptCoachJson
 } from "@/lib/prompt-coach";
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
-import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
+import { getEffectivePromptBuilderMinimum } from "@/lib/platform-plan-settings";
 import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText, normalizeUsage } from "@/lib/token-billing";
 import { hasEnoughTokens } from "@/lib/token-manager";
@@ -57,7 +57,8 @@ async function postPromptCoach(req: NextRequest) {
     }
 
     const user = guard.data.user;
-    if (!hasEnoughTokens(user, MIN_TOKENS_PROMPT_BUILDER)) {
+    const minPromptBalance = await getEffectivePromptBuilderMinimum(user.plan);
+    if (!hasEnoughTokens(user, minPromptBalance)) {
       return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
     }
 

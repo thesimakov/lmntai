@@ -4,6 +4,11 @@ import { OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
 import { prisma } from "@/lib/prisma";
 import { toPlan, toUserRole } from "@/lib/auth-normalizers";
 
+function permsFromJson(p: unknown): string[] {
+  if (!p || !Array.isArray(p)) return [];
+  return p.filter((x): x is string => typeof x === "string");
+}
+
 export const authCallbacks: NextAuthOptions["callbacks"] = {
   async jwt({ token, user, trigger, session }) {
     if (trigger === "update" && typeof session?.name === "string") {
@@ -30,13 +35,21 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
         try {
           const row = await prisma.user.findUnique({
             where: { id: user.id },
-            select: { email: true, role: true, plan: true, name: true, shareBrandingRemovalPaidAt: true }
+            select: {
+              email: true,
+              role: true,
+              plan: true,
+              name: true,
+              shareBrandingRemovalPaidAt: true,
+              adminPermissions: true
+            }
           });
           if (row?.email) {
             token.email = row.email.toLowerCase();
             token.role = toUserRole(row.role);
             token.plan = toPlan(row.plan);
             token.shareBrandingRemovalPaid = Boolean(row.shareBrandingRemovalPaidAt);
+            token.adminPermissionKeys = permsFromJson(row.adminPermissions);
             if (typeof row.name === "string") {
               token.name = row.name;
             }
@@ -58,13 +71,21 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
       try {
         const byId = await prisma.user.findUnique({
           where: { id: userId },
-          select: { email: true, role: true, plan: true, name: true, shareBrandingRemovalPaidAt: true }
+          select: {
+            email: true,
+            role: true,
+            plan: true,
+            name: true,
+            shareBrandingRemovalPaidAt: true,
+            adminPermissions: true
+          }
         });
         if (byId?.email) {
           token.email = byId.email.toLowerCase();
           token.role = toUserRole(byId.role);
           token.plan = toPlan(byId.plan);
           token.shareBrandingRemovalPaid = Boolean(byId.shareBrandingRemovalPaidAt);
+          token.adminPermissionKeys = permsFromJson(byId.adminPermissions);
           if (typeof byId.name === "string") {
             token.name = byId.name;
           }
@@ -78,7 +99,15 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
     if (emailForLookup) {
       try {
         const dbUser = await prisma.user.findUnique({
-          where: { email: emailForLookup }
+          where: { email: emailForLookup },
+          select: {
+            id: true,
+            name: true,
+            role: true,
+            plan: true,
+            shareBrandingRemovalPaidAt: true,
+            adminPermissions: true
+          }
         });
 
         if (dbUser) {
@@ -86,6 +115,7 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
           token.role = toUserRole(dbUser.role);
           token.plan = toPlan(dbUser.plan);
           token.shareBrandingRemovalPaid = Boolean(dbUser.shareBrandingRemovalPaidAt);
+          token.adminPermissionKeys = permsFromJson(dbUser.adminPermissions);
           if (typeof dbUser.name === "string") {
             token.name = dbUser.name;
           }
@@ -100,8 +130,11 @@ export const authCallbacks: NextAuthOptions["callbacks"] = {
   async session({ session, token }) {
     if (session.user) {
       session.user.id = (token.userId as string) ?? "";
-      session.user.role = (token.role as "USER" | "ADMIN") ?? "USER";
+      session.user.role = (token.role as "USER" | "ADMIN" | "MANAGER") ?? "USER";
       session.user.plan = (token.plan as "FREE" | "PRO" | "TEAM") ?? "FREE";
+      session.user.adminPermissionKeys = Array.isArray(token.adminPermissionKeys)
+        ? (token.adminPermissionKeys as string[])
+        : undefined;
       session.user.demoOffline = Boolean(token.demoOffline);
       session.user.shareBrandingRemovalPaid = Boolean(token.shareBrandingRemovalPaid);
       if (token.email) {

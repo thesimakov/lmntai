@@ -42,7 +42,7 @@ export function MarketingSiteHeader() {
           <Link href="/#hero-input" className="transition hover:text-foreground">
             {t("landing_simple_nav_product")}
           </Link>
-          <Link href="/pricing" className="transition hover:text-foreground">
+          <Link href="/plans" className="transition hover:text-foreground">
             {t("landing_simple_nav_pricing")}
           </Link>
           <Link href="/docs" className="transition hover:text-foreground">

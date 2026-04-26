@@ -1,9 +1,24 @@
+import { headers } from "next/headers";
+
 import { LoginForm, type LoginFeatures } from "@/components/login-form";
 
 /** Иначе при `next build` на CI/без .env флаги провайдеров «запекаются», и кнопки (Яндекс и др.) исчезают на проде даже при .env на сервере. */
 export const dynamic = "force-dynamic";
 
-function readFeatures(): LoginFeatures {
+/** Автоподстановка пароля демо в форму — только при обращении к сайту с localhost (не утекает на прод). */
+function isRequestLocalhostHost(hostHeader: string | null): boolean {
+  if (!hostHeader) {
+    return false;
+  }
+  try {
+    const { hostname } = new URL(`http://${hostHeader}`);
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
+async function readFeatures(): Promise<LoginFeatures> {
   const smtp =
     Boolean(process.env.EMAIL_SERVER_HOST) &&
     Boolean(process.env.EMAIL_SERVER_USER) &&
@@ -13,7 +28,13 @@ function readFeatures(): LoginFeatures {
   const demoEnabled = process.env.DEMO_LOGIN_ENABLED === "true";
   const demoEmail = (process.env.DEMO_LOGIN_EMAIL ?? "").trim();
   const demoName = (process.env.DEMO_LOGIN_NAME ?? "Демо").trim();
-  const demoPasswordSet = Boolean(process.env.DEMO_LOGIN_PASSWORD);
+  const demoPasswordRaw = process.env.DEMO_LOGIN_PASSWORD;
+  const demoPasswordSet = Boolean(demoPasswordRaw);
+  const demoPrefill = demoPasswordRaw?.trim() || undefined;
+  const h = await headers();
+  const allowDemoPrefill = isRequestLocalhostHost(
+    h.get("x-forwarded-host") ?? h.get("host")
+  );
 
   const gh =
     Boolean(process.env.GITHUB_ID && process.env.GITHUB_SECRET) ||
@@ -27,11 +48,17 @@ function readFeatures(): LoginFeatures {
     emailMagic: smtp,
     demo:
       demoEnabled && demoEmail
-        ? { email: demoEmail, name: demoName, requiresPassword: demoPasswordSet }
+        ? {
+            email: demoEmail,
+            name: demoName,
+            requiresPassword: demoPasswordSet,
+            prefillPassword: allowDemoPrefill ? demoPrefill : undefined,
+            showBypassDbHint: process.env.NODE_ENV === "development"
+          }
         : undefined
   };
 }
 
-export default function LoginPage() {
-  return <LoginForm features={readFeatures()} />;
+export default async function LoginPage() {
+  return <LoginForm features={await readFeatures()} />;
 }

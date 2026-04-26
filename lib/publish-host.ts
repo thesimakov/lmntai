@@ -22,3 +22,12 @@ export function suggestPublishSubdomain(seedText: string | undefined, sandboxId:
   const suffix = sandboxId ? sandboxId.slice(0, 6).toLowerCase() : "demo";
   return `project-${suffix}`;
 }
+
+/** Нормализация полного хоста custom domain: app.example.com */
+export function normalizePublishCustomHost(value: string): string {
+  const raw = value.trim().toLowerCase();
+  if (!raw) return "";
+  const noProto = raw.replace(/^https?:\/\//, "");
+  const host = noProto.split("/")[0]?.split("?")[0]?.split("#")[0] ?? "";
+  return host.replace(/:\d+$/, "").replace(/^\.+|\.+$/g, "");
+}

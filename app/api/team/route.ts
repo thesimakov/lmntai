@@ -1,10 +1,9 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { getEffectiveTeamSeatLimit } from "@/lib/platform-plan-settings";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
-
-const TEAM_LIMIT = 10;
 
 type ApiRole = "owner" | "admin" | "editor";
 type ApiStatus = "active" | "invited";
@@ -75,7 +74,7 @@ async function getTeam(req: NextRequest) {
 
   const owner = await prisma.user.findUnique({
     where: { id: guard.data.user.id },
-    select: { id: true, email: true, name: true, avatar: true }
+    select: { id: true, email: true, name: true, avatar: true, plan: true }
   });
   if (!owner) {
     return new Response("User not found", { status: 404 });
@@ -107,9 +106,15 @@ async function getTeam(req: NextRequest) {
     ...rows.map((row) => mapTeamMember(row, owner.id))
   ];
 
+  const teamSeatLimit = await getEffectiveTeamSeatLimit(owner.plan);
+  const teamPlanActive = teamSeatLimit > 0;
   return Response.json({
     members,
-    quota: { limit: TEAM_LIMIT, used: members.length }
+    teamPlanActive,
+    quota: {
+      limit: teamSeatLimit,
+      used: members.length
+    }
   });
 }
 
@@ -121,6 +126,13 @@ async function postTeam(req: NextRequest) {
 
   const ownerId = guard.data.user.id;
   const ownerEmail = guard.data.user.email.toLowerCase();
+  const teamSeatLimit = await getEffectiveTeamSeatLimit(guard.data.user.plan);
+  if (teamSeatLimit <= 0) {
+    return new Response(
+      "Команда с приглашениями доступна на тарифе Team. Оформите подписку в разделе «Тарифы».",
+      { status: 403 }
+    );
+  }
   const body = (await req.json().catch(() => null)) as { email?: string; role?: string } | null;
   const email = body?.email?.trim().toLowerCase() ?? "";
   const role = parseRole(body?.role) ?? "EDITOR";
@@ -137,8 +149,10 @@ async function postTeam(req: NextRequest) {
   });
   if (!existing) {
     const memberSlotsUsed = (await prisma.teamInvitation.count({ where: { userId: ownerId } })) + 1;
-    if (memberSlotsUsed >= TEAM_LIMIT) {
-      return new Response(`Лимит команды: ${TEAM_LIMIT} участников`, { status: 400 });
+    if (memberSlotsUsed >= teamSeatLimit) {
+      return new Response(`Достигнут лимит тарифа Team: до ${teamSeatLimit} участников, включая вас.`, {
+        status: 400
+      });
     }
   }
 

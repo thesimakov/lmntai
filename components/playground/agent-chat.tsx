@@ -445,8 +445,9 @@ export function AgentChat({
                     onClick={() =>
                       setPromptFeedback((prev) => {
                         if (prev[m.id] === "up") {
-                          const { [m.id]: _, ...rest } = prev;
-                          return rest;
+                          const next = { ...prev };
+                          delete next[m.id];
+                          return next;
                         }
                         return { ...prev, [m.id]: "up" };
                       })
@@ -466,8 +467,9 @@ export function AgentChat({
                     onClick={() =>
                       setPromptFeedback((prev) => {
                         if (prev[m.id] === "down") {
-                          const { [m.id]: _, ...rest } = prev;
-                          return rest;
+                          const next = { ...prev };
+                          delete next[m.id];
+                          return next;
                         }
                         return { ...prev, [m.id]: "down" };
                       })

@@ -7,7 +7,7 @@ import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
 import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
 import { chargeTokensSafely, estimateUsageFromText, normalizeUsage } from "@/lib/token-billing";
-import { MIN_TOKENS_PROMPT_BUILDER } from "@/lib/plan-config";
+import { getEffectivePromptBuilderMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -101,7 +101,8 @@ async function postPromptBuilder(req: NextRequest) {
   }
 
   const user = guard.data.user;
-  if (!hasEnoughTokens(user, MIN_TOKENS_PROMPT_BUILDER)) {
+  const minPromptBalance = await getEffectivePromptBuilderMinimum(user.plan);
+  if (!hasEnoughTokens(user, minPromptBalance)) {
     return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
   }
 

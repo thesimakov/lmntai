@@ -21,22 +21,20 @@ vi.mock("@/lib/prisma", () => ({
 
 import { requireDbUser } from "@/lib/auth-guards";
 
-const originalNodeEnv = process.env.NODE_ENV;
-
 describe("requireDbUser", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.NODE_ENV = "test";
+    vi.stubEnv("NODE_ENV", "test");
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
   afterAll(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    vi.unstubAllEnvs();
     vi.restoreAllMocks();
   });
 
   it("uses offline demo session without prisma in development", async () => {
-    process.env.NODE_ENV = "development";
+    vi.stubEnv("NODE_ENV", "development");
     mocks.getSafeServerSession.mockResolvedValue({
       user: {
         id: "offline-demo-user",

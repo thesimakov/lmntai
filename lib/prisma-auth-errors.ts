@@ -1,8 +1,28 @@
 import { Prisma } from "@prisma/client";
 
+const PUBLIC_SCHEMA_DENIED_HINT =
+  "Пользователь БД не может работать со схемой public. Локально: остановить контейнер, удалить volume и поднять заново (данные в Postgres пропадут): `docker compose down -v && docker compose up -d db`, затем `npx prisma migrate deploy`. Либо в `psql` под суперпользователем выполнить `GRANT ALL ON SCHEMA public TO lemnity;` — см. `scripts/fix-pg-public.sql`.";
+
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /** Сообщение для формы входа; null — не базовая ошибка Prisma. */
 export function getAuthDatabaseUserMessage(err: unknown): string | null {
+  const text = errorText(err);
+  const lower = text.toLowerCase();
+
+  if (
+    lower.includes("denied access") &&
+    (lower.includes(".public") || lower.includes("schema public") || lower.includes(" public"))
+  ) {
+    return PUBLIC_SCHEMA_DENIED_HINT;
+  }
+
   if (err instanceof Prisma.PrismaClientInitializationError) {
+    if (lower.includes("denied access")) {
+      return PUBLIC_SCHEMA_DENIED_HINT;
+    }
     return "Не удаётся подключиться к PostgreSQL. Запустите Docker Desktop, в корне проекта выполните: npm run db:setup (или: docker compose up -d db и npx prisma migrate deploy). Проверьте DATABASE_URL.";
   }
 
@@ -22,14 +42,7 @@ export function getAuthDatabaseUserMessage(err: unknown): string | null {
     }
   }
 
-  const msg = err instanceof Error ? err.message : String(err);
-  const lower = msg.toLowerCase();
-
-  if (
-    lower.includes("p1010") ||
-    lower.includes("denied access") ||
-    lower.includes("password authentication failed")
-  ) {
+  if (lower.includes("p1010") || lower.includes("password authentication failed")) {
     return "Доступ к PostgreSQL отклонён. Проверьте пользователя и пароль в DATABASE_URL (см. docker-compose.yml: lemnity/lemnity).";
   }
   if (lower.includes("p1001") || lower.includes("can't reach database") || lower.includes("econnrefused")) {

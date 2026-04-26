@@ -6,12 +6,12 @@ import {
   setUserPartnerStatus,
   setUserPlan
 } from "@/lib/admin-service";
-import { requireAdminUser } from "@/lib/auth-guards";
+import { requireStaffPermission } from "@/lib/auth-guards";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 async function getAdminUsers(req: NextRequest) {
   void req;
-  const guard = await requireAdminUser();
+  const guard = await requireStaffPermission("users.read");
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });
   }
@@ -24,13 +24,13 @@ async function getAdminUsers(req: NextRequest) {
 export const GET = withApiLogging("/api/admin/users", getAdminUsers);
 
 async function postAdminUsers(req: NextRequest) {
-  const guard = await requireAdminUser();
+  const guard = await requireStaffPermission("users.write");
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });
   }
-
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
+
   const body = (await req.json().catch(() => null)) as
     | {
         userId?: string;

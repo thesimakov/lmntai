@@ -21,9 +21,30 @@ model SandboxShare {
   @@index([ownerId])
 }
 
+/// Привязка хоста публикации к песочнице.
+model PublishDomainBinding {
+  id         String   @id @default(cuid())
+  host       String   @unique
+  sandboxId  String
+  ownerId    String
+  isActive   Boolean  @default(true)
+  verificationStatus String @default("PENDING")
+  verificationToken  String?
+  verifiedAt         DateTime?
+  lastVerificationAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  owner      User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, sandboxId])
+  @@index([sandboxId, isActive])
+}
+
 model User {
   id             String          @id @default(cuid())
   email          String          @unique
+  /// Bcrypt-хеш для входа email+пароль (у пользователей только OAuth — null)
+  passwordHash   String?
   emailVerified  DateTime?
   name           String?
   avatar         String?
@@ -62,9 +83,53 @@ model User {
   authEvents     AuthEventLog[]
   manusSessions  ManusSessionLink[]
   manusCharges   ManusChatCharge[]
+  publishDomains PublishDomainBinding[]
+  virtualWorkspace UserVirtualWorkspace?
+
+  /// Ключи прав для роли MANAGER: users.read, users.write, tariffs, team, settings.
+  adminPermissions  Json?
+  /// Кто создал менеджера (только для MANAGER / аудит).
+  createdByAdminId  String?
+  createdByAdmin    User?  @relation("AdminCreatedStaff", fields: [createdByAdminId], references: [id], onDelete: SetNull)
+  createdStaff      User[] @relation("AdminCreatedStaff")
 
   @@index([partnerApprovedById])
   @@index([referredById])
+  @@index([createdByAdminId])
+}
+
+/// Виртуальная папка пользователя (quota + агрегированный объём).
+model UserVirtualWorkspace {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Квота хранилища: по умолчанию 1 GiB на пользователя.
+  limitBytes BigInt  @default(1073741824)
+  usedBytes  BigInt  @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  entries    UserVirtualEntry[]
+}
+
+/// Виртуальные артефакты (requests/data) внутри пользовательской папки.
+model UserVirtualEntry {
+  id              String   @id @default(cuid())
+  workspaceUserId String
+  workspace       UserVirtualWorkspace @relation(fields: [workspaceUserId], references: [userId], onDelete: Cascade)
+  virtualPath     String
+  kind            String   @default("request")
+  content         Json
+  sizeBytes       Int
+  createdAt       DateTime @default(now())
+
+  @@index([workspaceUserId, createdAt])
+  @@index([kind, createdAt])
+}
+
+/// Единая конфигурация тарифов (числа и флаги) для платформы. Строка id = "default".
+model PlatformPlanSettings {
+  id        String   @id
+  data      Json
+  updatedAt DateTime @updatedAt
 }
 
 model Account {

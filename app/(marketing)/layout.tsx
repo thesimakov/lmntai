@@ -1,7 +1,7 @@
 import { MarketingInfoShell } from "@/components/marketing/marketing-info-shell";
 
 /**
- * Публичные страницы без дашборда: /pricing, /docs
+ * Публичные страницы без дашборда: /plans, /docs
  */
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return <MarketingInfoShell>{children}</MarketingInfoShell>;

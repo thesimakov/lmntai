@@ -519,20 +519,25 @@ export function HomeHero({
             </div>
 
             <TooltipProvider delayDuration={200}>
-              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <div
+                className="mt-5 w-full min-w-0 overflow-x-auto overflow-y-hidden scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden touch-pan-x"
+                role="region"
+                aria-label={t("playground_home_templates_pills_aria")}
+              >
+                <div className="flex w-max min-w-0 flex-nowrap items-center justify-center gap-2 pr-1">
                 {actionPills.map(({ id, icon: Icon, label, value }) => {
                   const soon = isProjectKindComingSoon(id);
                   const isDisabled = Boolean(disabled) || soon;
                   return soon ? (
                     <Tooltip key={id}>
                       <TooltipTrigger asChild>
-                        <span className="inline-flex">
+                        <span className="inline-flex shrink-0">
                           <Button
                             type="button"
                             variant="outline"
                             disabled={isDisabled}
                             className={cn(
-                              "h-9 rounded-full border border-border bg-background px-3 text-sm font-normal shadow-sm",
+                              "h-9 shrink-0 rounded-full border border-border bg-background px-3 text-sm font-normal shadow-sm",
                               "cursor-not-allowed opacity-50"
                             )}
                             aria-disabled
@@ -553,7 +558,7 @@ export function HomeHero({
                       variant="outline"
                       disabled={isDisabled}
                       className={cn(
-                        "h-9 rounded-full border px-3 text-sm font-normal shadow-sm",
+                        "h-9 shrink-0 rounded-full border px-3 text-sm font-normal shadow-sm",
                         activeCategory === id && id === "website"
                           ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
                           : activeCategory === id
@@ -572,12 +577,12 @@ export function HomeHero({
                 })}
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span className="inline-flex">
+                    <span className="inline-flex shrink-0">
                       <Button
                         type="button"
                         variant="outline"
                         disabled
-                        className="h-9 cursor-not-allowed rounded-full border-border bg-background px-4 text-sm font-normal opacity-50 shadow-sm"
+                        className="h-9 shrink-0 cursor-not-allowed rounded-full border-border bg-background px-4 text-sm font-normal opacity-50 shadow-sm"
                         aria-disabled
                       >
                         {t("playground_home_more")}
@@ -588,6 +593,7 @@ export function HomeHero({
                     <p>{t("playground_home_coming_soon")}</p>
                   </TooltipContent>
                 </Tooltip>
+                </div>
               </div>
             </TooltipProvider>
 

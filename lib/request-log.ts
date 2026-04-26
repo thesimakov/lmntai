@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
+import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
 
 const MAX_PREVIEW = 12_000;
 
@@ -42,21 +43,40 @@ export async function logRequestEntry(input: {
 }) {
   try {
     const url = new URL(input.req.url);
+    const search = truncate(url.search || undefined, 2000);
+    const bodyPreview = input.bodyPreview ? truncate(input.bodyPreview, MAX_PREVIEW) : undefined;
+    const error = input.error ? truncate(input.error, 4000) : undefined;
     await prisma.requestLog.create({
       data: {
         method: input.req.method,
         pathname: input.pathname,
-        search: truncate(url.search || undefined, 2000),
+        search,
         statusCode: input.statusCode,
         durationMs: input.durationMs,
         userId: input.userId ?? undefined,
         ip: getClientIp(input.req),
         userAgent: truncate(input.req.headers.get("user-agent"), 512),
         referer: truncate(input.req.headers.get("referer"), 512),
-        bodyPreview: input.bodyPreview ? truncate(input.bodyPreview, MAX_PREVIEW) : undefined,
-        error: input.error ? truncate(input.error, 4000) : undefined
+        bodyPreview,
+        error
       }
     });
+    if (input.userId) {
+      await appendUserVirtualEntry({
+        userId: input.userId,
+        kind: "request",
+        content: {
+          method: input.req.method,
+          pathname: input.pathname,
+          search,
+          statusCode: input.statusCode,
+          durationMs: input.durationMs,
+          bodyPreview: bodyPreview ?? null,
+          error: error ?? null,
+          createdAt: new Date().toISOString()
+        }
+      });
+    }
   } catch (err) {
     console.error("[request-log] persist failed", err);
   }

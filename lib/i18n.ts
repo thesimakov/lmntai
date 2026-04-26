@@ -192,7 +192,12 @@ export const messages = {
     team_delete_desc_prefix: 'будет удалён из команды.',
     team_cancel: 'Отмена',
     team_delete_confirm: 'Удалить',
-    team_quota: 'участников на плане Team',
+    team_seats_caption_team:
+      'участников в команде (тариф Team: до __N__ мест, включая вас; на Starter и Pro приглашения не входят).',
+    team_seats_caption_starter_pro:
+      'Совместные приглашения — только на тарифе Team (до __N__ мест). На Starter (FREE) и Pro — отдельная команда не предусмотрена.',
+    team_upsell_non_team:
+      'Приглашения коллег доступны на тарифе Team — до __N__ участников. Перейдите к оформлению в разделе «Тарифы».',
     team_role_dialog_title: 'Роль участника',
     team_role_dialog_desc: 'Информация о пользователе и изменение роли.',
     team_role_dialog_status: 'Статус',
@@ -300,6 +305,11 @@ export const messages = {
 
     analytics_title: 'Аналитика',
     analytics_subtitle: 'Статистика использования за последние 30 дней',
+    analytics_stat_requests: 'AI-запросов (30 дн.)',
+    analytics_stat_avg_tokens: 'Сред. токенов на запрос (30 дн.)',
+    analytics_stat_completion_share: 'Доля completion (30 дн.)',
+    analytics_week_activity_hint: 'Сумма токенов по дням за последние 7 дней.',
+    analytics_recent_empty: 'Пока нет записей использования токенов.',
     analytics_week_activity: 'Активность за неделю',
     analytics_recent_generations: 'Последние генерации',
     analytics_coins_suffix: 'токенов',
@@ -453,6 +463,7 @@ export const messages = {
     playground_home_ref_prompt_prefix:
       'Ориентируйся на референсный сайт ниже: структура разделов и визуальный стиль; контент адаптируй под задачу.',
     playground_home_scroll_types_aria: 'Показать ещё типы сайтов',
+    playground_home_templates_pills_aria: 'Шаблоны типов проектов',
     playground_home_more: 'Ещё шаблоны',
     playground_home_coming_soon: 'В разработке',
     playground_home_submit_hint: 'Enter — отправить · Shift+Enter — новая строка',
@@ -994,7 +1005,12 @@ export const messages = {
     team_delete_desc_prefix: 'will be removed from the team.',
     team_cancel: 'Cancel',
     team_delete_confirm: 'Remove',
-    team_quota: 'members on Team plan',
+    team_seats_caption_team:
+      'team members (Team plan: up to __N__ seats including you; Starter and Pro do not include invites).',
+    team_seats_caption_starter_pro:
+      'Shared invites are on the Team plan only (up to __N__ seats). Starter (FREE) and Pro do not include a team workspace.',
+    team_upsell_non_team:
+      'Inviting teammates requires the Team plan — up to __N__ members. Upgrade under Pricing.',
     team_role_dialog_title: 'Member role',
     team_role_dialog_desc: 'User info and role update.',
     team_role_dialog_status: 'Status',
@@ -1101,6 +1117,11 @@ export const messages = {
 
     analytics_title: 'Analytics',
     analytics_subtitle: 'Usage stats for the last 30 days',
+    analytics_stat_requests: 'AI requests (30d)',
+    analytics_stat_avg_tokens: 'Avg tokens / request (30d)',
+    analytics_stat_completion_share: 'Completion share (30d)',
+    analytics_week_activity_hint: 'Token sum per day for the last 7 days.',
+    analytics_recent_empty: 'No token usage records yet.',
     analytics_week_activity: 'Weekly activity',
     analytics_recent_generations: 'Recent generations',
     analytics_coins_suffix: 'tokens',
@@ -1253,6 +1274,7 @@ export const messages = {
     playground_home_ref_prompt_prefix:
       'Use the reference site below for section structure and visual style; adapt content to the task.',
     playground_home_scroll_types_aria: 'Show more site types',
+    playground_home_templates_pills_aria: 'Project type templates',
     playground_home_more: 'More templates',
     playground_home_coming_soon: 'In development',
     playground_home_submit_hint: 'Enter to send · Shift+Enter for new line',
@@ -1792,7 +1814,12 @@ export const messages = {
     team_delete_desc_prefix: 'аз даста ҳазф мешавад.',
     team_cancel: 'Бекор',
     team_delete_confirm: 'Ҳазф',
-    team_quota: 'узв дар нақшаи Team',
+    team_seats_caption_team:
+      'узви даста (нақшаи Team: то __N__ ҷой, шуморо дар бар мегирад; дар Starter ва Pro даъватҳо нест).',
+    team_seats_caption_starter_pro:
+      'Даъватҳои муштарак танҳо дар нақшаи Team (то __N__ ҷой). Дар Starter (FREE) ва Pro — ҷудо даста нест.',
+    team_upsell_non_team:
+      'Даъвати ҳамкорон дар нақшаи Team — то __N__ нафар. Дар бахши «Нархҳо» ивази нақша кунед.',
     team_role_dialog_title: 'Нақши узв',
     team_role_dialog_desc: 'Маълумоти корбар ва тағйири нақш.',
     team_role_dialog_status: 'Ҳолат',
@@ -1900,6 +1927,11 @@ export const messages = {
 
     analytics_title: 'Таҳлил',
     analytics_subtitle: 'Омор барои 30 рӯзи охир',
+    analytics_stat_requests: 'Дархостҳои AI (30 рӯз)',
+    analytics_stat_avg_tokens: 'Миёнаи токен / дархост (30 рӯз)',
+    analytics_stat_completion_share: 'Ҳиссаи completion (30 рӯз)',
+    analytics_week_activity_hint: 'Ҷамъи токенҳо рӯзона барои 7 рӯзи охир.',
+    analytics_recent_empty: 'Ҳоло сабтҳои истифодаи токен нест.',
     analytics_week_activity: 'Фаъолият барои ҳафта',
     analytics_recent_generations: 'Тавлидҳои охирин',
     analytics_coins_suffix: 'токен',
@@ -2053,6 +2085,7 @@ export const messages = {
     playground_home_ref_prompt_prefix:
       'Аз сайти референс дар поён ба сохтор ва услуб такя кунед; мундариҷаро ба вазифа мутобиқ кунед.',
     playground_home_scroll_types_aria: 'Намоиши навъҳои дигари сайт',
+    playground_home_templates_pills_aria: 'Намунаҳои намудҳои лоиҳа',
     playground_home_more: 'Шаблонҳои бештар',
     playground_home_coming_soon: 'Дар тараққиёт',
     playground_home_submit_hint: 'Enter — фиристодан · Shift+Enter — сатри нав',

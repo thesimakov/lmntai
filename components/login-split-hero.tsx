@@ -3,7 +3,18 @@
 import { ArrowUp } from "lucide-react";
 import { useEffect, useState } from "react";
 
-const PROMPT = "Сайт для ресторана";
+/** Сменяющиеся «запросы» в панели — для разных ниш. */
+const PROMPTS = [
+  "Сайт для ресторана",
+  "Кампания и лендинг для маркетолога",
+  "Подбор квартир: сайт для риелтора",
+  "Визитка мастера: ремонт, монтаж, сервис",
+  "Онлайн-запись и услуги для массажиста",
+  "Портфолио и бронь для фотографа",
+  "Меню и доставка для кофейни",
+  "Расписание и абонементы: фитнес и студия",
+  "Сайт клиники, кабинета или частной практики"
+] as const;
 
 /**
  * Правая колонка страницы входа: градиент + декоративный prompt-bar (как в макете).
@@ -19,19 +30,22 @@ export function LoginSplitHero() {
     }
 
     async function loop() {
+      let promptIndex = 0;
       while (!cancelled) {
-        for (let i = 0; i <= PROMPT.length; i++) {
+        const line = PROMPTS[promptIndex % PROMPTS.length]!;
+        for (let i = 0; i <= line.length; i++) {
           if (cancelled) return;
-          setTyped(PROMPT.slice(0, i));
+          setTyped(line.slice(0, i));
           await sleep(55);
         }
         await sleep(2200);
-        for (let i = PROMPT.length; i >= 0; i--) {
+        for (let i = line.length; i >= 0; i--) {
           if (cancelled) return;
-          setTyped(PROMPT.slice(0, i));
+          setTyped(line.slice(0, i));
           await sleep(28);
         }
         await sleep(600);
+        promptIndex += 1;
       }
     }
 

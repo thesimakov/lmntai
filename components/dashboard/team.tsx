@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { UserPlus, MoreHorizontal, Mail } from "lucide-react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
+import { TEAM_SEAT_LIMIT } from "@/lib/plan-config"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -92,7 +93,8 @@ export function Team() {
   const [isInviting, setIsInviting] = useState(false)
   const [isRoleSaving, setIsRoleSaving] = useState(false)
   const [isRemoving, setIsRemoving] = useState(false)
-  const [quotaLimit, setQuotaLimit] = useState(10)
+  const [quotaLimit, setQuotaLimit] = useState(0)
+  const [teamPlanActive, setTeamPlanActive] = useState(false)
   const [roleDialogOpen, setRoleDialogOpen] = useState(false)
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null)
   const [roleDraft, setRoleDraft] = useState<TeamMember["role"]>("editor")
@@ -116,10 +118,18 @@ export function Team() {
       }
       const data = (await res.json()) as {
         members?: TeamMember[]
-        quota?: { limit?: number }
+        teamPlanActive?: boolean
+        quota?: { limit?: number; used?: number }
       }
       setMembers(data.members ?? [])
-      setQuotaLimit(data.quota?.limit ?? 10)
+      setTeamPlanActive(Boolean(data.teamPlanActive))
+      setQuotaLimit(
+        typeof data.quota?.limit === "number" && data.quota.limit > 0
+          ? data.quota.limit
+          : data.teamPlanActive
+            ? TEAM_SEAT_LIMIT
+            : 0
+      )
     } catch {
       toast.error(t("team_load_error"))
     } finally {
@@ -252,8 +262,13 @@ export function Team() {
         <h3 className="mb-4 text-lg font-medium text-foreground">
           {t("team_invite_title")}
         </h3>
-        <div className="flex gap-3">
-          <div className="relative flex-1">
+        {!teamPlanActive && !isLoading ? (
+          <p className="mb-4 text-sm text-amber-600 dark:text-amber-500/90">
+            {t("team_upsell_non_team").replaceAll("__N__", String(TEAM_SEAT_LIMIT))}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-3">
+          <div className="relative min-w-0 flex-1">
             <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="email"
@@ -261,13 +276,13 @@ export function Team() {
               value={inviteEmail}
               onChange={(e) => setInviteEmail(e.target.value)}
               className="pl-10"
-              disabled={isInviting || isLoading}
+              disabled={isInviting || isLoading || !teamPlanActive}
             />
           </div>
           <Select
             value={inviteRole}
             onValueChange={(value) => setInviteRole(value === "admin" ? "admin" : "editor")}
-            disabled={isInviting || isLoading}
+            disabled={isInviting || isLoading || !teamPlanActive}
           >
             <SelectTrigger className="w-40">
               <SelectValue />
@@ -285,7 +300,7 @@ export function Team() {
             type="button"
             onClick={invite}
             className="rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500"
-            disabled={isInviting || isLoading}
+            disabled={isInviting || isLoading || !teamPlanActive}
           >
             <UserPlus className="mr-2 h-4 w-4" />
             {isInviting ? t("loading") : t("team_invite_button")}
@@ -416,7 +431,16 @@ export function Team() {
         transition={{ duration: 0.4, delay: 0.3 }}
         className="mt-6 text-center text-sm text-muted-foreground"
       >
-        {members.length} / {quotaLimit} {t("team_quota")}
+        {teamPlanActive && quotaLimit > 0 ? (
+          <>
+            <span className="text-foreground/90">
+              {members.length} / {quotaLimit}
+            </span>{" "}
+            {t("team_seats_caption_team").replaceAll("__N__", String(TEAM_SEAT_LIMIT))}
+          </>
+        ) : (
+          t("team_seats_caption_starter_pro").replaceAll("__N__", String(TEAM_SEAT_LIMIT))
+        )}
       </motion.div>
 
       <AlertDialog

@@ -1,6 +1,6 @@
 /**
  * Единый источник правды по тарифам: квоты токенов/мес и пороги для операций.
- * Числа совпадают с /pricing (lib/i18n: лимиты в описании тарифов).
+ * Числа совпадают с /plans и /pricing (lib/i18n: лимиты в описании тарифов).
  */
 export type PlanId = "FREE" | "PRO" | "TEAM";
 
@@ -9,6 +9,12 @@ export const MONTHLY_TOKEN_ALLOWANCE: Record<PlanId, number> = {
   PRO: 500_000,
   TEAM: 2_000_000
 };
+
+/**
+ * Участников в команде на тарифе Team (дольщики кроме владельца: до 9, всего 10 вместе с вами).
+ * Должно совпадать с описанием в тарифах и FAQ.
+ */
+export const TEAM_SEAT_LIMIT = 10;
 
 /** Старое имя плана в БД и внешних вебхуках → канонический `PlanId`. */
 const LEGACY_PLAN_ALIASES: Record<string, PlanId> = {
@@ -25,6 +31,10 @@ export function normalizePlanId(raw: string | null | undefined): PlanId {
 
 export function getMonthlyTokenAllowance(plan: PlanId): number {
   return MONTHLY_TOKEN_ALLOWANCE[plan];
+}
+
+export function planAllowsTeamSeats(rawPlan: string | null | undefined): boolean {
+  return normalizePlanId(rawPlan) === "TEAM";
 }
 
 /** Минимум баланса для запуска prompt-builder (до фактического списания). */

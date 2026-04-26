@@ -49,6 +49,23 @@ export async function chargeTokensSafely(input: {
     return { ok: true, charged: false, usage, reason: "zero" };
   }
 
+  const roleRow = await prisma.user.findUnique({
+    where: { id: input.userId },
+    select: { role: true, tokenBalance: true }
+  });
+  if (roleRow?.role === "ADMIN") {
+    await prisma.tokenUsageLog.create({
+      data: {
+        userId: input.userId,
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+        model: input.model
+      }
+    });
+    return { ok: true, charged: true, usage } as const;
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     const updated = await tx.user.updateMany({
       where: { id: input.userId, tokenBalance: { gte: usage.total_tokens } },

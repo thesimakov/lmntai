@@ -3,6 +3,7 @@ import type { Session } from "next-auth";
 import { getSafeServerSession } from "@/lib/auth";
 import { OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
 import { prisma } from "@/lib/prisma";
+import { canAccessStaff, parsePermissionList, type StaffPermission } from "@/lib/staff-permissions";
 
 export type GuardFailure = {
   ok: false;
@@ -26,6 +27,7 @@ export type DbUserContext = {
     plan: string;
     tokenBalance: number;
     tokenLimit: number;
+    adminPermissions: unknown;
   };
 };
 
@@ -35,7 +37,8 @@ const dbUserSelect = {
   role: true,
   plan: true,
   tokenBalance: true,
-  tokenLimit: true
+  tokenLimit: true,
+  adminPermissions: true
 } as const;
 
 function offlineDemoUser(session: Session, email: string) {
@@ -45,7 +48,8 @@ function offlineDemoUser(session: Session, email: string) {
     role: session.user.role ?? "USER",
     plan: session.user.plan ?? "FREE",
     tokenBalance: 100_000,
-    tokenLimit: 500_000
+    tokenLimit: 500_000,
+    adminPermissions: null
   };
 }
 
@@ -84,7 +88,8 @@ export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
             plan: "FREE",
             role: "USER",
             tokenBalance: 100_000,
-            tokenLimit: 500_000
+            tokenLimit: 500_000,
+            adminPermissions: undefined
           },
           select: dbUserSelect
         });
@@ -114,12 +119,52 @@ export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
   }
 }
 
+/** Только роль ADMIN (суперпользователь, не менеджер). */
 export async function requireAdminUser(): Promise<GuardResult<DbUserContext>> {
   const guard = await requireDbUser();
   if (!guard.ok) {
     return guard;
   }
   if (guard.data.user.role !== "ADMIN") {
+    return { ok: false, status: 403, message: "Forbidden" };
+  }
+  return guard;
+}
+
+/** Админ-панель: ADMIN или MANAGER. */
+export async function requireStaffPanel(): Promise<GuardResult<DbUserContext>> {
+  const guard = await requireDbUser();
+  if (!guard.ok) {
+    return guard;
+  }
+  const r = guard.data.user.role;
+  if (r !== "ADMIN" && r !== "MANAGER") {
+    return { ok: false, status: 403, message: "Forbidden" };
+  }
+  return guard;
+}
+
+/** Супер-админ для тарифов платформы и команды. */
+export async function requireAdminRole(): Promise<GuardResult<DbUserContext>> {
+  return requireAdminUser();
+}
+
+export async function requireStaffPermission(
+  perm: StaffPermission
+): Promise<GuardResult<DbUserContext>> {
+  const guard = await requireDbUser();
+  if (!guard.ok) {
+    return guard;
+  }
+  const { user } = guard.data;
+  if (user.role === "ADMIN") {
+    return guard;
+  }
+  if (user.role !== "MANAGER") {
+    return { ok: false, status: 403, message: "Forbidden" };
+  }
+  const keys = parsePermissionList(user.adminPermissions);
+  if (!canAccessStaff("MANAGER", keys, perm, false)) {
     return { ok: false, status: 403, message: "Forbidden" };
   }
   return guard;

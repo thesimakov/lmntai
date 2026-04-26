@@ -6,7 +6,9 @@ type UserRole = NonNullable<JWT["role"]>;
 type Plan = NonNullable<JWT["plan"]>;
 
 export function toUserRole(value: string | null | undefined): UserRole {
-  return value === "ADMIN" ? "ADMIN" : "USER";
+  if (value === "ADMIN") return "ADMIN";
+  if (value === "MANAGER") return "MANAGER";
+  return "USER";
 }
 
 export function toPlan(value: string | null | undefined): Plan {

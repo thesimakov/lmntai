@@ -3,7 +3,7 @@ import { DefaultSession } from "next-auth";
 import type { PlanId } from "@/lib/plan-config";
 
 export type Plan = PlanId;
-export type UserRole = "USER" | "ADMIN";
+export type UserRole = "USER" | "ADMIN" | "MANAGER";
 
 declare module "next-auth" {
   interface Session {
@@ -11,6 +11,8 @@ declare module "next-auth" {
       id: string;
       role: UserRole;
       plan: Plan;
+      /** Ключи прав для роли MANAGER. */
+      adminPermissionKeys?: string[];
       /** Вход без PostgreSQL (локальная разработка) */
       demoOffline?: boolean;
       /** Разовая оплата снятия «Сделано на Lemnity» на /share (тариф FREE). */
@@ -25,6 +27,7 @@ declare module "next-auth/jwt" {
     name?: string;
     role?: UserRole;
     plan?: Plan;
+    adminPermissionKeys?: string[];
     demoOffline?: boolean;
     shareBrandingRemovalPaid?: boolean;
   }

@@ -428,7 +428,7 @@ export function LandingPage() {
           <Link href="/login" className="hover:text-zinc-800">
             {t("landing_footer_login")}
           </Link>
-          <Link href="/pricing" className="hover:text-zinc-800">
+          <Link href="/plans" className="hover:text-zinc-800">
             {t("landing_simple_nav_pricing")}
           </Link>
           <Link href="/docs" className="hover:text-zinc-800">

@@ -6,7 +6,7 @@ import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { requestRouterAIStream } from "@/lib/routerai-client";
 import { extractDataJson, splitSseLines } from "@/lib/sse-parser";
 import { chargeTokensSafely, estimateUsageFromText, normalizeUsage, type TokenUsage } from "@/lib/token-billing";
-import { MIN_TOKENS_GENERATE_STREAM } from "@/lib/plan-config";
+import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
 import { buildRouterGenerationPrompt, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
@@ -38,7 +38,8 @@ async function postGenerateStream(req: NextRequest) {
 
   const user = guard.data.user;
 
-  if (!hasEnoughTokens(user, MIN_TOKENS_GENERATE_STREAM)) {
+  const minStreamBalance = await getEffectiveStreamMinimum(user.plan);
+  if (!hasEnoughTokens(user, minStreamBalance)) {
     return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
   }
 

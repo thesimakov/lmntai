@@ -131,9 +131,9 @@ function SidebarBody() {
             </Link>
           );
         })}
-        {session?.user?.role === "ADMIN" ? (
+        {session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER" ? (
           <Link
-            href="/admin"
+            href="/admin/users"
             className={cn(
               "pointer-events-auto group relative flex items-center gap-3 rounded-2xl px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
               (pathname === "/admin" || pathname.startsWith("/admin/")) && "bg-accent text-accent-foreground"

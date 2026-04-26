@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,7 @@ import { SITE_URL } from "@/lib/site";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth-constants";
 import { cn } from "@/lib/utils";
 import { LoginSplitHero } from "@/components/login-split-hero";
 
@@ -72,11 +73,14 @@ export type LoginFeatures = {
   vk: boolean;
   yandex: boolean;
   emailMagic: boolean;
-  /** Демо: кнопка «заполнить» и опционально пароль (сервер: DEMO_LOGIN_*) */
+  /** Демо: кнопка «заполнить»; пароль с сервера — только для подстановки (см. DEMO_LOGIN_PASSWORD) */
   demo?: {
     email: string;
     name: string;
     requiresPassword: boolean;
+    prefillPassword?: string;
+    /** Подсказка про `DEMO_LOGIN_BYPASS_DB` (только development) */
+    showBypassDbHint?: boolean;
   };
 };
 
@@ -97,12 +101,13 @@ export function LoginForm({
   const useSplitLayout = embedded ? false : splitLayout !== false;
   const router = useRouter();
   const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [password, setPassword] = useState("");
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regCompany, setRegCompany] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [showRegPassword, setShowRegPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<
@@ -165,16 +170,21 @@ export function LoginForm({
 
   async function handleCredentialsSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!password) {
+      setError("Введите пароль.");
+      return;
+    }
     setLoadingState("credentials");
     setError(null);
     setInfo(null);
 
     try {
       const result = await signIn("credentials", {
-        email,
-        name,
+        email: email.trim(),
+        name: "",
         company: "",
-        password: features.demo?.requiresPassword ? password : "",
+        password,
+        intent: "login",
         redirect: false
       });
       if (result?.error) {
@@ -202,6 +212,10 @@ export function LoginForm({
       setError("Укажите email.");
       return;
     }
+    if (regPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(`Пароль: минимум ${MIN_PASSWORD_LENGTH} символов.`);
+      return;
+    }
     setLoadingState("register");
     setError(null);
     setInfo(null);
@@ -211,7 +225,8 @@ export function LoginForm({
         email: trimmedEmail,
         name: trimmedName,
         company: regCompany.trim() || undefined,
-        password: features.demo?.requiresPassword ? regPassword : "",
+        password: regPassword,
+        intent: "register",
         redirect: false
       });
       if (result?.error) {
@@ -266,10 +281,17 @@ export function LoginForm({
       {features.demo ? (
         <div className="space-y-3 rounded-2xl border border-dashed border-primary/35 bg-primary/5 p-4">
           <p className="text-sm text-muted-foreground">
-            Демо-доступ: подставим email и имя
-            {features.demo!.requiresPassword
-              ? ". Пароль задаётся в `DEMO_LOGIN_PASSWORD` на сервере."
-              : "."}
+            {features.demo!.prefillPassword
+              ? "Демо: по кнопке подставим email и пароль, затем нажмите «Войти»."
+              : features.demo!.requiresPassword
+                ? "Демо: введите пароль, совпадающий с `DEMO_LOGIN_PASSWORD` на сервере."
+                : "Демо: подставим email. Пароль в среде разработки не требуется."}
+            {features.demo!.showBypassDbHint ? (
+              <span className="mt-2 block text-xs text-muted-foreground/90">
+                Локально при `DEMO_LOGIN_PASSWORD` в `.env` вход в демо обходится без Postgres. Если пароля в env
+                нет — добавьте `DEMO_LOGIN_BYPASS_DB=true` или поднимите БД (`npm run db:setup`).
+              </span>
+            ) : null}
           </p>
           <Button
             type="button"
@@ -278,7 +300,7 @@ export function LoginForm({
             disabled={isLoading}
             onClick={() => {
               setEmail(features.demo!.email);
-              setName(features.demo!.name);
+              setPassword(features.demo!.prefillPassword ?? "");
               setError(null);
               openEmailLogin();
             }}
@@ -426,18 +448,39 @@ export function LoginForm({
               </>
             ) : null}
             <Input
-              value={regName}
-              onChange={(event) => setRegName(event.target.value)}
-              placeholder="Имя и фамилия"
-              autoComplete="name"
-              required
-            />
-            <Input
               type="email"
               value={regEmail}
               onChange={(event) => setRegEmail(event.target.value)}
               placeholder="Email"
               autoComplete="email"
+              required
+            />
+            <div className="relative">
+              <Input
+                type={showRegPassword ? "text" : "password"}
+                value={regPassword}
+                onChange={(event) => setRegPassword(event.target.value)}
+                placeholder="Пароль"
+                autoComplete="new-password"
+                required
+                minLength={MIN_PASSWORD_LENGTH}
+                className="pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowRegPassword((s) => !s)}
+                className="text-muted-foreground hover:text-foreground absolute right-0 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-md"
+                tabIndex={-1}
+                aria-label={showRegPassword ? "Скрыть пароль" : "Показать пароль"}
+              >
+                {showRegPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            <Input
+              value={regName}
+              onChange={(event) => setRegName(event.target.value)}
+              placeholder="Имя и фамилия"
+              autoComplete="name"
               required
             />
             <Input
@@ -446,15 +489,6 @@ export function LoginForm({
               placeholder="Компания (необязательно)"
               autoComplete="organization"
             />
-            {features.demo?.requiresPassword ? (
-              <Input
-                type="password"
-                value={regPassword}
-                onChange={(event) => setRegPassword(event.target.value)}
-                placeholder="Пароль демо"
-                autoComplete="new-password"
-              />
-            ) : null}
             {error ? <p className="text-sm text-red-400">{error}</p> : null}
             <Button
               type="submit"
@@ -508,26 +542,33 @@ export function LoginForm({
                 </Button>
               </div>
               <Input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder="Имя (опционально)"
-              />
-              <Input
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="Email"
+                autoComplete="email"
                 required
               />
-              {features.demo?.requiresPassword ? (
+              <div className="relative">
                 <Input
-                  type="password"
+                  type={showLoginPassword ? "text" : "password"}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  placeholder="Пароль демо"
+                  placeholder="Пароль"
                   autoComplete="current-password"
+                  required
+                  className="pr-10"
                 />
-              ) : null}
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword((s) => !s)}
+                  className="text-muted-foreground hover:text-foreground absolute right-0 top-1/2 inline-flex size-9 -translate-y-1/2 items-center justify-center rounded-md"
+                  tabIndex={-1}
+                  aria-label={showLoginPassword ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  {showLoginPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
               {info ? <p className="text-sm text-emerald-500">{info}</p> : null}
               <Button
