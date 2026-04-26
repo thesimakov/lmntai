@@ -14,7 +14,9 @@ export type ArtifactKind =
   | "ecommerce"
   | "portfolio"
   | "blog_or_multipage"
-  | "other";
+  | "other"
+  /** React+TS, много файлов, превью как lovable.dev (esbuild на хосте). */
+  | "lovable";
 
 export type BuilderPlan = {
   message: string;
@@ -28,15 +30,15 @@ export type BuilderPlan = {
 
 export const LEMNITY_SYSTEM_PROMPT = [
   "You are Lemnity Builder, an AI agent embedded in the Lemnity platform.",
-  "Your job is to turn the user's request into a polished artifact. Usually that is ONE self-contained HTML preview file for live editing — except **presentation**, where the platform emits a real **.pptx** and **PDF** from structured slide data (not an HTML-first deck).",
+  "Your job is to turn the user's request into a polished artifact. Usually that is ONE self-contained HTML preview file for live editing — except **presentation** (real .pptx + PDF from slide data), and except **lovable** (React+TypeScript in multiple fenced files under `src/`, bundled for preview on the host).",
   "For **resume / CV**, treat the HTML as an **editable document preview**: the user's canonical exports are **Word (.docx)** and **PDF** — structure content as a print-ready CV, not a marketing website (no hero, no pricing blocks).",
   "You do not have a shell, browser automation, or external sandbox. Do not claim to run commands or inspect websites.",
   "You may plan work, show progress, and produce a complete artifact.",
-  "CRITICAL: Infer the deliverable TYPE from the user's words. Examples: «презентация», «pptx», «PowerPoint», «слайды», «deck» → presentation (real .pptx + PDF, not HTML slides as primary); «резюме», «CV», «curriculum vitae» → resume (document layout for DOCX/PDF export); «дашборд», «метрики» → dashboard; «документация», «wiki» → docs layout; «магазин», «каталог» → ecommerce; «портфолио» → portfolio; «приложение», «админка» → web app; «лендинг», «посадочная» → marketing landing; «сайт», «несколько страниц», «блог» → multi-section site or blog_or_multipage, NOT a single hero landing unless they ask for marketing landing.",
+  "CRITICAL: Infer the deliverable TYPE from the user's words. Examples: «Lovable», «как lovable», «react+vite», «tsx компоненты» in an app context → lovable; «презентация», «pptx» → presentation; «резюме», «CV» → resume; «дашборд» → dashboard; «документация» → documentation; «магазин» → ecommerce; «портфолио» → portfolio; «приложение», «админка» (без lovable) → web_app; «лендинг» → landing; «сайт», «блог» → blog_or_multipage or other, NOT a default marketing landing unless they ask.",
   "Do NOT default to a SaaS marketing landing (hero + 3 features + pricing) unless the user clearly wants a promotional landing or product marketing page.",
   "Visible copy in the generated UI must use the user's language.",
   "Prefer production-quality typography and semantic HTML; accessible labels; strong hierarchy; realistic content, no lorem ipsum unless asked.",
-  "The HTML preview (when used) must be one self-contained HTML5 document with embedded CSS and optional small inline JavaScript only when useful (e.g. slide navigation in non-presentation HTML previews)."
+  "For non-lovable HTML preview: one self-contained HTML5 document with embedded CSS and optional small inline JavaScript when useful. For lovable: output multiple ` ```lang:path` TypeScript/TSX files, not a single monolithic HTML document."
 ].join("\n");
 
 const ARTIFACT_KIND_SET = new Set<string>([
@@ -49,12 +51,20 @@ const ARTIFACT_KIND_SET = new Set<string>([
   "ecommerce",
   "portfolio",
   "blog_or_multipage",
-  "other"
+  "other",
+  "lovable"
 ]);
 
 /** Эвристика, если модель не вернула kind или JSON битый. */
 export function inferArtifactKindFromMessage(message: string): ArtifactKind {
   const m = message.toLowerCase();
+  if (
+    /\blovable\b|lovable\.dev|как\s+у\s+lovable|как\s+lovable|react\s*\+\s*vite|vite.*react|tsx.*проект|shadcn/i.test(
+      m
+    )
+  ) {
+    return "lovable";
+  }
   if (
     /\bрезюме\b|\bcv\b|curriculum\s*vitae|summary\s+for\s+(a\s+)?job|поиск\s+работы.*резюм|cover\s+letter\s*\+\s*cv|сопроводительн.*ваканс|ваканс.*резюме|составить\s+резюме/i.test(
       m
@@ -127,7 +137,8 @@ export function normalizeArtifactKind(raw: unknown, message: string): ArtifactKi
     multipage: "blog_or_multipage",
     website: "other",
     corporate: "other",
-    other: "other"
+    other: "other",
+    lovable: "lovable"
   };
   const mapped = aliases[s];
   if (mapped) return mapped;
@@ -202,6 +213,14 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       copyNote,
       "- Classic conversion-focused layout is OK: hero, value props, social proof, CTA, footer.",
       "- Match the user's product/service, not a generic template."
+    ].join("\n"),
+    lovable: [
+      "ARTIFACT TYPE: REACT + TYPESCRIPT APP (Lovable-style).",
+      "Output is multiple files: at minimum `src/main.tsx` and `src/App.tsx`, using fences like ` ```tsx:src/main.tsx` then code then closing fence.",
+      copyNote,
+      "- Styling: Tailwind utility `className` (preview shell injects Tailwind CDN; no PostCSS in output).",
+      "- Imports: relative paths only under `src/`. Entry mounts with `createRoot` on `#root`.",
+      "- Split UI into small components; `useState` and simple hooks OK; mock data in-module; no real backend."
     ].join("\n"),
     other: [
       "ARTIFACT TYPE: OTHER / EXTENSIBLE (HTML preview today; reserved for more export pipelines).",
@@ -282,6 +301,7 @@ export function createPlanPrompt(input: {
     '  | "ecommerce"          // магазин, каталог',
     '  | "portfolio"          // портфолио, кейсы',
     '  | "blog_or_multipage"  // блог, несколько разделов сайта',
+    '  | "lovable"            // React+TS многофайловый (как lovable.dev), не один HTML',
     '  | "other";             // прочее HTML сейчас; позже: PDF, DOCX, выгрузки и др.',
     "interface CreatePlanResponse {",
     "  message: string;",
@@ -294,7 +314,7 @@ export function createPlanPrompt(input: {
     "```",
     "",
     "Rules:",
-    "- Choose artifact_kind from the user's wording (Russian and English). PowerPoint / презентацию / pptx → presentation (not landing). Резюме / CV → resume (not landing).",
+    "- Choose artifact_kind from the user's wording (Russian and English). Lovable / react+vite / «как у lovable» → lovable. PowerPoint / презентацию / pptx → presentation. Резюме / CV → resume.",
     "- Use 3 to 6 atomic steps tailored to that artifact_kind.",
     "- Steps describe UI generation work, not advice to the user.",
     "- If the user asks in Russian, use Russian for message/title/steps.",
@@ -365,6 +385,45 @@ export function executeUiPrompt(input: {
   ].join("\n");
 }
 
+export function executeLovableUiPrompt(input: {
+  message: string;
+  plan: BuilderPlan;
+  modelContext?: string;
+}): string {
+  const steps = input.plan.steps.map((s) => `${s.id}. ${s.description}`).join("\n");
+  const kindGuidance = artifactKindExecutionGuidance("lovable", input.plan.language);
+
+  return [
+    LEMNITY_SYSTEM_PROMPT,
+    "",
+    "Generate the Lovable-style React+TypeScript preview for Lemnity (multiple source files, not one HTML string).",
+    "",
+    kindGuidance,
+    "",
+    "Strict output rules:",
+    "- Output one or more fenced code blocks. Each block opens with ` ```tsx:relative/path.tsx` or ` ```ts:relative/path.ts` (language, colon, path on the same line as the opening fence), then the file body, then closing fence.",
+    "- Required files: `src/main.tsx` (createRoot on document.getElementById('root')), and `src/App.tsx` (default export or named root component).",
+    "- Use Tailwind classes in `className` only (Tailwind CDN is injected in preview).",
+    "- Use relative imports between files under `src/`.",
+    "- Do not output a single <!doctype html> document in place of source files.",
+    "- Do not wrap the entire answer in one big markdown code fence without per-file paths.",
+    "- No explanatory prose outside fenced files.",
+    "",
+    "General guidance:",
+    "- Strong visual hierarchy; responsive layout with flex/grid utilities.",
+    "",
+    input.modelContext ? `Additional Lemnity context:\n${input.modelContext}\n` : "",
+    `Plan title: ${input.plan.title}`,
+    "Artifact kind: lovable",
+    `Goal: ${input.plan.goal}`,
+    "Plan steps:",
+    steps,
+    "",
+    "Original user request:",
+    input.message
+  ].join("\n");
+}
+
 export function summarizePrompt(input: { message: string; plan: BuilderPlan }): string {
   return [
     LEMNITY_SYSTEM_PROMPT,
@@ -414,6 +473,19 @@ export function fallbackPlan(message: string): BuilderPlan {
             { id: "html", description: "HTML preview for in-app editing (no landing clichés)" }
           ];
     }
+    if (kind === "lovable") {
+      return isRu
+        ? [
+            { id: "structure", description: "Файлы src/main.tsx и src/App.tsx + при необходимости компоненты" },
+            { id: "tsx", description: "React+TSX, Tailwind через className" },
+            { id: "preview", description: "Сервер соберёт esbuild-превью" }
+          ]
+        : [
+            { id: "structure", description: "Files src/main.tsx, src/App.tsx, components as needed" },
+            { id: "tsx", description: "React+TSX with Tailwind className" },
+            { id: "preview", description: "Server builds esbuild preview" }
+          ];
+    }
     if (kind === "dashboard") {
       return isRu
         ? [
@@ -456,6 +528,10 @@ export function fallbackPlan(message: string): BuilderPlan {
           ? isRu
             ? "Резюме (DOCX/PDF) по запросу — редактируемое HTML-превью"
             : "Resume (DOCX/PDF) per request — editable HTML preview"
+        : kind === "lovable"
+          ? isRu
+            ? "React+TypeScript-приложение (превью как Lovable)"
+            : "React+TypeScript app (Lovable-style preview)"
         : kind === "dashboard"
           ? isRu
             ? "Дашборд с метриками по запросу"

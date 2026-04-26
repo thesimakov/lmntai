@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUp, FileText, LayoutTemplate, Palette, Plus, Presentation } from "lucide-react";
+import { AppWindow, ArrowUp, FileText, LayoutTemplate, Palette, Plus, Presentation } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -52,7 +52,13 @@ const LANDING_HERO_CHIPS: Array<{
     projectKind: "website"
   },
   { labelKey: "playground_home_cat_design", promptKey: "playground_home_val_design", icon: Palette, projectKind: "design" },
-  { labelKey: "playground_home_cat_resume", promptKey: "playground_home_val_resume", icon: FileText, projectKind: "resume" }
+  { labelKey: "playground_home_cat_resume", promptKey: "playground_home_val_resume", icon: FileText, projectKind: "resume" },
+  {
+    labelKey: "playground_home_cat_lovable",
+    promptKey: "playground_home_val_lovable",
+    icon: AppWindow,
+    projectKind: "lovable"
+  }
 ];
 
 export function LandingPage() {

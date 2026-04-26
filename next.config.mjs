@@ -7,6 +7,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   // Когда в родительской папке есть ещё один package-lock, Next 15 путает корень — явно указываем репо.
   outputFileTracingRoot: __dirname,
+  /** esbuild — только для серверного бандла превью Lovable; не тянуть .d.ts в client graph. */
+  serverExternalPackages: ["esbuild"],
   experimental: {
     // Включение на проде (Next 14.2.x) у части деплоев давало в рантайме
     // TypeError: Cannot read properties of undefined (reading 'clientModules').

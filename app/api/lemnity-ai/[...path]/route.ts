@@ -165,7 +165,11 @@ function enrichChatRequestForRouterModel(
     });
     const next: Record<string, unknown> = { ...parsed, model: agent.modelId };
     delete next.agent_hint;
-    delete next.project_kind;
+    if (projectKind) {
+      next.project_kind = projectKind;
+    } else {
+      delete next.project_kind;
+    }
     return JSON.stringify(next);
   } catch {
     return requestText;

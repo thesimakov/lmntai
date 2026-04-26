@@ -473,6 +473,9 @@ export const messages = {
     playground_home_cat_design: 'Дизайн',
     playground_home_val_design:
       'UI/UX-концепт: сетка, типографика, палитра, компоненты и состояния интерфейса.',
+    playground_home_cat_lovable: 'Приложение (React)',
+    playground_home_val_lovable:
+      'Веб-приложение в стиле Lovable: React+TypeScript, компоненты в `src/`, Tailwind, превью как у Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
       'Лендинг: hero, преимущества, кейсы, тарифы, отзывы, FAQ и сильный CTA.',
@@ -762,6 +765,7 @@ export const messages = {
     playground_right_generating_line1_resume: 'Lemnity собирает резюме. Чуть-чуть подождите…',
     playground_right_generating_line1_design: 'Lemnity собирает макет. Чуть-чуть подождите…',
     playground_right_generating_line1_visitcard: 'Lemnity собирает визитку. Чуть-чуть подождите…',
+    playground_right_generating_line1_lovable: 'Lemnity собирает React-приложение. Чуть-чуть подождите…',
     playground_agents_section_tariff: 'В вашем тарифе',
     playground_agents_section_pro: 'Тариф Pro',
     playground_prompt_feedback_like: 'Нравится промпт',
@@ -1232,6 +1236,9 @@ export const messages = {
     playground_home_cat_design: 'Design',
     playground_home_val_design:
       'UI/UX concept: grid, typography, palette, components, and interaction states.',
+    playground_home_cat_lovable: 'App (React)',
+    playground_home_val_lovable:
+      'Lovable-style web app: React+TypeScript, files under `src/`, Tailwind, Vite-like preview.',
     playground_home_site_landing: 'Landing',
     playground_home_val_site_landing:
       'Landing page: hero, benefits, case studies, pricing, testimonials, FAQ, strong CTA.',
@@ -1520,6 +1527,7 @@ export const messages = {
     playground_right_generating_line1_resume: 'Lemnity is building your resume. One moment…',
     playground_right_generating_line1_design: 'Lemnity is building your layout. One moment…',
     playground_right_generating_line1_visitcard: 'Lemnity is building your business card. One moment…',
+    playground_right_generating_line1_lovable: 'Lemnity is building your React app. One moment…',
     playground_agents_section_tariff: 'Included in your plan',
     playground_agents_section_pro: 'Pro plan',
     playground_prompt_feedback_like: 'Like this prompt',
@@ -1992,6 +2000,9 @@ export const messages = {
     playground_home_cat_design: 'Дизайн',
     playground_home_val_design:
       'Консепти UI/UX: шабака, типографика, палитра, компонентҳо.',
+    playground_home_cat_lovable: 'Барнома (React)',
+    playground_home_val_lovable:
+      'Барномаи веб мисли Lovable: React+TypeScript, файлҳо дар `src/`, пешнамоиш чун Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
       'Лендинг: hero, бартариҳо, кейсҳо, нархгузорӣ, фикрҳо, FAQ, CTA.',
@@ -2282,6 +2293,7 @@ export const messages = {
     playground_right_generating_line1_resume: 'Lemnity резюме месозад. Сабр кунед…',
     playground_right_generating_line1_design: 'Lemnity макет месозад. Сабр кунед…',
     playground_right_generating_line1_visitcard: 'Lemnity визитка месозад. Сабр кунед…',
+    playground_right_generating_line1_lovable: 'Lemnity React-барнома месозад. Сабр кунед…',
     playground_agents_section_tariff: 'Дар тарифи шумо',
     playground_agents_section_pro: 'Тариф Pro',
     playground_prompt_feedback_like: 'Ин промптро писанд аст',

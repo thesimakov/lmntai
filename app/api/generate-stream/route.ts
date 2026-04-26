@@ -166,12 +166,24 @@ async function postGenerateStream(req: NextRequest) {
           description: mode === "docker" ? "Запись файлов в контейнер (FastAPI)" : "Запись в локальное хранилище",
           status: "running"
         });
-        sse(controller, { type: "tool", name: "file/write", status: "calling", detail: "index.html" });
+        const lovable = pk === "lovable";
+        sse(controller, {
+          type: "tool",
+          name: "file/write",
+          status: "calling",
+          detail: lovable ? "src/*.tsx (Lovable) → esbuild" : "index.html"
+        });
 
-        // Для прототипа: считаем "кодом" весь текст ответа модели
-        const { previewUrl } = await sandboxManager.applyCode(sandboxId, assembledText || raw);
+        const { previewUrl } = lovable
+          ? await sandboxManager.applyCodeLovable(sandboxId, assembledText || raw)
+          : await sandboxManager.applyCode(sandboxId, assembledText || raw);
 
-        sse(controller, { type: "tool", name: "file/write", status: "called", detail: "index.html, generated.txt" });
+        sse(controller, {
+          type: "tool",
+          name: "file/write",
+          status: "called",
+          detail: lovable ? "index.html + исходники" : "index.html, generated.txt"
+        });
 
         sse(controller, {
           type: "step",

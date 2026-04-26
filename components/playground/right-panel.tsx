@@ -79,6 +79,8 @@ function generatingLineKey(kind: ProjectKind | null | undefined): MessageKey {
       return "playground_right_generating_line1_design";
     case "visitcard":
       return "playground_right_generating_line1_visitcard";
+    case "lovable":
+      return "playground_right_generating_line1_lovable";
     default:
       return "playground_right_generating_line1_website";
   }

@@ -3,6 +3,7 @@
  * Docker: см. docker/manus-sandbox/README.md и docker-compose.manus.yml
  */
 /* eslint-disable @typescript-eslint/no-explicit-any -- dockerode: CommonJS, типы default/instance в TS нестабильны; lazy require см. getDocker */
+import path from "node:path";
 import type Docker from "dockerode";
 
 import {
@@ -13,6 +14,7 @@ import {
   lemnityBuilderSupervisorStatus,
   type LemnityBuilderSandboxResponse
 } from "@/lib/lemnity-builder-sandbox-api";
+import { bundleLovableToPreviewHtml, parseLovableFencedFiles } from "@/lib/lovable-bundler";
 import {
   dockerRegistry,
   isLemnityAiSandboxDockerEnabled,
@@ -387,6 +389,55 @@ export const sandboxManager = {
         "index.html": html,
         "generated.txt": code
       }
+    };
+    memoryStore.set(sandboxId, next);
+    return { previewUrl: `/api/sandbox/${sandboxId}` };
+  },
+
+  /**
+   * Режим Lovable: многофайловый React+TSX в ответе → esbuild → превью; иначе тот же путь, что `applyCode`.
+   */
+  async applyCodeLovable(sandboxId: string, code: string) {
+    const parsed = parseLovableFencedFiles(code);
+    if (!parsed) {
+      return this.applyCode(sandboxId, code);
+    }
+    const html = await bundleLovableToPreviewHtml(parsed);
+    if (!html) {
+      return this.applyCode(sandboxId, code);
+    }
+
+    if (isLemnityAiSandboxDockerEnabled()) {
+      const rec = dockerRegistry.get(sandboxId);
+      if (!rec) {
+        throw new Error("Песочница не найдена (возможно, истёк TTL).");
+      }
+      const base = containerBaseUrl(rec.ip);
+      const wd = workdirInContainer();
+      const w0 = await lemnityBuilderFileWrite(base, `${wd}/index.html`, html, { append: false });
+      assertBuilderSandboxSuccess(w0, "file/write index.html (lovable)");
+      for (const [rel, content] of Object.entries(parsed)) {
+        if (rel === "index.html") continue;
+        const p = path.posix.join(wd.replace(/\/$/, ""), rel);
+        const wr = await lemnityBuilderFileWrite(base, p, content, { append: false });
+        assertBuilderSandboxSuccess(wr, `file/write ${rel}`);
+      }
+      const wGen = await lemnityBuilderFileWrite(base, `${wd}/generated.txt`, code, { append: false });
+      assertBuilderSandboxSuccess(wGen, "file/write generated.txt");
+      rec.updatedAt = Date.now();
+      return { previewUrl: `/api/sandbox/${sandboxId}` };
+    }
+
+    const previous = memoryStore.get(sandboxId);
+    if (!previous) {
+      throw new Error("Песочница не найдена.");
+    }
+    const files: Record<string, string> = { ...parsed, "index.html": html, "generated.txt": code };
+    const next: MemoryState = {
+      ...previous,
+      updatedAt: Date.now(),
+      html,
+      files
     };
     memoryStore.set(sandboxId, next);
     return { previewUrl: `/api/sandbox/${sandboxId}` };

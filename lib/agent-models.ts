@@ -105,7 +105,8 @@ const PROJECT_KIND_DEFAULTS_PRO: Record<ProjectKind, AgentUiLabel> = {
   presentation: "Gemini 3 Pro",
   resume: "GPT-4.1",
   design: "Gemini 3 Pro",
-  visitcard: "GPT-4.1"
+  visitcard: "GPT-4.1",
+  lovable: "Claude Sonnet 4.5"
 };
 
 const PROJECT_KIND_DEFAULTS_FREE: Record<ProjectKind, AgentUiLabel> = {
@@ -113,7 +114,8 @@ const PROJECT_KIND_DEFAULTS_FREE: Record<ProjectKind, AgentUiLabel> = {
   presentation: "Gemini 3 Pro",
   resume: "GPT-4.1",
   design: "Gemini 3 Pro",
-  visitcard: "GPT-4.1"
+  visitcard: "GPT-4.1",
+  lovable: "Gemini 3 Pro"
 };
 
 function fallbackKind(kind?: ProjectKind | null): ProjectKind {

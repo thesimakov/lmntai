@@ -9,6 +9,7 @@ import { excerptHtmlForPlanner } from "./prompts.js";
 import {
   createPlan,
   executePlanToHtml,
+  executePlanToLovable,
   formatBuilderTranscript,
   generateSummary,
   makeEvent
@@ -247,9 +248,12 @@ export async function main() {
       const body = (await readJsonBody(req)) as {
         message?: string;
         model?: string;
+        project_kind?: string;
       } | null;
       const userMessage = typeof body?.message === "string" ? body.message.trim() : "";
       const model = typeof body?.model === "string" && body.model.trim() ? body.model.trim() : "gpt-4o-mini";
+      const pk = typeof body?.project_kind === "string" ? body.project_kind.trim().toLowerCase() : "";
+      const forceArtifactKind = pk === "lovable" ? ("lovable" as const) : null;
       if (!userMessage) {
         json(res, 400, { code: 400, msg: "message_required", data: null });
         return;
@@ -288,7 +292,8 @@ export async function main() {
           sessionContext: {
             transcript,
             priorHtmlExcerpt: priorHtml ? excerptHtmlForPlanner(priorHtml) : null
-          }
+          },
+          forceArtifactKind
         });
         rec.title = plan.title || rec.title;
         emit("title", { title: rec.title });
@@ -304,7 +309,30 @@ export async function main() {
 
         const previewPath = `/api/lemnity-ai/artifacts/`;
 
-        if (plan.artifact_kind === "presentation") {
+        if (plan.artifact_kind === "lovable") {
+          const html = await executePlanToLovable({
+            message: userMessage,
+            model,
+            plan,
+            user: routerUser,
+            emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
+          });
+          const artifact = await store.createArtifact(id, { kind: "html", html });
+          emit("tool", {
+            tool_call_id: `preview-${artifact.artifact_id}`,
+            name: "browser",
+            status: "called",
+            function: "preview_render",
+            args: { artifact: "index.html" },
+            content: { path: `${previewPath}${artifact.artifact_id}` }
+          });
+          emit("preview", {
+            previewUrl: `${previewPath}${artifact.artifact_id}`,
+            sandboxId: artifact.artifact_id,
+            mimeType: ARTIFACT_MIME_HTML,
+            filename: null
+          });
+        } else if (plan.artifact_kind === "presentation") {
           emit("step", { id: "outline", description: "Структура слайдов", status: "running" });
           const outline = await getPresentationOutline({
             message: userMessage,

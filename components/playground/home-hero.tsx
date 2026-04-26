@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  AppWindow,
   ArrowUp,
   BookOpen,
   Building2,
@@ -44,7 +45,13 @@ import { PLAYGROUND_QUICK_TEMPLATES } from "@/lib/playground-templates";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
-export type HomeHeroActionCategory = "presentation" | "website" | "resume" | "design" | "visitcard";
+export type HomeHeroActionCategory =
+  | "presentation"
+  | "website"
+  | "resume"
+  | "design"
+  | "visitcard"
+  | "lovable";
 type ActionCategory = HomeHeroActionCategory;
 
 /** Маркер в промпте: агент и пайплайн могут искать `reference_site:` */
@@ -116,6 +123,13 @@ const ACTION_DEFS: Array<{
     toolbarIcon: IdCard,
     labelKey: "playground_home_cat_visitcard",
     valueKey: "playground_home_val_visitcard"
+  },
+  {
+    id: "lovable",
+    icon: AppWindow,
+    toolbarIcon: AppWindow,
+    labelKey: "playground_home_cat_lovable",
+    valueKey: "playground_home_val_lovable"
   }
 ];
 

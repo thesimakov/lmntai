@@ -2,13 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import {
   createPlanPrompt,
+  executeLovableUiPrompt,
   executeUiPrompt,
   fallbackPlan,
   normalizeArtifactKind,
   summarizePrompt,
   truncateHtmlForRevision,
+  type ArtifactKind,
   type BuilderPlan
 } from "./prompts.js";
+import { bundleLovableToPreviewHtml, parseLovableFencedFiles } from "./lovable-bundler.js";
 import { requestJsonCompletion, streamChatCompletion } from "./routerai.js";
 import type { BuilderEvent } from "./types.js";
 
@@ -104,13 +107,19 @@ export async function createPlan(input: {
   model: string;
   user?: string;
   sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+  /** См. `project_kind` из Playground (Lovable) — фиксирует тип, если задан. */
+  forceArtifactKind?: ArtifactKind | null;
 }): Promise<BuilderPlan> {
   const text = await requestJsonCompletion({
     model: input.model,
     prompt: createPlanPrompt({ message: input.message, sessionContext: input.sessionContext }),
     user: input.user
   });
-  return parsePlan(text, input.message);
+  const plan = parsePlan(text, input.message);
+  if (input.forceArtifactKind) {
+    return { ...plan, artifact_kind: input.forceArtifactKind };
+  }
+  return plan;
 }
 
 export async function generateSummary(input: {
@@ -184,4 +193,66 @@ export async function executePlanToHtml(input: {
     });
   }
   return extractHtmlArtifact(html);
+}
+
+export async function executePlanToLovable(input: {
+  message: string;
+  model: string;
+  plan: BuilderPlan;
+  user?: string;
+  emit: Emit;
+}): Promise<string> {
+  let raw = "";
+  const prompt = executeLovableUiPrompt({
+    message: input.message,
+    plan: input.plan
+  });
+  const mainStep =
+    input.plan.steps.find((s) => /tsx|react|src|app|код|preview|превью|lovable/i.test(s.description)) ??
+    input.plan.steps[input.plan.steps.length - 1];
+  if (mainStep) {
+    input.emit("step", {
+      id: mainStep.id,
+      description: mainStep.description,
+      status: "running"
+    });
+  }
+  input.emit("tool", {
+    tool_call_id: randomUUID(),
+    name: "file",
+    status: "calling",
+    function: "artifact_generate",
+    args: { file: "src/main.tsx" }
+  });
+
+  for await (const chunk of streamChatCompletion({
+    model: input.model,
+    prompt,
+    user: input.user
+  })) {
+    raw += chunk;
+    input.emit("delta", { content: chunk, kind: "artifact" });
+  }
+
+  input.emit("tool", {
+    tool_call_id: randomUUID(),
+    name: "file",
+    status: "called",
+    function: "artifact_generate",
+    args: { pattern: "src/**/*.tsx" }
+  });
+  if (mainStep) {
+    input.emit("step", {
+      id: mainStep.id,
+      description: mainStep.description,
+      status: "completed"
+    });
+  }
+
+  const files = parseLovableFencedFiles(raw);
+  const bundled = files ? await bundleLovableToPreviewHtml(files) : null;
+  if (bundled) {
+    return bundled;
+  }
+  return extractHtmlArtifact(raw);
 }
