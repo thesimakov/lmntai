@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Check, Sparkles } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
 import { Button } from "@/components/ui/button"
@@ -22,6 +22,7 @@ import {
   localeForLanguage,
 } from "@/lib/pricing-display"
 import { formatCurrencyMinor, type ReferralCurrency } from "@/lib/referrals-currency"
+import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
 const faqIds = [1, 2, 3, 4, 5, 6] as const
@@ -66,11 +67,96 @@ const billingOptions: { id: BillingPeriod; tab: MessageKey }[] = [
   { id: "yearly", tab: "pricing_billing_tab_year" },
 ]
 
+type PromoPreviewResponse = {
+  valid: boolean
+  error?: string
+  code?: string
+  pro: {
+    applicable: boolean
+    kind: string
+    totalMinor: number
+    originalMinor: number
+    discountPercent: number | null
+    bonusTokens: number | null
+    formattedTotal: string
+    formattedOriginal: string | null
+  } | null
+  team: {
+    applicable: boolean
+    kind: string
+    totalMinor: number
+    originalMinor: number
+    discountPercent: number | null
+    bonusTokens: number | null
+    formattedTotal: string
+    formattedOriginal: string | null
+  } | null
+}
+
 export function Pricing() {
   const { t, lang } = useI18n()
   const [displayPricing, setDisplayPricing] = useState<PricingDisplayPayload | null>(null)
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly")
+  const [promoInput, setPromoInput] = useState("")
+  const [promoResult, setPromoResult] = useState<PromoPreviewResponse | null>(null)
+  const [promoLoading, setPromoLoading] = useState(false)
+  const [promoError, setPromoError] = useState<string | null>(null)
   const showBilling = displayPricing != null
+  const appliedPromoCodeRef = useRef<string | null>(null)
+
+  const applyPromoWithCode = useCallback(
+    async (code: string) => {
+      const c = code.trim()
+      if (!c) {
+        setPromoResult(null)
+        appliedPromoCodeRef.current = null
+        setPromoError(null)
+        return
+      }
+      setPromoLoading(true)
+      setPromoError(null)
+      try {
+        const res = await fetch("/api/promo/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code: c, billingPeriod, lang })
+        })
+        const j = (await res.json()) as PromoPreviewResponse & { error?: string }
+        if (!res.ok) {
+          setPromoResult(null)
+          setPromoError("Не удалось проверить промокод")
+          return
+        }
+        setPromoResult(j)
+        if (!j.valid) {
+          appliedPromoCodeRef.current = null
+          setPromoError(
+            j.error === "not_found"
+              ? "Промокод не найден"
+              : j.error === "empty"
+                ? "Введите код"
+                : "Промокод недействителен"
+          )
+          return
+        }
+        appliedPromoCodeRef.current = j.code ?? c
+        setPromoError(null)
+      } catch {
+        setPromoError("Ошибка сети")
+        setPromoResult(null)
+        appliedPromoCodeRef.current = null
+      } finally {
+        setPromoLoading(false)
+      }
+    },
+    [billingPeriod, lang]
+  )
+
+  useEffect(() => {
+    const c = appliedPromoCodeRef.current
+    if (!c) return
+    void applyPromoWithCode(c)
+  }, [billingPeriod, lang, applyPromoWithCode])
 
   useEffect(() => {
     let cancelled = false
@@ -127,7 +213,7 @@ export function Pricing() {
       badge: t("pricing_plan_starter_badge"),
     }
 
-    const proLine =
+    const proLineBase =
       currency && displayPricing
         ? formatPaidPlanLine(
             displayPricing.subscriptions.pro.amountMinor,
@@ -142,7 +228,7 @@ export function Pricing() {
             period: t("pricing_plan_pro_period"),
           }
 
-    const teamLine =
+    const teamLineBase =
       currency && displayPricing
         ? formatPaidPlanLine(
             displayPricing.subscriptions.team.amountMinor,
@@ -157,10 +243,51 @@ export function Pricing() {
             period: t("pricing_plan_team_period"),
           }
 
+    const pr = promoResult?.valid && promoResult.pro ? promoResult.pro : null
+    const tm = promoResult?.valid && promoResult.team ? promoResult.team : null
+
+    let proLine: typeof proLineBase & { priceWas?: string; promoLine?: string } = { ...proLineBase }
+    if (pr?.applicable && pr.kind === "DISCOUNT" && pr.formattedOriginal) {
+      proLine = {
+        price: pr.formattedTotal,
+        period: proLineBase.period,
+        subline: proLineBase.subline,
+        discount: pr.discountPercent
+          ? `−${pr.discountPercent}% ${t("pricing_promo_applied")}`
+          : proLineBase.discount,
+        priceWas: pr.formattedOriginal
+      }
+    } else if (pr?.applicable && pr.kind === "BONUS_TOKENS" && (pr.bonusTokens ?? 0) > 0) {
+      proLine = {
+        ...proLineBase,
+        promoLine: `+${(pr.bonusTokens ?? 0).toLocaleString("ru-RU")} ${t("pricing_promo_tokens_gift")}`
+      }
+    }
+
+    let teamLine: typeof teamLineBase & { priceWas?: string; promoLine?: string } = { ...teamLineBase }
+    if (tm?.applicable && tm.kind === "DISCOUNT" && tm.formattedOriginal) {
+      teamLine = {
+        price: tm.formattedTotal,
+        period: teamLineBase.period,
+        subline: teamLineBase.subline,
+        discount: tm.discountPercent
+          ? `−${tm.discountPercent}% ${t("pricing_promo_applied")}`
+          : teamLineBase.discount,
+        priceWas: tm.formattedOriginal
+      }
+    } else if (tm?.applicable && tm.kind === "BONUS_TOKENS" && (tm.bonusTokens ?? 0) > 0) {
+      teamLine = {
+        ...teamLineBase,
+        promoLine: `+${(tm.bonusTokens ?? 0).toLocaleString("ru-RU")} ${t("pricing_promo_tokens_gift")}`
+      }
+    }
+
     const pro = {
       id: "pro" as const,
       name: t("pricing_plan_pro_name"),
       price: proLine.price,
+      priceWas: "priceWas" in proLine ? proLine.priceWas : undefined,
+      promoLine: "promoLine" in proLine ? proLine.promoLine : undefined,
       period: proLine.period,
       subline: proLine.subline,
       discount: proLine.discount,
@@ -181,6 +308,8 @@ export function Pricing() {
       id: "team" as const,
       name: t("pricing_plan_team_name"),
       price: teamLine.price,
+      priceWas: "priceWas" in teamLine ? teamLine.priceWas : undefined,
+      promoLine: "promoLine" in teamLine ? teamLine.promoLine : undefined,
       period: teamLine.period,
       subline: teamLine.subline,
       discount: teamLine.discount,
@@ -197,7 +326,7 @@ export function Pricing() {
     }
 
     return [starter, pro, team]
-  }, [displayPricing, t, lang, billingPeriod, showBilling])
+  }, [displayPricing, t, lang, billingPeriod, showBilling, promoResult])
 
   const paygPacks = useMemo(
     () =>
@@ -295,6 +424,36 @@ export function Pricing() {
         </div>
       ) : null}
 
+      {showBilling ? (
+        <div className="mx-auto mb-8 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
+          <div className="min-w-0 flex-1">
+            <label className="mb-1 block text-left text-xs font-medium text-muted-foreground">
+              {t("pricing_promo_label")}
+            </label>
+            <Input
+              value={promoInput}
+              onChange={(e) => {
+                setPromoInput(e.target.value)
+                if (promoError) setPromoError(null)
+              }}
+              placeholder={t("pricing_promo_placeholder")}
+              className="rounded-xl border-border/60"
+              autoComplete="off"
+            />
+            {promoError ? <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoError}</p> : null}
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="shrink-0 rounded-xl"
+            disabled={promoLoading}
+            onClick={() => void applyPromoWithCode(promoInput)}
+          >
+            {promoLoading ? "…" : t("pricing_promo_apply")}
+          </Button>
+        </div>
+      ) : null}
+
       {/* Pricing Cards */}
       <div className="mx-auto grid max-w-5xl grid-cols-1 gap-6 md:grid-cols-3">
         {plans.map((plan, index) => (
@@ -332,6 +491,11 @@ export function Pricing() {
             <div className="mb-6">
               <h3 className="text-lg font-medium text-foreground">{plan.name}</h3>
               <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
+                {"priceWas" in plan && plan.priceWas ? (
+                  <span className="mr-1 text-lg font-medium line-through tabular-nums text-muted-foreground">
+                    {plan.priceWas as string}
+                  </span>
+                ) : null}
                 <span className="text-4xl font-bold tabular-nums text-foreground">
                   {plan.price}
                 </span>
@@ -344,6 +508,11 @@ export function Pricing() {
                   </span>
                 ) : null}
               </div>
+              {"promoLine" in plan && plan.promoLine ? (
+                <p className="mt-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                  {String(plan.promoLine)}
+                </p>
+              ) : null}
               {plan.subline ? (
                 <p className="mt-1 text-xs text-muted-foreground">{plan.subline}</p>
               ) : null}

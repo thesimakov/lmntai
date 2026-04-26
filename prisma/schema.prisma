@@ -132,6 +132,26 @@ model PlatformPlanSettings {
   updatedAt DateTime @updatedAt
 }
 
+/// Промокоды: скидка % с подписки или бонусные токены; правятся в /admin/promocodes.
+model PromoCode {
+  id              String    @id @default(cuid())
+  /// Нормализованный код (верхний регистр, без пробелов)
+  code            String    @unique
+  isActive        Boolean   @default(true)
+  /// DISCOUNT = процент от суммы периода; BONUS_TOKENS = цена без изменений + подарок токенов
+  kind            String
+  discountPercent Int?
+  bonusTokens     Int?
+  /// JSON: ["PRO","TEAM"] — на какие планы действует; null/пусто = оба
+  appliesToPlans  Json?
+  maxUses         Int?
+  usedCount       Int       @default(0)
+  validFrom       DateTime?
+  validTo         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
 model Account {
   id                String  @id @default(cuid())
   userId            String

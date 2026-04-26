@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, Settings, Users, Wrench, Shield, LayoutDashboard, Sparkles } from "lucide-react";
+import { LogOut, Settings, Users, Wrench, Shield, LayoutDashboard, Sparkles, Tag } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { ADMIN_SECTION_RULES, canAccessAdminSection } from "@/lib/admin-rules";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 const ITEM_ICONS = {
   users: Users,
   tariffs: Wrench,
+  promocodes: Tag,
   team: Shield,
   settings: Settings
 } as const;
