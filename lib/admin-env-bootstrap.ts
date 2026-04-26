@@ -19,7 +19,8 @@ export function getConfiguredAdminEmail(): string | null {
 function getConfiguredAdminPassword(): string | null {
   const v = process.env.ADMIN_DEFAULT_PASSWORD;
   if (typeof v !== "string" || !v.length) return null;
-  return v;
+  // CR/LF из Windows-редактора и лишние пробелы в .env ломают сравнение
+  return v.replace(/\r/g, "").trim();
 }
 
 function safeEqualString(a: string, b: string) {

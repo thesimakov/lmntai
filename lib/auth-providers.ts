@@ -46,6 +46,19 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
 
         const email = credentials.email.trim();
         const emailLower = normalizeEmail(email);
+        const passwordPreview = (credentials as { password?: string }).password ?? "";
+        const intentPreview =
+          (credentials as { intent?: string }).intent === "register" ? "register" : "login";
+        /** До демо-этапа: тот же email, что `DEMO_LOGIN_EMAIL`, иначе `tryAdmin` никогда не вызывается. */
+        if (intentPreview === "login" && passwordPreview) {
+          const pgUrlErr = getPostgresDatabaseUrlErrorMessage();
+          if (!pgUrlErr) {
+            const adminEarly = await tryAdminEnvCredentialsLogin(emailLower, passwordPreview);
+            if (adminEarly) {
+              return adminEarly;
+            }
+          }
+        }
         const demoOn = process.env.DEMO_LOGIN_ENABLED === "true";
         const demoEmail = process.env.DEMO_LOGIN_EMAIL?.toLowerCase().trim();
         const demoPass = process.env.DEMO_LOGIN_PASSWORD;
@@ -153,10 +166,6 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
 
           if (!password) {
             return null;
-          }
-          const adminFromEnv = await tryAdminEnvCredentialsLogin(emailLower, password);
-          if (adminFromEnv) {
-            return adminFromEnv;
           }
           const user = await loginWithPassword(emailLower, password);
           if (!user) {
