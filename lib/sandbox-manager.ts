@@ -483,6 +483,41 @@ export const sandboxManager = {
     memoryStore.set(sandboxId, next);
   },
 
+  /**
+   * JSON страницы Puck (lovable-cms-стиль) — `puck.json` в workdir / в памяти `files`.
+   */
+  async updatePuckJson(sandboxId: string, json: string) {
+    if (!json.trim()) {
+      throw new Error("Пустой JSON.");
+    }
+    if (isLemnityAiSandboxDockerEnabled()) {
+      const rec = dockerRegistry.get(sandboxId);
+      if (!rec) {
+        throw new Error("Песочница не найдена (возможно, истёк TTL).");
+      }
+      const base = containerBaseUrl(rec.ip);
+      const wd = workdirInContainer();
+      const relPath = `${wd}/puck.json`;
+      const writeRes = await lemnityBuilderFileWrite(base, relPath, json, { append: false });
+      assertBuilderSandboxSuccess(writeRes, "file/write puck.json");
+      rec.updatedAt = Date.now();
+      return;
+    }
+    const previous = memoryStore.get(sandboxId);
+    if (!previous) {
+      throw new Error("Песочница не найдена.");
+    }
+    const next: MemoryState = {
+      ...previous,
+      updatedAt: Date.now(),
+      files: {
+        ...previous.files,
+        "puck.json": json
+      }
+    };
+    memoryStore.set(sandboxId, next);
+  },
+
   async getPreviewUrl(sandboxId: string) {
     if (isLemnityAiSandboxDockerEnabled()) {
       return getDockerPreviewUrl(sandboxId);

@@ -318,6 +318,15 @@ export default function PromptBuildPage() {
     }
   }, [previewUrl]);
 
+  const puckEditorHref = useMemo(() => {
+    if (!sandboxId || sandboxId.startsWith("artifact_")) return null;
+    if (!previewUrl || !String(previewUrl).includes("/api/sandbox/")) return null;
+    const q = new URLSearchParams();
+    q.set("sandboxId", sandboxId);
+    if (lemnityAiSessionId) q.set("sessionId", lemnityAiSessionId);
+    return `/playground/puck?${q.toString()}`;
+  }, [sandboxId, previewUrl, lemnityAiSessionId]);
+
   const settingsProjectTitle = useMemo(() => {
     const raw = finalPrompt.trim() || idea.trim();
     if (!raw) return "";
@@ -1685,6 +1694,7 @@ export default function PromptBuildPage() {
                 if (next !== "preview" && next !== "document") setVisualLayoutEditor(false);
               }}
               sandboxId={sandboxId}
+              puckEditorHref={puckEditorHref}
               shareMenu={
                 <BuildSharePopover
                   sandboxId={sandboxId}
