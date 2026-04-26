@@ -194,7 +194,7 @@ export function formatVisualPickLabel(info: VisualPickInfo): string {
 
 export type VisualPreviewEditorHandlers = {
   onImageActivate: (img: HTMLImageElement) => void;
-  onSelectionChange?: (info: VisualPickInfo | null) => void;
+  onSelectionChange?: (info: VisualPickInfo | null, element: Element | null, elements: Element[]) => void;
 };
 
 export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreviewEditorHandlers): () => void {
@@ -239,13 +239,19 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
   let activeHost: HTMLElement | null = null;
   let hoverEl: Element | null = null;
   let selectedEl: Element | null = null;
+  const selectedEls = new Set<Element>();
   let rafHover = 0;
   /** Двойной клик по тексту: preventDefault на pointerdown ломает нативный dblclick в части браузеров. */
   let lastTextHostPointer: HTMLElement | null = null;
   let lastTextHostPointerAt = 0;
 
-  function notifySelection(el: Element | null) {
-    handlers.onSelectionChange?.(el ? describePickTarget(el) : null);
+  function notifySelection() {
+    const primary = selectedEl;
+    handlers.onSelectionChange?.(
+      primary ? describePickTarget(primary) : null,
+      primary,
+      Array.from(selectedEls)
+    );
   }
 
   function setHover(el: Element | null) {
@@ -255,12 +261,44 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     if (hoverEl) hoverEl.setAttribute("data-lemnity-pick-hover", "1");
   }
 
-  function setSelected(el: Element | null) {
-    if (selectedEl === el) return;
-    if (selectedEl) selectedEl.removeAttribute("data-lemnity-selected");
+  function clearSelected() {
+    if (selectedEls.size === 0 && !selectedEl) return;
+    selectedEls.forEach((n) => n.removeAttribute("data-lemnity-selected"));
+    selectedEls.clear();
+    selectedEl = null;
+    notifySelection();
+  }
+
+  function setSingleSelected(el: Element | null) {
+    if (!el) {
+      clearSelected();
+      return;
+    }
+    const alreadySingle = selectedEl === el && selectedEls.size === 1 && selectedEls.has(el);
+    if (alreadySingle) return;
+    selectedEls.forEach((n) => n.removeAttribute("data-lemnity-selected"));
+    selectedEls.clear();
+    selectedEls.add(el);
+    el.setAttribute("data-lemnity-selected", "1");
     selectedEl = el;
-    if (selectedEl) selectedEl.setAttribute("data-lemnity-selected", "1");
-    notifySelection(selectedEl);
+    notifySelection();
+  }
+
+  function toggleSelected(el: Element) {
+    if (selectedEls.has(el)) {
+      el.removeAttribute("data-lemnity-selected");
+      selectedEls.delete(el);
+      if (selectedEl === el) {
+        const tail = Array.from(selectedEls);
+        selectedEl = tail.length > 0 ? tail[tail.length - 1] : null;
+      }
+      notifySelection();
+      return;
+    }
+    selectedEls.add(el);
+    el.setAttribute("data-lemnity-selected", "1");
+    selectedEl = el;
+    notifySelection();
   }
 
   function deactivateHost() {
@@ -292,7 +330,7 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
 
   function enterTextEdit(host: HTMLElement) {
     deactivateHost();
-    setSelected(host);
+    setSingleSelected(host);
     activeHost = host;
     host.setAttribute("contenteditable", "true");
     host.setAttribute("data-lemnity-editing", "1");
@@ -319,7 +357,7 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
       if (activeHost) return;
       const { x, y } = viewportPointForVisualPick(ev, doc);
       const el = pickInteractiveTargetAtPoint(doc, x, y);
-      if (el instanceof HTMLImageElement || el === selectedEl) {
+      if (el instanceof HTMLImageElement || (el != null && selectedEls.has(el))) {
         setHover(null);
       } else {
         setHover(el);
@@ -336,6 +374,7 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     const pick =
       pickInteractiveTargetAtPoint(doc, x, y) ??
       normalizePickTarget(doc, eventTargetToElement(ev.target));
+    const additiveSelect = ev.metaKey || ev.ctrlKey;
 
     if (pick instanceof HTMLImageElement) {
       lastTextHostPointer = null;
@@ -344,8 +383,12 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
       ev.stopPropagation();
       deactivateHost();
       setHover(null);
-      setSelected(pick);
-      handlers.onImageActivate(pick);
+      if (additiveSelect) {
+        toggleSelected(pick);
+      } else {
+        setSingleSelected(pick);
+        handlers.onImageActivate(pick);
+      }
       return;
     }
 
@@ -355,6 +398,15 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     ev.stopPropagation();
 
     const textHost = resolveTextHost(pick);
+    if (additiveSelect) {
+      lastTextHostPointer = null;
+      lastTextHostPointerAt = 0;
+      deactivateHost();
+      setHover(null);
+      toggleSelected(textHost ?? pick);
+      return;
+    }
+
     if (textHost) {
       const now = Date.now();
       if (textHost === lastTextHostPointer && now - lastTextHostPointerAt < 420) {
@@ -368,7 +420,7 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
       lastTextHostPointerAt = now;
       deactivateHost();
       setHover(null);
-      setSelected(textHost);
+      setSingleSelected(textHost);
       return;
     }
 
@@ -376,11 +428,12 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     lastTextHostPointerAt = 0;
     deactivateHost();
     setHover(null);
-    setSelected(pick);
+    setSingleSelected(pick);
   }
 
   function onDoubleClick(ev: MouseEvent) {
     if (activeHost) return;
+    if (selectedEls.size > 1) return;
     const { x, y } = viewportPointForVisualPick(ev, doc);
     const raw = pickInteractiveTargetAtPoint(doc, x, y) ?? eventTargetToElement(ev.target);
     const host = resolveTextHost(raw);
@@ -415,7 +468,7 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     body.removeEventListener("focusout", onFocusOut, true);
     deactivateHost();
     setHover(null);
-    setSelected(null);
+    clearSelected();
     body.classList.remove("lemnity-visual-edit-mode");
     doc.getElementById(LEMNITY_VISUAL_EDIT_STYLE_ID)?.remove();
     doc.querySelectorAll("[data-lemnity-pick-hover]").forEach((n) => n.removeAttribute("data-lemnity-pick-hover"));

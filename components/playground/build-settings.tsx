@@ -56,6 +56,8 @@ export type BuildSettingsProps = {
   /** Для подсказки поддомена (как в диалоге публикации). */
   publishSeedText?: string;
   onOpenPublishDialog?: () => void;
+  /** После сохранения настройки брендинга — обновить футер превью в студии. */
+  onBrandingPreferenceSaved?: () => void;
 };
 
 /** Упрощённая иконка в духе логотипа Метрики (сегменты). */
@@ -93,7 +95,8 @@ export function BuildSettings({
   hasProPlan,
   shareBrandingRemovalPaid,
   publishSeedText,
-  onOpenPublishDialog
+  onOpenPublishDialog,
+  onBrandingPreferenceSaved
 }: BuildSettingsProps) {
   const { t, lang } = useI18n();
   const { update: updateSession } = useSession();
@@ -152,7 +155,9 @@ export function BuildSettings({
         if (!res.ok) return;
         const data = (await res.json().catch(() => ({}))) as { hideLemnityHeader?: boolean };
         if (!cancelled) {
-          setHideHeaderPref(Boolean(data.hideLemnityHeader));
+          setHideHeaderPref(
+            typeof data.hideLemnityHeader === "boolean" ? data.hideLemnityHeader : false
+          );
         }
       } catch {
         if (!cancelled) setHideHeaderPref(false);
@@ -183,6 +188,7 @@ export function BuildSettings({
         const data = (await res.json().catch(() => ({}))) as { hideLemnityHeader?: boolean };
         setHideHeaderPref(Boolean(data.hideLemnityHeader));
         toast.success(t("build_settings_watermark_toast_saved"));
+        onBrandingPreferenceSaved?.();
         return true;
       } catch {
         toast.error(t("build_settings_watermark_toast_error"));
@@ -191,7 +197,7 @@ export function BuildSettings({
         setBrandingBusy(false);
       }
     },
-    [sandboxId, brandingBusy, t]
+    [sandboxId, brandingBusy, t, onBrandingPreferenceSaved]
   );
 
   const verifyPaymentAndEnable = useCallback(async () => {
@@ -216,13 +222,14 @@ export function BuildSettings({
       setHideHeaderPref(Boolean(data.hideLemnityHeader));
       setPaymentDialogOpen(false);
       toast.success(t("build_settings_watermark_toast_saved"));
+      onBrandingPreferenceSaved?.();
       await updateSession?.();
     } catch {
       toast.error(t("build_settings_watermark_toast_error"));
     } finally {
       setBrandingBusy(false);
     }
-  }, [sandboxId, updateSession, t]);
+  }, [sandboxId, updateSession, t, onBrandingPreferenceSaved]);
 
   const setSharePublic = useCallback(
     async (wantPublic: boolean) => {
@@ -480,10 +487,10 @@ export function BuildSettings({
   );
 
   const hidePref = hideHeaderPref ?? false;
-  /** Вкл. = показывать «Сделано на Lemnity»; выкл. = скрыть (на Стандарте — после оплаты). */
-  const switchChecked = hasProPlan ? false : !hidePref;
-  const showWatermarkOnShare = !hasProPlan && !(shareBrandingRemovalPaid && hidePref);
-  const watermarkSwitchDisabled = !sandboxId || brandingBusy || hideHeaderPref === null || hasProPlan;
+  /** Вкл. = подпись «Сделано на Lemnity» видна (эффективный hide с сервера). */
+  const switchChecked = hideHeaderPref === null ? false : !hidePref;
+  const showWatermarkOnShare = switchChecked;
+  const watermarkSwitchDisabled = !sandboxId || brandingBusy || hideHeaderPref === null;
   const checkoutIsAbsolute = /^https?:\/\//i.test(checkoutHref);
 
   const overviewWatermarkCard = (
@@ -520,7 +527,10 @@ export function BuildSettings({
             disabled={watermarkSwitchDisabled}
             className="mt-0.5 shrink-0"
             onCheckedChange={(v) => {
-              if (hasProPlan) return;
+              if (hasProPlan) {
+                void persistHideHeader(!v);
+                return;
+              }
               if (v) {
                 void persistHideHeader(false);
                 return;

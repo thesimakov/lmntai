@@ -402,7 +402,7 @@ export function executeLovableUiPrompt(input: {
     "",
     "Strict output rules:",
     "- Output one or more fenced code blocks. Each block opens with ` ```tsx:relative/path.tsx` or ` ```ts:relative/path.ts` (language, colon, path on the same line as the opening fence), then the file body, then closing fence.",
-    "- Required files: `src/main.tsx` (createRoot on document.getElementById('root')), and `src/App.tsx` (default export or named root component).",
+    "- Required files: `src/main.tsx` (createRoot on document.getElementById('root')), `src/App.tsx`, `src/index.css`, `index.html`, `package.json`, `vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`.",
     "- Use Tailwind classes in `className` only (Tailwind CDN is injected in preview).",
     "- Use relative imports between files under `src/`.",
     "- Do not output a single <!doctype html> document in place of source files.",
@@ -476,12 +476,20 @@ export function fallbackPlan(message: string): BuilderPlan {
     if (kind === "lovable") {
       return isRu
         ? [
-            { id: "structure", description: "Файлы src/main.tsx и src/App.tsx + при необходимости компоненты" },
+            {
+              id: "structure",
+              description:
+                "Структура проекта как в Vite: index.html, package.json, vite.config.ts, tsconfig*.json, src/main.tsx, src/App.tsx"
+            },
             { id: "tsx", description: "React+TSX, Tailwind через className" },
             { id: "preview", description: "Сервер соберёт esbuild-превью" }
           ]
         : [
-            { id: "structure", description: "Files src/main.tsx, src/App.tsx, components as needed" },
+            {
+              id: "structure",
+              description:
+                "Vite-like project structure: index.html, package.json, vite.config.ts, tsconfig*.json, src/main.tsx, src/App.tsx"
+            },
             { id: "tsx", description: "React+TSX with Tailwind className" },
             { id: "preview", description: "Server builds esbuild preview" }
           ];

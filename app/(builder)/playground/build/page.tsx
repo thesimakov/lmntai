@@ -202,6 +202,8 @@ export default function PromptBuildPage() {
     filename: string;
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
+  /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
+  const [showLemnityBranding, setShowLemnityBranding] = useState<boolean | null>(null);
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
@@ -297,28 +299,6 @@ export default function PromptBuildPage() {
     ]
   );
 
-  const chatPromptSlot = useMemo(() => {
-    const promptText =
-      stage === "ready" || stage === "generating"
-        ? finalPrompt.trim() || idea.trim()
-        : idea.trim();
-    if (!promptText) return null;
-    const label =
-      stage === "questions"
-        ? "Идея проекта"
-        : stage === "idea"
-          ? "Идея"
-          : stage === "ready" || stage === "generating"
-            ? "Промпт"
-            : "Запрос";
-    return (
-      <div className="mr-auto w-full max-w-[min(92%,32rem)] rounded-2xl border border-zinc-200/80 bg-white/90 px-4 py-3 text-sm shadow-sm dark:border-zinc-800 dark:bg-zinc-900/85">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <p className="mt-2 whitespace-pre-wrap leading-relaxed text-foreground [word-break:break-word]">{promptText}</p>
-      </div>
-    );
-  }, [stage, idea, finalPrompt]);
-
   const header = useMemo(() => {
     if (shouldUseLemnityAiBridge && coachAwaitingConfirm) return "Шаг 2/3 — Подтверждение промпта";
     if (stage === "questions")
@@ -377,7 +357,8 @@ export default function PromptBuildPage() {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
           role: "assistant" as const,
           content:
-            "Ссылка на публичную страницу превью открыта. Управлять доступом можно в «Поделиться» (приват / публично)."
+            "Ссылка на публичную страницу превью открыта. Управлять доступом можно в «Поделиться» (приват / публично).",
+          sentAt: Date.now()
         }
       ]);
       toast.message(t("playground_build_publish_opened"));
@@ -386,7 +367,34 @@ export default function PromptBuildPage() {
     }
   }, [previewUrl, sandboxId, shareIsPublic, t]);
 
-  const hasCustomDomainAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM";
+  const planFromSession = String(session?.user?.plan ?? "");
+  const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";
+
+  const refetchShareBranding = useCallback(async () => {
+    if (!sandboxId) {
+      setShowLemnityBranding(null);
+      return;
+    }
+    if (sandboxId.startsWith("artifact_")) {
+      setShowLemnityBranding(!hasCustomDomainAccess);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
+      if (!res.ok) {
+        setShowLemnityBranding(!hasCustomDomainAccess);
+        return;
+      }
+      const d = (await res.json()) as { showLemnityBranding?: boolean };
+      setShowLemnityBranding(Boolean(d.showLemnityBranding));
+    } catch {
+      setShowLemnityBranding(!hasCustomDomainAccess);
+    }
+  }, [sandboxId, hasCustomDomainAccess]);
+
+  useEffect(() => {
+    void refetchShareBranding();
+  }, [refetchShareBranding]);
 
   const documentTabVisible = useMemo(
     () =>
@@ -425,12 +433,14 @@ export default function PromptBuildPage() {
         actionMeta?: { durationMs: number; totalTokens?: number };
       }
     ) => {
+      const ts = Date.now();
       setMessages((prev) => [
         ...prev,
         {
           id: createMessageId(),
           role,
           content,
+          sentAt: ts,
           ...(opts?.showActions ? { showActions: true as const } : {}),
           ...(opts?.promptPlainText ? { promptPlainText: opts.promptPlainText } : {}),
           ...(opts?.actionMeta ? { actionMeta: opts.actionMeta } : {})
@@ -454,7 +464,7 @@ export default function PromptBuildPage() {
       }
       const id = createMessageId();
       bridgeAssistantMessageIdRef.current = id;
-      return [...prev, { id, role: "assistant", content: chunk }];
+      return [...prev, { id, role: "assistant", content: chunk, sentAt: Date.now() }];
     });
   }, [createMessageId]);
 
@@ -466,14 +476,14 @@ export default function PromptBuildPage() {
       if (!existingId) {
         const id = createMessageId();
         bridgeAssistantMessageIdRef.current = id;
-        return [...prev, { id, role: "assistant", content: normalized }];
+        return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
       }
 
       const idx = prev.findIndex((m) => m.id === existingId);
       if (idx === -1) {
         const id = createMessageId();
         bridgeAssistantMessageIdRef.current = id;
-        return [...prev, { id, role: "assistant", content: normalized }];
+        return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
       }
 
       if (!bridgeSawDeltaRef.current) {
@@ -492,7 +502,7 @@ export default function PromptBuildPage() {
 
       const id = createMessageId();
       bridgeAssistantMessageIdRef.current = id;
-      return [...prev, { id, role: "assistant", content: normalized }];
+      return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
     });
   }, [createMessageId]);
 
@@ -513,14 +523,16 @@ export default function PromptBuildPage() {
         if (payload.title?.trim()) {
           setIdea((prev) => (prev.trim() ? prev : payload.title?.trim() || prev));
         }
-        const nextMessages: ChatMessage[] =
-          payload.events
-            ?.filter((event) => event?.event === "message" && typeof event.data?.content === "string")
-            .map((event) => ({
-              id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-              role: event.data?.role === "user" ? "user" : "assistant",
-              content: event.data?.content || ""
-            })) ?? [];
+        const evs =
+          payload.events?.filter(
+            (event) => event?.event === "message" && typeof event.data?.content === "string"
+          ) ?? [];
+        const nextMessages: ChatMessage[] = evs.map((event, i) => ({
+          id: `${Date.now()}-${i}-${Math.random().toString(16).slice(2)}`,
+          role: event.data?.role === "user" ? "user" : "assistant",
+          content: event.data?.content || "",
+          sentAt: Date.now() - (evs.length - 1 - i) * 2000
+        }));
         if (nextMessages.length) {
           setMessages(nextMessages);
           setStage("ready");
@@ -1016,7 +1028,7 @@ export default function PromptBuildPage() {
     setPendingTechnicalPrompt(null);
     setPromptCoachDebugLine(null);
     setPromptBuilderDebugLine(null);
-    const msg: ChatMessage = { id: createMessageId(), role: "user", content: fromStorage };
+    const msg: ChatMessage = { id: createMessageId(), role: "user", content: fromStorage, sentAt: Date.now() };
     setMessages([msg]);
     void runPromptCoach([msg]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1401,6 +1413,7 @@ export default function PromptBuildPage() {
           id: createMessageId(),
           role: "user",
           content: displayContent,
+          sentAt: Date.now(),
           ...userExtras
         };
         const nextThread = [...messages, userMsg];
@@ -1430,6 +1443,7 @@ export default function PromptBuildPage() {
         id: createMessageId(),
         role: "user",
         content: displayContent,
+        sentAt: Date.now(),
         ...userExtras
       };
       const nextThread = [...messages, userMsg];
@@ -1531,12 +1545,11 @@ export default function PromptBuildPage() {
               messages={messages}
               disabled={isGenerating || promptCoachLoading || !lemnityAiBridgeReady}
               onSend={onSend}
-              placeholder="Отправить сообщение Lemnity…"
+              placeholder={t("playground_chat_input_placeholder_studio")}
               plan={session?.user?.plan ?? null}
               projectKind={projectKind}
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
               onModelHintChange={setAgentHint}
-              threadPromptSlot={chatPromptSlot}
               threadStatusSlot={
                 streamSteps.length > 0 || streamToolLine ? (
                   <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="border-0 bg-transparent" />
@@ -1718,6 +1731,7 @@ export default function PromptBuildPage() {
                     presentationPdfExport={presentationPdfExport}
                     presentationExportsPaid={hasCustomDomainAccess}
                     previewVariant={tab === "document" ? "document" : "default"}
+                    showLemnityBranding={showLemnityBranding === true}
                   />
                 </div>
               ) : tab === "settings" ? (
@@ -1734,6 +1748,7 @@ export default function PromptBuildPage() {
                     shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
                     publishSeedText={idea}
                     onOpenPublishDialog={() => setPublishDialogOpen(true)}
+                    onBrandingPreferenceSaved={refetchShareBranding}
                   />
                 </div>
               ) : (

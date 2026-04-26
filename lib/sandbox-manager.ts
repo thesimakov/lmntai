@@ -14,7 +14,11 @@ import {
   lemnityBuilderSupervisorStatus,
   type LemnityBuilderSandboxResponse
 } from "@/lib/lemnity-builder-sandbox-api";
-import { bundleLovableToPreviewHtml, parseLovableFencedFiles } from "@/lib/lovable-bundler";
+import {
+  bundleLovableToPreviewHtml,
+  parseLovableFencedFiles,
+  withLovableProjectScaffold
+} from "@/lib/lovable-bundler";
 import {
   dockerRegistry,
   isLemnityAiSandboxDockerEnabled,
@@ -402,7 +406,8 @@ export const sandboxManager = {
     if (!parsed) {
       return this.applyCode(sandboxId, code);
     }
-    const html = await bundleLovableToPreviewHtml(parsed);
+    const projectFiles = withLovableProjectScaffold(parsed);
+    const html = await bundleLovableToPreviewHtml(projectFiles);
     if (!html) {
       return this.applyCode(sandboxId, code);
     }
@@ -416,7 +421,7 @@ export const sandboxManager = {
       const wd = workdirInContainer();
       const w0 = await lemnityBuilderFileWrite(base, `${wd}/index.html`, html, { append: false });
       assertBuilderSandboxSuccess(w0, "file/write index.html (lovable)");
-      for (const [rel, content] of Object.entries(parsed)) {
+      for (const [rel, content] of Object.entries(projectFiles)) {
         if (rel === "index.html") continue;
         const p = path.posix.join(wd.replace(/\/$/, ""), rel);
         const wr = await lemnityBuilderFileWrite(base, p, content, { append: false });
@@ -432,7 +437,7 @@ export const sandboxManager = {
     if (!previous) {
       throw new Error("Песочница не найдена.");
     }
-    const files: Record<string, string> = { ...parsed, "index.html": html, "generated.txt": code };
+    const files: Record<string, string> = { ...projectFiles, "index.html": html, "generated.txt": code };
     const next: MemoryState = {
       ...previous,
       updatedAt: Date.now(),

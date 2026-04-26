@@ -2,7 +2,8 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
-import { getSandboxShareState, setSandboxSharePublic } from "@/lib/sandbox-share-db";
+import { prisma } from "@/lib/prisma";
+import { getOwnerShareStateForBuilder, setSandboxSharePublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -28,10 +29,21 @@ async function withOwner(
 }
 
 async function getShare(req: NextRequest, ctx: RouteCtx) {
-  return withOwner(req, ctx, async ({ sandboxId }) => {
+  return withOwner(req, ctx, async ({ sandboxId, userId }) => {
     try {
-      const state = await getSandboxShareState(sandboxId);
-      return Response.json({ isPublic: state.isPublic, hideLemnityHeader: state.hideLemnityHeader });
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, plan: true, shareBrandingRemovalPaidAt: true }
+      });
+      if (!user) {
+        return Response.json({ error: "user_not_found", isPublic: false }, { status: 404 });
+      }
+      const state = await getOwnerShareStateForBuilder(sandboxId, user);
+      return Response.json({
+        isPublic: state.isPublic,
+        hideLemnityHeader: state.hideLemnityHeader,
+        showLemnityBranding: state.showLemnityBranding
+      });
     } catch (e) {
       const msg = getAuthDatabaseUserMessage(e);
       if (msg) {

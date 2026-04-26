@@ -42,6 +42,8 @@ type RightPanelProps = {
   presentationExportsPaid?: boolean;
   /** Режим отдельного редактора документа (вкладка «Документ») */
   previewVariant?: "default" | "document";
+  /** Подпись «Сделано на Lemnity» под превью (как на /share) */
+  showLemnityBranding?: boolean;
 };
 
 function IdleState() {
@@ -179,7 +181,8 @@ export function RightPanel({
   visualEditPersist = false,
   presentationPdfExport = null,
   presentationExportsPaid = false,
-  previewVariant = "default"
+  previewVariant = "default",
+  showLemnityBranding = false
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
@@ -208,6 +211,7 @@ export function RightPanel({
             presentationPdfExport={presentationPdfExport}
             presentationExportsPaid={presentationExportsPaid}
             previewVariant={previewVariant}
+            showLemnityBranding={showLemnityBranding}
           />
         </LemnityAiPreviewChrome>
       </div>

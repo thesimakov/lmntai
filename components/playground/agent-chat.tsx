@@ -39,6 +39,7 @@ import {
   type AgentUiLabel
 } from "@/lib/agent-models";
 import { cn } from "@/lib/utils";
+import type { UiLanguage } from "@/lib/i18n";
 
 function formatActionDurationMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "";
@@ -51,6 +52,12 @@ function formatActionDurationMs(ms: number): string {
 function formatTokenTotal(n: number | undefined): string {
   if (n == null || !Number.isFinite(n)) return "";
   return Math.round(n).toLocaleString("ru-RU");
+}
+
+function formatMessageClock(sentAt: number, lang: UiLanguage): string {
+  const d = new Date(sentAt);
+  const locale = lang === "en" ? "en-GB" : "ru";
+  return d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
 }
 
 export type ChatMessage = {
@@ -66,6 +73,8 @@ export type ChatMessage = {
     durationMs: number;
     totalTokens?: number;
   };
+  /** Время отправки (ms), для подписи в стиле мессенджера */
+  sentAt?: number;
 };
 
 type AgentChatProps = {
@@ -105,7 +114,7 @@ export function AgentChat({
   messages,
   headerSlot,
   subtitle,
-  placeholder = "Спросить Lemnity…",
+  placeholder: placeholderProp,
   disabled,
   onSend,
   variant = "default",
@@ -120,7 +129,8 @@ export function AgentChat({
   agentTask = "generate-stream",
   onModelHintChange
 }: AgentChatProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const inputPlaceholder = placeholderProp ?? t("playground_chat_input_placeholder");
   const [value, setValue] = useState("");
   const [promptFeedback, setPromptFeedback] = useState<Record<string, "up" | "down">>({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -318,13 +328,21 @@ export function AgentChat({
         </div>
       ) : null}
 
-      <div className={cn("border-b", isStudio ? "bg-background px-3 py-2.5" : "p-3")}>
+      <div
+        className={cn(
+          "border-b",
+          isStudio ? "border-border/40 bg-background/80 px-3 py-2.5 backdrop-blur-sm" : "p-3"
+        )}
+      >
         {headerSlot ? <div className={cn(isStudio ? "mb-2" : "mb-3")}>{headerSlot}</div> : null}
         {isStudio ? (
-          <div className="flex flex-col gap-1">
-            <h2 className="truncate text-xs font-semibold text-foreground">{title}</h2>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold tracking-wide text-violet-600/90 dark:text-violet-300/90">
+              {t("playground_chat_brand")}
+            </p>
+            <h2 className="mt-0.5 truncate text-xs font-semibold text-foreground">{title}</h2>
             {subtitle?.trim() ? (
-              <p className="line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
+              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
             ) : null}
           </div>
         ) : (
@@ -339,35 +357,82 @@ export function AgentChat({
         ref={scrollRef}
         className={cn(
           "flex min-h-0 flex-1 flex-col gap-3 overflow-auto",
-          isStudio ? "bg-gradient-to-b from-zinc-100/40 to-zinc-50/30 p-3 dark:from-zinc-950/40 dark:to-zinc-900/30" : "space-y-2 p-3"
+          isStudio
+            ? "scroll-smooth bg-gradient-to-b from-zinc-100 via-zinc-100 to-zinc-200/70 p-3 pt-2 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 [scrollbar-gutter:stable]"
+            : "space-y-2 p-3"
         )}
       >
         {threadPromptSlot ? <div className="shrink-0">{threadPromptSlot}</div> : null}
 
         <AnimatePresence mode="popLayout">
           {visible.map((m) => (
-            <motion.div key={m.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22 }}>
-              <div
-                className={cn(
-                  "max-w-[min(92%,32rem)] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed [word-break:break-word]",
-                  m.role === "assistant" &&
-                    cn(
+            <motion.div
+              key={m.id}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.22 }}
+            >
+              {isStudio && m.role === "assistant" ? (
+                <div className="w-full min-w-0 pr-1">
+                  <div className="min-w-0 max-w-[min(88%,32rem)]">
+                    <p className="mb-0.5 pl-0.5 text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
+                      {t("playground_chat_brand")}
+                    </p>
+                    <div
+                      className={cn(
+                        "whitespace-pre-wrap rounded-2xl rounded-tl-sm border border-white/50 bg-white/95 px-3.5 py-2.5 text-sm leading-relaxed text-foreground [word-break:break-word] shadow-sm ring-1 ring-stone-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-white/[0.04]"
+                      )}
+                    >
+                      {m.content}
+                    </div>
+                    {m.sentAt != null ? (
+                      <p className="mt-0.5 pl-1 text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
+                        {formatMessageClock(m.sentAt, lang)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : isStudio && m.role === "user" ? (
+                <div className="flex w-full min-w-0 flex-row items-end justify-end">
+                  <div className="min-w-0 max-w-[min(88%,28rem)]">
+                    <p className="mb-0.5 pr-0.5 text-right text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
+                      {t("playground_chat_you")}
+                    </p>
+                    <div
+                      className={cn(
+                        "ml-auto whitespace-pre-wrap rounded-2xl rounded-tr-sm border border-sky-700/20 bg-gradient-to-b from-[#0f8fff] to-[#0070ea] px-3.5 py-2.5 text-sm font-medium leading-relaxed text-white [word-break:break-word] shadow-md dark:border-sky-400/20 dark:from-sky-600 dark:to-blue-800"
+                      )}
+                    >
+                      {m.content}
+                    </div>
+                    {m.sentAt != null ? (
+                      <p className="mt-0.5 pr-1 text-right text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
+                        {formatMessageClock(m.sentAt, lang)}
+                      </p>
+                    ) : null}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "max-w-[min(92%,32rem)] whitespace-pre-wrap px-4 py-2.5 text-sm leading-relaxed [word-break:break-word]",
+                    m.role === "assistant" &&
                       "mr-auto rounded-[1.25rem] border border-border/60 bg-background/95 text-foreground shadow-sm backdrop-blur-sm dark:border-border/50 dark:bg-zinc-900/90",
-                      isStudio && "rounded-2xl border-zinc-200/80 bg-white/90 dark:border-zinc-800 dark:bg-zinc-900/85"
-                    ),
-                  m.role === "user" &&
-                    cn(
-                      "ml-auto rounded-[1.25rem] border border-transparent font-medium text-zinc-50 shadow-sm dark:text-zinc-900",
-                      isStudio
-                        ? "bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-zinc-100 dark:to-zinc-200"
-                        : "bg-primary text-primary-foreground"
-                    )
-                )}
-              >
-                {m.content}
-              </div>
+                    m.role === "user" &&
+                      "ml-auto rounded-[1.25rem] border border-transparent bg-primary font-medium text-primary-foreground shadow-sm"
+                  )}
+                >
+                  {m.content}
+                </div>
+              )}
               {m.role === "assistant" && m.showActions ? (
-                <div className="mr-auto mt-2 flex items-center gap-1 text-muted-foreground">
+                <div
+                  className={cn(
+                    "mt-2 flex items-center gap-1 text-muted-foreground",
+                    isStudio && "pl-0.5"
+                  )}
+                >
                   <button
                     type="button"
                     className={cn(
@@ -467,8 +532,10 @@ export function AgentChat({
         {threadStatusSlot ? (
           <div
             className={cn(
-              "shrink-0 rounded-2xl border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80",
-              isStudio && "border-zinc-200/80"
+              "shrink-0",
+              isStudio
+                ? "mx-0 max-w-[min(100%,36rem)] shrink-0 bg-transparent p-0 text-foreground"
+                : "rounded-2xl border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80"
             )}
           >
             {threadStatusSlot}
@@ -476,7 +543,12 @@ export function AgentChat({
         ) : null}
       </div>
 
-      <div className={cn("border-t", isStudio ? "border-0 bg-background p-0" : "p-2")}>
+      <div
+        className={cn(
+          "border-t",
+          isStudio ? "border-border/30 bg-gradient-to-b from-stone-200/30 to-stone-100/40 p-0 dark:from-zinc-900/80 dark:to-zinc-950" : "p-2"
+        )}
+      >
         {footerSlot ? <div className="mb-2">{footerSlot}</div> : null}
         <div className={cn(!isStudio && "p-1")}>
           <input
@@ -513,7 +585,8 @@ export function AgentChat({
           />
 
           {isStudio ? (
-            <div className="@container flex h-full min-h-full flex-col bg-zinc-100 px-4 pb-3 pt-3.5 dark:bg-zinc-900/45">
+            <div className="@container flex min-h-0 flex-col overflow-hidden rounded-none border-0 bg-white/90 shadow-[0_2px_20px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.03)] backdrop-blur-sm dark:bg-zinc-900/90 dark:shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
+              <div className="px-3.5 pb-2.5 pt-3">
               {isEditor ? (
                 <Textarea
                   value={value}
@@ -524,8 +597,8 @@ export function AgentChat({
                       void submit();
                     }
                   }}
-                  placeholder={placeholder}
-                  className="min-h-[96px] w-full resize-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  placeholder={inputPlaceholder}
+                  className="min-h-[96px] w-full resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground/90 focus-visible:ring-0"
                   disabled={disabled}
                 />
               ) : (
@@ -538,9 +611,9 @@ export function AgentChat({
                       void submit();
                     }
                   }}
-                  placeholder={placeholder}
+                  placeholder={inputPlaceholder}
                   rows={2}
-                  className="min-h-[72px] w-full resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground focus-visible:ring-0"
+                  className="min-h-[72px] w-full resize-none rounded-none border-0 bg-transparent p-0 text-sm leading-relaxed shadow-none placeholder:text-muted-foreground/90 focus-visible:ring-0"
                   disabled={disabled}
                 />
               )}
@@ -572,13 +645,14 @@ export function AgentChat({
                   ))}
                 </div>
               ) : null}
+              </div>
 
-              <div className="mt-3 flex min-h-10 items-center gap-0.5 border-t border-border/60">
+              <div className="flex min-h-10 items-center gap-0.5 border-t border-stone-200/70 px-2 pb-2 pt-1.5 dark:border-zinc-700/80">
                 <Button
                   type="button"
                   size="icon"
                   variant="ghost"
-                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-stone-100/90 hover:text-foreground dark:hover:bg-zinc-800/80"
                   aria-label="Добавить изображение"
                   onClick={() => fileInputImageRef.current?.click()}
                 >
@@ -650,7 +724,7 @@ export function AgentChat({
                 <Button
                   type="button"
                   size="icon"
-                  className="h-10 w-10 shrink-0 rounded-full bg-foreground text-background shadow-sm hover:bg-foreground/90"
+                  className="h-10 w-10 shrink-0 rounded-full bg-sky-600 text-white shadow-md hover:bg-sky-600/90 dark:bg-sky-600"
                   onClick={() => {
                     if (disabled) return;
                     void submit();
@@ -669,7 +743,7 @@ export function AgentChat({
                   <Textarea
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
-                    placeholder={placeholder}
+                    placeholder={inputPlaceholder}
                     className="min-h-[96px] px-3 py-2 shadow-none"
                     disabled={disabled}
                   />
@@ -684,7 +758,7 @@ export function AgentChat({
                         void submit();
                       }
                     }}
-                    placeholder={placeholder}
+                    placeholder={inputPlaceholder}
                     className="h-10 rounded-2xl px-3 shadow-none"
                     disabled={disabled}
                   />

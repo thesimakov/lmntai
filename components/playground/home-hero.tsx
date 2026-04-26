@@ -8,28 +8,28 @@ import {
   Building2,
   ChevronRight,
   Clock,
-  Cloud,
   Code2,
   Coffee,
   FileText,
   Globe,
   IdCard,
-  Images,
-  LayoutDashboard,
   LayoutTemplate,
   Link2,
   Palette,
   Plus,
   Presentation,
+  ShoppingCart,
   Sparkles,
   X,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Dialog,
   DialogContent,
@@ -134,16 +134,29 @@ const ACTION_DEFS: Array<{
 ];
 
 const WEBSITE_TYPE_DEFS: Array<{
-  icon: typeof LayoutTemplate;
+  id: string;
+  icon: LucideIcon;
   labelKey: MessageKey;
   valueKey: MessageKey;
 }> = [
-  { icon: LayoutTemplate, labelKey: "playground_home_site_landing", valueKey: "playground_home_val_site_landing" },
-  { icon: LayoutDashboard, labelKey: "playground_home_site_dashboard", valueKey: "playground_home_val_site_dashboard" },
-  { icon: Images, labelKey: "playground_home_site_portfolio", valueKey: "playground_home_val_site_portfolio" },
-  { icon: Building2, labelKey: "playground_home_site_corporate", valueKey: "playground_home_val_site_corporate" },
-  { icon: Cloud, labelKey: "playground_home_site_saas", valueKey: "playground_home_val_site_saas" },
-  { icon: Link2, labelKey: "playground_home_site_bylink", valueKey: "playground_home_val_site_bylink" }
+  {
+    id: "landing",
+    icon: LayoutTemplate,
+    labelKey: "playground_home_site_landing",
+    valueKey: "playground_home_val_site_landing"
+  },
+  {
+    id: "corporate",
+    icon: Building2,
+    labelKey: "playground_home_site_corporate",
+    valueKey: "playground_home_val_site_corporate"
+  },
+  {
+    id: "store",
+    icon: ShoppingCart,
+    labelKey: "playground_home_site_store",
+    valueKey: "playground_home_val_site_store"
+  }
 ];
 
 const HINT_KEYS: MessageKey[] = [
@@ -152,6 +165,11 @@ const HINT_KEYS: MessageKey[] = [
   "playground_home_hint_2",
   "playground_home_hint_3"
 ];
+
+/** Все типы, кроме «Сайт», пока в разработке. */
+function isProjectKindComingSoon(id: ActionCategory): boolean {
+  return id !== "website";
+}
 
 const TEMPLATE_CARD_ICONS: Record<string, typeof Sparkles> = {
   saas: Sparkles,
@@ -199,6 +217,7 @@ export function HomeHero({
   const websiteBuildTypes = useMemo(
     () =>
       WEBSITE_TYPE_DEFS.map((d) => ({
+        id: d.id,
         icon: d.icon,
         label: t(d.labelKey),
         value: t(d.valueKey)
@@ -470,9 +489,9 @@ export function HomeHero({
                       ref={websiteTypesScrollRef}
                       className="flex min-h-10 flex-1 snap-x snap-mandatory gap-2 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                     >
-                      {websiteBuildTypes.map(({ icon: Icon, label, value }) => (
+                      {websiteBuildTypes.map(({ id, icon: Icon, label, value }) => (
                         <Button
-                          key={label}
+                          key={id}
                           type="button"
                           variant="outline"
                           className="h-10 shrink-0 snap-start rounded-2xl border-border bg-background px-3 text-sm font-normal shadow-sm hover:bg-accent"
@@ -499,38 +518,78 @@ export function HomeHero({
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              {actionPills.map(({ id, icon: Icon, label, value }) => (
-                <Button
-                  key={id}
-                  type="button"
-                  variant="outline"
-                  className={cn(
-                    "h-9 rounded-full border px-3 text-sm font-normal shadow-sm",
-                    activeCategory === id && id === "website"
-                      ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
-                      : activeCategory === id
-                        ? "border-foreground/20 bg-accent text-accent-foreground hover:bg-accent/90"
-                        : "border-border bg-background hover:bg-accent"
-                  )}
-                  onClick={() => {
-                    setActiveCategory(id);
-                    if (!idea.trim()) onSelectTemplate(value);
-                  }}
-                >
-                  <Icon className="mr-1.5 h-3.5 w-3.5 opacity-80" />
-                  {label}
-                </Button>
-              ))}
-              <Button
-                type="button"
-                variant="outline"
-                className="h-9 rounded-full border-border bg-background px-4 text-sm font-normal shadow-sm hover:bg-accent"
-                onClick={openTemplatesUi}
-              >
-                {t("playground_home_more")}
-              </Button>
-            </div>
+            <TooltipProvider delayDuration={200}>
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                {actionPills.map(({ id, icon: Icon, label, value }) => {
+                  const soon = isProjectKindComingSoon(id);
+                  const isDisabled = Boolean(disabled) || soon;
+                  return soon ? (
+                    <Tooltip key={id}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            disabled={isDisabled}
+                            className={cn(
+                              "h-9 rounded-full border border-border bg-background px-3 text-sm font-normal shadow-sm",
+                              "cursor-not-allowed opacity-50"
+                            )}
+                            aria-disabled
+                          >
+                            <Icon className="mr-1.5 h-3.5 w-3.5 opacity-80" />
+                            {label}
+                          </Button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{t("playground_home_coming_soon")}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <Button
+                      key={id}
+                      type="button"
+                      variant="outline"
+                      disabled={isDisabled}
+                      className={cn(
+                        "h-9 rounded-full border px-3 text-sm font-normal shadow-sm",
+                        activeCategory === id && id === "website"
+                          ? "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15"
+                          : activeCategory === id
+                            ? "border-foreground/20 bg-accent text-accent-foreground hover:bg-accent/90"
+                            : "border-border bg-background hover:bg-accent"
+                      )}
+                      onClick={() => {
+                        setActiveCategory(id);
+                        if (!idea.trim()) onSelectTemplate(value);
+                      }}
+                    >
+                      <Icon className="mr-1.5 h-3.5 w-3.5 opacity-80" />
+                      {label}
+                    </Button>
+                  );
+                })}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled
+                        className="h-9 cursor-not-allowed rounded-full border-border bg-background px-4 text-sm font-normal opacity-50 shadow-sm"
+                        aria-disabled
+                      >
+                        {t("playground_home_more")}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{t("playground_home_coming_soon")}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </TooltipProvider>
 
             <p className="mt-4 text-center text-xs text-muted-foreground">
               <span className="text-muted-foreground/80">{t("playground_home_submit_hint")}</span>

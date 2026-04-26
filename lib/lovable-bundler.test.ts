@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { findLovableEntry, parseLovableFencedFiles } from "./lovable-bundler";
+import { findLovableEntry, parseLovableFencedFiles, withLovableProjectScaffold } from "./lovable-bundler";
 
 describe("parseLovableFencedFiles", () => {
   it("parses tsx:path fences", () => {
@@ -37,5 +37,28 @@ describe("findLovableEntry", () => {
         "src/App.tsx": "y"
       })
     ).toBe("src/main.tsx");
+  });
+});
+
+describe("withLovableProjectScaffold", () => {
+  it("adds Vite scaffold files when output is partial", () => {
+    const files = withLovableProjectScaffold({
+      "src/App.tsx": "export default function App(){ return <div>Hello</div>; }"
+    });
+    expect(files["src/main.tsx"]).toContain("createRoot");
+    expect(files["index.html"]).toContain('id="root"');
+    expect(files["package.json"]).toContain('"vite"');
+    expect(files["vite.config.ts"]).toContain("defineConfig");
+    expect(files["tsconfig.json"]).toContain('"jsx": "react-jsx"');
+    expect(files["src/index.css"]).toContain("box-sizing");
+  });
+
+  it("does not overwrite provided files", () => {
+    const files = withLovableProjectScaffold({
+      "src/main.tsx": "custom-main",
+      "package.json": '{"name":"custom"}'
+    });
+    expect(files["src/main.tsx"]).toBe("custom-main");
+    expect(files["package.json"]).toContain('"name":"custom"');
   });
 });

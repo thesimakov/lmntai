@@ -2,6 +2,7 @@
 
 import JSZip from "jszip";
 import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,6 +10,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
+import { SITE_URL } from "@/lib/site";
 import {
   attachVisualPreviewEditor,
   formatVisualPickLabel,
@@ -48,9 +50,53 @@ type PreviewFrameProps = {
   presentationExportsPaid?: boolean;
   /** Отдельный режим «Редактор документа»: без эмуляции устройств, фокус на печатной области */
   previewVariant?: "default" | "document";
+  /** Согласно настройкам /share: «Сделано на Lemnity» под iframe (не для .pptx). */
+  showLemnityBranding?: boolean;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
+type VisualQuickStyles = {
+  padding: string;
+  margin: string;
+  borderRadius: string;
+  borderWidth: string;
+  fontSize: string;
+  width: string;
+  height: string;
+  color: string;
+  backgroundColor: string;
+  fontWeight: string;
+  textAlign: "left" | "center" | "right" | "justify";
+};
+
+function pxToInput(value: string): string {
+  const raw = value.trim();
+  if (!raw || /\s/.test(raw)) return "";
+  const m = raw.match(/^(-?\d+(?:\.\d+)?)px$/i);
+  if (!m) return "";
+  return String(Number(m[1]));
+}
+
+function readQuickStyles(el: HTMLElement): VisualQuickStyles {
+  const doc = el.ownerDocument;
+  const computed = doc.defaultView?.getComputedStyle(el);
+  const alignRaw = (el.style.textAlign || computed?.textAlign || "left").trim().toLowerCase();
+  const textAlign: VisualQuickStyles["textAlign"] =
+    alignRaw === "center" || alignRaw === "right" || alignRaw === "justify" ? alignRaw : "left";
+  return {
+    padding: pxToInput(el.style.padding || computed?.padding || ""),
+    margin: pxToInput(el.style.margin || computed?.margin || ""),
+    borderRadius: pxToInput(el.style.borderRadius || computed?.borderRadius || ""),
+    borderWidth: pxToInput(el.style.borderWidth || computed?.borderWidth || ""),
+    fontSize: pxToInput(el.style.fontSize || computed?.fontSize || ""),
+    width: pxToInput(el.style.width || computed?.width || ""),
+    height: pxToInput(el.style.height || computed?.height || ""),
+    color: (el.style.color || computed?.color || "").trim(),
+    backgroundColor: (el.style.backgroundColor || computed?.backgroundColor || "").trim(),
+    fontWeight: (el.style.fontWeight || computed?.fontWeight || "400").trim(),
+    textAlign
+  };
+}
 
 export function PreviewFrame({
   previewUrl,
@@ -62,7 +108,8 @@ export function PreviewFrame({
   projectKind = null,
   presentationPdfExport = null,
   presentationExportsPaid = false,
-  previewVariant = "default"
+  previewVariant = "default",
+  showLemnityBranding = false
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -71,6 +118,8 @@ export function PreviewFrame({
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeSrc, setIframeSrc] = useState(previewUrl);
   const [visualPickLabel, setVisualPickLabel] = useState<string | null>(null);
+  const [visualQuickStyles, setVisualQuickStyles] = useState<VisualQuickStyles | null>(null);
+  const [visualSelectedCount, setVisualSelectedCount] = useState(0);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const detachEditorRef = useRef<(() => void) | null>(null);
@@ -109,6 +158,8 @@ export function PreviewFrame({
       detachEditorRef.current = null;
       setIframeBlocked(false);
       setVisualPickLabel(null);
+      setVisualQuickStyles(null);
+      setVisualSelectedCount(0);
       return;
     }
 
@@ -127,8 +178,14 @@ export function PreviewFrame({
           imgTargetRef.current = img;
           fileInputRef.current?.click();
         },
-        onSelectionChange: (info) => {
+        onSelectionChange: (info, element, elements) => {
           setVisualPickLabel(info ? formatVisualPickLabel(info) : null);
+          setVisualSelectedCount(elements.length);
+          if (element instanceof HTMLElement) {
+            setVisualQuickStyles(readQuickStyles(element));
+          } else {
+            setVisualQuickStyles(null);
+          }
         }
       });
     }
@@ -169,6 +226,143 @@ export function PreviewFrame({
     ],
     []
   );
+
+  function getSelectedVisualElements(): HTMLElement[] {
+    const doc = iframeRef.current?.contentDocument;
+    if (!doc) return [];
+    return Array.from(doc.querySelectorAll("[data-lemnity-selected='1']")).filter(
+      (node): node is HTMLElement => node instanceof HTMLElement
+    );
+  }
+
+  function getSelectedVisualElement(): HTMLElement | null {
+    const all = getSelectedVisualElements();
+    return all.length > 0 ? all[all.length - 1] : null;
+  }
+
+  function applyQuickStyle(prop: keyof VisualQuickStyles, value: string) {
+    const selected = getSelectedVisualElements();
+    if (selected.length === 0) return;
+    const normalized = value.trim();
+    const cssPx = normalized === "" ? "" : `${normalized}px`;
+    if (prop === "padding") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.padding = cssPx;
+        else el.style.removeProperty("padding");
+      });
+    }
+    if (prop === "margin") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.margin = cssPx;
+        else el.style.removeProperty("margin");
+      });
+    }
+    if (prop === "borderRadius") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.borderRadius = cssPx;
+        else el.style.removeProperty("border-radius");
+      });
+    }
+    if (prop === "borderWidth") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.borderWidth = cssPx;
+        else el.style.removeProperty("border-width");
+      });
+    }
+    if (prop === "fontSize") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.fontSize = cssPx;
+        else el.style.removeProperty("font-size");
+      });
+    }
+    if (prop === "width") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.width = cssPx;
+        else el.style.removeProperty("width");
+      });
+    }
+    if (prop === "height") {
+      selected.forEach((el) => {
+        if (cssPx) el.style.height = cssPx;
+        else el.style.removeProperty("height");
+      });
+    }
+    if (prop === "color") {
+      selected.forEach((el) => {
+        if (normalized) el.style.color = normalized;
+        else el.style.removeProperty("color");
+      });
+    }
+    if (prop === "backgroundColor") {
+      selected.forEach((el) => {
+        if (normalized) el.style.backgroundColor = normalized;
+        else el.style.removeProperty("background-color");
+      });
+    }
+    if (prop === "fontWeight") {
+      selected.forEach((el) => {
+        if (normalized) el.style.fontWeight = normalized;
+        else el.style.removeProperty("font-weight");
+      });
+    }
+    if (prop === "textAlign") {
+      selected.forEach((el) => {
+        if (normalized) el.style.textAlign = normalized as VisualQuickStyles["textAlign"];
+        else el.style.removeProperty("text-align");
+      });
+    }
+    setVisualQuickStyles((prev) => {
+      const next: VisualQuickStyles = {
+        ...(prev ?? {
+          padding: "",
+          margin: "",
+          borderRadius: "",
+          borderWidth: "",
+          fontSize: "",
+          width: "",
+          height: "",
+          color: "",
+          backgroundColor: "",
+          fontWeight: "400",
+          textAlign: "left"
+        })
+      };
+      if (prop === "padding") next.padding = normalized;
+      else if (prop === "margin") next.margin = normalized;
+      else if (prop === "borderRadius") next.borderRadius = normalized;
+      else if (prop === "borderWidth") next.borderWidth = normalized;
+      else if (prop === "fontSize") next.fontSize = normalized;
+      else if (prop === "width") next.width = normalized;
+      else if (prop === "height") next.height = normalized;
+      else if (prop === "color") next.color = normalized;
+      else if (prop === "backgroundColor") next.backgroundColor = normalized;
+      else if (prop === "fontWeight") next.fontWeight = normalized || "400";
+      else if (prop === "textAlign") {
+        next.textAlign = normalized === "center" || normalized === "right" || normalized === "justify" ? normalized : "left";
+      }
+      return next;
+    });
+  }
+
+  function resetQuickStyles() {
+    const all = getSelectedVisualElements();
+    if (all.length === 0) return;
+    all.forEach((selected) => {
+      selected.style.removeProperty("padding");
+      selected.style.removeProperty("margin");
+      selected.style.removeProperty("border-radius");
+      selected.style.removeProperty("border-width");
+      selected.style.removeProperty("font-size");
+      selected.style.removeProperty("width");
+      selected.style.removeProperty("height");
+      selected.style.removeProperty("color");
+      selected.style.removeProperty("background-color");
+      selected.style.removeProperty("font-weight");
+      selected.style.removeProperty("text-align");
+    });
+    const primary = getSelectedVisualElement();
+    setVisualQuickStyles(primary ? readQuickStyles(primary) : null);
+  }
 
   async function downloadBlobFromResponse(response: Response, filename: string) {
     if (!response.ok) {
@@ -525,6 +719,186 @@ export function PreviewFrame({
               : `${t("build_visual_read_only_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`}
         </p>
       ) : null}
+      {visualEditMode && !isPptx && visualEditPersist && !iframeBlocked && visualQuickStyles ? (
+        <div className="shrink-0 rounded-md border border-border bg-muted/30 p-2">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-foreground">{t("build_visual_quick_styles")}</p>
+              <p className="text-[11px] text-muted-foreground">
+                {t("build_visual_multi_select_hint")}
+                {visualSelectedCount > 0
+                  ? ` · ${t("build_visual_selected_count").replace("{count}", String(visualSelectedCount))}`
+                  : ""}
+              </p>
+            </div>
+            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={resetQuickStyles}>
+              {t("build_visual_style_reset")}
+            </Button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_padding")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.padding}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, padding: next } : prev));
+                  applyQuickStyle("padding", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="0"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_margin")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.margin}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, margin: next } : prev));
+                  applyQuickStyle("margin", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="0"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_radius")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.borderRadius}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, borderRadius: next } : prev));
+                  applyQuickStyle("borderRadius", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="0"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_border_width")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.borderWidth}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, borderWidth: next } : prev));
+                  applyQuickStyle("borderWidth", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="0"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_font_size")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.fontSize}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, fontSize: next } : prev));
+                  applyQuickStyle("fontSize", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="16"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_font_weight")}</span>
+              <select
+                value={visualQuickStyles.fontWeight}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, fontWeight: next } : prev));
+                  applyQuickStyle("fontWeight", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+              >
+                <option value="300">300</option>
+                <option value="400">400</option>
+                <option value="500">500</option>
+                <option value="600">600</option>
+                <option value="700">700</option>
+                <option value="800">800</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_width")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.width}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, width: next } : prev));
+                  applyQuickStyle("width", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="auto"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_height")}</span>
+              <input
+                inputMode="decimal"
+                value={visualQuickStyles.height}
+                onChange={(e) => {
+                  const next = e.target.value.replace(/[^\d.-]/g, "");
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, height: next } : prev));
+                  applyQuickStyle("height", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="auto"
+              />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_color")}</span>
+              <input
+                value={visualQuickStyles.color}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, color: next } : prev));
+                  applyQuickStyle("color", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="#111827 / rgb(17,24,39)"
+              />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_background")}</span>
+              <input
+                value={visualQuickStyles.backgroundColor}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, backgroundColor: next } : prev));
+                  applyQuickStyle("backgroundColor", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+                placeholder="#ffffff / rgba(255,255,255,.9)"
+              />
+            </label>
+            <label className="space-y-1 sm:col-span-2">
+              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_text_align")}</span>
+              <select
+                value={visualQuickStyles.textAlign}
+                onChange={(e) => {
+                  const next = e.target.value as VisualQuickStyles["textAlign"];
+                  setVisualQuickStyles((prev) => (prev ? { ...prev, textAlign: next } : prev));
+                  applyQuickStyle("textAlign", next);
+                }}
+                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
+              >
+                <option value="left">{t("build_visual_align_left")}</option>
+                <option value="center">{t("build_visual_align_center")}</option>
+                <option value="right">{t("build_visual_align_right")}</option>
+                <option value="justify">{t("build_visual_align_justify")}</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      ) : null}
 
       {isPptx ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-border bg-muted/20 p-8 text-center">
@@ -579,6 +953,18 @@ export function PreviewFrame({
           </div>
         </div>
       )}
+      {!isPptx && showLemnityBranding ? (
+        <footer className="flex shrink-0 items-center justify-center border-t border-border bg-muted/20 px-2 py-1.5">
+          <Link
+            href={SITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
+          >
+            {t("build_preview_footer_made_on")}
+          </Link>
+        </footer>
+      ) : null}
     </div>
   );
 }
