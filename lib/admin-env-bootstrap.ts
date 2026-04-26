@@ -71,19 +71,45 @@ export async function tryAdminEnvCredentialsLogin(
   emailLower: string,
   plainPassword: string
 ): Promise<{ id: string; email: string; name: string } | null> {
+  // #region agent log
+  const _dbg = (reason: string, extra?: Record<string, unknown>) => {
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+      body: JSON.stringify({
+        sessionId: "f7c7f0",
+        hypothesisId: "D",
+        location: "lib/admin-env-bootstrap.ts:tryAdminEnvCredentialsLogin",
+        message: reason,
+        data: {
+          hasAdminEmailInEnv: Boolean(getConfiguredAdminEmail()),
+          hasAdminPasswordInEnv: Boolean(getConfiguredAdminPassword()),
+          nodeEnv: process.env.NODE_ENV ?? "unset",
+          adminBootstrapFlag: process.env.ADMIN_BOOTSTRAP_ENABLED ?? "unset",
+          ...extra
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+  };
+  // #endregion
   if (!getConfiguredAdminEmail() || !getConfiguredAdminPassword()) {
+    _dbg("no_admin_env");
     return null;
   }
   const allow = process.env.NODE_ENV === "development" || envFlag("ADMIN_BOOTSTRAP_ENABLED");
   if (!allow) {
+    _dbg("bootstrap_not_allowed", { allowDev: process.env.NODE_ENV === "development" });
     return null;
   }
   const targetEmail = getConfiguredAdminEmail()!;
   const targetPass = getConfiguredAdminPassword()!;
   if (emailLower !== targetEmail) {
+    _dbg("email_mismatch");
     return null;
   }
   if (!safeEqualString(plainPassword, targetPass)) {
+    _dbg("password_mismatch");
     return null;
   }
 
@@ -102,6 +128,9 @@ export async function tryAdminEnvCredentialsLogin(
       }
     });
     await ensureUserVirtualWorkspace(created.id);
+    // #region agent log
+    _dbg("try_admin_ok_created", { isNew: true });
+    // #endregion
     return {
       id: created.id,
       email: created.email,
@@ -119,6 +148,9 @@ export async function tryAdminEnvCredentialsLogin(
     }
   });
   await ensureUserVirtualWorkspace(existing.id);
+  // #region agent log
+  _dbg("try_admin_ok_updated", { isNew: false });
+  // #endregion
   return {
     id: existing.id,
     email: existing.email,

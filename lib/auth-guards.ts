@@ -135,12 +135,54 @@ export async function requireAdminUser(): Promise<GuardResult<DbUserContext>> {
 export async function requireStaffPanel(): Promise<GuardResult<DbUserContext>> {
   const guard = await requireDbUser();
   if (!guard.ok) {
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+      body: JSON.stringify({
+        sessionId: "f7c7f0",
+        hypothesisId: "C",
+        location: "lib/auth-guards.ts:requireStaffPanel",
+        message: "requireDbUser_not_ok",
+        data: { status: guard.status },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
     return guard;
   }
   const r = guard.data.user.role;
   if (r !== "ADMIN" && r !== "MANAGER") {
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+      body: JSON.stringify({
+        sessionId: "f7c7f0",
+        hypothesisId: "B",
+        location: "lib/auth-guards.ts:requireStaffPanel",
+        message: "forbidden_not_staff",
+        data: { role: r },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
     return { ok: false, status: 403, message: "Forbidden" };
   }
+  // #region agent log
+  fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+    body: JSON.stringify({
+      sessionId: "f7c7f0",
+      hypothesisId: "B",
+      location: "lib/auth-guards.ts:requireStaffPanel",
+      message: "staff_ok",
+      data: { role: r },
+      timestamp: Date.now()
+    })
+  }).catch(() => {});
+  // #endregion
   return guard;
 }
 

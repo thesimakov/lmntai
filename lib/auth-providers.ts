@@ -156,12 +156,54 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
           }
           const adminFromEnv = await tryAdminEnvCredentialsLogin(emailLower, password);
           if (adminFromEnv) {
+            // #region agent log
+            fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+              body: JSON.stringify({
+                sessionId: "f7c7f0",
+                hypothesisId: "A",
+                location: "lib/auth-providers.ts:credentials:authorize",
+                message: "login_via_admin_env",
+                data: { userId: adminFromEnv.id },
+                timestamp: Date.now()
+              })
+            }).catch(() => {});
+            // #endregion
             return adminFromEnv;
           }
           const user = await loginWithPassword(emailLower, password);
           if (!user) {
+            // #region agent log
+            fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+              body: JSON.stringify({
+                sessionId: "f7c7f0",
+                hypothesisId: "A",
+                location: "lib/auth-providers.ts:credentials:authorize",
+                message: "login_failed_both_paths",
+                data: {},
+                timestamp: Date.now()
+              })
+            }).catch(() => {});
+            // #endregion
             return null;
           }
+          // #region agent log
+          fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "f7c7f0" },
+            body: JSON.stringify({
+              sessionId: "f7c7f0",
+              hypothesisId: "A",
+              location: "lib/auth-providers.ts:credentials:authorize",
+              message: "login_via_db_password",
+              data: { userId: user.id },
+              timestamp: Date.now()
+            })
+          }).catch(() => {});
+          // #endregion
           try {
             await applyAdminEnvBootstrap(user.id, user.email, password);
           } catch (e) {
