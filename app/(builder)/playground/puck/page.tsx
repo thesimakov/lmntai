@@ -3,32 +3,16 @@
 import { Puck } from "@measured/puck";
 import type { Data } from "@measured/puck";
 import "@measured/puck/puck.css";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { ArrowLeft, ExternalLink, Loader2, PanelRightClose, PanelRightOpen } from "lucide-react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import { defaultLemnityPuckData, lemnityPuckConfig } from "@/lib/puck-lemnity-config";
+import { lemnityPuckConfig } from "@/lib/puck-lemnity-config";
+import { mergePuckData } from "@/lib/puck-lemnity-data";
 import { cn } from "@/lib/utils";
-
-function mergePuckData(loaded: unknown | null | undefined): Data {
-  const base = defaultLemnityPuckData() as Data;
-  if (!loaded || typeof loaded !== "object") return base;
-  const o = loaded as Record<string, unknown>;
-  return {
-    ...base,
-    ...o,
-    root:
-      o.root && typeof o.root === "object"
-        ? {
-            ...((base as { root?: object }).root ?? {}),
-            ...(o.root as object)
-          }
-        : (base as { root: unknown }).root
-  } as Data;
-}
 
 function PlaygroundPuckPageInner() {
   const { t } = useI18n();
@@ -39,6 +23,28 @@ function PlaygroundPuckPageInner() {
 
   const [data, setData] = useState<Data | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [sidePreviewOpen, setSidePreviewOpen] = useState(false);
+  const [previewRev, setPreviewRev] = useState(0);
+
+  const previewIframeSrc = useMemo(() => {
+    if (!sandboxId) return null;
+    const q = new URLSearchParams();
+    q.set("sandboxId", sandboxId);
+    if (sessionId) q.set("sessionId", sessionId);
+    q.set("rev", String(previewRev));
+    q.set("chrome", "none");
+    return `/playground/puck/preview?${q.toString()}`;
+  }, [sandboxId, sessionId, previewRev]);
+
+  /** Полноэкранное превью в новой вкладке (удобно на мобильных, где панель рядом скрыта). */
+  const previewNewTabHref = useMemo(() => {
+    if (!sandboxId) return null;
+    const q = new URLSearchParams();
+    q.set("sandboxId", sandboxId);
+    if (sessionId) q.set("sessionId", sessionId);
+    q.set("rev", String(previewRev));
+    return `/playground/puck/preview?${q.toString()}`;
+  }, [sandboxId, sessionId, previewRev]);
 
   useEffect(() => {
     if (!sandboxId) {
@@ -97,6 +103,7 @@ function PlaygroundPuckPageInner() {
       setData(next);
       try {
         await persist(next);
+        setPreviewRev((n) => n + 1);
         toast.success(t("puck_page_saved"));
       } catch {
         toast.error(t("puck_page_save_failed"));
@@ -155,12 +162,58 @@ function PlaygroundPuckPageInner() {
           </a>
         </Button>
         <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{t("puck_page_title")}</span>
-        <code className="hidden max-w-[40vw] truncate rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs text-muted-foreground sm:block">
+        {previewIframeSrc ? (
+          <>
+            <Button
+              type="button"
+              variant={sidePreviewOpen ? "secondary" : "ghost"}
+              size="sm"
+              className="hidden h-8 gap-1.5 text-xs md:inline-flex"
+              onClick={() => setSidePreviewOpen((v) => !v)}
+              aria-pressed={sidePreviewOpen}
+            >
+              {sidePreviewOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+              {sidePreviewOpen ? t("puck_embed_preview_hide") : t("puck_embed_preview_show")}
+            </Button>
+            {previewNewTabHref ? (
+              <Button type="button" variant="outline" size="sm" className="h-8 gap-1 text-xs md:hidden" asChild>
+                <a href={previewNewTabHref} target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+                  {t("puck_preview_open_tab")}
+                </a>
+              </Button>
+            ) : null}
+          </>
+        ) : null}
+        <code className="hidden max-w-[32vw] truncate rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs text-muted-foreground lg:block">
           puck.json
         </code>
       </div>
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <Puck config={lemnityPuckConfig} data={data} onChange={onChange} onPublish={onPublish} headerTitle={t("puck_page_header")} />
+      <div
+        className={cn(
+          "min-h-0 flex-1 overflow-hidden",
+          sidePreviewOpen && previewIframeSrc && "flex min-w-0 flex-row"
+        )}
+      >
+        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
+          <Puck
+            config={lemnityPuckConfig}
+            data={data}
+            onChange={onChange}
+            onPublish={onPublish}
+            headerTitle={t("puck_page_header")}
+          />
+        </div>
+        {sidePreviewOpen && previewIframeSrc ? (
+          <div className="hidden h-full w-[min(100%,480px)] shrink-0 border-l border-border bg-muted/20 md:block">
+            <iframe
+              key={previewIframeSrc}
+              title={t("puck_iframe_title")}
+              className="h-full w-full min-h-0 border-0"
+              src={previewIframeSrc}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -188,6 +188,4 @@ export const lemnityPuckConfig: Config = {
   }
 };
 
-export function defaultLemnityPuckData() {
-  return { root: { props: { title: "Страница" } }, content: [] as [] };
-}
+export { defaultLemnityPuckData } from "./puck-lemnity-data";
