@@ -47,10 +47,14 @@ vi.mock("@/lib/token-billing", async (importOriginal) => {
 vi.mock("@/lib/lemnity-ai-bridge-config", () => ({
   isLemnityAiBridgeEnabledServer: mocks.isLemnityAiBridgeEnabledServer
 }));
-vi.mock("@/lib/lemnity-ai-prompt-spec", () => ({
-  getProjectKindPromptBuilderContextRu: mocks.getProjectKindPromptBuilderContextRu,
-  isProjectKind: mocks.isProjectKind
-}));
+vi.mock("@/lib/lemnity-ai-prompt-spec", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/lemnity-ai-prompt-spec")>();
+  return {
+    ...actual,
+    getProjectKindPromptBuilderContextRu: mocks.getProjectKindPromptBuilderContextRu,
+    isProjectKind: mocks.isProjectKind
+  };
+});
 vi.mock("@/lib/platform-plan-settings", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/platform-plan-settings")>();
   return {

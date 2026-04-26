@@ -3,6 +3,10 @@ export type PlanStep = {
   description: string;
 };
 
+/** Keep in sync with `lib/prompt-stock-images.ts` → `PROMPT_STOCK_IMAGES_RULES_EN`. */
+const STOCK_IMAGES_GUIDANCE =
+  "Images (hero, sections, cards): use only real HTTPS `src` URLs. For stable placeholders use `https://picsum.photos/seed/<short-ascii-seed>/<width>/<height>`. For editorial photos you may use direct `https://images.unsplash.com/...` URLs; add a visible one-line credit (photographer name + link to their Unsplash profile). Do not use deprecated `source.unsplash.com`, `placehold.co` as default stock, broken `example.com` placeholders, or invented image hosts.";
+
 /** Тип визуального артефакта — планировщик обязан выбрать по смыслу запроса, не по умолчанию. */
 export type ArtifactKind =
   | "landing"
@@ -38,7 +42,8 @@ export const LEMNITY_SYSTEM_PROMPT = [
   "Do NOT default to a SaaS marketing landing (hero + 3 features + pricing) as **one** HTML file unless the user asked for a single file.",
   "Visible copy in the generated UI must use the user's language.",
   "Prefer production-quality typography and semantic HTML/JSX; accessible labels; strong hierarchy; realistic content, no lorem ipsum unless asked.",
-  "For **lovable/landing (multi-file)**: output ` ```tsx:src/...` / ` ```ts:src/...` fences. For **non-React** HTML-only previews (legacy dashboard/docs paths when truly one file is required): one self-contained HTML5 document; otherwise prefer the multi-file app format."
+  "For **lovable/landing (multi-file)**: output ` ```tsx:src/...` / ` ```ts:src/...` fences. For **non-React** HTML-only previews (legacy dashboard/docs paths when truly one file is required): one self-contained HTML5 document; otherwise prefer the multi-file app format.",
+  STOCK_IMAGES_GUIDANCE
 ].join("\n");
 
 const ARTIFACT_KIND_SET = new Set<string>([
@@ -158,6 +163,7 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       "The runtime builds a real .pptx via pptxgen and a matching PDF — not an HTML-first slide deck.",
       copyNote,
       "- Slides: clear titles, concise bullets, one idea per slide; structure must survive export to PPTX/PDF.",
+      "- If you embed slide imagery, follow the same stock-image rules as for web: Picsum seed URLs or Unsplash with credit.",
       "- If this guidance were applied to HTML (it is not for presentation kind), ignore; the executor skips HTML for this artifact_kind."
     ].join("\n"),
     resume: [

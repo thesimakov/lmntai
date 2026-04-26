@@ -1,3 +1,5 @@
+import { PROMPT_STOCK_IMAGES_RULES_EN } from "@/lib/prompt-stock-images";
+
 /**
  * Спецификация промптов Lemnity AI (builder): план, шаги, форматы UI.
  * Совместима с контрактом upstream-планировщика (goal, title, language, steps).
@@ -71,7 +73,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
     multifile
       ? "Output for this mode: a **Vite/Lovable-style** React+TypeScript project as **multiple files** in markdown fences (not one big static HTML). The platform will bundle with esbuild; Tailwind is applied via CDN in the preview — use `className` and Tailwind utility classes only. Use functional components, `import` between files with **relative** paths, entry at `src/main.tsx` (createRoot on `#root`). Prefer splitting UI into `src/components/*.tsx` and shared bits under `lib/` or `src/lib/` when it keeps files readable. No `vite.config` in output unless asked — do not paste an entire `package.json` tree unless a file is required. **Strict:** each file must be ` ```tsx:path/to/File.tsx` or ` ```ts:path/to/file.ts` on the opening fence line (path after colon), then the file body, then closing fence. Include `src/main.tsx` and at least `src/App.tsx`."
       : "Output: one complete HTML5 document (editable preview for document workstreams), embedded CSS (or Tailwind CDN), no React app unless the user explicitly asked for a component tree.",
-    "Accessibility: logical heading order, button/link labels, sufficient contrast."
+    "Accessibility: logical heading order, button/link labels, sufficient contrast.",
+    PROMPT_STOCK_IMAGES_RULES_EN
   ];
 
   const formatBlock = (() => {
@@ -80,7 +83,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         return [
           "Deliverable: **Marketing / product website** as a **React+TS** app (same structure as a real repo: `src/App.tsx` composes sections; extract repeated blocks to `src/components/…`).",
           "Structure: header/nav, hero, value props, social proof, feature grid, pricing or CTA block, FAQ, footer — implemented as components/sections, not one giant return.",
-          "Use semantic sections with clear `id` or `data-section` for anchor nav."
+          "Use semantic sections with clear `id` or `data-section` for anchor nav.",
+          "Apply the global stock-image URL rules (Picsum seed URLs or Unsplash CDN + credit) for any photos in the layout."
         ];
       case "presentation":
         return [
@@ -100,7 +104,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         return [
           "Deliverable: **UI/UX design concept** in React+TS: design system / component gallery as real components (e.g. `src/components/ui/`).",
           "Include: color tokens, typography scale, button/input/card variants, empty and error states; spacing notes in comments.",
-          "Compose in `App.tsx` or a `src/pages/DesignSystem.tsx` story layout; emphasize hierarchy and reuse, not a marketing one-pager."
+          "Compose in `App.tsx` or a `src/pages/DesignSystem.tsx` story layout; emphasize hierarchy and reuse, not a marketing one-pager.",
+          "For sample imagery in cards/hero mockups, follow the global stock-image URL rules (Picsum or Unsplash + credit)."
         ];
       case "visitcard":
         return [
@@ -113,7 +118,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Deliverable: **Web app in React + TypeScript** (Lovable-style): component tree, `src/main.tsx` + `src/App.tsx` + extra modules as needed.",
           "Styling: Tailwind utility `className` only (preview injects Tailwind CDN).",
           "Split UI into small files under `src/`; use relative imports; export components as `export function` or `export default` consistently.",
-          "State: `useState` / light logic only — no real backend; mock data in-module if needed."
+          "State: `useState` / light logic only — no real backend; mock data in-module if needed.",
+          "For any photos/illustrations in the UI, follow the global stock-image URL rules."
         ];
       default:
         return [
@@ -145,15 +151,17 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
   if (!kind) return "";
   const m: Record<ProjectKind, string> = {
     website:
-      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML.",
+      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML. **Картинки:** в итоговом промпте заложи рабочие URL — `https://picsum.photos/seed/<латиница>/ширина/высота` или `https://images.unsplash.com/...` с короткой подписью фотографа (имя + ссылка на профиль Unsplash).",
     presentation:
       "презентация как документ: целевые форматы PPTX/PDF; в HTML — редактируемые полноэкранные слайды по одной мысли.",
     resume:
       "резюме как документ: целевые форматы DOCX/PDF; в HTML — редактируемая печатная вёрстка CV, не лендинг.",
-    design: "UI/UX-концепт, дизайн-система, варианты компонентов и состояний.",
-    visitcard: "цифровая визитка, компактный экран, контакты и ссылки.",
+    design:
+      "UI/UX-концепт, дизайн-система, варианты компонентов и состояний. Для примеров картинок в макетах — те же правила URL, что для сайта (Picsum seed или Unsplash + подпись).",
+    visitcard:
+      "цифровая визитка, компактный экран, контакты и ссылки. Фон/фото при необходимости — Picsum seed или Unsplash с подписью.",
     lovable:
-      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера."
+      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Picsum/Unsplash), не выдуманные домены."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }
