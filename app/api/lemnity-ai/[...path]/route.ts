@@ -22,6 +22,7 @@ import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { estimateUsageFromText } from "@/lib/token-billing";
+import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -369,6 +370,17 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       return streamUserSessionsSse(user.id, req.signal);
     }
     if (req.method === "PUT") {
+      const projectGate = await checkProjectCreationAllowed(user.id, user.plan);
+      if (!projectGate.ok) {
+        return Response.json(
+          {
+            code: 403,
+            msg: "PROJECT_LIMIT",
+            data: { limit: projectGate.limit, current: projectGate.current, message: projectGate.message }
+          },
+          { status: 403 }
+        );
+      }
       const upstream = await lemnityAiUpstreamFetch("/sessions", { method: "PUT" });
       const envelope = await readLemnityAiUpstreamEnvelope<{ session_id?: string }>(upstream.clone());
       const sessionId = envelope?.data?.session_id;

@@ -10,6 +10,13 @@ export const MONTHLY_TOKEN_ALLOWANCE: Record<PlanId, number> = {
   TEAM: 2_000_000
 };
 
+/** Максимум одновременных проектов (песочниц / сессий Lemnity AI) по тарифу. */
+export const MAX_ACTIVE_PROJECTS_BY_PLAN: Record<PlanId, number> = {
+  FREE: 1,
+  PRO: 5,
+  TEAM: 15
+};
+
 /**
  * Участников в команде на тарифе Team (дольщики кроме владельца: до 9, всего 10 вместе с вами).
  * Должно совпадать с описанием в тарифах и FAQ.
@@ -31,6 +38,10 @@ export function normalizePlanId(raw: string | null | undefined): PlanId {
 
 export function getMonthlyTokenAllowance(plan: PlanId): number {
   return MONTHLY_TOKEN_ALLOWANCE[plan];
+}
+
+export function getMaxActiveProjectsForPlan(rawPlan: string | null | undefined): number {
+  return MAX_ACTIVE_PROJECTS_BY_PLAN[normalizePlanId(rawPlan)];
 }
 
 export function planAllowsTeamSeats(rawPlan: string | null | undefined): boolean {

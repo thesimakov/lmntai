@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireDbUser } from "@/lib/auth-guards";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { listLemnityAiSessionsForUser } from "@/lib/lemnity-ai-session-links";
+import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -29,7 +30,7 @@ async function getProjects(req: NextRequest) {
         typeof row.created_at === "string" && row.created_at.length > 0 ? row.created_at : updatedAt;
       return {
         id: sessionId,
-        name: row.title?.trim() || "Проект",
+        name: sanitizeProjectTitleForUser(row.title?.trim() || "") || "Проект",
         status: row.status || "pending",
         createdAt,
         updatedAt,
@@ -44,7 +45,7 @@ async function getProjects(req: NextRequest) {
   const rows = await sandboxManager.listSandboxesByOwner(guard.data.user.id);
   const projects = rows.map((row) => ({
     id: row.sandboxId,
-    name: row.title || "Новый проект",
+    name: sanitizeProjectTitleForUser(row.title || "") || "Новый проект",
     status: row.updatedAt === row.createdAt ? "Черновик" : "Готов",
     createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),

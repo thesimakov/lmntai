@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FileCode2, FolderOpen } from "lucide-react";
 
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
 type BuildCodeProps = {
@@ -16,24 +18,46 @@ function isPptxMime(m: string | null | undefined): boolean {
   return m.includes("presentationml") || m.includes("ms-powerpoint");
 }
 
+function sortFileKeys(keys: string[]): string[] {
+  return [...keys].sort((a, b) => {
+    if (a === "generated.txt") return 1;
+    if (b === "generated.txt") return -1;
+    if (a === "puck.json") return 1;
+    if (b === "puck.json") return -1;
+    return a.localeCompare(b, "en", { sensitivity: "base" });
+  });
+}
+
 export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeProps) {
-  const [text, setText] = useState<string>("");
+  const { t } = useI18n();
+  const [files, setFiles] = useState<Record<string, string>>({});
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPptxArtifact, setIsPptxArtifact] = useState(false);
 
+  const sortedKeys = useMemo(() => sortFileKeys(Object.keys(files)), [files]);
+
+  useEffect(() => {
+    if (sortedKeys.length && (selectedPath == null || !files[selectedPath])) {
+      setSelectedPath(sortedKeys[0] ?? null);
+    }
+  }, [sortedKeys, files, selectedPath]);
+
   useEffect(() => {
     if (!sandboxId) {
-      setText("");
+      setFiles({});
       setError(null);
       setIsPptxArtifact(false);
+      setSelectedPath(null);
       return;
     }
 
     if (sandboxId.startsWith("artifact_") && isPptxMime(artifactMimeType)) {
-      setText("");
+      setFiles({});
       setError(null);
       setIsPptxArtifact(true);
+      setSelectedPath(null);
       setLoading(false);
       return;
     }
@@ -54,11 +78,15 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
           if (ct.includes("presentationml") || ct.includes("ms-powerpoint")) {
             if (!cancelled) {
               setIsPptxArtifact(true);
-              setText("");
+              setFiles({});
             }
             return;
           }
-          if (!cancelled) setText(`/* --- index.html --- */\n${await res.text()}`);
+          const text = await res.text();
+          if (!cancelled) {
+            setFiles({ "index.html": text });
+            setSelectedPath("index.html");
+          }
           return;
         }
         const res = await fetch(`/api/sandbox/${sandboxId}?format=json`);
@@ -67,9 +95,10 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
           throw new Error(msg || res.statusText);
         }
         const data = (await res.json()) as { files?: Record<string, string> };
-        const files = data.files ?? {};
-        const parts = Object.entries(files).map(([name, body]) => `/* --- ${name} --- */\n${body}`);
-        if (!cancelled) setText(parts.join("\n\n") || "// Пока нет файлов в песочнице.");
+        const f = data.files ?? {};
+        if (!cancelled) {
+          setFiles(f);
+        }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
       } finally {
@@ -81,6 +110,11 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
       cancelled = true;
     };
   }, [sandboxId, artifactMimeType]);
+
+  const activeBody = selectedPath && files[selectedPath] != null ? files[selectedPath]! : "";
+  const onPickFile = useCallback((path: string) => {
+    setSelectedPath(path);
+  }, []);
 
   if (!sandboxId) {
     return (
@@ -120,14 +154,62 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
     );
   }
 
+  if (sortedKeys.length === 0) {
+    return (
+      <div className={cn("flex h-full min-h-[200px] items-center justify-center text-sm text-muted-foreground", className)}>
+        Пока нет файлов в песочнице.
+      </div>
+    );
+  }
+
   return (
-    <pre
-      className={cn(
-        "h-full max-h-[min(70vh,560px)] overflow-auto rounded-lg border border-border bg-zinc-950 p-4 text-xs text-zinc-100",
-        className
-      )}
+    <div
+      className={cn("flex h-full min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden sm:flex-row", className)}
     >
-      <code>{text}</code>
-    </pre>
+      <div className="flex w-full min-w-0 shrink-0 flex-col border-b border-border sm:w-[min(12rem,40%)] sm:border-b-0 sm:border-r">
+        <div className="flex items-center gap-1.5 border-b border-border/60 bg-muted/30 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          <FolderOpen className="h-3.5 w-3.5" aria-hidden />
+          {t("playground_build_code_files")}
+        </div>
+        <div className="h-[min(32vh,200px)] overflow-y-auto sm:h-full sm:min-h-0 sm:flex-1 sm:overflow-y-auto">
+          <nav className="flex flex-col p-1" aria-label={t("playground_build_code_files")}>
+            {sortedKeys.map((path) => {
+              const isGen = path === "generated.txt";
+              const isSecondary = isGen || path === "puck.json";
+              return (
+                <button
+                  key={path}
+                  type="button"
+                  onClick={() => onPickFile(path)}
+                  className={cn(
+                    "flex w-full min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-xs",
+                    isSecondary && "text-muted-foreground",
+                    selectedPath === path
+                      ? "bg-accent font-medium text-accent-foreground"
+                      : "hover:bg-muted/80"
+                  )}
+                  title={path}
+                >
+                  <FileCode2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  <span className="min-w-0 flex-1 truncate font-mono leading-snug">
+                    {isGen ? t("playground_build_code_generated") : path}
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
+      </div>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div className="shrink-0 border-b border-border/60 bg-muted/20 px-2 py-1 text-[10px] font-mono text-muted-foreground">
+          {selectedPath ?? "—"}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <pre className="m-0 p-3 text-xs leading-relaxed text-zinc-100">
+            <code>{activeBody}</code>
+          </pre>
+        </div>
+      </div>
+    </div>
   );
 }

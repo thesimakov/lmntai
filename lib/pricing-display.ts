@@ -8,6 +8,8 @@ import {
 } from "@/lib/referrals-currency";
 
 const SUBSCRIPTION_PRICES_RUB_MINOR = {
+  /** Старт — 99 ₽ / мес (база для конвертации в USD/TJS) */
+  starter: 9_900,
   pro: 199_000,
   team: 499_000,
 } as const;
@@ -18,6 +20,7 @@ export type PricingDisplayPayload = {
   language: UiLanguage;
   currency: ReferralCurrency;
   subscriptions: {
+    starter: { amountMinor: number; formatted: string };
     pro: { amountMinor: number; formatted: string };
     team: { amountMinor: number; formatted: string };
   };
@@ -35,6 +38,11 @@ export function buildPricingDisplay(rawLang: string | null | undefined): Pricing
   const currency = referralCurrencyForLanguage(language);
   const locale = localeForLanguage(language);
 
+  const starterAmountMinor = convertMinorCurrency(
+    SUBSCRIPTION_PRICES_RUB_MINOR.starter,
+    "RUB",
+    currency,
+  ).amountMinor;
   const proAmountMinor = convertMinorCurrency(
     SUBSCRIPTION_PRICES_RUB_MINOR.pro,
     "RUB",
@@ -60,6 +68,10 @@ export function buildPricingDisplay(rawLang: string | null | undefined): Pricing
     language,
     currency,
     subscriptions: {
+      starter: {
+        amountMinor: starterAmountMinor,
+        formatted: formatCurrencyMinor(starterAmountMinor, currency, locale),
+      },
       pro: {
         amountMinor: proAmountMinor,
         formatted: formatCurrencyMinor(proAmountMinor, currency, locale),

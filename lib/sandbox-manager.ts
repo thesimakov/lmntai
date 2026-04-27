@@ -14,11 +14,13 @@ import {
   lemnityBuilderSupervisorStatus,
   type LemnityBuilderSandboxResponse
 } from "@/lib/lemnity-builder-sandbox-api";
+import { materializeRemoteImagesInProject } from "@/lib/materialize-remote-images";
 import {
   bundleLovableToPreviewHtml,
   parseLovableFencedFiles,
   withLovableProjectScaffold
 } from "@/lib/lovable-bundler";
+import { clearSandboxImageAssets } from "@/lib/sandbox-image-assets";
 import {
   dockerRegistry,
   isLemnityAiSandboxDockerEnabled,
@@ -342,11 +344,19 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
 
 /** Явное удаление контейнера (например, после сохранения проекта). */
 export async function destroySandbox(sandboxId: string): Promise<void> {
+  clearSandboxImageAssets(sandboxId);
   if (!isLemnityAiSandboxDockerEnabled()) {
     memoryStore.delete(sandboxId);
     return;
   }
   await destroyDockerSandbox(sandboxId);
+}
+
+function getSandboxOwnerId(sandboxId: string): string | undefined {
+  if (isLemnityAiSandboxDockerEnabled()) {
+    return dockerRegistry.get(sandboxId)?.ownerId;
+  }
+  return memoryStore.get(sandboxId)?.ownerId;
 }
 
 export function getSandboxMode(): SandboxMode {
@@ -406,7 +416,15 @@ export const sandboxManager = {
     if (!parsed) {
       return this.applyCode(sandboxId, code);
     }
-    const projectFiles = withLovableProjectScaffold(parsed);
+    let projectFiles = withLovableProjectScaffold(parsed);
+    const ownerId = getSandboxOwnerId(sandboxId);
+    if (ownerId) {
+      const { files } = await materializeRemoteImagesInProject(projectFiles, {
+        sandboxId,
+        userId: ownerId
+      });
+      projectFiles = files;
+    }
     const html = await bundleLovableToPreviewHtml(projectFiles);
     if (!html) {
       return this.applyCode(sandboxId, code);

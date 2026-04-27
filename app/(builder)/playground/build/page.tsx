@@ -41,6 +41,8 @@ import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
 import type { StreamEvent } from "@/types/build-stream";
+import { isLovableFileFenceDelta, shouldCollapseAssistantCodeDump } from "@/lib/chat-artifact-ui";
+import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 
 type LemnityAiBridgeEnvelope<T> = {
   code: number;
@@ -329,8 +331,9 @@ export default function PromptBuildPage() {
   const settingsProjectTitle = useMemo(() => {
     const raw = finalPrompt.trim() || idea.trim();
     if (!raw) return "";
-    if (raw.length > 120) return `${raw.slice(0, 117)}…`;
-    return raw;
+    const cleaned = sanitizeProjectTitleForUser(raw);
+    if (cleaned.length > 120) return `${cleaned.slice(0, 117)}…`;
+    return cleaned;
   }, [finalPrompt, idea]);
 
   const handlePublishPreview = useCallback(() => {
@@ -450,43 +453,49 @@ export default function PromptBuildPage() {
     });
   }, [createMessageId]);
 
-  const pushBridgeAssistantMessage = useCallback((content: string) => {
+  const pushBridgeAssistantMessage = useCallback(
+    (content: string) => {
     const normalized = content.trim();
     if (!normalized) return;
+    const forChat = shouldCollapseAssistantCodeDump(normalized)
+      ? t("playground_chat_code_moved_to_code_tab")
+      : normalized;
     setMessages((prev) => {
       const existingId = bridgeAssistantMessageIdRef.current;
       if (!existingId) {
         const id = createMessageId();
         bridgeAssistantMessageIdRef.current = id;
-        return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
+        return [...prev, { id, role: "assistant", content: forChat, sentAt: Date.now() }];
       }
 
       const idx = prev.findIndex((m) => m.id === existingId);
       if (idx === -1) {
         const id = createMessageId();
         bridgeAssistantMessageIdRef.current = id;
-        return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
+        return [...prev, { id, role: "assistant", content: forChat, sentAt: Date.now() }];
       }
 
       if (!bridgeSawDeltaRef.current) {
         const next = [...prev];
-        next[idx] = { ...next[idx], content: normalized };
+        next[idx] = { ...next[idx], content: forChat };
         return next;
       }
 
       const current = prev[idx].content.trim();
-      if (normalized === current) return prev;
-      if (normalized.startsWith(current) || current.startsWith(normalized)) {
+      if (forChat === current) return prev;
+      if (forChat.startsWith(current) || current.startsWith(forChat)) {
         const next = [...prev];
-        next[idx] = { ...next[idx], content: normalized };
+        next[idx] = { ...next[idx], content: forChat };
         return next;
       }
 
       const id = createMessageId();
       bridgeAssistantMessageIdRef.current = id;
-      return [...prev, { id, role: "assistant", content: normalized, sentAt: Date.now() }];
+      return [...prev, { id, role: "assistant", content: forChat, sentAt: Date.now() }];
     });
-  }, [createMessageId]);
+  },
+    [createMessageId, t]
+  );
 
   const loadLemnityAiSession = useCallback(
     async (sessionId: string) => {
@@ -509,12 +518,19 @@ export default function PromptBuildPage() {
           payload.events?.filter(
             (event) => event?.event === "message" && typeof event.data?.content === "string"
           ) ?? [];
-        const nextMessages: ChatMessage[] = evs.map((event, i) => ({
-          id: `${Date.now()}-${i}-${Math.random().toString(16).slice(2)}`,
-          role: event.data?.role === "user" ? "user" : "assistant",
-          content: event.data?.content || "",
-          sentAt: Date.now() - (evs.length - 1 - i) * 2000
-        }));
+        const nextMessages: ChatMessage[] = evs.map((event, i) => {
+          const raw = typeof event.data?.content === "string" ? event.data.content : "";
+          const content =
+            event.data?.role === "user" || !shouldCollapseAssistantCodeDump(raw)
+              ? raw
+              : t("playground_chat_code_moved_to_code_tab");
+          return {
+            id: `${Date.now()}-${i}-${Math.random().toString(16).slice(2)}`,
+            role: event.data?.role === "user" ? "user" : "assistant",
+            content,
+            sentAt: Date.now() - (evs.length - 1 - i) * 2000
+          };
+        });
         if (nextMessages.length) {
           setMessages(nextMessages);
           setStage("ready");
@@ -574,36 +590,50 @@ export default function PromptBuildPage() {
         // ignore
       }
     },
-    [applyStreamLog]
+    [applyStreamLog, t]
   );
 
-  const ensureLemnityAiSession = useCallback(async (): Promise<string | null> => {
-    if (lemnityAiSessionId) return lemnityAiSessionId;
+  const ensureLemnityAiSession = useCallback(async (): Promise<
+    { ok: true; sessionId: string } | { ok: false; message: string }
+  > => {
+    if (lemnityAiSessionId) return { ok: true, sessionId: lemnityAiSessionId };
     try {
       const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, {
         method: "PUT",
         credentials: "include"
       });
-      if (!res.ok) return null;
+      if (res.status === 403) {
+        const j = (await res.json().catch(() => null)) as {
+          msg?: string;
+          data?: { message?: string };
+        } | null;
+        const msg =
+          j?.msg === "PROJECT_LIMIT" && typeof j?.data?.message === "string"
+            ? j.data.message
+            : t("playground_session_create_error");
+        return { ok: false, message: msg };
+      }
+      if (!res.ok) return { ok: false, message: t("playground_session_create_error") };
       const envelope = (await res.json()) as LemnityAiBridgeEnvelope<{ session_id?: string }>;
       const createdId = envelope?.data?.session_id;
-      if (!createdId) return null;
+      if (!createdId) return { ok: false, message: t("playground_session_create_error") };
       setLemnityAiSessionId(createdId);
       router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
-      return createdId;
+      return { ok: true, sessionId: createdId };
     } catch {
-      return null;
+      return { ok: false, message: t("playground_session_create_error") };
     }
-  }, [lemnityAiSessionId, router]);
+  }, [lemnityAiSessionId, router, t]);
 
   const sendLemnityAiChat = useCallback(
     async (messagePayload: string) => {
       pushRecent(messagePayload.slice(0, 120));
-      const sid = await ensureLemnityAiSession();
-      if (!sid) {
-        push("assistant", "❌ Не удалось создать сессию Lemnity AI.");
+      const ensured = await ensureLemnityAiSession();
+      if (ensured.ok === false) {
+        push("assistant", `❌ ${ensured.message}`);
         return;
       }
+      const sid = ensured.sessionId;
 
       beginInterfaceBuildTiming();
       setIsGenerating(true);
@@ -681,7 +711,9 @@ export default function PromptBuildPage() {
                     ? data.text
                     : "";
               if (piece.length > 0) {
-                if (data.kind !== "artifact") {
+                const isArtifactKind = data.kind === "artifact";
+                const isFence = !isArtifactKind && isLovableFileFenceDelta(piece);
+                if (!isArtifactKind && !isFence) {
                   bridgeSawDeltaRef.current = true;
                   appendBridgeAssistantChunk(piece);
                 }
@@ -834,6 +866,18 @@ export default function PromptBuildPage() {
         }
       } finally {
         if (isCurrentRequest()) {
+          const bridgeIdToCollapse = bridgeAssistantMessageIdRef.current;
+          if (bridgeIdToCollapse) {
+            setMessages((prev) => {
+              const idx = prev.findIndex((m) => m.id === bridgeIdToCollapse);
+              if (idx === -1) return prev;
+              const c = prev[idx].content;
+              if (!shouldCollapseAssistantCodeDump(c)) return prev;
+              const next = [...prev];
+              next[idx] = { ...next[idx], content: t("playground_chat_code_moved_to_code_tab") };
+              return next;
+            });
+          }
           bridgeAssistantMessageIdRef.current = null;
           bridgeSawDeltaRef.current = false;
           finalizeInterfaceBuildTiming();
@@ -857,7 +901,8 @@ export default function PromptBuildPage() {
       loadLemnityAiSession,
       projectKind,
       push,
-      pushBridgeAssistantMessage
+      pushBridgeAssistantMessage,
+      t
     ]
   );
 
@@ -1734,8 +1779,12 @@ export default function PromptBuildPage() {
                   />
                 </div>
               ) : (
-                <div className="min-h-0 flex-1 overflow-hidden rounded-xl border border-border bg-background p-4">
-                  <BuildCode sandboxId={sandboxId} artifactMimeType={previewArtifactMime} />
+                <div className="flex h-full min-h-[280px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background p-2 sm:p-3">
+                  <BuildCode
+                    className="min-h-0 flex-1"
+                    sandboxId={sandboxId}
+                    artifactMimeType={previewArtifactMime}
+                  />
                 </div>
               )}
             </div>

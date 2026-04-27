@@ -194,11 +194,23 @@ export function Pricing() {
       : localeForLanguage(lang)
     const currency = displayPricing?.currency
 
+    const starterLine =
+      currency && displayPricing
+        ? {
+            price: displayPricing.subscriptions.starter.formatted,
+            period: t("pricing_plan_starter_period"),
+          }
+        : {
+            price: t("pricing_plan_starter_price"),
+            period: t("pricing_plan_starter_period"),
+          }
+
+    const starterBadgeRaw = t("pricing_plan_starter_badge").trim()
     const starter = {
       id: "starter" as const,
       name: t("pricing_plan_starter_name"),
-      price: t("pricing_plan_starter_price"),
-      period: t("pricing_plan_starter_period"),
+      price: starterLine.price,
+      period: starterLine.period,
       subline: undefined as string | undefined,
       discount: undefined as string | undefined,
       description: t("pricing_plan_starter_desc"),
@@ -210,7 +222,7 @@ export function Pricing() {
       cta: t("pricing_plan_starter_cta"),
       current: true,
       highlighted: false,
-      badge: t("pricing_plan_starter_badge"),
+      badge: starterBadgeRaw || undefined,
     }
 
     const proLineBase =
@@ -425,11 +437,11 @@ export function Pricing() {
       ) : null}
 
       {showBilling ? (
-        <div className="mx-auto mb-8 flex w-full max-w-md flex-col gap-2 sm:flex-row sm:items-end">
-          <div className="min-w-0 flex-1">
-            <label className="mb-1 block text-left text-xs font-medium text-muted-foreground">
-              {t("pricing_promo_label")}
-            </label>
+        <div className="mx-auto mb-8 w-full max-w-md">
+          <label className="mb-1 block text-left text-xs font-medium text-muted-foreground">
+            {t("pricing_promo_label")}
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
             <Input
               value={promoInput}
               onChange={(e) => {
@@ -437,20 +449,24 @@ export function Pricing() {
                 if (promoError) setPromoError(null)
               }}
               placeholder={t("pricing_promo_placeholder")}
-              className="rounded-xl border-border/60"
+              className="min-w-0 flex-1 rounded-xl border-border/60"
               autoComplete="off"
             />
-            {promoError ? <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">{promoError}</p> : null}
+            <Button
+              type="button"
+              variant="secondary"
+              className="h-10 w-full shrink-0 rounded-xl sm:w-auto"
+              disabled={promoLoading}
+              onClick={() => void applyPromoWithCode(promoInput)}
+            >
+              {promoLoading ? "…" : t("pricing_promo_apply")}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="secondary"
-            className="shrink-0 rounded-xl"
-            disabled={promoLoading}
-            onClick={() => void applyPromoWithCode(promoInput)}
-          >
-            {promoLoading ? "…" : t("pricing_promo_apply")}
-          </Button>
+          <div className="pt-1" aria-live="polite">
+            {promoError ? (
+              <p className="text-xs text-amber-600 dark:text-amber-400">{promoError}</p>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -464,7 +480,7 @@ export function Pricing() {
             transition={{ duration: 0.4, delay: index * 0.1 }}
             whileHover={{ y: -4 }}
             className={cn(
-              "relative flex h-full flex-col overflow-hidden rounded-2xl p-6 transition-all duration-300",
+              "relative flex h-full flex-col overflow-visible rounded-2xl p-6 transition-all duration-300",
               plan.highlighted
                 ? "gradient-border bg-muted/30 shadow-lg shadow-purple-500/10"
                 : "glass glass-hover"
@@ -472,7 +488,7 @@ export function Pricing() {
           >
             {/* Badge */}
             {plan.badge ? (
-              <div className="absolute right-4 top-4 max-w-[10rem] text-right sm:max-w-none">
+              <div className="absolute right-4 top-0 z-10 max-w-[10rem] -translate-y-2 text-right sm:max-w-none sm:-translate-y-2.5">
                 <span
                   className={cn(
                     "inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium",

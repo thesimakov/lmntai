@@ -147,11 +147,15 @@ function GeneratingState({
         <p className="mt-2 max-w-md text-balance text-sm text-muted-foreground">
           {t("playground_right_generating_line2")}
         </p>
-        <div className="relative z-10 mt-3 flex w-full max-w-lg flex-col items-center">
-          <div className="w-full max-h-[min(48vh,340px)] min-h-[180px]">
+        <div
+          className={cn(
+            "relative z-10 mt-10 flex w-full max-w-lg flex-col items-center rounded-2xl border border-violet-400/45 bg-gradient-to-b from-violet-500/[0.14] via-fuchsia-500/[0.07] to-background/95 p-5 shadow-[0_12px_48px_-12px_rgba(139,92,246,0.45)] ring-1 ring-violet-400/20 dark:border-violet-400/35 dark:from-violet-500/[0.18] dark:shadow-[0_12px_48px_-12px_rgba(139,92,246,0.35)] dark:ring-violet-300/15"
+          )}
+        >
+          <div className="w-full max-h-[min(48vh,340px)] min-h-[200px]">
             <CodepenIsometricBuildLoader />
           </div>
-          <LemnityAiWireframeBlocks animated className="mt-3 w-full" />
+          <LemnityAiWireframeBlocks animated className="mt-4 w-full opacity-95" />
         </div>
         <div className="absolute bottom-0 left-0 right-0 border-t border-border/80 bg-background/80 px-4 py-3 backdrop-blur-sm">
           <div className="mx-auto flex max-w-md items-center gap-3">

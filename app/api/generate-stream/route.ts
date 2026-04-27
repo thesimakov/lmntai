@@ -10,6 +10,7 @@ import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
 import { buildRouterGenerationPrompt, isProjectKind, shouldUseLovableBundler } from "@/lib/lemnity-ai-prompt-spec";
+import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -41,6 +42,11 @@ async function postGenerateStream(req: NextRequest) {
   const minStreamBalance = await getEffectiveStreamMinimum(user.plan);
   if (!hasEnoughTokens(user, minStreamBalance)) {
     return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+  }
+
+  const projectGate = await checkProjectCreationAllowed(user.id, user.plan);
+  if (!projectGate.ok) {
+    return new Response(projectGate.message, { status: projectGate.status });
   }
 
   const body = (await req.json().catch(() => null)) as

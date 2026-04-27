@@ -193,11 +193,11 @@ export const messages = {
     team_cancel: 'Отмена',
     team_delete_confirm: 'Удалить',
     team_seats_caption_team:
-      'участников в команде (тариф Team: до __N__ мест, включая вас; на Starter и Pro приглашения не входят).',
+      'участников в команде (тариф «Команда»: до __N__ мест, включая вас; на «Старт» и «Про» приглашения не входят).',
     team_seats_caption_starter_pro:
-      'Совместные приглашения — только на тарифе Team (до __N__ мест). На Starter (FREE) и Pro — отдельная команда не предусмотрена.',
+      'Совместные приглашения — только на тарифе «Команда» (до __N__ мест). На «Старт» и «Про» отдельная команда не предусмотрена.',
     team_upsell_non_team:
-      'Приглашения коллег доступны на тарифе Team — до __N__ участников. Перейдите к оформлению в разделе «Тарифы».',
+      'Приглашения коллег доступны на тарифе «Команда» — до __N__ участников. Перейдите к оформлению в разделе «Тарифы».',
     team_role_dialog_title: 'Роль участника',
     team_role_dialog_desc: 'Информация о пользователе и изменение роли.',
     team_role_dialog_status: 'Статус',
@@ -207,12 +207,12 @@ export const messages = {
     team_role_dialog_save: 'Сохранить',
     pricing_title: 'Тарифы',
     pricing_subtitle:
-      'Starter — попробовать интерфейс; Pro — рабочий тариф для фриланса и микробизнеса; Team — агентства и команды. Пакеты токенов — без подписки.',
+      'Старт — попробовать интерфейс; Про — рабочий тариф для фриланса и микробизнеса; Команда — агентства и команды. Пакеты токенов — без подписки.',
     pricing_header_lead:
       'Три уровня подписки — разные лимиты токенов и возможностей. Сравните планы и выберите подходящий уровень.',
-    pricing_header_starter: 'Starter — песочница: попробовать продукт без экспорта.',
-    pricing_header_pro: 'Pro — рабочий тариф для фриланса и микробизнеса.',
-    pricing_header_team: 'Team — агентства и команды, совместная работа.',
+    pricing_header_starter: 'Старт — песочница: попробовать продукт без экспорта.',
+    pricing_header_pro: 'Про — рабочий тариф для фриланса и микробизнеса.',
+    pricing_header_team: 'Команда — агентства и команды, совместная работа.',
     pricing_header_packs_note: 'Токены можно докупить отдельно — без обязательной годовой подписки на пакет.',
     pricing_monthly_note:
       'Валюта отображения зависит от языка интерфейса: русский — ₽, English — $, тоҷикӣ — TJS. Пересчёт по актуальному курсу.',
@@ -233,19 +233,19 @@ export const messages = {
     pricing_billing_per_month_mean: ' /мес в среднем',
     pricing_faq_title: 'Частые вопросы',
 
-    pricing_plan_starter_name: 'Starter',
-    pricing_plan_starter_badge: 'Бесплатно',
-    pricing_plan_starter_price: '0 ₽',
-    pricing_plan_starter_period: '',
+    pricing_plan_starter_name: 'Старт',
+    pricing_plan_starter_badge: '',
+    pricing_plan_starter_price: '99 ₽',
+    pricing_plan_starter_period: '/мес',
     pricing_plan_starter_desc:
-      'Попробовать интерфейс при жёстких лимитах — с явным стимулом перейти на Pro.',
-    pricing_plan_starter_feat_1: '10 000 токенов в месяц',
-    pricing_plan_starter_feat_2: 'Песочница: предпросмотр, водяной знак',
+      'Попробовать интерфейс при жёстких лимитах — с явным стимулом перейти на Про.',
+    pricing_plan_starter_feat_1: '1 активный проект',
+    pricing_plan_starter_feat_2: '10 000 токенов в месяц',
     pricing_plan_starter_feat_3:
-      'GPT-4.1, Kimi K2.6 и Gemini 3 Pro; линейка Anthropic (Claude) — в Pro. Низкий приоритет, без экспорта',
+      'Песочница: предпросмотр, водяной знак; GPT-4.1, Kimi K2.6 и Gemini 3 Pro; Claude — в Про. Низкий приоритет, без экспорта',
     pricing_plan_starter_cta: 'Текущий план',
 
-    pricing_plan_pro_name: 'Pro',
+    pricing_plan_pro_name: 'Про',
     pricing_plan_pro_price_monthly: '1 990 ₽',
     pricing_plan_pro_period: '/мес',
     pricing_plan_pro_price_note:
@@ -256,10 +256,10 @@ export const messages = {
     pricing_plan_pro_feat_2: 'Полный экспорт кода, без водяного знака',
     pricing_plan_pro_feat_3:
       'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; плюс GPT-4.1, Gemini 3 Pro и Kimi K2.6',
-    pricing_plan_pro_feat_4: 'До 10 активных проектов, история версий',
-    pricing_plan_pro_cta: 'Выбрать Pro',
+    pricing_plan_pro_feat_4: 'До 5 активных проектов, история версий',
+    pricing_plan_pro_cta: 'Выбрать Про',
 
-    pricing_plan_team_name: 'Team',
+    pricing_plan_team_name: 'Команда',
     pricing_plan_team_price_monthly: '4 990 ₽',
     pricing_plan_team_period: '/мес',
     pricing_plan_team_price_note:
@@ -267,9 +267,9 @@ export const messages = {
     pricing_plan_team_desc:
       'Агентства и команды: ориентир 10–15 проектов в месяц вместо отдельного штата вёрстки.',
     pricing_plan_team_feat_1: '2 000 000 токенов в месяц',
-    pricing_plan_team_feat_2: 'Всё из Pro + до 10 пользователей',
+    pricing_plan_team_feat_2: 'Всё из Pro + до 10 пользователей, до 15 активных проектов',
     pricing_plan_team_feat_3: 'Безлимитная история версий, максимальный приоритет',
-    pricing_plan_team_cta: 'Выбрать Team',
+    pricing_plan_team_cta: 'Выбрать команду',
 
     pricing_payg_title: 'Докупка токенов в любой момент — подписка не обязательна',
     pricing_payg_subtitle:
@@ -287,17 +287,17 @@ export const messages = {
     pricing_payg_wallet_success: 'Пакет куплен за реферальный баланс.',
     pricing_payg_wallet_insufficient: 'Недостаточно средств на реферальном кошельке.',
     pricing_payg_footnote:
-      'Пакеты считаются от базовой рублёвой сетки и автоматически пересчитываются в валюту текущего языка. Ориентир по подписке Pro: 500 000 токенов/мес за 1 990 ₽. Пакеты не подменяют лимит Starter.',
+      'Пакеты считаются от базовой рублёвой сетки и автоматически пересчитываются в валюту текущего языка. Ориентир: «Старт» 99 ₽/мес, «Про» 500 000 токенов/мес за 1 990 ₽. Пакеты не подменяют лимиты подписки.',
 
     pricing_faq_q1: 'Что такое токены и как они расходуются?',
     pricing_faq_a1:
       'Токены — единица объёма работы AI на платформе (генерация и правки кода, уточнения). Сложные страницы и большие правки расходуют больше токенов; в тарифах указан ориентир «сколько лендингов» при типичном использовании.',
-    pricing_faq_q2: 'Как обновляется лимит на Starter, Pro и Team?',
+    pricing_faq_q2: 'Как обновляется лимит на Старт, Про и Команда?',
     pricing_faq_a2:
-      'У подписок Starter, Pro и Team месячный пакет токенов обновляется каждый расчётный период по правилам вашего плана (на странице: Starter 10 000, Pro 500 000, Team 2 000 000 токенов в месяц). Пакеты докупки действуют 365 дней с момента покупки.',
-    pricing_faq_q3: 'Чем Pro отличается от Team?',
+      'У подписок «Старт», «Про» и «Команда» месячный пакет токенов обновляется каждый расчётный период по правилам вашего плана (на странице: Старт 10 000, Про 500 000, Команда 2 000 000 токенов в месяц). Пакеты докупки действуют 365 дней с момента покупки.',
+    pricing_faq_q3: 'Чем Про отличается от Команды?',
     pricing_faq_a3:
-      'Pro — до 10 активных проектов и история версий в рамках тарифа. Team добавляет до 10 участников, безлимитную глубину истории версий и максимальный приоритет в очереди.',
+      'Про — до 5 активных проектов и история версий в рамках тарифа. Команда — до 15 проектов, до 10 участников, безлимитная глубина истории версий и максимальный приоритет в очереди.',
     pricing_faq_q4: 'Можно ли отменить подписку в любой момент?',
     pricing_faq_a4:
       'Да. Отменить можно в любой момент; доступ к платным функциям сохранится до конца оплаченного периода.',
@@ -306,7 +306,7 @@ export const messages = {
       'Генерации и правки остановятся, пока не наступит новый месяц по подписке, не будет докуплен пакет токенов или не будет выполнен апгрейд плана.',
     pricing_faq_q6: 'Кому принадлежит созданный проект и код?',
     pricing_faq_a6:
-      'Проекты и сгенерированный код принадлежат вам. На Starter выгрузка архива недоступна — только предпросмотр в песочнице; на Pro, Team и при оплаченных пакетах доступен полный экспорт.',
+      'Проекты и сгенерированный код принадлежат вам. На «Старт» выгрузка архива недоступна — только предпросмотр в песочнице; на «Про», «Команда» и при оплаченных пакетах доступен полный экспорт.',
 
     analytics_title: 'Аналитика',
     analytics_subtitle: 'Статистика использования за последние 30 дней',
@@ -556,6 +556,10 @@ export const messages = {
     playground_build_share_error_instant: 'Не удалось сделать ссылку публичной',
     playground_build_publish_no_preview: 'Сначала сгенерируйте превью',
     playground_build_publish_opened: 'Открыта публичная страница с превью',
+    playground_chat_code_moved_to_code_tab:
+      '✨ Код сгенерирован. Откройте вкладку «Код» — там дерево файлов (src, public, components…), как в проекте.',
+    playground_build_code_files: 'Файлы проекта',
+    playground_build_code_generated: 'generated.txt',
     playground_dialog_ready_title: 'Готовый промпт',
     playground_dialog_brief_title: 'Брифинг и сбор промпта',
     playground_dialog_ready_desc:
@@ -853,6 +857,7 @@ export const messages = {
     playground_right_generating_line2:
       'Скачайте приложение и получите уведомление, когда превью будет готово (скоро).',
     playground_right_build_label: 'Сборка интерфейса',
+    playground_session_create_error: 'Не удалось создать сессию Lemnity AI.',
     build_stream_empty_hint: 'Шаги сборки появятся после старта генерации.',
     build_stream_aria_log: 'Пошаговый отчёт агента',
     build_stream_tool_activity: 'Сейчас',
@@ -1029,9 +1034,9 @@ export const messages = {
     team_cancel: 'Cancel',
     team_delete_confirm: 'Remove',
     team_seats_caption_team:
-      'team members (Team plan: up to __N__ seats including you; Starter and Pro do not include invites).',
+      'team members (Team plan: up to __N__ seats including you; Start and Pro do not include invites).',
     team_seats_caption_starter_pro:
-      'Shared invites are on the Team plan only (up to __N__ seats). Starter (FREE) and Pro do not include a team workspace.',
+      'Shared invites are on the Team plan only (up to __N__ seats). Start and Pro do not include a team workspace.',
     team_upsell_non_team:
       'Inviting teammates requires the Team plan — up to __N__ members. Upgrade under Pricing.',
     team_role_dialog_title: 'Member role',
@@ -1043,10 +1048,10 @@ export const messages = {
     team_role_dialog_save: 'Save',
     pricing_title: 'Pricing',
     pricing_subtitle:
-      'Starter — try the UI; Pro — freelancers and micro-businesses; Team — agencies and teams. Token packs — no subscription.',
+      'Start — try the UI; Pro — freelancers and micro-businesses; Team — agencies and teams. Token packs — no subscription.',
     pricing_header_lead:
       'Three subscription tiers — different token limits and features. Compare plans and pick what fits.',
-    pricing_header_starter: 'Starter — sandbox: learn the product without export.',
+    pricing_header_starter: 'Start — sandbox: learn the product without export.',
     pricing_header_pro: 'Pro — day-to-day plan for freelancers and micro-businesses.',
     pricing_header_team: 'Team — agencies and teams with collaboration.',
     pricing_header_packs_note: 'You can buy token packs separately — no forced pack subscription.',
@@ -1069,16 +1074,16 @@ export const messages = {
     pricing_billing_per_month_mean: ' /mo on average',
     pricing_faq_title: 'FAQ',
 
-    pricing_plan_starter_name: 'Starter',
-    pricing_plan_starter_badge: 'Free',
-    pricing_plan_starter_price: '0 ₽',
-    pricing_plan_starter_period: '',
+    pricing_plan_starter_name: 'Start',
+    pricing_plan_starter_badge: '',
+    pricing_plan_starter_price: '$1.08',
+    pricing_plan_starter_period: '/mo',
     pricing_plan_starter_desc:
       'Try the product with tight limits — enough to learn the UI, with a clear path to Pro.',
-    pricing_plan_starter_feat_1: '10,000 tokens per month',
-    pricing_plan_starter_feat_2: 'Sandbox: preview + watermark',
+    pricing_plan_starter_feat_1: '1 active project',
+    pricing_plan_starter_feat_2: '10,000 tokens per month',
     pricing_plan_starter_feat_3:
-      'GPT-4.1, Kimi K2.6, and Gemini 3 Pro; Anthropic (Claude) models are Pro-only. Low priority, no export',
+      'Sandbox: preview + watermark; GPT-4.1, Kimi K2.6, Gemini 3 Pro; Claude is Pro-only. Low priority, no export',
     pricing_plan_starter_cta: 'Current plan',
 
     pricing_plan_pro_name: 'Pro',
@@ -1092,7 +1097,7 @@ export const messages = {
     pricing_plan_pro_feat_2: 'Full code export, no watermark',
     pricing_plan_pro_feat_3:
       'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; plus GPT-4.1, Gemini 3 Pro, and Kimi K2.6',
-    pricing_plan_pro_feat_4: 'Up to 10 active projects, version history',
+    pricing_plan_pro_feat_4: 'Up to 5 active projects, version history',
     pricing_plan_pro_cta: 'Choose Pro',
 
     pricing_plan_team_name: 'Team',
@@ -1103,7 +1108,7 @@ export const messages = {
     pricing_plan_team_desc:
       'Agencies and teams: on the order of 10–15 projects per month — replacing a separate layout hire.',
     pricing_plan_team_feat_1: '2,000,000 tokens per month',
-    pricing_plan_team_feat_2: 'Everything in Pro + up to 10 users',
+    pricing_plan_team_feat_2: 'Everything in Pro + up to 10 users, up to 15 active projects',
     pricing_plan_team_feat_3: 'Unlimited version history, maximum queue priority',
     pricing_plan_team_cta: 'Choose Team',
 
@@ -1122,17 +1127,17 @@ export const messages = {
     pricing_payg_wallet_success: 'Pack purchased using referral wallet balance.',
     pricing_payg_wallet_insufficient: 'Not enough funds in referral wallet.',
     pricing_payg_footnote:
-      'Pack prices are calculated from the base RUB grid and converted to the current language currency. Pro subscription anchor: 500,000 tokens/mo for 1,990 ₽. Packs do not replace Starter’s free limits.',
+      'Pack prices are calculated from the base RUB grid and converted to the current language currency. Anchors: Start 99 ₽/mo, Pro 500,000 tokens/mo for 1,990 ₽. Packs do not replace subscription limits.',
 
     pricing_faq_q1: 'What are tokens and how are they used?',
     pricing_faq_a1:
       'Tokens measure AI work on the platform (generation, edits, refinements). Larger pages and changes consume more; plan descriptions include rough “how many landings” guidance for typical use.',
-    pricing_faq_q2: 'How do limits refresh on Starter, Pro, and Team?',
+    pricing_faq_q2: 'How do limits refresh on Start, Pro, and Team?',
     pricing_faq_a2:
-      'Monthly subscription allowances renew each billing period per plan rules (Starter: 10,000 · Pro: 500,000 · Team: 2,000,000 tokens/mo as shown on this page). Token top-up packs are valid for 365 days from purchase.',
+      'Monthly subscription allowances renew each billing period per plan rules (Start: 10,000 · Pro: 500,000 · Team: 2,000,000 tokens/mo as shown on this page). Token top-up packs are valid for 365 days from purchase.',
     pricing_faq_q3: 'How is Pro different from Team?',
     pricing_faq_a3:
-      'Pro: up to 10 active projects and version history per the plan. Team adds up to 10 collaborators, unlimited version history depth, and maximum queue priority.',
+      'Pro: up to 5 active projects and version history. Team: up to 15 projects, up to 10 collaborators, unlimited version history depth, and maximum queue priority.',
     pricing_faq_q4: 'Can I cancel anytime?',
     pricing_faq_a4:
       'Yes. You can cancel anytime; paid features stay available until the end of the paid period.',
@@ -1141,7 +1146,7 @@ export const messages = {
       'Generation pauses until your subscription renews, you buy a token pack, or you upgrade your plan.',
     pricing_faq_q6: 'Who owns the project and code?',
     pricing_faq_a6:
-      'You own your projects and generated code. Starter allows sandbox preview only; Pro, Team, and paid packs include full archive export.',
+      'You own your projects and generated code. Start allows sandbox preview only; Pro, Team, and paid packs include full archive export.',
 
     analytics_title: 'Analytics',
     analytics_subtitle: 'Usage stats for the last 30 days',
@@ -1389,6 +1394,10 @@ export const messages = {
     playground_build_share_error_instant: 'Could not make the link public',
     playground_build_publish_no_preview: 'Generate a preview first',
     playground_build_publish_opened: 'Public preview page opened in a new tab',
+    playground_chat_code_moved_to_code_tab:
+      '✨ Code generated. Open the Code tab — file tree (src, public, components…), like a real project.',
+    playground_build_code_files: 'Project files',
+    playground_build_code_generated: 'generated.txt',
     playground_dialog_ready_title: 'Ready prompt',
     playground_dialog_brief_title: 'Briefing & prompt assembly',
     playground_dialog_ready_desc:
@@ -1684,6 +1693,7 @@ export const messages = {
     playground_coach_model_prefix: 'Chat model:',
     playground_right_generating_line2: 'Get the app and be notified when the preview is ready (soon).',
     playground_right_build_label: 'UI build',
+    playground_session_create_error: 'Could not create a Lemnity AI session.',
     build_stream_empty_hint: 'Build steps will appear after generation starts.',
     build_stream_aria_log: 'Agent step log',
     build_stream_tool_activity: 'Now',
@@ -1861,11 +1871,11 @@ export const messages = {
     team_cancel: 'Бекор',
     team_delete_confirm: 'Ҳазф',
     team_seats_caption_team:
-      'узви даста (нақшаи Team: то __N__ ҷой, шуморо дар бар мегирад; дар Starter ва Pro даъватҳо нест).',
+      'узви даста (нақшаи «Даста»: то __N__ ҷой, шуморо дар бар мегирад; дар «Оғоз» ва «Про» даъватҳо нест).',
     team_seats_caption_starter_pro:
-      'Даъватҳои муштарак танҳо дар нақшаи Team (то __N__ ҷой). Дар Starter (FREE) ва Pro — ҷудо даста нест.',
+      'Даъватҳои муштарак танҳо дар нақшаи «Даста» (то __N__ ҷой). Дар «Оғоз» ва «Про» — ҷудо даста нест.',
     team_upsell_non_team:
-      'Даъвати ҳамкорон дар нақшаи Team — то __N__ нафар. Дар бахши «Нархҳо» ивази нақша кунед.',
+      'Даъвати ҳамкорон дар нақшаи «Даста» — то __N__ нафар. Дар бахши «Нархҳо» ивази нақша кунед.',
     team_role_dialog_title: 'Нақши узв',
     team_role_dialog_desc: 'Маълумоти корбар ва тағйири нақш.',
     team_role_dialog_status: 'Ҳолат',
@@ -1875,12 +1885,12 @@ export const messages = {
     team_role_dialog_save: 'Нигоҳ доштан',
     pricing_title: 'Нархгузорӣ',
     pricing_subtitle:
-      'Starter — санҷиши интерфейс; Pro — фриланс ва микробизнес; Team — агентӣ ва даста. Бастаҳои токен бе зарурияти обуна.',
+      'Оғоз — санҷиши интерфейс; Про — фриланс ва микробизнес; Даста — агентӣ ва даста. Бастаҳои токен бе зарурияти обуна.',
     pricing_header_lead:
       'Се сатҳи обуна — лимити гуногуни токен ва имконият. Нақшаҳоро муқоиса кунед ва интихоб кунед.',
-    pricing_header_starter: 'Starter — песочница: санҷиш бе экспорт.',
-    pricing_header_pro: 'Pro — барои фриланс ва микробизнес.',
-    pricing_header_team: 'Team — барои агентӣ ва даста, ҳамкорӣ.',
+    pricing_header_starter: 'Оғоз — песочница: санҷиш бе экспорт.',
+    pricing_header_pro: 'Про — барои фриланс ва микробизнес.',
+    pricing_header_team: 'Даста — барои агентӣ ва даста, ҳамкорӣ.',
     pricing_header_packs_note: 'Токенҳоро алоҳида харидан мумкин — бе зарурияти обунаи солона ба баста.',
     pricing_monthly_note:
       'Асъор аз забони интерфейс: ru — RUB, en — USD, tg — TJS. Бо қурби ҷорӣ мепайваст шавад.',
@@ -1901,19 +1911,19 @@ export const messages = {
     pricing_billing_per_month_mean: ' /моҳ ба миёна',
     pricing_faq_title: 'Саволҳои маъмул',
 
-    pricing_plan_starter_name: 'Starter',
-    pricing_plan_starter_badge: 'Ройгон',
-    pricing_plan_starter_price: '0 ₽',
-    pricing_plan_starter_period: '',
+    pricing_plan_starter_name: 'Оғоз',
+    pricing_plan_starter_badge: '',
+    pricing_plan_starter_price: '12 TJS',
+    pricing_plan_starter_period: '/моҳ',
     pricing_plan_starter_desc:
-      'Интерфейсро дар шароити маҳдуд санҷед — роҳи равшан ба Pro.',
-    pricing_plan_starter_feat_1: '10 000 токен дар як моҳ',
-    pricing_plan_starter_feat_2: 'Песочница: пешнамоиш, watermark',
+      'Интерфейсро дар шароити маҳдуд санҷед — роҳи равшан ба Про.',
+    pricing_plan_starter_feat_1: '1 лоиҳаи фаъол',
+    pricing_plan_starter_feat_2: '10 000 токен дар як моҳ',
     pricing_plan_starter_feat_3:
-      'GPT-4.1, Kimi K2.6 ва Gemini 3 Pro; Claude (Anthropic) — танҳо дар Pro. Афзалияти поин, бе экспорт',
+      'Песочница: пешнамоиш, watermark; GPT-4.1, Kimi K2.6, Gemini 3 Pro; Claude — танҳо дар Про. Афзалияти поин, бе экспорт',
     pricing_plan_starter_cta: 'Нақшаи ҷорӣ',
 
-    pricing_plan_pro_name: 'Pro',
+    pricing_plan_pro_name: 'Про',
     pricing_plan_pro_price_monthly: '227 TJS',
     pricing_plan_pro_period: '/моҳ',
     pricing_plan_pro_price_note:
@@ -1924,10 +1934,10 @@ export const messages = {
     pricing_plan_pro_feat_2: 'Экспорти пурраи код, бе watermark',
     pricing_plan_pro_feat_3:
       'Anthropic: Claude Sonnet 4.5, Haiku 4.5, Opus 4.6; инчунин GPT-4.1, Gemini 3 Pro ва Kimi K2.6',
-    pricing_plan_pro_feat_4: 'То 10 лоиҳаи фаъол, таърихи версия',
-    pricing_plan_pro_cta: 'Интихоби Pro',
+    pricing_plan_pro_feat_4: 'То 5 лоиҳаи фаъол, таърихи версия',
+    pricing_plan_pro_cta: 'Интихоби Про',
 
-    pricing_plan_team_name: 'Team',
+    pricing_plan_team_name: 'Даста',
     pricing_plan_team_price_monthly: '570 TJS',
     pricing_plan_team_period: '/моҳ',
     pricing_plan_team_price_note:
@@ -1935,9 +1945,9 @@ export const messages = {
     pricing_plan_team_desc:
       'Агентӣ ва даста: тақрибан 10–15 лоиҳа дар моҳ — бидуни штати алоҳидаи верстка.',
     pricing_plan_team_feat_1: '2 000 000 токен дар як моҳ',
-    pricing_plan_team_feat_2: 'Ҳамаи Pro + то 10 корбар',
+    pricing_plan_team_feat_2: 'Ҳамаи Pro + то 10 корбар, то 15 лоиҳаи фаъол',
     pricing_plan_team_feat_3: 'Таърихи версия бемаҳдуд, афзалияти ҳадди аксар',
-    pricing_plan_team_cta: 'Интихоби Team',
+    pricing_plan_team_cta: 'Интихоби Даста',
 
     pricing_payg_title: 'Токенҳои иловагӣ ҳар вақт — обуна лозим нест',
     pricing_payg_subtitle:
@@ -1955,17 +1965,17 @@ export const messages = {
     pricing_payg_wallet_success: 'Баста аз ҳисоби рефералӣ харидорӣ шуд.',
     pricing_payg_wallet_insufficient: 'Дар ҳамёни рефералӣ маблағ кофӣ нест.',
     pricing_payg_footnote:
-      'Нархи бастаҳо аз шабакаи асосии RUB аст. Ориентир Pro: 500 000 токен/моҳ барои 1 990 ₽. Лимити Starter-ро иваз намекунад.',
+      'Нархи бастаҳо аз шабакаи асосии RUB аст. Ориентир: «Оғоз» 99 ₽/моҳ, «Про» 500 000 токен/моҳ — 1 990 ₽. Бастаҳо лимити обунаро иваз намекунанд.',
 
     pricing_faq_q1: 'Токен чист ва чӣ тавр сарф мешавад?',
     pricing_faq_a1:
       'Токен воҳиди ҳаҷми кори AI дар платформа аст (тавлид, ислоҳ, дақиқкунӣ). Саҳифаҳо ва тағйироти калон бештар токен мегиранд; дар тарифҳо нишондиҳандаи «чанд лендинг» барои истифодаи оддӣ оварда шудааст.',
-    pricing_faq_q2: 'Лимит дар Starter, Pro ва Team чӣ гуна нав мешавад?',
+    pricing_faq_q2: 'Лимит дар «Оғоз», «Про» ва «Даста» чӣ гуна нав мешавад?',
     pricing_faq_a2:
-      'Лимити моҳонаи обуна мувофиқи нақша нав мешавад (Starter: 10 000 · Pro: 500 000 · Team: 2 000 000). Бастаҳои иловагии токен 365 рӯз эътибор доранд.',
-    pricing_faq_q3: 'Фарқи Pro ва Team дар чист?',
+      'Лимити моҳонаи обуна мувофиқи нақша нав мешавад (Оғоз: 10 000 · Про: 500 000 · Даста: 2 000 000). Бастаҳои иловагии токен 365 рӯз эътибор доранд.',
+    pricing_faq_q3: '«Про» ва «Даста» чӣ фарқ доранд?',
     pricing_faq_a3:
-      'Pro: то 10 лоиҳаи фаъол ва таърихи версия мувофиқи нақша. Team: то 10 шарик, таърихи версия бемаҳдуд, афзалияти ҳадди аксар дар навбат.',
+      'Про: то 5 лоиҳаи фаъол ва таърихи версия. Даста: то 15 лоиҳа, то 10 шарик, таърихи версия бемаҳдуд, афзалияти ҳадди аксар дар навбат.',
     pricing_faq_q4: 'Оё обунаро ҳар вақт бекор кардан мумкин аст?',
     pricing_faq_a4:
       'Бале. Шумо метавонед ҳар вақт бекор кунед; имкониятҳои пулакӣ то охири давраи пардохтшуда фаъол мемонанд.',
@@ -1974,7 +1984,7 @@ export const messages = {
       'Тавлид қатъ мешавад, то обуна нав шавад, бастаи токен харида шавад ё нақша боло барад.',
     pricing_faq_q6: 'Соҳиби лоиҳа ва код кӣ мешавад?',
     pricing_faq_a6:
-      'Лоиҳаҳо ва код ба шумо тааллуқ доранд. Дар Starter танҳо пешнамоиш дар песочница; дар Pro, Team ва бастаҳои пардохтшуда экспорти пурра дастрас аст.',
+      'Лоиҳаҳо ва код ба шумо тааллуқ доранд. Дар «Оғоз» танҳо пешнамоиш дар песочница; дар «Про», «Даста» ва бастаҳои пардохтшуда экспорти пурра дастрас аст.',
 
     analytics_title: 'Таҳлил',
     analytics_subtitle: 'Омор барои 30 рӯзи охир',
@@ -2223,6 +2233,10 @@ export const messages = {
     playground_build_share_error_instant: 'Пайванди ҷамъиятӣ барорӣ нашуд',
     playground_build_publish_no_preview: 'Аввал пешнамоиш эҷод кунед',
     playground_build_publish_opened: 'Саҳифаи ҷамъиятии пешнамоиш дар варақаи нав',
+    playground_chat_code_moved_to_code_tab:
+      '✨ Код эҷод шуд. Варақаи «Код»-ро кушоед — дарахти файлҳо (src, public, components…).',
+    playground_build_code_files: 'Файлҳои лоиҳа',
+    playground_build_code_generated: 'generated.txt',
     playground_dialog_ready_title: 'Промпти тайёр',
     playground_dialog_brief_title: 'Брифинг ва ҷамъкунии промпт',
     playground_dialog_ready_desc:
@@ -2521,6 +2535,7 @@ export const messages = {
     playground_right_generating_line2:
       'Барномаро боргирӣ кунед, вақте пешнамоиш омода шуд, огоҳӣ мегиред (ба зудӣ).',
     playground_right_build_label: 'Ҷамъсозии интерфейс',
+    playground_session_create_error: 'Натавонист сессияи Lemnity AI эҷод шавад.',
     build_stream_empty_hint: 'Қадамҳои ҷамъсозӣ пас аз оғози тавлид пайдо мешаванд.',
     build_stream_aria_log: 'Гузориши агент ба қадамҳо',
     build_stream_tool_activity: 'Акнун',

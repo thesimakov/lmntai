@@ -1,9 +1,18 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 import { useI18n } from "@/components/i18n-provider";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ResponsiveContainer
+} from "recharts";
 import { Layers, Zap, BarChart3, Percent } from "lucide-react";
 
 export type AnalyticsChartPoint = { name: string; tokens: number };
@@ -122,6 +131,18 @@ export function Analytics({ chartData: chartDataProp, statValues, recentGenerati
   }, [statValues, t]);
 
   const recent = recentGenerations ?? [];
+  const chartId = useId().replace(/:/g, "");
+  const gradBar = `lg-bar-${chartId}`;
+  const gradBarPeak = `lg-bar-peak-${chartId}`;
+
+  const maxTokens = useMemo(
+    () => (chartData.length ? Math.max(0, ...chartData.map((d) => d.tokens)) : 0),
+    [chartData]
+  );
+  const yMaxPad = useMemo(() => {
+    if (maxTokens <= 0) return 1;
+    return Math.ceil(maxTokens * 1.12);
+  }, [maxTokens]);
 
   return (
     <motion.div
@@ -175,40 +196,79 @@ export function Analytics({ chartData: chartDataProp, statValues, recentGenerati
         transition={{ duration: 0.4, delay: 0.4 }}
         className="glass rounded-2xl p-6"
       >
-        <h2 className="mb-6 text-lg font-medium text-foreground">{t("analytics_week_activity")}</h2>
-        <p className="mb-4 text-xs text-muted-foreground">{t("analytics_week_activity_hint")}</p>
-        <div className="h-72">
+        <h2 className="mb-2 text-lg font-medium text-foreground">{t("analytics_week_activity")}</h2>
+        <p className="mb-5 text-xs text-muted-foreground">{t("analytics_week_activity_hint")}</p>
+        <div className="h-72 w-full min-h-[200px] text-muted-foreground">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barCategoryGap="20%">
+            <BarChart
+              data={chartData}
+              barCategoryGap="18%"
+              barGap={4}
+              margin={{ top: 12, right: 8, left: 0, bottom: 4 }}
+            >
+              <defs>
+                <linearGradient id={gradBar} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#c084fc" stopOpacity={0.95} />
+                  <stop offset="55%" stopColor="#a855f7" stopOpacity={0.9} />
+                  <stop offset="100%" stopColor="#db2777" stopOpacity={0.85} />
+                </linearGradient>
+                <linearGradient id={gradBarPeak} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#e9d5ff" stopOpacity={1} />
+                  <stop offset="40%" stopColor="#a78bfa" stopOpacity={1} />
+                  <stop offset="100%" stopColor="#e879f9" stopOpacity={0.95} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid
+                vertical={false}
+                stroke="var(--border)"
+                strokeOpacity={0.5}
+                strokeDasharray="4 6"
+              />
               <XAxis
                 dataKey="name"
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                tick={{ fill: "currentColor", fontSize: 11, fontWeight: 500 }}
+                tickMargin={10}
+                height={36}
+                interval={0}
               />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 12 }}
+                tick={{ fill: "currentColor", fontSize: 11 }}
                 tickFormatter={(v) => formatTokensShort(Number(v))}
+                width={44}
+                domain={[0, yMaxPad]}
+                allowDecimals={false}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "var(--popover)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "15px",
-                  color: "var(--popover-foreground)"
+                  backgroundColor: "hsl(var(--popover))",
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "12px",
+                  boxShadow: "0 10px 25px -8px rgb(0 0 0 / 0.12)",
+                  color: "hsl(var(--popover-foreground))",
+                  fontSize: 12,
+                  padding: "10px 12px"
                 }}
-                cursor={{ fill: "color-mix(in oklab, var(--muted) 50%, transparent)" }}
-                formatter={(value: number) => [formatTokensShort(value), t("analytics_coins_suffix")]}
+                labelStyle={{ fontWeight: 600, marginBottom: 4, color: "hsl(var(--foreground))" }}
+                cursor={{ fill: "hsl(var(--muted) / 0.5)" }}
+                formatter={(value: number) => [formatTokensShort(value as number), t("analytics_coins_suffix")]}
               />
-              <Bar dataKey="tokens" fill="url(#gradient)" radius={[15, 15, 0, 0]} />
-              <defs>
-                <linearGradient id="gradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#a855f7" />
-                  <stop offset="100%" stopColor="#ec4899" />
-                </linearGradient>
-              </defs>
+              <Bar dataKey="tokens" maxBarSize={48} radius={[10, 10, 3, 3]} animationDuration={600}>
+                {chartData.map((entry, i) => (
+                  <Cell
+                    key={`${entry.name}-${i}`}
+                    fill={
+                      maxTokens > 0 && entry.tokens === maxTokens
+                        ? `url(#${gradBarPeak})`
+                        : `url(#${gradBar})`
+                    }
+                    fillOpacity={entry.tokens <= 0 ? 0.2 : 1}
+                  />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
