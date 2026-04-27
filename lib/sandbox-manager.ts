@@ -417,6 +417,17 @@ export const sandboxManager = {
     if (!parsed) {
       return this.applyCode(sandboxId, code);
     }
+    return this.applyLovableFromProjectFiles(sandboxId, parsed, code);
+  },
+
+  /**
+   * Lovable: готовая карта исходников (шаблон сборки, без разбора fenced-блоков) → бандл и превью.
+   */
+  async applyLovableFromProjectFiles(
+    sandboxId: string,
+    parsed: Record<string, string>,
+    generatedTxt: string
+  ) {
     let projectFiles = withLovableProjectScaffold(parsed);
     const ownerId = getSandboxOwnerId(sandboxId);
     if (ownerId) {
@@ -444,7 +455,7 @@ export const sandboxManager = {
         const wr = await lemnityBuilderFileWrite(base, p, content, { append: false });
         assertBuilderSandboxSuccess(wr, `file/write ${rel}`);
       }
-      const wGen = await lemnityBuilderFileWrite(base, `${wd}/generated.txt`, code, { append: false });
+      const wGen = await lemnityBuilderFileWrite(base, `${wd}/generated.txt`, generatedTxt, { append: false });
       assertBuilderSandboxSuccess(wGen, "file/write generated.txt");
       rec.updatedAt = Date.now();
       return { previewUrl: `/api/sandbox/${sandboxId}` };
@@ -454,7 +465,11 @@ export const sandboxManager = {
     if (!previous) {
       throw new Error("Песочница не найдена.");
     }
-    const files: Record<string, string> = { ...projectFiles, "index.html": html, "generated.txt": code };
+    const files: Record<string, string> = {
+      ...projectFiles,
+      "index.html": html,
+      "generated.txt": generatedTxt
+    };
     const next: MemoryState = {
       ...previous,
       updatedAt: Date.now(),

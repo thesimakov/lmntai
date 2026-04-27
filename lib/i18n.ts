@@ -577,6 +577,7 @@ export const messages = {
     playground_build_share_error_instant: 'Не удалось сделать ссылку публичной',
     playground_build_publish_no_preview: 'Сначала сгенерируйте превью',
     playground_build_publish_opened: 'Открыта публичная страница с превью',
+    playground_build_template_preview_error: 'Не удалось открыть превью шаблона',
     playground_chat_code_moved_to_code_tab:
       '✨ Код сгенерирован. Откройте вкладку «Код» — там дерево файлов (src, public, components…), как в проекте.',
     playground_build_code_files: 'Файлы проекта',
@@ -1484,6 +1485,7 @@ export const messages = {
     playground_build_share_error_instant: 'Could not make the link public',
     playground_build_publish_no_preview: 'Generate a preview first',
     playground_build_publish_opened: 'Public preview page opened in a new tab',
+    playground_build_template_preview_error: 'Could not load template preview',
     playground_chat_code_moved_to_code_tab:
       '✨ Code generated. Open the Code tab — file tree (src, public, components…), like a real project.',
     playground_build_code_files: 'Project files',
@@ -2390,6 +2392,7 @@ export const messages = {
     playground_build_share_error_instant: 'Пайванди ҷамъиятӣ барорӣ нашуд',
     playground_build_publish_no_preview: 'Аввал пешнамоиш эҷод кунед',
     playground_build_publish_opened: 'Саҳифаи ҷамъиятии пешнамоиш дар варақаи нав',
+    playground_build_template_preview_error: 'Пешнамоиши намунаро кушодан мумкин нест',
     playground_chat_code_moved_to_code_tab:
       '✨ Код эҷод шуд. Варақаи «Код»-ро кушоед — дарахти файлҳо (src, public, components…).',
     playground_build_code_files: 'Файлҳои лоиҳа',

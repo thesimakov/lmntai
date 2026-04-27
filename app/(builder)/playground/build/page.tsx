@@ -164,6 +164,10 @@ export default function PromptBuildPage() {
   const sessionLoadSeqRef = useRef(0);
   /** id песочницы из live SSE `preview` — защищает от перезаписи устаревшим GET /sessions после стрима */
   const lastSsePreviewSandboxIdRef = useRef<string | null>(null);
+  /** Песочница, созданная только для мгновенного превью стартового шаблона (до ответа агента). */
+  const templatePreviewSandboxIdRef = useRef<string | null>(null);
+  const templatePreviewAbortRef = useRef<AbortController | null>(null);
+  const templatePreviewReqSeqRef = useRef(0);
   const bridgeAssistantMessageIdRef = useRef<string | null>(null);
   const bridgeSawDeltaRef = useRef(false);
   const coachRequestSeqRef = useRef(0);
@@ -593,6 +597,7 @@ export default function PromptBuildPage() {
           if (liveSse && liveSse !== loadedSbx) {
             // Уже пришла более новая песочница по стриму; в GET ещё старый last preview — не откатывать UI.
           } else {
+            templatePreviewSandboxIdRef.current = null;
             setPreviewUrl(lastPreview.previewUrl);
             setSandboxId(lastPreview.sandboxId);
             setPreviewArtifactMime(typeof lastPreview.mimeType === "string" ? lastPreview.mimeType : null);
@@ -878,6 +883,7 @@ export default function PromptBuildPage() {
               if (data.previewUrl && data.sandboxId) {
                 interfaceBuildGotPreviewRef.current = true;
                 lastSsePreviewSandboxIdRef.current = String(data.sandboxId);
+                templatePreviewSandboxIdRef.current = null;
                 setPreviewUrl(data.previewUrl);
                 setSandboxId(data.sandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
@@ -980,13 +986,66 @@ export default function PromptBuildPage() {
     ]
   );
 
+  const runBuildTemplatePreview = useCallback(
+    async (slug: string) => {
+      templatePreviewAbortRef.current?.abort();
+      const controller = new AbortController();
+      templatePreviewAbortRef.current = controller;
+      const seq = ++templatePreviewReqSeqRef.current;
+      try {
+        const res = await fetch("/api/build-templates/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+          signal: controller.signal
+        });
+        if (!mountedRef.current || templatePreviewReqSeqRef.current !== seq) return;
+        if (!res.ok) {
+          const msg = await res.text().catch(() => "");
+          toast.error(msg.trim() || t("playground_build_template_preview_error"));
+          return;
+        }
+        const data = (await res.json()) as { previewUrl?: string; sandboxId?: string };
+        if (!data.previewUrl || !data.sandboxId) return;
+        if (!mountedRef.current || templatePreviewReqSeqRef.current !== seq) return;
+        templatePreviewSandboxIdRef.current = String(data.sandboxId);
+        setPreviewUrl(data.previewUrl);
+        setSandboxId(data.sandboxId);
+        setPreviewArtifactMime(null);
+        setPreviewDownloadFilename(null);
+        setPresentationPdfExport(null);
+        setShareIsPublic(false);
+        setMode("preview");
+        setProgress(100);
+      } catch (e) {
+        if ((e as Error).name === "AbortError") return;
+        if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
+      }
+    },
+    [t]
+  );
+
   const handleBuildTemplateChange = useCallback(
     (next: { slug: string; name: string; defaultUserPrompt: string } | null) => {
       setBuildTemplate(next);
       if (!next) {
         templateAutoStartSlugRef.current = null;
+        templatePreviewAbortRef.current?.abort();
+        if (
+          templatePreviewSandboxIdRef.current &&
+          sandboxId === templatePreviewSandboxIdRef.current
+        ) {
+          templatePreviewSandboxIdRef.current = null;
+          setPreviewUrl(null);
+          setSandboxId(null);
+          setPreviewArtifactMime(null);
+          setPreviewDownloadFilename(null);
+          setPresentationPdfExport(null);
+          setMode("idle");
+        }
         return;
       }
+      void runBuildTemplatePreview(next.slug);
       const text = next.defaultUserPrompt?.trim() ?? "";
       if (text) {
         setFinalPrompt(text);
@@ -1010,7 +1069,14 @@ export default function PromptBuildPage() {
         });
       }
     },
-    [lemnityAiBridgeReady, shouldUseLemnityAiBridge, push, sendLemnityAiChat]
+    [
+      lemnityAiBridgeReady,
+      runBuildTemplatePreview,
+      sandboxId,
+      shouldUseLemnityAiBridge,
+      push,
+      sendLemnityAiChat
+    ]
   );
 
   const runPromptCoach = useCallback(
@@ -1422,6 +1488,7 @@ export default function PromptBuildPage() {
     setStreamArtifactChars(0);
     push("assistant", "🎯 Анализирую запрос…");
     setProgress(8);
+    templatePreviewSandboxIdRef.current = null;
     setPreviewUrl(null);
     setSandboxId(null);
     setPreviewArtifactMime(null);
@@ -1471,6 +1538,7 @@ export default function PromptBuildPage() {
         if (eventData.type === "progress") setProgress(eventData.value);
         if (eventData.type === "preview") {
           interfaceBuildGotPreviewRef.current = true;
+          templatePreviewSandboxIdRef.current = null;
           setPreviewUrl(eventData.previewUrl);
           setSandboxId(eventData.sandboxId);
           setMode("preview");
