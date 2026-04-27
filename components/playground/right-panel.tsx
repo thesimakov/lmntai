@@ -42,8 +42,8 @@ type RightPanelProps = {
   presentationExportsPaid?: boolean;
   /** Режим отдельного редактора документа (вкладка «Документ») */
   previewVariant?: "default" | "document";
-  /** Подпись «Сделано на Lemnity» под превью (как на /share) */
-  showLemnityBranding?: boolean;
+  /** Второй iframe с Puck при визуальном режиме (тот же URL, что кнопка Puck) */
+  puckEditorHref?: string | null;
 };
 
 function IdleState() {
@@ -182,7 +182,7 @@ export function RightPanel({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  showLemnityBranding = false
+  puckEditorHref = null
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
@@ -211,7 +211,7 @@ export function RightPanel({
             presentationPdfExport={presentationPdfExport}
             presentationExportsPaid={presentationExportsPaid}
             previewVariant={previewVariant}
-            showLemnityBranding={showLemnityBranding}
+            puckEditorHref={puckEditorHref}
           />
         </LemnityAiPreviewChrome>
       </div>

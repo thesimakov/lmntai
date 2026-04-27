@@ -7,6 +7,10 @@ export type PlanStep = {
 const STOCK_IMAGES_GUIDANCE =
   "Images (hero, sections, cards): use only real HTTPS `src` URLs. For stable placeholders use `https://picsum.photos/seed/<short-ascii-seed>/<width>/<height>`. For editorial photos you may use direct `https://images.unsplash.com/...` URLs; add a visible one-line credit (photographer name + link to their Unsplash profile). Do not use deprecated `source.unsplash.com`, `placehold.co` as default stock, broken `example.com` placeholders, or invented image hosts.";
 
+/** Keep in sync with `lib/prompt-site-footer.ts` → `PROMPT_SITE_FOOTER_RULES_EN`. */
+const SITE_FOOTER_GUIDANCE =
+  "Marketing site footer: when you include `<footer>`, add `div.footer-bottom` with flex row: left — `© {year} {brand}`, rights text, «Политика конфиденциальности» with `href=\"#\"` (URL TBD comment); right — `Собрано:` + `new Date().toLocaleDateString(...)`, then «Сделано на Lemnity» → `https://lemnity.com` (new tab).";
+
 /** Тип визуального артефакта — планировщик обязан выбрать по смыслу запроса, не по умолчанию. */
 export type ArtifactKind =
   | "landing"
@@ -43,7 +47,8 @@ export const LEMNITY_SYSTEM_PROMPT = [
   "Visible copy in the generated UI must use the user's language.",
   "Prefer production-quality typography and semantic HTML/JSX; accessible labels; strong hierarchy; realistic content, no lorem ipsum unless asked.",
   "For **lovable/landing (multi-file)**: output ` ```tsx:src/...` / ` ```ts:src/...` fences. For **non-React** HTML-only previews (legacy dashboard/docs paths when truly one file is required): one self-contained HTML5 document; otherwise prefer the multi-file app format.",
-  STOCK_IMAGES_GUIDANCE
+  STOCK_IMAGES_GUIDANCE,
+  SITE_FOOTER_GUIDANCE
 ].join("\n");
 
 const ARTIFACT_KIND_SET = new Set<string>([
@@ -219,7 +224,8 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       copyNote,
       "- Build like a real repo: `src/main.tsx` + `src/App.tsx` + `src/components/*` for sections (Hero, Features, CTA, FAQ, Footer).",
       "- Classic conversion layout is OK: hero, value props, social proof, CTA, footer — as components.",
-      "- Tailwind: `className` only. Match the user's product/service, not a generic template."
+      "- Tailwind: `className` only. Match the user's product/service, not a generic template.",
+      "- Footer row: follow global SITE_FOOTER_GUIDANCE (Lemnity link + build date + privacy placeholder)."
     ].join("\n"),
     lovable: [
       "ARTIFACT TYPE: REACT + TYPESCRIPT APP (Lovable-style).",
@@ -227,7 +233,8 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       copyNote,
       "- Styling: Tailwind utility `className` (preview shell injects Tailwind CDN; no PostCSS in output).",
       "- Imports: relative paths only under `src/`. Entry mounts with `createRoot` on `#root`.",
-      "- Split UI into small components; `useState` and simple hooks OK; mock data in-module; no real backend."
+      "- Split UI into small components; `useState` and simple hooks OK; mock data in-module; no real backend.",
+      "- If the UI has a site footer, follow SITE_FOOTER_GUIDANCE."
     ].join("\n"),
     other: [
       "ARTIFACT TYPE: OTHER / EXTENSIBLE (HTML preview today; reserved for more export pipelines).",

@@ -2,7 +2,6 @@
 
 import JSZip from "jszip";
 import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -50,8 +49,8 @@ type PreviewFrameProps = {
   presentationExportsPaid?: boolean;
   /** Отдельный режим «Редактор документа»: без эмуляции устройств, фокус на печатной области */
   previewVariant?: "default" | "document";
-  /** Согласно настройкам /share: «Сделано на Lemnity» под iframe (не для .pptx). */
-  showLemnityBranding?: boolean;
+  /** Редактор Puck (второй iframe при включённом визуальном режиме) */
+  puckEditorHref?: string | null;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -109,7 +108,7 @@ export function PreviewFrame({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  showLemnityBranding = false
+  puckEditorHref = null
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -933,38 +932,50 @@ export function PreviewFrame({
             isDocumentChrome ? "bg-zinc-200/70 dark:bg-zinc-900/60" : "bg-muted/20"
           )}
         >
-          <div
-            className={cn(
-              "relative min-h-0 flex-1",
-              isDocumentChrome ? modeStyles.desktop : modeStyles[deviceMode],
-              isDocumentChrome && "mx-auto w-full max-w-4xl shadow-xl ring-1 ring-black/5 dark:ring-white/10"
-            )}
-          >
-            <iframe
-              ref={iframeRef}
-              key={iframeSrc}
-              src={iframeSrc}
-              title={isDocumentChrome ? "Lemnity Document" : "Lemnity Preview"}
+          {visualEditMode && puckEditorHref && !isDocumentChrome ? (
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
+              <p className="shrink-0 text-[11px] leading-snug text-muted-foreground">{t("build_visual_puck_split_hint")}</p>
+              <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
+                <div className={cn("relative min-h-[200px] min-w-0 flex-1 lg:min-h-0", modeStyles[deviceMode])}>
+                  <iframe
+                    ref={iframeRef}
+                    key={iframeSrc}
+                    src={iframeSrc}
+                    title="Lemnity Preview"
+                    className="absolute inset-0 h-full w-full rounded-md border-0 bg-background"
+                  />
+                </div>
+                <div className="relative flex min-h-[min(40vh,380px)] min-w-0 flex-1 flex-col border-t border-border pt-2 lg:min-h-0 lg:max-w-[min(100%,52%)] lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
+                  <iframe
+                    src={puckEditorHref}
+                    title={t("puck_page_title")}
+                    className="h-full min-h-[280px] w-full flex-1 rounded-md border-0 bg-background lg:min-h-0"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div
               className={cn(
-                "absolute inset-0 h-full w-full border-0 bg-background",
-                isDocumentChrome ? "rounded-lg" : "rounded-md"
+                "relative min-h-0 flex-1",
+                isDocumentChrome ? modeStyles.desktop : modeStyles[deviceMode],
+                isDocumentChrome && "mx-auto w-full max-w-4xl shadow-xl ring-1 ring-black/5 dark:ring-white/10"
               )}
-            />
-          </div>
+            >
+              <iframe
+                ref={iframeRef}
+                key={iframeSrc}
+                src={iframeSrc}
+                title={isDocumentChrome ? "Lemnity Document" : "Lemnity Preview"}
+                className={cn(
+                  "absolute inset-0 h-full w-full border-0 bg-background",
+                  isDocumentChrome ? "rounded-lg" : "rounded-md"
+                )}
+              />
+            </div>
+          )}
         </div>
       )}
-      {!isPptx && showLemnityBranding ? (
-        <footer className="flex shrink-0 items-center justify-center border-t border-border bg-muted/20 px-2 py-1.5">
-          <Link
-            href={SITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline"
-          >
-            {t("build_preview_footer_made_on")}
-          </Link>
-        </footer>
-      ) : null}
     </div>
   );
 }

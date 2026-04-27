@@ -1,3 +1,4 @@
+import { PROMPT_SITE_FOOTER_RULES_EN } from "@/lib/prompt-site-footer";
 import { PROMPT_STOCK_IMAGES_RULES_EN } from "@/lib/prompt-stock-images";
 
 /**
@@ -74,7 +75,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
       ? "Output for this mode: a **Vite/Lovable-style** React+TypeScript project as **multiple files** in markdown fences (not one big static HTML). The platform will bundle with esbuild; Tailwind is applied via CDN in the preview — use `className` and Tailwind utility classes only. Use functional components, `import` between files with **relative** paths, entry at `src/main.tsx` (createRoot on `#root`). Prefer splitting UI into `src/components/*.tsx` and shared bits under `lib/` or `src/lib/` when it keeps files readable. No `vite.config` in output unless asked — do not paste an entire `package.json` tree unless a file is required. **Strict:** each file must be ` ```tsx:path/to/File.tsx` or ` ```ts:path/to/file.ts` on the opening fence line (path after colon), then the file body, then closing fence. Include `src/main.tsx` and at least `src/App.tsx`."
       : "Output: one complete HTML5 document (editable preview for document workstreams), embedded CSS (or Tailwind CDN), no React app unless the user explicitly asked for a component tree.",
     "Accessibility: logical heading order, button/link labels, sufficient contrast.",
-    PROMPT_STOCK_IMAGES_RULES_EN
+    PROMPT_STOCK_IMAGES_RULES_EN,
+    PROMPT_SITE_FOOTER_RULES_EN
   ];
 
   const formatBlock = (() => {
@@ -84,7 +86,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Deliverable: **Marketing / product website** as a **React+TS** app (same structure as a real repo: `src/App.tsx` composes sections; extract repeated blocks to `src/components/…`).",
           "Structure: header/nav, hero, value props, social proof, feature grid, pricing or CTA block, FAQ, footer — implemented as components/sections, not one giant return.",
           "Use semantic sections with clear `id` or `data-section` for anchor nav.",
-          "Apply the global stock-image URL rules (Picsum seed URLs or Unsplash CDN + credit) for any photos in the layout."
+          "Apply the global stock-image URL rules (Picsum seed URLs or Unsplash CDN + credit) for any photos in the layout.",
+          "Apply the global site-footer bar rules (copyright + privacy placeholder left; build date + «Сделано на Lemnity» right)."
         ];
       case "presentation":
         return [
@@ -119,12 +122,14 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Styling: Tailwind utility `className` only (preview injects Tailwind CDN).",
           "Split UI into small files under `src/`; use relative imports; export components as `export function` or `export default` consistently.",
           "State: `useState` / light logic only — no real backend; mock data in-module if needed.",
-          "For any photos/illustrations in the UI, follow the global stock-image URL rules."
+          "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
+          "Include the site footer bar (copyright + privacy placeholder; build date + Lemnity link) when the app has a footer."
         ];
       default:
         return [
           "Deliverable: **Landing or web interface** as a **multi-file** React+TS app (Vite/Lovable style) unless the user asked only for a static one-file HTML.",
-          "Prefer: `src/main.tsx` + `src/App.tsx` + `src/components/*`; split sections logically; one primary CTA; responsive layout (mobile-first) via Tailwind `className`."
+          "Prefer: `src/main.tsx` + `src/App.tsx` + `src/components/*`; split sections logically; one primary CTA; responsive layout (mobile-first) via Tailwind `className`.",
+          "If you add a page footer, follow the global site-footer rules (Lemnity link, build date, privacy placeholder)."
         ];
     }
   })();
@@ -151,7 +156,7 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
   if (!kind) return "";
   const m: Record<ProjectKind, string> = {
     website:
-      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML. **Картинки:** в итоговом промпте заложи рабочие URL — `https://picsum.photos/seed/<латиница>/ширина/высота` или `https://images.unsplash.com/...` с короткой подписью фотографа (имя + ссылка на профиль Unsplash).",
+      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML. **Картинки:** в итоговом промпте заложи рабочие URL — `https://picsum.photos/seed/<латиница>/ширина/высота` или `https://images.unsplash.com/...` с короткой подписью фотографа (имя + ссылка на профиль Unsplash). **Футер:** нижняя полоса с `footer-bottom`: слева © и «Политика конфиденциальности» (пока `href=\"#\"`, URL позже); справа дата сборки и ссылка «Сделано на Lemnity» → `https://lemnity.com`.",
     presentation:
       "презентация как документ: целевые форматы PPTX/PDF; в HTML — редактируемые полноэкранные слайды по одной мысли.",
     resume:
@@ -161,7 +166,7 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
     visitcard:
       "цифровая визитка, компактный экран, контакты и ссылки. Фон/фото при необходимости — Picsum seed или Unsplash с подписью.",
     lovable:
-      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Picsum/Unsplash), не выдуманные домены."
+      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Picsum/Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity)."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }

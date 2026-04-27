@@ -782,6 +782,8 @@ export const messages = {
     build_publish: 'Опубликовать',
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Визуальный редактор макета (Puck): блоки и puck.json',
+    build_visual_puck_split_hint:
+      'Слева — превью сборки; справа — Puck (блоки и puck.json). Клики по DOM слева — быстрые правки; справа — структура макета.',
     build_aria_refresh_preview: 'Обновить превью',
     puck_page_title: 'Редактор Puck',
     puck_page_header: 'Lemnity · Puck',
@@ -1613,6 +1615,8 @@ export const messages = {
     build_publish: 'Publish',
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Visual layout editor (Puck) — blocks and puck.json',
+    build_visual_puck_split_hint:
+      'Left: build preview. Right: Puck (blocks and puck.json). Click the DOM on the left for quick edits; structure on the right.',
     build_aria_refresh_preview: 'Refresh preview',
     puck_page_title: 'Puck editor',
     puck_page_header: 'Lemnity · Puck',
@@ -2446,6 +2450,8 @@ export const messages = {
     build_publish: 'Нашр',
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Таҳриргари визуалӣ (Puck) — блокҳо ва puck.json',
+    build_visual_puck_split_hint:
+      'Чап — пешнамоиши таҳрир; рост — Puck (блокҳо). Клик ба DOM чап; сохтор рост.',
     build_aria_refresh_preview: 'Навсозии пешнамоиш',
     puck_page_title: 'Муҳаррири Puck',
     puck_page_header: 'Lemnity · Puck',

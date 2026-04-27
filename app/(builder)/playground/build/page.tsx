@@ -203,7 +203,6 @@ export default function PromptBuildPage() {
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
-  const [showLemnityBranding, setShowLemnityBranding] = useState<boolean | null>(null);
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
@@ -378,32 +377,6 @@ export default function PromptBuildPage() {
 
   const planFromSession = String(session?.user?.plan ?? "");
   const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";
-
-  const refetchShareBranding = useCallback(async () => {
-    if (!sandboxId) {
-      setShowLemnityBranding(null);
-      return;
-    }
-    if (sandboxId.startsWith("artifact_")) {
-      setShowLemnityBranding(!hasCustomDomainAccess);
-      return;
-    }
-    try {
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
-      if (!res.ok) {
-        setShowLemnityBranding(!hasCustomDomainAccess);
-        return;
-      }
-      const d = (await res.json()) as { showLemnityBranding?: boolean };
-      setShowLemnityBranding(Boolean(d.showLemnityBranding));
-    } catch {
-      setShowLemnityBranding(!hasCustomDomainAccess);
-    }
-  }, [sandboxId, hasCustomDomainAccess]);
-
-  useEffect(() => {
-    void refetchShareBranding();
-  }, [refetchShareBranding]);
 
   const documentTabVisible = useMemo(
     () =>
@@ -1741,7 +1714,7 @@ export default function PromptBuildPage() {
                     presentationPdfExport={presentationPdfExport}
                     presentationExportsPaid={hasCustomDomainAccess}
                     previewVariant={tab === "document" ? "document" : "default"}
-                    showLemnityBranding={showLemnityBranding === true}
+                    puckEditorHref={puckEditorHref}
                   />
                 </div>
               ) : tab === "settings" ? (
@@ -1758,7 +1731,6 @@ export default function PromptBuildPage() {
                     shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
                     publishSeedText={idea}
                     onOpenPublishDialog={() => setPublishDialogOpen(true)}
-                    onBrandingPreferenceSaved={refetchShareBranding}
                   />
                 </div>
               ) : (
