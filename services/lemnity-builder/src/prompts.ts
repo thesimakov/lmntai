@@ -1,3 +1,5 @@
+import { appLanguageInstruction, type AppUiLanguage } from "./ui-labels.js";
+
 export type PlanStep = {
   id: string;
   description: string;
@@ -158,9 +160,12 @@ export function normalizeArtifactKind(raw: unknown, message: string): ArtifactKi
 
 function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): string {
   const ru = language === "ru" || /[\u0400-\u04FF]/.test(language);
-  const copyNote = ru
-    ? "Весь видимый текст на русском, по смыслу запроса пользователя."
-    : "Use the user's language for all visible copy.";
+  const tg = language === "tg";
+  const copyNote = tg
+    ? "Ҳамаи матни намоён ба забони тоҷикӣ, мувофиқи маънии дархост."
+    : ru
+      ? "Весь видимый текст на русском, по смыслу запроса пользователя."
+      : "Use the user's language for all visible copy.";
 
   const blocks: Record<ArtifactKind, string> = {
     presentation: [
@@ -269,6 +274,8 @@ export function createPlanPrompt(input: {
   message: string;
   attachments?: string;
   sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+  /** Язык интерфейса приложения: тексты плана на этом языке (не только по языку сообщения). */
+  uiLanguage?: AppUiLanguage;
 }): string {
   const rev = input.sessionContext?.priorHtmlExcerpt?.trim();
   const trans = input.sessionContext?.transcript?.trim();
@@ -298,11 +305,24 @@ export function createPlanPrompt(input: {
           ].join("\n")
         : "";
 
+  const ui: AppUiLanguage = input.uiLanguage ?? "ru";
+  const { code: uiCode, labelEn: uiLabel } = appLanguageInstruction(ui);
+  const localeBlock = [
+    "",
+    "LOCALE (mandatory — follow the app UI language, not only the user message language):",
+    `- App UI language code: **${uiCode}** (${uiLabel}).`,
+    "- Write `message`, `title`, `goal`, and every `steps[].description` in that language.",
+    '- Keep `steps[].id` as short ASCII in SCREAMING-KEBAB-CASE (e.g. "PROJECT-STRUCTURE", "CART-AND-CHECKOUT").',
+    `- The JSON string field "language" MUST be exactly "${uiCode}".`,
+    ""
+  ].join("\n");
+
   return [
     LEMNITY_SYSTEM_PROMPT,
     "",
     "Create a compact execution plan for generating the visual preview.",
     revisionBlock,
+    localeBlock,
     "Return only valid JSON matching this TypeScript interface:",
     "```typescript",
     "type ArtifactKind =",
@@ -319,7 +339,7 @@ export function createPlanPrompt(input: {
     '  | "other";             // прочее HTML сейчас; позже: PDF, DOCX, выгрузки и др.',
     "interface CreatePlanResponse {",
     "  message: string;",
-    "  language: string; // 'ru' or 'en' etc.",
+    "  language: string; // MUST match the app UI language described above (ru | en | tg).",
     "  goal: string;",
     "  title: string;",
     "  artifact_kind: ArtifactKind; // MUST match user intent — not always landing",
@@ -331,7 +351,7 @@ export function createPlanPrompt(input: {
     "- Choose artifact_kind from the user's wording (Russian and English). Lovable / react+vite / «как у lovable» → lovable. PowerPoint / презентацию / pptx → presentation. Резюме / CV → resume.",
     "- Use 3 to 6 atomic steps tailored to that artifact_kind.",
     "- Steps describe UI generation work, not advice to the user.",
-    "- If the user asks in Russian, use Russian for message/title/steps.",
+    "- Do not ignore LOCALE: plan copy must be in the app UI language even if the user message is in another language.",
     "- The title should be short enough for a session name.",
     "",
     "User message:",

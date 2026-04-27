@@ -97,9 +97,10 @@ export async function ensureUserCanEditLemnityArtifact(userId: string, artifactI
 }
 
 export async function deleteLemnityAiSessionForUser(userId: string, upstreamSessionId: string) {
-  await prisma.manusSessionLink.deleteMany({
+  const { count } = await prisma.manusSessionLink.deleteMany({
     where: { userId, manusSessionId: upstreamSessionId }
   });
+  return count;
 }
 
 export async function syncLemnityAiSessionSummary(input: {

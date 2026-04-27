@@ -47,25 +47,25 @@ export default async function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Пользователи</h1>
-        <p className="text-sm text-zinc-400">Email, баланс, план, виртуальная папка (1 GiB), действия. Расход токенов за 30 дн.:{" "}
-          <span className="text-zinc-200">{spend._sum.totalTokens ?? 0}</span>
+        <h1 className="text-2xl font-semibold text-foreground">Пользователи</h1>
+        <p className="text-sm text-muted-foreground">Email, баланс, план, виртуальная папка (1 GiB), действия. Расход токенов за 30 дн.:{" "}
+          <span className="text-foreground">{spend._sum.totalTokens ?? 0}</span>
         </p>
       </div>
 
       {canWrite ? (
-        <Card className="border-white/10 bg-zinc-900/60">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base text-zinc-100">Добавить пользователя</CardTitle>
+            <CardTitle className="text-base">Добавить пользователя</CardTitle>
           </CardHeader>
           <CardContent>
             <form action={createUserAction} className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-              <Input name="email" type="email" required placeholder="email" className="bg-zinc-950/50" />
-              <Input name="password" type="password" required minLength={8} placeholder="Пароль" className="bg-zinc-950/50" />
-              <Input name="name" placeholder="Имя" className="bg-zinc-950/50" />
+              <Input name="email" type="email" required placeholder="email" />
+              <Input name="password" type="password" required minLength={8} placeholder="Пароль" />
+              <Input name="name" placeholder="Имя" />
               <select
                 name="plan"
-                className="h-10 rounded-md border border-white/10 bg-zinc-950/50 px-3 text-sm"
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 defaultValue="FREE"
               >
                 <option value="FREE">FREE</option>
@@ -74,7 +74,7 @@ export default async function AdminUsersPage() {
               </select>
               <select
                 name="role"
-                className="h-10 rounded-md border border-white/10 bg-zinc-950/50 px-3 text-sm"
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
                 defaultValue="USER"
               >
                 <option value="USER">Пользователь</option>
@@ -86,7 +86,6 @@ export default async function AdminUsersPage() {
                 min={0}
                 defaultValue={10_000}
                 placeholder="Баланс токенов"
-                className="bg-zinc-950/50"
               />
               <div className="md:col-span-2">
                 <Button type="submit">Создать</Button>
@@ -96,14 +95,14 @@ export default async function AdminUsersPage() {
         </Card>
       ) : null}
 
-      <Card className="border-white/10 bg-zinc-900/60">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base text-zinc-100">Список</CardTitle>
+          <CardTitle className="text-base">Список</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[860px] text-sm">
-              <thead className="bg-white/5 text-left text-zinc-400">
+              <thead className="bg-muted/50 text-left text-muted-foreground">
                 <tr>
                   <th className="p-2">Email</th>
                   <th className="p-2">План</th>
@@ -116,31 +115,31 @@ export default async function AdminUsersPage() {
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-t border-white/10">
-                    <td className="p-2 text-zinc-200">
+                  <tr key={u.id} className="border-t border-border">
+                    <td className="p-2 text-foreground">
                       {u.email}{" "}
                       {u.role === "ADMIN" ? (
-                        <span className="ml-1 rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 text-xs text-fuchsia-200">
+                        <span className="ml-1 rounded border border-primary/30 bg-primary/10 px-1.5 text-xs font-medium text-primary">
                           ADMIN
                         </span>
                       ) : null}
                       {u.role === "MANAGER" ? (
-                        <span className="ml-1 rounded border border-amber-500/40 bg-amber-500/10 px-1.5 text-xs text-amber-200">
+                        <span className="ml-1 rounded border border-amber-300 bg-amber-50 px-1.5 text-xs font-medium text-amber-900">
                           MANAGER
                         </span>
                       ) : null}
                     </td>
-                    <td className="p-2 text-zinc-300">
+                    <td className="p-2 text-muted-foreground">
                       {u.plan === "BUSINESS" ? "TEAM" : u.plan}
                     </td>
-                    <td className="p-2 text-zinc-300">{u.tokenBalance}</td>
-                    <td className="p-2 text-zinc-300">{u.tokenLimit}</td>
-                    <td className="p-2 text-zinc-300">
+                    <td className="p-2 text-muted-foreground">{u.tokenBalance}</td>
+                    <td className="p-2 text-muted-foreground">{u.tokenLimit}</td>
+                    <td className="p-2 text-muted-foreground">
                       {formatStorage(u.virtualWorkspace?.usedBytes, u.virtualWorkspace?.limitBytes)}
                     </td>
-                    <td className="p-2 text-zinc-300">
+                    <td className="p-2 text-muted-foreground">
                       {u.isPartner ? (
-                        <span className="rounded border border-emerald-500/40 bg-emerald-500/10 px-1.5 text-xs">да</span>
+                        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 text-xs text-emerald-900">да</span>
                       ) : (
                         "—"
                       )}
@@ -151,7 +150,7 @@ export default async function AdminUsersPage() {
                           <>
                             <form action={addTokensAction} className="flex items-center gap-1">
                               <input type="hidden" name="userId" value={u.id} />
-                              <Input name="amount" className="h-8 w-20 bg-zinc-950/50" placeholder="+" />
+                              <Input name="amount" className="h-8 w-20" placeholder="+" />
                               <Button size="sm" type="submit" variant="secondary">
                                 +токены
                               </Button>
@@ -161,7 +160,7 @@ export default async function AdminUsersPage() {
                               <select
                                 name="plan"
                                 defaultValue={u.plan === "BUSINESS" ? "TEAM" : u.plan}
-                                className="h-8 max-w-[8rem] rounded border border-white/10 bg-zinc-950/50 text-xs"
+                                className="h-8 max-w-[8rem] rounded border border-input bg-background text-xs"
                               >
                                 <option value="FREE">FREE</option>
                                 <option value="PRO">PRO</option>

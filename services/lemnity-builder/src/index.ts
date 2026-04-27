@@ -15,6 +15,7 @@ import {
   makeEvent
 } from "./workflow.js";
 import { ARTIFACT_MIME_HTML } from "./types.js";
+import { normalizeAppUiLanguage, plannerStepLabel, presentationStepLabel } from "./ui-labels.js";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
@@ -249,10 +250,14 @@ export async function main() {
         message?: string;
         model?: string;
         project_kind?: string;
+        ui_language?: string;
       } | null;
       const userMessage = typeof body?.message === "string" ? body.message.trim() : "";
       const model = typeof body?.model === "string" && body.model.trim() ? body.model.trim() : "gpt-4o-mini";
       const pk = typeof body?.project_kind === "string" ? body.project_kind.trim().toLowerCase() : "";
+      const uiLang = normalizeAppUiLanguage(
+        typeof body?.ui_language === "string" ? body.ui_language : undefined
+      );
       const forceArtifactKind =
         pk === "lovable" || pk === "website" ? ("lovable" as const) : null;
       if (!userMessage) {
@@ -285,7 +290,7 @@ export async function main() {
       };
 
       try {
-        emit("step", { id: "planner", description: "Планирование сборки", status: "running" });
+        emit("step", { id: "planner", description: plannerStepLabel(uiLang, "running"), status: "running" });
         const plan = await createPlan({
           message: userMessage,
           model,
@@ -294,7 +299,8 @@ export async function main() {
             transcript,
             priorHtmlExcerpt: priorHtml ? excerptHtmlForPlanner(priorHtml) : null
           },
-          forceArtifactKind
+          forceArtifactKind,
+          uiLanguage: uiLang
         });
         rec.title = plan.title || rec.title;
         emit("title", { title: rec.title });
@@ -305,7 +311,7 @@ export async function main() {
             status: "pending"
           }))
         });
-        emit("step", { id: "planner", description: "Планирование сборки", status: "completed" });
+        emit("step", { id: "planner", description: plannerStepLabel(uiLang, "completed"), status: "completed" });
         await store.replaceSession(rec);
 
         const previewPath = `/api/lemnity-ai/artifacts/`;
@@ -334,7 +340,11 @@ export async function main() {
             filename: null
           });
         } else if (plan.artifact_kind === "presentation") {
-          emit("step", { id: "outline", description: "Структура слайдов", status: "running" });
+          emit("step", {
+            id: "outline",
+            description: presentationStepLabel(uiLang, "outline"),
+            status: "running"
+          });
           const outline = await getPresentationOutline({
             message: userMessage,
             plan,
@@ -342,9 +352,17 @@ export async function main() {
             user: routerUser,
             conversationContext: transcript.length > 40 ? transcript : undefined
           });
-          emit("step", { id: "outline", description: "Структура слайдов", status: "completed" });
+          emit("step", {
+            id: "outline",
+            description: presentationStepLabel(uiLang, "outline"),
+            status: "completed"
+          });
 
-          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "running" });
+          emit("step", {
+            id: "pptx",
+            description: presentationStepLabel(uiLang, "pptx"),
+            status: "running"
+          });
           const { buffer, filename, mimeType } = await buildPptxFromOutline(outline);
           const artifact = await store.createArtifact(id, {
             kind: "binary",
@@ -352,7 +370,11 @@ export async function main() {
             mimeType,
             filename
           });
-          emit("step", { id: "pptx", description: "Сборка PowerPoint (.pptx)", status: "completed" });
+          emit("step", {
+            id: "pptx",
+            description: presentationStepLabel(uiLang, "pptx"),
+            status: "completed"
+          });
           emit("tool", {
             tool_call_id: `export-${artifact.artifact_id}`,
             name: "file",
@@ -362,7 +384,11 @@ export async function main() {
             content: { path: `${previewPath}${artifact.artifact_id}` }
           });
 
-          emit("step", { id: "pdf", description: "Экспорт PDF", status: "running" });
+          emit("step", {
+            id: "pdf",
+            description: presentationStepLabel(uiLang, "pdf"),
+            status: "running"
+          });
           const pdfFile = await buildPdfFromOutline(outline);
           const artifactPdf = await store.createArtifact(id, {
             kind: "binary",
@@ -370,7 +396,11 @@ export async function main() {
             mimeType: pdfFile.mimeType,
             filename: pdfFile.filename
           });
-          emit("step", { id: "pdf", description: "Экспорт PDF", status: "completed" });
+          emit("step", {
+            id: "pdf",
+            description: presentationStepLabel(uiLang, "pdf"),
+            status: "completed"
+          });
           emit("tool", {
             tool_call_id: `export-${artifactPdf.artifact_id}`,
             name: "file",

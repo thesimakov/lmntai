@@ -11,6 +11,7 @@ import {
   type ArtifactKind,
   type BuilderPlan
 } from "./prompts.js";
+import { normalizeAppUiLanguage, type AppUiLanguage } from "./ui-labels.js";
 import { bundleLovableToPreviewHtml, parseLovableFencedFiles } from "./lovable-bundler.js";
 import { requestJsonCompletion, streamChatCompletion } from "./routerai.js";
 import type { BuilderEvent } from "./types.js";
@@ -109,17 +110,30 @@ export async function createPlan(input: {
   sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
   /** См. `project_kind` из Playground (Lovable) — фиксирует тип, если задан. */
   forceArtifactKind?: ArtifactKind | null;
+  /** Язык UI приложения — язык `message`/`title`/описаний шагов в плане. */
+  uiLanguage?: AppUiLanguage | null;
 }): Promise<BuilderPlan> {
+  const uiLang: AppUiLanguage | null =
+    input.uiLanguage != null && String(input.uiLanguage).trim() !== ""
+      ? normalizeAppUiLanguage(String(input.uiLanguage))
+      : null;
   const text = await requestJsonCompletion({
     model: input.model,
-    prompt: createPlanPrompt({ message: input.message, sessionContext: input.sessionContext }),
+    prompt: createPlanPrompt({
+      message: input.message,
+      sessionContext: input.sessionContext,
+      uiLanguage: uiLang ?? undefined
+    }),
     user: input.user
   });
   const plan = parsePlan(text, input.message);
-  if (input.forceArtifactKind) {
-    return { ...plan, artifact_kind: input.forceArtifactKind };
+  const withKind = input.forceArtifactKind
+    ? { ...plan, artifact_kind: input.forceArtifactKind }
+    : plan;
+  if (uiLang) {
+    return { ...withKind, language: uiLang };
   }
-  return plan;
+  return withKind;
 }
 
 export async function generateSummary(input: {
@@ -133,9 +147,14 @@ export async function generateSummary(input: {
     prompt: summarizePrompt({ message: input.message, plan: input.plan }),
     user: input.user
   }).catch(() => "");
-  return text.trim() || (input.plan.language === "ru"
-    ? "Готово: визуальное превью собрано и доступно справа."
-    : "Done: the visual preview is ready on the right.");
+  if (text.trim()) return text.trim();
+  if (input.plan.language === "tg") {
+    return "Тайёр: пешнамоиш ҷамъ шуд — аз рост дидан мумкин аст.";
+  }
+  if (input.plan.language === "ru" || /[\u0400-\u04FF]/.test(input.plan.language)) {
+    return "Готово: визуальное превью собрано и доступно справа.";
+  }
+  return "Done: the visual preview is ready on the right.";
 }
 
 export async function executePlanToHtml(input: {

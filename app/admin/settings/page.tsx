@@ -16,13 +16,13 @@ export default async function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Профиль администратора</h1>
-        <p className="text-sm text-zinc-400">Смена пароля для входа (email+пароль / учётка в БД).</p>
+        <h1 className="text-2xl font-semibold text-foreground">Профиль администратора</h1>
+        <p className="text-sm text-muted-foreground">Смена пароля для входа (email+пароль / учётка в БД).</p>
       </div>
 
-      <Card className="border-white/10 bg-zinc-900/60">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base text-zinc-100">Новый пароль</CardTitle>
+          <CardTitle className="text-base">Новый пароль</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={changeOwnPasswordAction} className="flex max-w-md flex-col gap-3 sm:flex-row sm:items-end">
@@ -33,7 +33,6 @@ export default async function AdminSettingsPage() {
                 required
                 minLength={8}
                 placeholder="Не короче 8 символов"
-                className="bg-zinc-950/50"
               />
             </div>
             <Button type="submit">Сохранить</Button>
@@ -42,12 +41,12 @@ export default async function AdminSettingsPage() {
       </Card>
 
       {g.data.user.role === "MANAGER" ? (
-        <Card className="border-white/10 bg-zinc-900/60">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-base text-zinc-100">Ваши права</CardTitle>
+            <CardTitle className="text-base">Ваши права</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="list-inside list-disc space-y-1 text-sm text-zinc-300">
+            <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
               {parsePermissionList(g.data.user.adminPermissions).map((k) => {
                 const label = STAFF_PERMISSIONS[k] ?? k;
                 return <li key={k}>{k} — {label}</li>;

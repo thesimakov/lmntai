@@ -19,21 +19,21 @@ export default async function AdminTeamPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Команда</h1>
-        <p className="text-sm text-zinc-400">Менеджеры с ограниченными правами. Супер-админ (роль ADMIN) видит разделы «Тарифы» и «Команда».</p>
+        <h1 className="text-2xl font-semibold text-foreground">Команда</h1>
+        <p className="text-sm text-muted-foreground">Менеджеры с ограниченными правами. Супер-админ (роль ADMIN) видит разделы «Тарифы» и «Команда».</p>
       </div>
 
-      <Card className="border-white/10 bg-zinc-900/60">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base text-zinc-100">О правах</CardTitle>
+          <CardTitle className="text-base">О правах</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-zinc-300">
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
           {STAFF_PERMISSION_KEYS.map((k) => (
             <p key={k}>
-              <span className="font-mono text-fuchsia-300/90">{k}</span> — {STAFF_PERMISSIONS[k]}
+              <span className="font-mono text-primary">{k}</span> — {STAFF_PERMISSIONS[k]}
             </p>
           ))}
-          <p className="pt-2 text-zinc-500">
+          <p className="pt-2 text-muted-foreground/80">
             Супер-администратор (ADMIN) обходит эти флаги и может всё, включая правку платформенных
             тарифов и приглашение менеджеров. Менеджер (MANAGER) не списывает токены как безлимитный
             супер-админ — у менеджера обычный баланс для проверок интерфейса.
@@ -41,26 +41,26 @@ export default async function AdminTeamPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-zinc-900/60">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base text-zinc-100">Добавить менеджера</CardTitle>
+          <CardTitle className="text-base">Добавить менеджера</CardTitle>
         </CardHeader>
         <CardContent>
           <form action={createManagerAction} className="space-y-4">
             <div className="grid gap-3 md:grid-cols-2">
-              <Input name="email" type="email" required placeholder="Email" className="bg-zinc-950/50" />
-              <Input name="password" type="password" required minLength={8} placeholder="Пароль" className="bg-zinc-950/50" />
-              <Input name="name" placeholder="Имя" className="bg-zinc-950/50" />
+              <Input name="email" type="email" required placeholder="Email" />
+              <Input name="password" type="password" required minLength={8} placeholder="Пароль" />
+              <Input name="name" placeholder="Имя" />
             </div>
-            <p className="text-xs text-zinc-500">Права:</p>
+            <p className="text-xs text-muted-foreground">Права:</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {STAFF_PERMISSION_KEYS.map((k) => (
-                <label key={k} className="flex items-start gap-2 text-sm text-zinc-300">
+                <label key={k} className="flex items-start gap-2 text-sm text-foreground">
                   <input type="checkbox" name="perm" value={k} className="mt-1" />
                   <span>
-                    <span className="font-mono text-xs text-fuchsia-300/80">{k}</span>
+                    <span className="font-mono text-xs text-primary">{k}</span>
                     <br />
-                    <span className="text-zinc-500">{STAFF_PERMISSIONS[k]}</span>
+                    <span className="text-muted-foreground">{STAFF_PERMISSIONS[k]}</span>
                   </span>
                 </label>
               ))}
@@ -70,20 +70,20 @@ export default async function AdminTeamPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-zinc-900/60">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-base text-zinc-100">Текущие менеджеры</CardTitle>
+          <CardTitle className="text-base">Текущие менеджеры</CardTitle>
         </CardHeader>
         <CardContent>
-          <ul className="space-y-2 text-sm text-zinc-300">
-            {managers.length === 0 ? <li className="text-zinc-500">Пока нет записей</li> : null}
+          <ul className="space-y-2 text-sm text-foreground">
+            {managers.length === 0 ? <li className="text-muted-foreground">Пока нет записей</li> : null}
             {managers.map((m) => (
-              <li key={m.id} className="rounded-lg border border-white/10 bg-zinc-950/40 p-3">
-                <p className="text-zinc-100">{m.email}</p>
-                <p className="text-xs text-zinc-500">
+              <li key={m.id} className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="font-medium text-foreground">{m.email}</p>
+                <p className="text-xs text-muted-foreground">
                   {m.name} · {new Date(m.createdAt).toLocaleString("ru-RU")}
                 </p>
-                <p className="mt-1 text-xs text-zinc-400">
+                <p className="mt-1 text-xs text-muted-foreground">
                   Права: {JSON.stringify(m.adminPermissions)}
                 </p>
               </li>

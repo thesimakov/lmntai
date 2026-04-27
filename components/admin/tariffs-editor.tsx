@@ -85,60 +85,60 @@ export function TariffsEditor() {
   }
 
   if (loading || !data) {
-    return <p className="text-sm text-zinc-400">Загрузка…</p>;
+    return <p className="text-sm text-muted-foreground">Загрузка…</p>;
   }
 
   return (
     <div className="space-y-6">
-      {err ? <p className="text-sm text-red-400">{err}</p> : null}
+      {err ? <p className="text-sm text-destructive">{err}</p> : null}
       {PLANS.map((plan) => (
-        <Card key={plan} className="border-white/10 bg-zinc-900/60">
+        <Card key={plan}>
           <CardHeader>
-            <CardTitle className="text-base text-fuchsia-200">Тариф {plan}</CardTitle>
+            <CardTitle className="text-base text-primary">Тариф {plan}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <label className="text-xs text-zinc-400">
+              <label className="text-xs text-muted-foreground">
                 Токенов / мес
                 <Input
                   type="number"
-                  className="mt-1 bg-zinc-950/50"
+                  className="mt-1"
                   value={data.plans[plan].monthlyTokens}
                   onChange={(e) => patchPlan(plan, "monthlyTokens", Number(e.target.value) || 0)}
                 />
               </label>
-              <label className="text-xs text-zinc-400">
+              <label className="text-xs text-muted-foreground">
                 Мин. для prompt builder
                 <Input
                   type="number"
-                  className="mt-1 bg-zinc-950/50"
+                  className="mt-1"
                   value={data.plans[plan].minPromptBuilder}
                   onChange={(e) => patchPlan(plan, "minPromptBuilder", Number(e.target.value) || 0)}
                 />
               </label>
-              <label className="text-xs text-zinc-400">
+              <label className="text-xs text-muted-foreground">
                 Мин. для стрима
                 <Input
                   type="number"
-                  className="mt-1 bg-zinc-950/50"
+                  className="mt-1"
                   value={data.plans[plan].minStream}
                   onChange={(e) => patchPlan(plan, "minStream", Number(e.target.value) || 0)}
                 />
               </label>
-              <label className="text-xs text-zinc-400">
+              <label className="text-xs text-muted-foreground">
                 Мест в команде (0 = нет)
                 <Input
                   type="number"
-                  className="mt-1 bg-zinc-950/50"
+                  className="mt-1"
                   value={data.plans[plan].teamSeats}
                   onChange={(e) => patchPlan(plan, "teamSeats", Number(e.target.value) || 0)}
                 />
               </label>
             </div>
-            <p className="text-xs text-zinc-500">Функционал (флаги для платформы; числовые лимиты выше влияют на списания и планы)</p>
+            <p className="text-xs text-muted-foreground">Функционал (флаги для платформы; числовые лимиты выше влияют на списания и планы)</p>
             <div className="grid gap-2 sm:grid-cols-2">
               {PLATFORM_FEATURE_CATALOG.map((f) => (
-                <label key={f.id} className="flex items-start gap-2 text-sm text-zinc-300">
+                <label key={f.id} className="flex items-start gap-2 text-sm text-foreground">
                   <input
                     type="checkbox"
                     checked={Boolean(data.plans[plan].features[f.id])}
@@ -147,7 +147,7 @@ export function TariffsEditor() {
                   <span>
                     {f.label}
                     <br />
-                    <span className="text-xs text-zinc-500">{f.desc}</span>
+                    <span className="text-xs text-muted-foreground">{f.desc}</span>
                   </span>
                 </label>
               ))}

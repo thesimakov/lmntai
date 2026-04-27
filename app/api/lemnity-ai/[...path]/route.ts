@@ -147,9 +147,16 @@ async function streamUserSessionsSse(userId: string, signal: AbortSignal): Promi
   });
 }
 
+function normalizeBridgeUiLanguage(header: string | null): "ru" | "en" | "tg" {
+  const s = header?.trim().toLowerCase() ?? "";
+  if (s === "en" || s === "tg" || s === "ru") return s;
+  return "ru";
+}
+
 function enrichChatRequestForRouterModel(
   requestText: string,
-  plan: string
+  plan: string,
+  uiLanguageHeader: string | null
 ): string {
   try {
     const parsed = JSON.parse(requestText || "{}") as Record<string, unknown>;
@@ -164,7 +171,8 @@ function enrichChatRequestForRouterModel(
       task: "generate-stream",
       hint
     });
-    const next: Record<string, unknown> = { ...parsed, model: agent.modelId };
+    const ui = normalizeBridgeUiLanguage(uiLanguageHeader);
+    const next: Record<string, unknown> = { ...parsed, model: agent.modelId, ui_language: ui };
     delete next.agent_hint;
     if (projectKind) {
       next.project_kind = projectKind;
@@ -469,7 +477,11 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       status: "running"
     });
 
-    const chatBody = enrichChatRequestForRouterModel(requestText, user.plan);
+    const chatBody = enrichChatRequestForRouterModel(
+      requestText,
+      user.plan,
+      req.headers.get("x-lmnt-ui-lang")
+    );
 
     const upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
       method: "POST",

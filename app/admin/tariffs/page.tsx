@@ -12,8 +12,8 @@ export default async function AdminTariffsPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Тарифы платформы</h1>
-        <p className="text-sm text-zinc-400">
+        <h1 className="text-2xl font-semibold text-foreground">Тарифы платформы</h1>
+        <p className="text-sm text-muted-foreground">
           Месячные лимиты токенов и флаги применяются к новым пересчётам (назначение плана,
           getEffectiveMonthlyAllowance). Тексты на лендинге /plans при необходимости обновите вручную
           (i18n) или согласуйте с маркетингом.

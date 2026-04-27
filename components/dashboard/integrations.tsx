@@ -738,9 +738,6 @@ export function Integrations({
         <p className="text-muted-foreground">
           {t("integrations_soon")}
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {t("integrations_metrika_hint")}
-        </p>
       </motion.div>
       ) : null}
     </>

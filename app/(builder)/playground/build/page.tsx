@@ -645,7 +645,11 @@ export default function PromptBuildPage() {
       try {
         const response = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sid)}/chat`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            "X-LMNT-UI-Lang": lang
+          },
           credentials: "include",
           body: JSON.stringify({
             message: messagePayload,
@@ -885,7 +889,8 @@ export default function PromptBuildPage() {
       projectKind,
       push,
       pushBridgeAssistantMessage,
-      t
+      t,
+      lang
     ]
   );
 

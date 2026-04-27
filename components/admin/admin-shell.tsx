@@ -30,17 +30,17 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
   const nav = ADMIN_SECTION_RULES.filter((r) => canAccessAdminSection(role, permissionKeys, r));
 
   return (
-    <div className="min-h-screen bg-zinc-950 p-4 text-zinc-100">
+    <div className="min-h-screen bg-muted/50 p-4 text-foreground">
       <div className="mx-auto flex max-w-6xl gap-4">
-        <aside className="w-64 shrink-0 space-y-4 rounded-2xl border border-white/10 bg-zinc-900/80 p-4">
-          <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-            <LayoutDashboard className="h-5 w-5 text-fuchsia-400" />
+        <aside className="w-64 shrink-0 space-y-4 rounded-2xl border border-border bg-card p-4 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border pb-3">
+            <LayoutDashboard className="h-5 w-5 text-primary" />
             <div>
-              <p className="text-xs text-zinc-500">Администрирование</p>
+              <p className="text-xs text-muted-foreground">Администрирование</p>
               <p className="truncate text-sm font-medium">Lemnity</p>
             </div>
           </div>
-          <p className="truncate text-xs text-zinc-500">{email}</p>
+          <p className="truncate text-xs text-muted-foreground">{email}</p>
           <nav className="space-y-1">
             {nav.map(({ id, href, label }) => {
               const Icon = ITEM_ICONS[id];
@@ -52,8 +52,8 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
                   className={cn(
                     "flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition",
                     active
-                      ? "bg-fuchsia-500/15 text-fuchsia-200"
-                      : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -62,11 +62,11 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
               );
             })}
           </nav>
-          <div className="border-t border-white/10 pt-3">
+          <div className="border-t border-border pt-3">
             <Button
               asChild
               variant="ghost"
-              className="w-full justify-start text-zinc-400 hover:text-white"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
             >
               <Link href="/playground">
                 <Sparkles className="mr-2 h-4 w-4" />
@@ -76,7 +76,7 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
             <Button
               type="button"
               variant="ghost"
-              className="w-full justify-start text-zinc-400 hover:text-white"
+              className="w-full justify-start text-muted-foreground hover:text-foreground"
               onClick={() => signOut({ callbackUrl: "/login" })}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -84,7 +84,7 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
             </Button>
           </div>
         </aside>
-        <main className="min-w-0 flex-1 space-y-6 rounded-2xl border border-white/10 bg-zinc-900/40 p-6">
+        <main className="min-w-0 flex-1 space-y-6 rounded-2xl border border-border bg-card p-6 shadow-sm">
           {children}
         </main>
       </div>

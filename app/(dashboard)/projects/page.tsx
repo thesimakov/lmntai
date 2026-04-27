@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
-import { Frame, Loader2, Pencil, Rocket, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Frame, Loader2, Pencil, Rocket, Sparkles, Trash2 } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
 import { PageTransition } from "@/components/page-transition";
@@ -26,6 +26,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<RuntimeProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const dateLocale = useMemo(() => {
     if (lang === "en") return "en-US";
@@ -57,6 +58,29 @@ export default function ProjectsPage() {
       mounted = false;
     };
   }, [t]);
+
+  const deleteProject = useCallback(
+    async (project: RuntimeProject) => {
+      const msg = t("projects_delete_confirm").replaceAll("{name}", project.name);
+      if (typeof window !== "undefined" && !window.confirm(msg)) return;
+      setDeletingId(project.id);
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(project.id)}`, {
+          method: "DELETE",
+          credentials: "include"
+        });
+        if (!res.ok) {
+          throw new Error("delete failed");
+        }
+        setProjects((prev) => prev.filter((p) => p.id !== project.id));
+      } catch {
+        window.alert(t("projects_delete_error"));
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [t]
+  );
 
   function formatCreatedAt(raw: string) {
     const date = new Date(raw);
@@ -153,16 +177,31 @@ export default function ProjectsPage() {
                   </p>
 
                   <div className="flex gap-2 pt-1">
-                    <Button asChild size="sm" className="flex-1 gap-1.5">
+                    <Button asChild size="sm" className="min-w-0 flex-1 gap-1.5">
                       <Link href={project.editUrl}>
                         <Pencil className="h-3.5 w-3.5" />
                         {t("projects_edit")}
                       </Link>
                     </Button>
-                    <Button asChild size="sm" variant="secondary" className="flex-1">
+                    <Button asChild size="sm" variant="secondary" className="min-w-0 flex-1">
                       <Link href={project.openUrl} target="_blank" rel="noreferrer">
                         {t("projects_go")}
                       </Link>
+                    </Button>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="outline"
+                      className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={deletingId === project.id}
+                      onClick={() => void deleteProject(project)}
+                      aria-label={t("projects_delete_aria")}
+                    >
+                      {deletingId === project.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
                     </Button>
                   </div>
                 </CardContent>

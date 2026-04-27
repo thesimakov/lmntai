@@ -128,7 +128,7 @@ export function PromoCodesEditor() {
 
   if (loading) {
     return (
-      <div className="flex items-center gap-2 text-zinc-400">
+      <div className="flex items-center gap-2 text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Загрузка…
       </div>
     );
@@ -136,8 +136,8 @@ export function PromoCodesEditor() {
 
   return (
     <div className="space-y-8">
-      <form onSubmit={createOne} className="max-w-xl space-y-4 rounded-2xl border border-white/10 bg-zinc-900/50 p-4">
-        <p className="text-sm text-zinc-400">
+      <form onSubmit={createOne} className="max-w-xl space-y-4 rounded-2xl border border-border bg-muted/30 p-4">
+        <p className="text-sm text-muted-foreground">
           Скидка применяется к сумме выбранного периода (месяц / квартал / год) на экране тарифов. Бонус токенов
           отображается отдельной строкой; начисление на баланс — при оформлении оплаты (интеграция платёжки).
         </p>
@@ -147,7 +147,7 @@ export function PromoCodesEditor() {
             <Input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="mt-1 border-white/10 bg-zinc-950"
+              className="mt-1"
               placeholder="SUMMER2026"
               required
             />
@@ -157,7 +157,7 @@ export function PromoCodesEditor() {
             <select
               value={kind}
               onChange={(e) => setKind(e.target.value as "DISCOUNT" | "BONUS_TOKENS")}
-              className="mt-1 w-full rounded-md border border-white/10 bg-zinc-950 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <option value="DISCOUNT">Скидка, %</option>
               <option value="BONUS_TOKENS">Токены в подарок</option>
@@ -173,7 +173,7 @@ export function PromoCodesEditor() {
               max={100}
               value={discount}
               onChange={(e) => setDiscount(Number(e.target.value))}
-              className="mt-1 border-white/10 bg-zinc-950"
+              className="mt-1"
             />
           </div>
         ) : (
@@ -184,7 +184,7 @@ export function PromoCodesEditor() {
               min={1}
               value={tokens}
               onChange={(e) => setTokens(Number(e.target.value))}
-              className="mt-1 border-white/10 bg-zinc-950"
+              className="mt-1"
             />
           </div>
         )}
@@ -198,7 +198,7 @@ export function PromoCodesEditor() {
             Team
           </label>
         </div>
-        <Button type="submit" disabled={saving} className="bg-fuchsia-600 hover:bg-fuchsia-500">
+        <Button type="submit" disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           Добавить промокод
         </Button>
@@ -207,7 +207,7 @@ export function PromoCodesEditor() {
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] border-collapse text-left text-sm">
           <thead>
-            <tr className="border-b border-white/10 text-zinc-500">
+            <tr className="border-b border-border text-muted-foreground">
               <th className="p-2">Код</th>
               <th className="p-2">Тип</th>
               <th className="p-2">Значение</th>
@@ -220,13 +220,13 @@ export function PromoCodesEditor() {
             {rows.map((r) => {
               const pl = plansFromRow(r);
               return (
-                <tr key={r.id} className="border-b border-white/5">
-                  <td className="p-2 font-mono text-fuchsia-200">{r.code}</td>
+                <tr key={r.id} className="border-b border-border/60">
+                  <td className="p-2 font-mono text-primary">{r.code}</td>
                   <td className="p-2">{r.kind === "DISCOUNT" ? "Скидка" : "Токены"}</td>
                   <td className="p-2">
                     {r.kind === "DISCOUNT" ? `${r.discountPercent ?? "—"}%` : (r.bonusTokens ?? "—").toLocaleString("ru-RU")}
                   </td>
-                  <td className="p-2 text-zinc-400">
+                  <td className="p-2 text-muted-foreground">
                     {pl.pro && pl.team
                       ? "Pro, Team"
                       : pl.pro
@@ -235,7 +235,7 @@ export function PromoCodesEditor() {
                           ? "Team"
                           : "—"}
                   </td>
-                  <td className="p-2 text-zinc-500">
+                  <td className="p-2 text-muted-foreground/90">
                     {r.usedCount}
                     {r.maxUses != null ? ` / ${r.maxUses}` : ""}
                   </td>
@@ -244,7 +244,7 @@ export function PromoCodesEditor() {
                       type="button"
                       size="sm"
                       variant="outline"
-                      className="mr-1 border-white/10"
+                      className="mr-1"
                       onClick={() => void toggle(r.id, r.isActive)}
                     >
                       {r.isActive ? "Выкл" : "Вкл"}
@@ -263,7 +263,7 @@ export function PromoCodesEditor() {
             })}
           </tbody>
         </table>
-        {rows.length === 0 ? <p className="text-sm text-zinc-500">Пока нет промокодов</p> : null}
+        {rows.length === 0 ? <p className="text-sm text-muted-foreground">Пока нет промокодов</p> : null}
       </div>
     </div>
   );
