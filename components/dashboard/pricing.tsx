@@ -15,6 +15,7 @@ import {
 import type { MessageKey } from "@/lib/i18n"
 import {
   type BillingPeriod,
+  subscriptionBillingLinearMinor,
   subscriptionBillingMinor,
 } from "@/lib/pricing-billing"
 import {
@@ -58,6 +59,35 @@ function formatPaidPlanLine(
       period === "quarter"
         ? t("pricing_billing_discount_10")
         : t("pricing_billing_discount_15"),
+  }
+}
+
+/** «Старт» — скидок за 3 мес/год нет: только 3× и 12× от месячной цены. */
+function formatStarterPlanLine(
+  monthlyMinor: number,
+  currency: ReferralCurrency,
+  locale: string,
+  period: BillingPeriod,
+  t: (k: MessageKey) => string
+): { price: string; period: string; subline?: string; discount?: string } {
+  const b = subscriptionBillingLinearMinor(monthlyMinor, period)
+  if (period === "monthly") {
+    return {
+      price: formatCurrencyMinor(b.totalMinor, currency, locale),
+      period: t("pricing_plan_starter_period"),
+    }
+  }
+  return {
+    price: formatCurrencyMinor(b.totalMinor, currency, locale),
+    period:
+      period === "quarter"
+        ? t("pricing_billing_period_for_quarter")
+        : t("pricing_billing_period_for_year"),
+    subline: `≈ ${formatCurrencyMinor(
+      b.effectiveMonthlyMinor,
+      currency,
+      locale
+    )}${t("pricing_billing_per_month_mean")}`,
   }
 }
 
@@ -196,13 +226,18 @@ export function Pricing() {
 
     const starterLine =
       currency && displayPricing
-        ? {
-            price: displayPricing.subscriptions.starter.formatted,
-            period: t("pricing_plan_starter_period"),
-          }
+        ? formatStarterPlanLine(
+            displayPricing.subscriptions.starter.amountMinor,
+            currency,
+            locale,
+            showBilling ? billingPeriod : "monthly",
+            t
+          )
         : {
             price: t("pricing_plan_starter_price"),
             period: t("pricing_plan_starter_period"),
+            subline: undefined,
+            discount: undefined,
           }
 
     const starterBadgeRaw = t("pricing_plan_starter_badge").trim()
@@ -211,8 +246,8 @@ export function Pricing() {
       name: t("pricing_plan_starter_name"),
       price: starterLine.price,
       period: starterLine.period,
-      subline: undefined as string | undefined,
-      discount: undefined as string | undefined,
+      subline: starterLine.subline,
+      discount: starterLine.discount,
       description: t("pricing_plan_starter_desc"),
       features: [
         t("pricing_plan_starter_feat_1"),
@@ -402,10 +437,6 @@ export function Pricing() {
             {t("pricing_header_lead")}
           </p>
         </div>
-
-        <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted-foreground">
-          {t("pricing_header_packs_note")}
-        </p>
       </div>
 
       {showBilling ? (

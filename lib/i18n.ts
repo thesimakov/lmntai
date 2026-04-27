@@ -209,11 +209,10 @@ export const messages = {
     pricing_subtitle:
       'Старт — попробовать интерфейс; Про — рабочий тариф для фриланса и микробизнеса; Команда — агентства и команды. Пакеты токенов — без подписки.',
     pricing_header_lead:
-      'Три уровня подписки — разные лимиты токенов и возможностей. Сравните планы и выберите подходящий уровень.',
+      'Три уровня подписки — разные лимиты токенов и возможностей. Сравните планы и выберите подходящий уровень. Скидки за 3 месяца и за год действуют для «Про» и «Команда»; «Старт» — без скидок (сумма за период = месячная × 3 или × 12).',
     pricing_header_starter: 'Старт — песочница: попробовать продукт без экспорта.',
     pricing_header_pro: 'Про — рабочий тариф для фриланса и микробизнеса.',
     pricing_header_team: 'Команда — агентства и команды, совместная работа.',
-    pricing_header_packs_note: 'Токены можно докупить отдельно — без обязательной годовой подписки на пакет.',
     pricing_monthly_note:
       'Валюта отображения зависит от языка интерфейса: русский — ₽, English — $, тоҷикӣ — TJS. Пересчёт по актуальному курсу.',
     pricing_recommended_badge: 'Самый ходовой',
@@ -655,6 +654,9 @@ export const messages = {
     build_visual_pick_selected: '· Выбрано: {tag}',
     build_visual_read_only_hint:
       'Правка в окне превью доступна; сохранение на сервер для этой сборки недоступно — скачайте HTML или экспорт.',
+    build_visual_agent_edit: 'Редактировать элемент',
+    build_visual_agent_placeholder: 'Опишите, что изменить (текст, стили, структура)…',
+    build_visual_agent_hint: 'Запрос уйдёт в чат: агент внесёт правки в код по выбранному элементу.',
     build_visual_save: 'Сохранить макет',
     build_visual_saving: 'Сохранение…',
     build_visual_saved: 'Макет сохранён',
@@ -1059,11 +1061,10 @@ export const messages = {
     pricing_subtitle:
       'Start — try the UI; Pro — freelancers and micro-businesses; Team — agencies and teams. Token packs — no subscription.',
     pricing_header_lead:
-      'Three subscription tiers — different token limits and features. Compare plans and pick what fits.',
+      'Three subscription tiers — different token limits and features. Compare plans and pick what fits. The 3‑month and yearly discounts apply to Pro and Team; Start has no period discount (you pay 3× or 12× the monthly price).',
     pricing_header_starter: 'Start — sandbox: learn the product without export.',
     pricing_header_pro: 'Pro — day-to-day plan for freelancers and micro-businesses.',
     pricing_header_team: 'Team — agencies and teams with collaboration.',
-    pricing_header_packs_note: 'You can buy token packs separately — no forced pack subscription.',
     pricing_monthly_note:
       'Display currency follows the UI language: RU → ₽, EN → USD, TJ → TJS. Conversion uses the current FX rate.',
     pricing_recommended_badge: 'Most popular',
@@ -1502,6 +1503,9 @@ export const messages = {
     build_visual_pick_selected: '· Selected: {tag}',
     build_visual_read_only_hint:
       'You can edit in the preview; saving to the server is not available for this build — export HTML instead.',
+    build_visual_agent_edit: 'Edit element',
+    build_visual_agent_placeholder: 'Describe the change (text, styles, structure)…',
+    build_visual_agent_hint: 'Sends to chat — the agent updates code for the selected element.',
     build_visual_save: 'Save layout',
     build_visual_saving: 'Saving…',
     build_visual_saved: 'Layout saved',
@@ -1905,11 +1909,10 @@ export const messages = {
     pricing_subtitle:
       'Оғоз — санҷиши интерфейс; Про — фриланс ва микробизнес; Даста — агентӣ ва даста. Бастаҳои токен бе зарурияти обуна.',
     pricing_header_lead:
-      'Се сатҳи обуна — лимити гуногуни токен ва имконият. Нақшаҳоро муқоиса кунед ва интихоб кунед.',
+      'Се сатҳи обуна — лимити гуногуни токен ва имконият. Нақшаҳоро муқоиса кунед ва интихоб кунед. Тахфиф за 3 моҳ ва сол барои «Про» ва «Даста»; «Оғоз» бе тахфиф (3× ё 12× аз нархи моҳона).',
     pricing_header_starter: 'Оғоз — песочница: санҷиш бе экспорт.',
     pricing_header_pro: 'Про — барои фриланс ва микробизнес.',
     pricing_header_team: 'Даста — барои агентӣ ва даста, ҳамкорӣ.',
-    pricing_header_packs_note: 'Токенҳоро алоҳида харидан мумкин — бе зарурияти обунаи солона ба баста.',
     pricing_monthly_note:
       'Асъор аз забони интерфейс: ru — RUB, en — USD, tg — TJS. Бо қурби ҷорӣ мепайваст шавад.',
     pricing_recommended_badge: 'Пурфурӯштарин',
@@ -2350,6 +2353,9 @@ export const messages = {
     build_visual_pick_selected: '· Интихоб: {tag}',
     build_visual_read_only_hint:
       'Дар пешнамоиш тағйир додан мумкин аст; сабт дар сервер барои ин ҷамъсозӣ нест — HTML-ро боргирӣ кунед.',
+    build_visual_agent_edit: 'Таҳрири элемент',
+    build_visual_agent_placeholder: 'Нависед, чӣ тағйир диҳем (матн, услуб, структура)…',
+    build_visual_agent_hint: 'Дархост ба чат меравад: агент коди ҳамон элементро тағйир медиҳад.',
     build_visual_save: 'Нигоҳ доштани макет',
     build_visual_saving: 'Нигоҳ дошта мешавад…',
     build_visual_saved: 'Макет нигоҳ дошта шуд',

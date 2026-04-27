@@ -212,8 +212,13 @@ export default function PromptBuildPage() {
     startWidth: number;
   } | null>(null);
 
-  const { steps: streamSteps, toolLine: streamToolLine, reset: resetStreamLog, applyEvent: applyStreamLog } =
-    useBuildStreamLog();
+  const {
+    steps: streamSteps,
+    toolLine: streamToolLine,
+    reset: resetStreamLog,
+    applyEvent: applyStreamLog,
+    markStreamFinished
+  } = useBuildStreamLog();
 
   const visualEditPersist = useMemo(() => {
     if (!sandboxId || typeof previewUrl !== "string") return false;
@@ -681,6 +686,7 @@ export default function PromptBuildPage() {
           const ev = sseEventName(chunk.event);
 
           if (ev === "done") {
+            markStreamFinished();
             setProgress(100);
             setMode("idle");
             setStage("ready");
@@ -853,6 +859,7 @@ export default function PromptBuildPage() {
         }
       } finally {
         if (isCurrentRequest()) {
+          markStreamFinished();
           const bridgeIdToCollapse = bridgeAssistantMessageIdRef.current;
           if (bridgeIdToCollapse) {
             setMessages((prev) => {
@@ -886,6 +893,7 @@ export default function PromptBuildPage() {
       ensureLemnityAiSession,
       finalizeInterfaceBuildTiming,
       loadLemnityAiSession,
+      markStreamFinished,
       projectKind,
       push,
       pushBridgeAssistantMessage,
@@ -900,6 +908,7 @@ export default function PromptBuildPage() {
       const controller = new AbortController();
       requestAbortRef.current = controller;
       const seq = ++coachRequestSeqRef.current;
+      const isStaleCoachResponse = () => coachRequestSeqRef.current !== seq;
 
       const apiMessages = thread
         .filter((m) => m.role === "user" || m.role === "assistant")
@@ -924,11 +933,11 @@ export default function PromptBuildPage() {
           signal: controller.signal
         });
 
-        if (!mountedRef.current || controller.signal.aborted) return;
+        if (!mountedRef.current || controller.signal.aborted || isStaleCoachResponse()) return;
 
         if (!res.ok) {
           const msg = await res.text().catch(() => "");
-          if (!mountedRef.current || controller.signal.aborted) return;
+          if (!mountedRef.current || controller.signal.aborted || isStaleCoachResponse()) return;
           push("assistant", `❌ ${msg || "Не удалось получить ответ коуча"}`);
           setCoachAwaitingConfirm(false);
           setPendingTechnicalPrompt(null);
@@ -946,13 +955,17 @@ export default function PromptBuildPage() {
         };
         const coachDurationMs = Math.round(performance.now() - coachStarted);
 
-        if (!mountedRef.current || controller.signal.aborted) return;
+        if (!mountedRef.current || controller.signal.aborted || isStaleCoachResponse()) return;
 
         const reply = typeof data.reply === "string" ? data.reply.trim() : "";
         if (!reply) {
-          push("assistant", "❌ Пустой ответ. Попробуй ещё раз.");
+          if (!isStaleCoachResponse()) {
+            push("assistant", "❌ Пустой ответ. Попробуй ещё раз.");
+          }
           return;
         }
+
+        if (isStaleCoachResponse()) return;
 
         if (process.env.NODE_ENV !== "production") {
           const debugModel =
@@ -1004,7 +1017,7 @@ export default function PromptBuildPage() {
         }
       } catch (error) {
         if ((error as Error).name === "AbortError") return;
-        if (!mountedRef.current) return;
+        if (!mountedRef.current || coachRequestSeqRef.current !== seq) return;
         push("assistant", "❌ Ошибка запроса к коучу промпта");
         setCoachAwaitingConfirm(false);
         setPendingTechnicalPrompt(null);
@@ -1431,9 +1444,8 @@ export default function PromptBuildPage() {
           sentAt: Date.now(),
           ...userExtras
         };
-        const nextThread = [...messages, userMsg];
-        setMessages(nextThread);
         if (isAffirmativeUserReply(trimmed)) {
+          setMessages((prev) => [...prev, userMsg]);
           const p = pendingTechnicalPrompt;
           setCoachAwaitingConfirm(false);
           setPendingTechnicalPrompt(null);
@@ -1443,7 +1455,13 @@ export default function PromptBuildPage() {
         }
         setCoachAwaitingConfirm(false);
         setPendingTechnicalPrompt(null);
-        void runPromptCoach(nextThread);
+        setMessages((prev) => {
+          const nextThread = [...prev, userMsg];
+          queueMicrotask(() => {
+            void runPromptCoach(nextThread);
+          });
+          return nextThread;
+        });
         return;
       }
 
@@ -1461,11 +1479,15 @@ export default function PromptBuildPage() {
         sentAt: Date.now(),
         ...userExtras
       };
-      const nextThread = [...messages, userMsg];
-      setMessages(nextThread);
+      setMessages((prev) => {
+        const nextThread = [...prev, userMsg];
+        queueMicrotask(() => {
+          void runPromptCoach(nextThread);
+        });
+        return nextThread;
+      });
       if (!idea.trim()) setIdea(trimmed || displayContent);
       if (stage === "idea") setStage("questions");
-      void runPromptCoach(nextThread);
       return;
     }
     push("user", text);
@@ -1748,6 +1770,13 @@ export default function PromptBuildPage() {
                     presentationExportsPaid={hasCustomDomainAccess}
                     previewVariant={tab === "document" ? "document" : "default"}
                     puckEditorHref={puckEditorHref}
+                    onVisualAgentEdit={
+                      lemnityAiBridgeReady
+                        ? (msg) => {
+                            void onSend(msg);
+                          }
+                        : undefined
+                    }
                   />
                 </div>
               ) : tab === "settings" ? (

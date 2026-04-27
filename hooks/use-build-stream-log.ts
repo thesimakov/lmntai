@@ -53,5 +53,24 @@ export function useBuildStreamLog() {
     }
   }, []);
 
-  return { steps, toolLine, reset, applyEvent };
+  /**
+   * Стрим Lemnity/builder иногда не шлёт `step: completed` для planner до `done` или вовсе.
+   * Без этого UI зависает на «В работе». Вызывать на `done` и при нормальном закрытии SSE.
+   */
+  const markStreamFinished = useCallback(() => {
+    setSteps((prev) => {
+      if (!prev.some((s) => s.status === "running" || s.status === "pending")) {
+        return prev;
+      }
+      return prev.map((s) => (s.status === "failed" ? s : { ...s, status: "completed" as const }));
+    });
+    setToolLine((line) => {
+      if (!line) return null;
+      const head = line.trimStart();
+      if (head.startsWith("✓")) return line;
+      return `✓ ${line.replace(/^→\s*/, "").trim()}`;
+    });
+  }, []);
+
+  return { steps, toolLine, reset, applyEvent, markStreamFinished };
 }

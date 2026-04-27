@@ -45,6 +45,8 @@ type RightPanelProps = {
   previewVariant?: "default" | "document";
   /** Второй iframe с Puck при визуальном режиме (тот же URL, что кнопка Puck) */
   puckEditorHref?: string | null;
+  /** Запрос в чат по выбранному в превью элементу (Lemnity AI) */
+  onVisualAgentEdit?: (message: string) => void;
 };
 
 function IdleState() {
@@ -187,7 +189,8 @@ export function RightPanel({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  puckEditorHref = null
+  puckEditorHref = null,
+  onVisualAgentEdit
 }: RightPanelProps) {
   if (mode === "generating") {
     return (
@@ -217,6 +220,7 @@ export function RightPanel({
             presentationExportsPaid={presentationExportsPaid}
             previewVariant={previewVariant}
             puckEditorHref={puckEditorHref}
+            onVisualAgentEdit={onVisualAgentEdit}
           />
         </LemnityAiPreviewChrome>
       </div>

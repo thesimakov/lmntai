@@ -1,18 +1,30 @@
 "use client";
 
 import JSZip from "jszip";
-import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowUp,
+  Download,
+  ExternalLink,
+  Monitor,
+  Presentation,
+  Smartphone,
+  Sparkles,
+  Tablet
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { SITE_URL } from "@/lib/site";
 import {
   attachVisualPreviewEditor,
   formatVisualPickLabel,
+  type VisualPickInfo,
   serializeIframeDocument
 } from "@/lib/visual-preview-editor";
 import { cn } from "@/lib/utils";
@@ -51,6 +63,11 @@ type PreviewFrameProps = {
   previewVariant?: "default" | "document";
   /** Редактор Puck (второй iframe при включённом визуальном режиме) */
   puckEditorHref?: string | null;
+  /**
+   * Запрос в чат агенту по выбранному в макете элементу (Lemnity AI).
+   * Текст формата: `[Визуальный редактор] Измени <tag> «фрагмент»: …`
+   */
+  onVisualAgentEdit?: (message: string) => void;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -108,7 +125,8 @@ export function PreviewFrame({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  puckEditorHref = null
+  puckEditorHref = null,
+  onVisualAgentEdit
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -117,6 +135,9 @@ export function PreviewFrame({
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeSrc, setIframeSrc] = useState(previewUrl);
   const [visualPickLabel, setVisualPickLabel] = useState<string | null>(null);
+  const [visualPickInfo, setVisualPickInfo] = useState<VisualPickInfo | null>(null);
+  const [visualAgentEditOpen, setVisualAgentEditOpen] = useState(false);
+  const [visualAgentEditText, setVisualAgentEditText] = useState("");
   const [visualQuickStyles, setVisualQuickStyles] = useState<VisualQuickStyles | null>(null);
   const [visualSelectedCount, setVisualSelectedCount] = useState(0);
 
@@ -157,6 +178,9 @@ export function PreviewFrame({
       detachEditorRef.current = null;
       setIframeBlocked(false);
       setVisualPickLabel(null);
+      setVisualPickInfo(null);
+      setVisualAgentEditOpen(false);
+      setVisualAgentEditText("");
       setVisualQuickStyles(null);
       setVisualSelectedCount(0);
       return;
@@ -178,6 +202,7 @@ export function PreviewFrame({
           fileInputRef.current?.click();
         },
         onSelectionChange: (info, element, elements) => {
+          setVisualPickInfo(info);
           setVisualPickLabel(info ? formatVisualPickLabel(info) : null);
           setVisualSelectedCount(elements.length);
           if (element instanceof HTMLElement) {
@@ -217,6 +242,13 @@ export function PreviewFrame({
     };
   }, [visualEditMode, isPptx, iframeSrc]);
 
+  useEffect(() => {
+    if (!visualPickLabel) {
+      setVisualAgentEditOpen(false);
+      setVisualAgentEditText("");
+    }
+  }, [visualPickLabel]);
+
   const controlButtons = useMemo(
     () => [
       { id: "desktop" as const, icon: Monitor, label: "Десктоп" },
@@ -237,6 +269,32 @@ export function PreviewFrame({
   function getSelectedVisualElement(): HTMLElement | null {
     const all = getSelectedVisualElements();
     return all.length > 0 ? all[all.length - 1] : null;
+  }
+
+  function buildVisualAgentMessage(instruction: string): string {
+    const el = getSelectedVisualElement();
+    const tag = visualPickInfo?.tagName ?? "element";
+    let snippet = "";
+    if (el) {
+      if (el instanceof HTMLImageElement) {
+        snippet = (el.alt || el.title || "").trim();
+      } else {
+        snippet = el.innerText?.trim().replace(/\s+/g, " ") ?? "";
+      }
+      if (snippet.length > 120) {
+        snippet = `${snippet.slice(0, 120)}…`;
+      }
+    }
+    return `[Визуальный редактор] Измени <${tag}>${snippet ? ` «${snippet}»` : ""}: ${instruction}`;
+  }
+
+  function submitVisualAgentEdit() {
+    if (!onVisualAgentEdit || !visualPickInfo) return;
+    const text = visualAgentEditText.trim();
+    if (!text) return;
+    onVisualAgentEdit(buildVisualAgentMessage(text));
+    setVisualAgentEditOpen(false);
+    setVisualAgentEditText("");
   }
 
   function applyQuickStyle(prop: keyof VisualQuickStyles, value: string) {
@@ -717,6 +775,63 @@ export function PreviewFrame({
               ? `${t("build_visual_edit_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`
               : `${t("build_visual_read_only_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`}
         </p>
+      ) : null}
+      {visualEditMode && !isPptx && onVisualAgentEdit && visualPickLabel && visualPickInfo && !iframeBlocked ? (
+        <div className="shrink-0 rounded-lg border border-violet-300/50 bg-gradient-to-b from-violet-500/[0.06] to-background p-2 dark:border-violet-500/25">
+          {!visualAgentEditOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-9 w-full gap-2 border-violet-200/80 bg-violet-500/10 text-foreground hover:bg-violet-500/15 dark:border-violet-500/30"
+              onClick={() => setVisualAgentEditOpen(true)}
+            >
+              <Sparkles className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
+              {t("build_visual_agent_edit")}
+            </Button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0"
+                  aria-label="Back"
+                  onClick={() => {
+                    setVisualAgentEditOpen(false);
+                    setVisualAgentEditText("");
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <Input
+                  value={visualAgentEditText}
+                  onChange={(e) => setVisualAgentEditText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      submitVisualAgentEdit();
+                    }
+                  }}
+                  placeholder={t("build_visual_agent_placeholder")}
+                  className="h-9 min-w-0 flex-1 text-sm"
+                  autoFocus
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 bg-violet-600 text-white hover:bg-violet-500"
+                  aria-label="Send"
+                  onClick={() => submitVisualAgentEdit()}
+                >
+                  <ArrowUp className="h-4 w-4" />
+                </Button>
+              </div>
+              <p className="px-1 text-[10px] leading-snug text-muted-foreground">{t("build_visual_agent_hint")}</p>
+            </div>
+          )}
+        </div>
       ) : null}
       {visualEditMode && !isPptx && visualEditPersist && !iframeBlocked && visualQuickStyles ? (
         <div className="shrink-0 rounded-md border border-border bg-muted/30 p-2">

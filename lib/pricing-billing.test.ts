@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { subscriptionBillingMinor } from "./pricing-billing";
+import { subscriptionBillingLinearMinor, subscriptionBillingMinor } from "./pricing-billing";
 
 describe("subscriptionBillingMinor", () => {
   it("keeps month as base minor units for monthly", () => {
@@ -26,5 +26,23 @@ describe("subscriptionBillingMinor", () => {
     expect(r.periodMonths).toBe(12);
     expect(r.totalMinor).toBe(Math.round(100 * 12 * 0.85));
     expect(r.effectiveMonthlyMinor).toBe(Math.round(r.totalMinor / 12));
+  });
+});
+
+describe("subscriptionBillingLinearMinor (Start: no period discount)", () => {
+  it("3 months is exactly 3× monthly", () => {
+    const m = 9_900;
+    const r = subscriptionBillingLinearMinor(m, "quarter");
+    expect(r.periodMonths).toBe(3);
+    expect(r.totalMinor).toBe(m * 3);
+    expect(r.effectiveMonthlyMinor).toBe(m);
+  });
+
+  it("year is exactly 12× monthly", () => {
+    const m = 9_900;
+    const r = subscriptionBillingLinearMinor(m, "yearly");
+    expect(r.periodMonths).toBe(12);
+    expect(r.totalMinor).toBe(m * 12);
+    expect(r.effectiveMonthlyMinor).toBe(m);
   });
 });
