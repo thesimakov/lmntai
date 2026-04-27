@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Boxes,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -326,6 +327,21 @@ export function MenuDrawer({
               <p className="truncate text-sm font-semibold text-zinc-900">{projectTitle}</p>
               <p className="text-xs text-zinc-500">{t("playground_menu_to_account")}</p>
             </div>
+          </button>
+
+          <button
+            type="button"
+            className="mt-2 flex w-full items-center justify-between gap-2 rounded-2xl border border-black/10 bg-white/70 px-3 py-2.5 text-left text-sm font-medium text-zinc-900 hover:bg-white"
+            onClick={() => {
+              setOpen(false);
+              router.push("/playground/box");
+            }}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <Boxes className="h-4 w-4 shrink-0 text-zinc-600" />
+              <span className="truncate">{t("build_tab_box")}</span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" />
           </button>
 
           <div className="mt-2 rounded-3xl border border-black/10 bg-white/70 p-3">

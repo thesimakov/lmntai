@@ -19,6 +19,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
+import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { SITE_URL } from "@/lib/site";
 import {
@@ -444,7 +445,7 @@ export function PreviewFrame({
         downloadFilename?.trim() || `presentation-${sandboxId.slice(0, 8)}.pptx`
       );
     } catch (e) {
-      toast.error(t("build_export_failed"), { description: (e as Error).message });
+      toast.error(t("build_export_failed"), { description: unknownToErrorMessage(e) });
     } finally {
       setExportTask(null);
     }
@@ -458,7 +459,7 @@ export function PreviewFrame({
       const response = await fetch(presentationPdfExport.url, { credentials: "include" });
       await downloadBlobFromResponse(response, presentationPdfExport.filename);
     } catch (e) {
-      toast.error(t("build_export_failed"), { description: (e as Error).message });
+      toast.error(t("build_export_failed"), { description: unknownToErrorMessage(e) });
     } finally {
       setExportTask(null);
     }
@@ -493,7 +494,7 @@ export function PreviewFrame({
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(t("build_export_failed"), { description: (e as Error).message });
+      toast.error(t("build_export_failed"), { description: unknownToErrorMessage(e) });
     } finally {
       setExportTask(null);
     }
@@ -523,7 +524,7 @@ export function PreviewFrame({
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      toast.error(t("build_export_docx_error"), { description: (e as Error).message });
+      toast.error(t("build_export_docx_error"), { description: unknownToErrorMessage(e) });
     } finally {
       setExportTask(null);
     }
@@ -550,7 +551,7 @@ export function PreviewFrame({
             : "export";
       await downloadHtmlAsPdf(root, `${base}.pdf`);
     } catch (e) {
-      toast.error(t("build_export_pdf_error"), { description: (e as Error).message });
+      toast.error(t("build_export_pdf_error"), { description: unknownToErrorMessage(e) });
     } finally {
       setExportTask(null);
     }
@@ -596,7 +597,7 @@ export function PreviewFrame({
       bumpIframeCache("edit");
     } catch (e) {
       toast.error(t("build_visual_save_failed"), {
-        description: (e as Error).message || undefined
+        description: unknownToErrorMessage(e)
       });
       bumpIframeCache("recover");
     } finally {

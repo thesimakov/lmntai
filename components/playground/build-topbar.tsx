@@ -2,6 +2,7 @@
 
 import {
   BookOpen,
+  Boxes,
   Code2,
   Database,
   Eye,
@@ -17,6 +18,7 @@ import {
   Upload
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
 
@@ -73,6 +75,7 @@ export function BuildPreviewChrome({
 }: BuildPreviewChromeProps) {
   const [taskFilesOpen, setTaskFilesOpen] = useState(false);
   const { t } = useI18n();
+  const router = useRouter();
 
   return (
     <div className="flex shrink-0 min-w-0 flex-col border-b border-border bg-background">
@@ -201,11 +204,23 @@ export function BuildPreviewChrome({
                 <FileSearch className="h-4 w-4" />
                 {t("build_menu_task_files")}
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/docs" className="flex cursor-pointer items-center gap-2">
-                  <BookOpen className="h-4 w-4" />
-                  {t("sidebar_popover_docs")}
-                </Link>
+              <DropdownMenuItem
+                className="gap-2"
+                onSelect={() => {
+                  router.push("/playground/box");
+                }}
+              >
+                <Boxes className="h-4 w-4" />
+                {t("build_tab_box")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2"
+                onSelect={() => {
+                  router.push("/docs");
+                }}
+              >
+                <BookOpen className="h-4 w-4" />
+                {t("sidebar_popover_docs")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
