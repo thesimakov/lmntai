@@ -808,6 +808,9 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Оплата ещё не зафиксирована. Подождите немного и попробуйте снова.',
     build_preview_open_tab: 'Просмотр',
+    build_studio_badge_prefix: 'Сделано на',
+    build_studio_badge_brand: 'Лемнити',
+    build_studio_badge_aria: 'Сделано на Лемнити — сайт Lemnity',
     build_preview_footer_made_on: 'Сделано на Lemnity',
     build_aria_history: 'История',
     build_aria_database: 'База',
@@ -1697,6 +1700,9 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Payment not recorded yet. Wait a moment and try again.',
     build_preview_open_tab: 'Preview',
+    build_studio_badge_prefix: 'Made on',
+    build_studio_badge_brand: 'Lemnity',
+    build_studio_badge_aria: 'Made on Lemnity — open website',
     build_preview_footer_made_on: 'Made on Lemnity',
     build_aria_history: 'History',
     build_aria_database: 'Database',
@@ -2586,6 +2592,9 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Пардохт ҳанӯз сабт нашудааст. Кӯтоҳ интизор шавед ва такрор кунед.',
     build_preview_open_tab: 'Дидан',
+    build_studio_badge_prefix: 'Дар',
+    build_studio_badge_brand: 'Лемнити',
+    build_studio_badge_aria: 'Дар Лемнити сохта шуд — сайт',
     build_preview_footer_made_on: 'Дар Lemnity сохта шуд',
     build_aria_history: 'Таърих',
     build_aria_database: 'Пойгоҳ',

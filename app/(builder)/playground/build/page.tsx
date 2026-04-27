@@ -189,6 +189,8 @@ export default function PromptBuildPage() {
     filename: string;
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
+  /** `null` — загрузка; `true` — показать шильдик «Сделано на Лемнити» (GET /share, логика как у публичного футера). */
+  const [studioBrandingBadge, setStudioBrandingBadge] = useState<boolean | null>(null);
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
@@ -392,7 +394,30 @@ export default function PromptBuildPage() {
     }
   }, [previewUrl, sandboxId, shareIsPublic, t]);
 
+  const loadShareBranding = useCallback(async () => {
+    if (!sandboxId) {
+      setStudioBrandingBadge(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
+      if (res.status === 503 || !res.ok) {
+        setStudioBrandingBadge(null);
+        return;
+      }
+      const data = (await res.json()) as { showLemnityBranding?: boolean };
+      setStudioBrandingBadge(Boolean(data.showLemnityBranding));
+    } catch {
+      setStudioBrandingBadge(null);
+    }
+  }, [sandboxId]);
+
   const planFromSession = String(session?.user?.plan ?? "");
+
+  useEffect(() => {
+    void loadShareBranding();
+  }, [loadShareBranding, planFromSession, session?.user?.shareBrandingRemovalPaid]);
+
   const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";
 
   const documentTabVisible = useMemo(
@@ -1831,6 +1856,7 @@ export default function PromptBuildPage() {
                           }
                         : undefined
                     }
+                    studioBrandingBadge={studioBrandingBadge}
                   />
                 </div>
               ) : tab === "settings" ? (
@@ -1847,6 +1873,9 @@ export default function PromptBuildPage() {
                     shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
                     publishSeedText={idea}
                     onOpenPublishDialog={() => setPublishDialogOpen(true)}
+                    onBrandingPreferenceSaved={() => {
+                      void loadShareBranding();
+                    }}
                   />
                 </div>
               ) : (

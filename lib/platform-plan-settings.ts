@@ -43,6 +43,11 @@ export type PlatformPlanDataV1 = {
   plans: Record<PlanId, PlanRow>;
 };
 
+/** In-memory: снижает нагрузку на БД (каждый API-вызов раньше делал findUnique). */
+const PLAN_DATA_CACHE_TTL_MS = 60_000;
+const PLAN_DATA_CACHE_FALLBACK_TTL_MS = 15_000;
+let planDataCache: { data: PlatformPlanDataV1; expiresAt: number } | null = null;
+
 function defaultFeatureMap(plan: PlanId): Record<string, boolean> {
   const all = Object.fromEntries(PLATFORM_FEATURE_CATALOG.map((f) => [f.id, false])) as Record<
     string,
@@ -116,9 +121,22 @@ function parseData(raw: unknown): PlatformPlanDataV1 {
 }
 
 export async function getPlatformPlanData(): Promise<PlatformPlanDataV1> {
-  const row = await prisma.platformPlanSettings.findUnique({ where: { id: SINGLETON_ID } });
-  if (!row?.data) return getDefaultPlatformPlanData();
-  return parseData(row.data);
+  const now = Date.now();
+  if (planDataCache && planDataCache.expiresAt > now) {
+    return planDataCache.data;
+  }
+  try {
+    const row = await prisma.platformPlanSettings.findUnique({ where: { id: SINGLETON_ID } });
+    const data = !row?.data ? getDefaultPlatformPlanData() : parseData(row.data);
+    planDataCache = { data, expiresAt: now + PLAN_DATA_CACHE_TTL_MS };
+    return data;
+  } catch (err) {
+    // В dev/offline-режимах БД может быть недоступна: не роняем генерацию, используем дефолтные лимиты.
+    console.warn("[platform-plan-settings] fallback to defaults due to db error", err);
+    const data = getDefaultPlatformPlanData();
+    planDataCache = { data, expiresAt: now + PLAN_DATA_CACHE_FALLBACK_TTL_MS };
+    return data;
+  }
 }
 
 export async function savePlatformPlanData(data: PlatformPlanDataV1) {
@@ -136,6 +154,7 @@ export async function savePlatformPlanData(data: PlatformPlanDataV1) {
     create: { id: SINGLETON_ID, data: json },
     update: { data: json },
   });
+  planDataCache = { data: normalized, expiresAt: Date.now() + PLAN_DATA_CACHE_TTL_MS };
   return normalized;
 }
 

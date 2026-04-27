@@ -74,6 +74,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
     multifile
       ? "Output for this mode: a **Vite/Lovable-style** React+TypeScript project as **multiple files** in markdown fences (not one big static HTML). The platform will bundle with esbuild; Tailwind is applied via CDN in the preview — use `className` and Tailwind utility classes only. Use functional components, `import` between files with **relative** paths, entry at `src/main.tsx` (createRoot on `#root`). Prefer splitting UI into `src/components/*.tsx` and shared bits under `lib/` or `src/lib/` when it keeps files readable. No `vite.config` in output unless asked — do not paste an entire `package.json` tree unless a file is required. **Strict:** each file must be ` ```tsx:path/to/File.tsx` or ` ```ts:path/to/file.ts` on the opening fence line (path after colon), then the file body, then closing fence. Include `src/main.tsx` and at least `src/App.tsx`."
       : "Output: one complete HTML5 document (editable preview for document workstreams), embedded CSS (or Tailwind CDN), no React app unless the user explicitly asked for a component tree.",
+    "Treat generation as a compact mini-spec: GOAL, routes/screens, data/roles constraints, UX tone, visual constraints, measurable checks.",
+    "Baseline quality: mobile-first, explicit loading/empty/error states where relevant, semantic headings/labels, and no secrets/keys in visible code.",
     "Accessibility: logical heading order, button/link labels, sufficient contrast.",
     PROMPT_STOCK_IMAGES_RULES_EN,
     PROMPT_SITE_FOOTER_RULES_EN
@@ -123,6 +125,8 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Split UI into small files under `src/`; use relative imports; export components as `export function` or `export default` consistently.",
           "State: `useState` / light logic only — no real backend; mock data in-module if needed.",
           "NPM imports: the preview bundler only resolves **installed** packages. Prefer `react` / `react-dom` only; if needed use: `react-router-dom`, `date-fns`, `lucide-react` or `react-icons`, `framer-motion`, `axios`, `zod`, `@tanstack/react-query`, `swiper`, `embla-carousel-react`, `recharts`, `clsx`, `tailwind-merge`, `react-hook-form`, `sonner`, or `@radix-ui/*` (match an existing import path). Avoid random or native-only libraries.",
+          "Include resilient states for interactive blocks: loading/empty/error placeholders.",
+          "If the request implies tariffs/roles (FREE/PRO/etc.), reflect feature gating in UI copy and section visibility cues.",
           "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
           "Include the site footer bar (copyright + privacy placeholder; build date + Lemnity link) when the app has a footer."
         ];
@@ -130,6 +134,7 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
         return [
           "Deliverable: **Landing or web interface** as a **multi-file** React+TS app (Vite/Lovable style) unless the user asked only for a static one-file HTML.",
           "Prefer: `src/main.tsx` + `src/App.tsx` + `src/components/*`; split sections logically; one primary CTA; responsive layout (mobile-first) via Tailwind `className`.",
+          "For data-like UI sections, include loading/empty/error states.",
           "If you add a page footer, follow the global site-footer rules (Lemnity link, build date, privacy placeholder)."
         ];
     }

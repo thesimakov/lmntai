@@ -13,6 +13,7 @@ import {
   LemnityAiPreviewChrome
 } from "@/components/playground/lemnity-ai-preview-animation";
 import { PageTransitionBuildLoader } from "@/components/playground/page-transition-build-loader";
+import { LemnityStudioBadge } from "@/components/playground/lemnity-studio-badge";
 import { PreviewFrame } from "@/components/playground/preview-frame";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,8 @@ type RightPanelProps = {
   puckEditorHref?: string | null;
   /** Запрос в чат по выбранному в превью элементу (Lemnity AI) */
   onVisualAgentEdit?: (message: string) => void;
+  /** Плавающий шильдик «Сделано на Лемнити» (тариф Стандарт / пока не снят брендинг) */
+  studioBrandingBadge?: boolean | null;
 };
 
 function IdleState() {
@@ -210,7 +213,8 @@ export function RightPanel({
   presentationExportsPaid = false,
   previewVariant = "default",
   puckEditorHref = null,
-  onVisualAgentEdit
+  onVisualAgentEdit,
+  studioBrandingBadge = null
 }: RightPanelProps) {
   const previewFrame = previewUrl && sandboxId && (
     <LemnityAiPreviewChrome>
@@ -250,7 +254,16 @@ export function RightPanel({
 
   /** Готовая сборка: показываем файл/превью, даже если mode ещё «idle» (рассинхрон или после ошибки сброса режима). */
   if (previewUrl && sandboxId) {
-    return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{previewFrame}</div>;
+    return (
+      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        {previewFrame}
+        {studioBrandingBadge === true ? (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-20 sm:bottom-4 sm:right-4">
+            <LemnityStudioBadge className="pointer-events-auto shadow-black/40" />
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   return <IdleState />;

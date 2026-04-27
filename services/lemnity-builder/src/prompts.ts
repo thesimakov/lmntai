@@ -13,6 +13,13 @@ const STOCK_IMAGES_GUIDANCE =
 const SITE_FOOTER_GUIDANCE =
   "Marketing site footer: when you include `<footer>`, add `div.footer-bottom` with flex row: left — `© {year} {brand}`, rights text, «Политика конфиденциальности» with `href=\"#\"` (URL TBD comment); right — `Собрано:` + `new Date().toLocaleDateString(...)`, then «Сделано на Lemnity» → `https://lemnity.com` (new tab).";
 
+/** Inspired by lovable.guide: keep prompts as compact, verifiable mini-TZ. */
+const GOLDEN_PROMPT_FORMULA_GUIDANCE =
+  "Plan and execute as a compact spec: define GOAL (for whom + outcome), ROUTES/SCREENS, DATA entities and access rules, ROLES (guest/user/admin etc.), UX tone, visual constraints, measurable constraints (performance/quality), and acceptance checks.";
+
+const QUALITY_CHECKLIST_GUIDANCE =
+  "Quality baseline for generated UI: mobile-first responsive layout; explicit loading/empty/error states for key flows; clear role-based visibility (feature gating in UI copy/structure); semantic headings/labels; avoid secrets/keys in code or visible text.";
+
 /** Тип визуального артефакта — планировщик обязан выбрать по смыслу запроса, не по умолчанию. */
 export type ArtifactKind =
   | "landing"
@@ -50,7 +57,9 @@ export const LEMNITY_SYSTEM_PROMPT = [
   "Prefer production-quality typography and semantic HTML/JSX; accessible labels; strong hierarchy; realistic content, no lorem ipsum unless asked.",
   "For **lovable/landing (multi-file)**: output ` ```tsx:src/...` / ` ```ts:src/...` fences. For **non-React** HTML-only previews (legacy dashboard/docs paths when truly one file is required): one self-contained HTML5 document; otherwise prefer the multi-file app format.",
   STOCK_IMAGES_GUIDANCE,
-  SITE_FOOTER_GUIDANCE
+  SITE_FOOTER_GUIDANCE,
+  GOLDEN_PROMPT_FORMULA_GUIDANCE,
+  QUALITY_CHECKLIST_GUIDANCE
 ].join("\n");
 
 const ARTIFACT_KIND_SET = new Set<string>([
@@ -350,6 +359,8 @@ export function createPlanPrompt(input: {
     "Rules:",
     "- Choose artifact_kind from the user's wording (Russian and English). Lovable / react+vite / «как у lovable» → lovable. PowerPoint / презентацию / pptx → presentation. Резюме / CV → resume.",
     "- Use 3 to 6 atomic steps tailored to that artifact_kind.",
+    "- Include at least one step for access/data logic (roles, visibility, data behavior) when relevant.",
+    "- Include at least one QA step for responsive + loading/empty/error states.",
     "- Steps describe UI generation work, not advice to the user.",
     "- Do not ignore LOCALE: plan copy must be in the app UI language even if the user message is in another language.",
     "- The title should be short enough for a session name.",
@@ -405,6 +416,8 @@ export function executeUiPrompt(input: {
     "General technical guidance:",
     "- Strong typography, clear hierarchy; use CSS flex/grid.",
     "- Charts/diagrams: inline SVG or pure CSS when needed.",
+    "- Include resilient UI states where applicable: loading, empty, and error.",
+    "- Keep role-gated sections explicit in UI (for example, visible badges/blocks for FREE vs PRO if request implies plans).",
     "- Keep JavaScript minimal and safe; no external scripts or fonts unless data URLs (prefer system font stack).",
     "",
     input.modelContext ? `Additional Lemnity context:\n${input.modelContext}\n` : "",
@@ -445,6 +458,8 @@ export function executeLovableUiPrompt(input: {
     "",
     "General guidance:",
     "- Strong visual hierarchy; responsive layout with flex/grid utilities.",
+    "- Include loading/empty/error states for key interactive areas (tables, lists, cards) where it makes sense.",
+    "- If request implies plans/roles/access, reflect feature gating in UI structure and copy.",
     "",
     input.modelContext ? `Additional Lemnity context:\n${input.modelContext}\n` : "",
     `Plan title: ${input.plan.title}`,

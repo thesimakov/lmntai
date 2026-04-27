@@ -112,6 +112,9 @@ async function postGenerateStream(req: NextRequest) {
 
         const reader = routerRes.body.getReader();
         const decoder = new TextDecoder();
+        /** Не шлём progress на каждый чанк SSE — тысячи enqueue/gc нагружают Node. */
+        const PROGRESS_SSE_MIN_MS = 400;
+        let lastProgressEmitAt = 0;
 
         sse(controller, { type: "log", content: "🎯 Анализирую запрос..." });
         sse(controller, { type: "progress", value: 18 });
@@ -156,7 +159,11 @@ async function postGenerateStream(req: NextRequest) {
             }
           }
 
-          sse(controller, { type: "progress", value: Math.min(90, 35 + Math.floor(assembledText.length / 250)) });
+          const now = Date.now();
+          if (now - lastProgressEmitAt >= PROGRESS_SSE_MIN_MS) {
+            sse(controller, { type: "progress", value: Math.min(90, 35 + Math.floor(assembledText.length / 250)) });
+            lastProgressEmitAt = now;
+          }
         }
 
         sse(controller, {

@@ -3,7 +3,7 @@
  * Зависимости react / react-dom в package.json lemnity-builder.
  */
 import { createRequire } from "node:module";
-import fs from "node:fs";
+import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -292,12 +292,12 @@ export async function bundleLovableToPreviewHtml(inputFiles: Record<string, stri
     return { ok: false, error: "Не найден entry (ожидается src/main.tsx или src/main.jsx)." };
   }
 
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "lovable-sbx-"));
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), "lovable-sbx-"));
   try {
     for (const [rel, content] of Object.entries(files)) {
       const abs = path.join(tmp, rel);
-      fs.mkdirSync(path.dirname(abs), { recursive: true });
-      fs.writeFileSync(abs, content, "utf8");
+      await fs.mkdir(path.dirname(abs), { recursive: true });
+      await fs.writeFile(abs, content, "utf8");
     }
 
     let result: esbuild.BuildResult;
@@ -348,6 +348,6 @@ export async function bundleLovableToPreviewHtml(inputFiles: Record<string, stri
       ].join("\n")
     };
   } finally {
-    fs.rmSync(tmp, { recursive: true, force: true });
+    await fs.rm(tmp, { recursive: true, force: true }).catch(() => {});
   }
 }
