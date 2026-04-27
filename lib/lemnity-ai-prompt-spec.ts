@@ -122,6 +122,7 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Styling: Tailwind utility `className` only (preview injects Tailwind CDN).",
           "Split UI into small files under `src/`; use relative imports; export components as `export function` or `export default` consistently.",
           "State: `useState` / light logic only — no real backend; mock data in-module if needed.",
+          "NPM imports: the preview bundler only resolves **installed** packages. Prefer `react` / `react-dom` only; if needed use: `react-router-dom`, `date-fns`, `lucide-react` or `react-icons`, `framer-motion`, `axios`, `zod`, `@tanstack/react-query`, `swiper`, `embla-carousel-react`, `recharts`, `clsx`, `tailwind-merge`, `react-hook-form`, `sonner`, or `@radix-ui/*` (match an existing import path). Avoid random or native-only libraries.",
           "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
           "Include the site footer bar (copyright + privacy placeholder; build date + Lemnity link) when the app has a footer."
         ];

@@ -17,6 +17,7 @@ import {
 import { materializeRemoteImagesInProject } from "@/lib/materialize-remote-images";
 import {
   bundleLovableToPreviewHtml,
+  lovableBundleErrorHtml,
   parseLovableFencedFiles,
   withLovableProjectScaffold
 } from "@/lib/lovable-bundler";
@@ -425,10 +426,8 @@ export const sandboxManager = {
       });
       projectFiles = files;
     }
-    const html = await bundleLovableToPreviewHtml(projectFiles);
-    if (!html) {
-      return this.applyCode(sandboxId, code);
-    }
+    const bundle = await bundleLovableToPreviewHtml(projectFiles);
+    const html = bundle.ok ? bundle.html : lovableBundleErrorHtml(bundle.error);
 
     if (isLemnityAiSandboxDockerEnabled()) {
       const rec = dockerRegistry.get(sandboxId);

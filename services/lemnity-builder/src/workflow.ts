@@ -12,7 +12,11 @@ import {
   type BuilderPlan
 } from "./prompts.js";
 import { normalizeAppUiLanguage, type AppUiLanguage } from "./ui-labels.js";
-import { bundleLovableToPreviewHtml, parseLovableFencedFiles } from "./lovable-bundler.js";
+import {
+  bundleLovableToPreviewHtml,
+  lovableBundleErrorHtml,
+  parseLovableFencedFiles
+} from "./lovable-bundler.js";
 import { requestJsonCompletion, streamChatCompletion } from "./routerai.js";
 import type { BuilderEvent } from "./types.js";
 
@@ -269,9 +273,12 @@ export async function executePlanToLovable(input: {
   }
 
   const files = parseLovableFencedFiles(raw);
-  const bundled = files ? await bundleLovableToPreviewHtml(files) : null;
-  if (bundled) {
-    return bundled;
+  if (files) {
+    const bundled = await bundleLovableToPreviewHtml(files);
+    if (bundled.ok) {
+      return bundled.html;
+    }
+    return lovableBundleErrorHtml(bundled.error);
   }
   return extractHtmlArtifact(raw);
 }

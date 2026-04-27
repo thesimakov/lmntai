@@ -10,7 +10,9 @@ import { fileURLToPath } from "node:url";
 
 import * as esbuild from "esbuild";
 
-const require = createRequire(fileURLToPath(new URL("package.json", import.meta.url)));
+const builderModuleDir = path.dirname(fileURLToPath(import.meta.url));
+const builderRoot = path.join(builderModuleDir, "..");
+const reqFromBuilderRoot = createRequire(path.join(builderRoot, "package.json"));
 
 const PATH_IN_FENCE = /^[\w./\\-]+\.[a-z0-9]+$/i;
 
@@ -190,20 +192,32 @@ export function withLovableProjectScaffold(input: Record<string, string>): Recor
   return files;
 }
 
-function resolveFromApp(spec: string): string {
-  return require.resolve(spec);
-}
-
-function bundleReactFromAppPlugin(): esbuild.Plugin {
+function resolveBareImportsFromBuilderRootPlugin(): esbuild.Plugin {
   return {
-    name: "bundle-react-from-lemnity-builder",
+    name: "resolve-bare-from-builder-root",
     setup(build) {
-      const filter =
-        /^(react|react\/jsx-runtime|react\/jsx-dev-runtime|react-dom|react-dom\/client|react-dom\/server)$/;
-
-      build.onResolve({ filter }, (args) => ({
-        path: resolveFromApp(args.path)
-      }));
+      build.onResolve({ filter: /.*/ }, (args) => {
+        if (args.namespace && args.namespace !== "file") {
+          return undefined;
+        }
+        if (args.path.startsWith("node:") || args.path.startsWith("data:")) {
+          return undefined;
+        }
+        if (args.path === "." || args.path.startsWith("./") || args.path.startsWith("../")) {
+          return undefined;
+        }
+        if (path.isAbsolute(args.path)) {
+          if (args.path.replace(/\\/g, "/").includes("node_modules")) {
+            return { path: path.normalize(args.path) };
+          }
+          return undefined;
+        }
+        try {
+          return { path: reqFromBuilderRoot.resolve(args.path) };
+        } catch {
+          return undefined;
+        }
+      });
     }
   };
 }
@@ -212,10 +226,71 @@ function safeInlineModuleScript(js: string): string {
   return js.replace(/<\/script/gi, "<\\/script");
 }
 
-export async function bundleLovableToPreviewHtml(inputFiles: Record<string, string>): Promise<string | null> {
+function escapeHtmlText(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function formatEsbuildFailure(err: unknown): string {
+  if (err && typeof err === "object" && "errors" in err) {
+    const e = err as { errors: Array<{ text: string; location?: { file?: string; line?: number; column?: number } }> };
+    if (Array.isArray(e.errors) && e.errors.length) {
+      return e.errors
+        .map((x) => {
+          const l = x.location;
+          const loc = l?.file
+            ? ` ${l.file}${l.line != null ? `:${l.line}` : ""}${l.column != null ? `:${l.column}` : ""}`
+            : "";
+          return `${x.text || "Ошибка esbuild"}${loc}`;
+        })
+        .join("\n");
+    }
+  }
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
+export function lovableBundleErrorHtml(detail: string): string {
+  const safe = escapeHtmlText(detail.trim().slice(0, 4000));
+  return [
+    "<!DOCTYPE html>",
+    '<html lang="ru">',
+    "<head>",
+    '  <meta charset="UTF-8" />',
+    '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+    "  <title>Не удалось собрать превью</title>",
+    "  <style>",
+    "    body { margin:0; font:15px/1.5 system-ui, sans-serif; background:#0a0a0a; color:#e5e5e5; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }",
+    "    .c { max-width:42rem; width:100%; border:1px solid #333; border-radius:12px; padding:20px; background:#141414; }",
+    "    h1 { font-size:1.1rem; margin:0 0 8px; color:#fff; }",
+    "    p { margin:0 0 12px; color:#a3a3a3; font-size:14px; }",
+    "    pre { margin:0; padding:12px; border-radius:8px; background:#0a0a0a; color:#f5f5f5; font-size:12px; white-space:pre-wrap; word-break:break-word; overflow:auto; max-height:50vh; }",
+    "  </style>",
+    "</head>",
+    "<body>",
+    '  <div class="c">',
+    "    <h1>Сборка превью не удалась</h1>",
+    "    <p>Импортируйте только пакеты, которые есть в проекте Lemnity, либо попросите модель убрать лишние библиотеки. Код остаётся на вкладке «Код».</p>",
+    "    <pre>",
+    safe,
+    "    </pre>",
+    "  </div>",
+    "</body>",
+    "</html>"
+  ].join("\n");
+}
+
+export type LovableBundleResult = { ok: true; html: string } | { ok: false; error: string };
+
+export async function bundleLovableToPreviewHtml(inputFiles: Record<string, string>): Promise<LovableBundleResult> {
   const files = withLovableProjectScaffold(inputFiles);
   const entry = findLovableEntry(files);
-  if (!entry) return null;
+  if (!entry) {
+    return { ok: false, error: "Не найден entry (ожидается src/main.tsx или src/main.jsx)." };
+  }
 
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "lovable-sbx-"));
   try {
@@ -225,44 +300,53 @@ export async function bundleLovableToPreviewHtml(inputFiles: Record<string, stri
       fs.writeFileSync(abs, content, "utf8");
     }
 
-    const result = await esbuild.build({
-      absWorkingDir: tmp,
-      entryPoints: [entry],
-      bundle: true,
-      write: false,
-      format: "esm",
-      platform: "browser",
-      target: "es2022",
-      jsx: "automatic",
-      logLevel: "silent",
-      loader: { ".css": "empty" },
-      plugins: [bundleReactFromAppPlugin()]
-    });
+    let result: esbuild.BuildResult;
+    try {
+      result = await esbuild.build({
+        absWorkingDir: tmp,
+        entryPoints: [entry],
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "browser",
+        target: "es2022",
+        jsx: "automatic",
+        logLevel: "silent",
+        loader: { ".css": "empty" },
+        nodePaths: [path.join(builderRoot, "node_modules")],
+        plugins: [resolveBareImportsFromBuilderRootPlugin()]
+      });
+    } catch (err) {
+      return { ok: false, error: formatEsbuildFailure(err) };
+    }
 
     const file = result.outputFiles?.[0];
-    if (!file?.text) return null;
+    if (!file?.text) {
+      return { ok: false, error: "Пустой бандл (нет выхода esbuild)." };
+    }
 
     const body = safeInlineModuleScript(file.text);
 
-    return [
-      "<!DOCTYPE html>",
-      '<html lang="ru">',
-      "<head>",
-      '  <meta charset="UTF-8" />',
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
-      "  <title>Lemnity · React</title>",
-      '  <script src="https://cdn.tailwindcss.com"></script>',
-      "</head>",
-      "<body>",
-      '  <div id="root"></div>',
-      "  <script type=\"module\">",
-      body,
-      "  </script>",
-      "</body>",
-      "</html>"
-    ].join("\n");
-  } catch {
-    return null;
+    return {
+      ok: true,
+      html: [
+        "<!DOCTYPE html>",
+        '<html lang="ru">',
+        "<head>",
+        '  <meta charset="UTF-8" />',
+        '  <meta name="viewport" content="width=device-width, initial-scale=1.0" />',
+        "  <title>Lemnity · React</title>",
+        '  <script src="https://cdn.tailwindcss.com"></script>',
+        "</head>",
+        "<body>",
+        '  <div id="root"></div>',
+        "  <script type=\"module\">",
+        body,
+        "  </script>",
+        "</body>",
+        "</html>"
+      ].join("\n")
+    };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
