@@ -18,6 +18,7 @@ import {
   syncLemnityAiSessionSummary
 } from "@/lib/lemnity-ai-session-links";
 import { resolveAgentForTask } from "@/lib/agent-models";
+import { mergeBuildTemplateIntoUserMessage } from "@/lib/build-templates";
 import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
@@ -153,11 +154,11 @@ function normalizeBridgeUiLanguage(header: string | null): "ru" | "en" | "tg" {
   return "ru";
 }
 
-function enrichChatRequestForRouterModel(
+async function enrichChatRequestForRouterModel(
   requestText: string,
   plan: string,
   uiLanguageHeader: string | null
-): string {
+): Promise<string> {
   try {
     const parsed = JSON.parse(requestText || "{}") as Record<string, unknown>;
     const hintRaw = parsed.agent_hint;
@@ -165,6 +166,15 @@ function enrichChatRequestForRouterModel(
     const pkRaw = parsed.project_kind;
     const projectKind =
       typeof pkRaw === "string" && isProjectKind(pkRaw) ? pkRaw : undefined;
+    const tplSlug = typeof parsed.build_template_slug === "string" ? parsed.build_template_slug.trim() : "";
+    if (tplSlug) {
+      const msg = typeof parsed.message === "string" ? parsed.message : "";
+      const merged = await mergeBuildTemplateIntoUserMessage(tplSlug, msg);
+      if (merged) {
+        parsed.message = merged;
+      }
+      delete parsed.build_template_slug;
+    }
     const agent = resolveAgentForTask({
       plan,
       projectKind: projectKind ?? null,
@@ -477,7 +487,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       status: "running"
     });
 
-    const chatBody = enrichChatRequestForRouterModel(
+    const chatBody = await enrichChatRequestForRouterModel(
       requestText,
       user.plan,
       req.headers.get("x-lmnt-ui-lang")

@@ -60,7 +60,12 @@ export function shouldUseLovableBundler(projectKind?: ProjectKind | null): boole
   return true;
 }
 
-export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: ProjectKind | null): string {
+export function buildRouterGenerationPrompt(
+  userPrompt: string,
+  projectKind?: ProjectKind | null,
+  /** Стартовые файлы + правила с БД; агент правит по запросу, а не пишет с нуля */
+  buildTemplateBlock?: string | null
+): string {
   const trimmed = userPrompt.trim();
   const lang = detectWorkingLanguage(trimmed);
   const kind = projectKind && PROJECT_KINDS.includes(projectKind) ? projectKind : null;
@@ -140,11 +145,22 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
     }
   })();
 
+  const templateSection =
+    buildTemplateBlock && buildTemplateBlock.trim().length > 0
+      ? [
+          "",
+          "---",
+          "BUILD TEMPLATE: start from the following repo snapshot — **edit** these files to match the user. Output updated full files in fences; keep paths stable unless refactor is required.",
+          buildTemplateBlock.trim(),
+        ]
+      : [];
+
   return [
     baseHeader.join("\n"),
     "",
     "Format & structure:",
     ...formatBlock.map((l) => `- ${l}`),
+    ...templateSection,
     "",
     "---",
     "User request (follow intent; if conflict, user intent wins over generic templates):",

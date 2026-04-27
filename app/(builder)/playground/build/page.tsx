@@ -191,6 +191,8 @@ export default function PromptBuildPage() {
   const [shareIsPublic, setShareIsPublic] = useState(false);
   /** `null` — загрузка; `true` — показать шильдик «Сделано на Лемнити» (GET /share, логика как у публичного футера). */
   const [studioBrandingBadge, setStudioBrandingBadge] = useState<boolean | null>(null);
+  /** Стартовый шаблон Vite+TSX из БД — агент правит файлы, а не пишет с нуля */
+  const [buildTemplate, setBuildTemplate] = useState<{ slug: string; name: string } | null>(null);
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
@@ -721,7 +723,8 @@ export default function PromptBuildPage() {
             timestamp: Math.floor(Date.now() / 1000),
             event_id: eventId,
             agent_hint: agentHint,
-            project_kind: projectKind ?? undefined
+            project_kind: projectKind ?? undefined,
+            ...(buildTemplate?.slug ? { build_template_slug: buildTemplate.slug } : {})
           }),
           signal: controller.signal
         });
@@ -952,6 +955,7 @@ export default function PromptBuildPage() {
       appendBridgeAssistantChunk,
       applyStreamLog,
       beginInterfaceBuildTiming,
+      buildTemplate,
       ensureLemnityAiSession,
       finalizeInterfaceBuildTiming,
       loadLemnityAiSession,
@@ -1395,7 +1399,8 @@ export default function PromptBuildPage() {
         body: JSON.stringify({
           prompt,
           projectKind: projectKind ?? undefined,
-          agentHint
+          agentHint,
+          ...(buildTemplate?.slug ? { buildTemplateSlug: buildTemplate.slug } : {})
         }),
         signal: controller.signal
       });
@@ -1662,6 +1667,8 @@ export default function PromptBuildPage() {
               projectKind={projectKind}
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
               onModelHintChange={setAgentHint}
+              buildTemplate={buildTemplate}
+              onBuildTemplateChange={setBuildTemplate}
               visualEditorInChat={visualEditorInChat}
               threadStatusSlot={
                 streamSteps.length > 0 || streamToolLine ? (

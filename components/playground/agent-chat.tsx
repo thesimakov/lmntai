@@ -7,6 +7,7 @@ import {
   Copy,
   Film,
   Image as ImageIcon,
+  LayoutTemplate,
   Lock,
   MousePointer2,
   MoreHorizontal,
@@ -22,6 +23,13 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,6 +124,9 @@ type AgentChatProps = {
     onToggle: () => void;
     disabled?: boolean;
   } | null;
+  /** Выбранный шаблон сборки (Vite+TSX с БД); null — генерация без базы. */
+  buildTemplate?: { slug: string; name: string } | null;
+  onBuildTemplateChange?: (next: { slug: string; name: string } | null) => void;
 };
 
 export function AgentChat({
@@ -137,7 +148,9 @@ export function AgentChat({
   projectKind = null,
   agentTask = "generate-stream",
   onModelHintChange,
-  visualEditorInChat = null
+  visualEditorInChat = null,
+  buildTemplate = null,
+  onBuildTemplateChange
 }: AgentChatProps) {
   const { t, lang } = useI18n();
   const inputPlaceholder = placeholderProp ?? t("playground_chat_input_placeholder");
@@ -155,6 +168,11 @@ export function AgentChat({
   const isEditor = onIsEditorChange != null ? Boolean(isEditorProp) : false;
   const [model, setModel] = useState<AgentUiLabel>("DeepSeek");
   const [modelOpen, setModelOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [templateListLoading, setTemplateListLoading] = useState(false);
+  const [templateList, setTemplateList] = useState<
+    Array<{ id: string; slug: string; name: string; description: string }>
+  >([]);
   const [modelMenuPos, setModelMenuPos] = useState<{
     left: number;
     top: number;
@@ -212,6 +230,24 @@ export function AgentChat({
   useEffect(() => {
     onModelHintChange?.(model);
   }, [model, onModelHintChange]);
+
+  useEffect(() => {
+    if (!templateDialogOpen) return;
+    setTemplateListLoading(true);
+    void fetch("/api/build-templates", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.resolve(null)))
+      .then((d: { templates?: typeof templateList } | null) => {
+        if (d?.templates && Array.isArray(d.templates)) {
+          setTemplateList(d.templates);
+        }
+      })
+      .catch(() => {
+        // ignore
+      })
+      .finally(() => {
+        setTemplateListLoading(false);
+      });
+  }, [templateDialogOpen]);
 
   useEffect(() => {
     if (!modelOpen) return;
@@ -411,7 +447,7 @@ export function AgentChat({
                     </p>
                     <div
                       className={cn(
-                        "ml-auto whitespace-pre-wrap rounded-2xl rounded-tr-sm border border-sky-700/20 bg-gradient-to-b from-[#0f8fff] to-[#0070ea] px-3.5 py-2.5 text-sm font-medium leading-relaxed text-white [word-break:break-word] shadow-md dark:border-sky-400/20 dark:from-sky-600 dark:to-blue-800"
+                        "ml-auto whitespace-pre-wrap rounded-2xl rounded-tr-md border-0 bg-primary px-3.5 py-2.5 text-sm font-normal leading-relaxed text-primary-foreground [word-break:break-word] shadow-none"
                       )}
                     >
                       {m.content}
@@ -699,6 +735,32 @@ export function AgentChat({
                   <Paperclip className="h-5 w-5 stroke-[1.5]" />
                 </Button>
 
+                {onBuildTemplateChange ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-9 w-9 shrink-0 rounded-xl",
+                      buildTemplate
+                        ? "text-sky-700 hover:bg-sky-100/80 dark:text-sky-400 dark:hover:bg-sky-950/50"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    )}
+                    aria-label={t("build_template_aria")}
+                    title={
+                      buildTemplate
+                        ? `${t("build_template_active")}: ${buildTemplate.name}`
+                        : t("build_template_aria")
+                    }
+                    onClick={() => {
+                      setModelOpen(false);
+                      setTemplateDialogOpen(true);
+                    }}
+                  >
+                    <LayoutTemplate className="h-5 w-5 stroke-[1.5]" />
+                  </Button>
+                ) : null}
+
                 {visualEditorInChat ? (
                   <>
                     <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
@@ -904,6 +966,58 @@ export function AgentChat({
           ) : null}
         </div>
       </div>
+
+      {onBuildTemplateChange ? (
+        <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>{t("build_template_dialog_title")}</DialogTitle>
+              <DialogDescription>{t("build_template_dialog_desc")}</DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[min(60vh,20rem)] space-y-2 overflow-y-auto py-1">
+              {templateListLoading ? (
+                <p className="text-sm text-muted-foreground">…</p>
+              ) : null}
+              <button
+                type="button"
+                className={cn(
+                  "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                  !buildTemplate
+                    ? "border-sky-500/50 bg-sky-500/5"
+                    : "border-border hover:bg-muted/50"
+                )}
+                onClick={() => {
+                  onBuildTemplateChange(null);
+                  setTemplateDialogOpen(false);
+                }}
+              >
+                {t("build_template_none")}
+              </button>
+              {templateList.map((row) => (
+                <button
+                  key={row.id}
+                  type="button"
+                  className={cn(
+                    "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
+                    buildTemplate?.slug === row.slug
+                      ? "border-sky-500/50 bg-sky-500/5"
+                      : "border-border hover:bg-muted/50"
+                  )}
+                  onClick={() => {
+                    onBuildTemplateChange({ slug: row.slug, name: row.name });
+                    setTemplateDialogOpen(false);
+                  }}
+                >
+                  <span className="font-medium text-foreground">{row.name}</span>
+                  {row.description ? (
+                    <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{row.description}</span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </div>
   );
 }

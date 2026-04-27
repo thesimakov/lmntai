@@ -132,6 +132,21 @@ model PlatformPlanSettings {
   updatedAt DateTime @updatedAt
 }
 
+/// Каталог стартовых шаблонов сборки (Vite+React+TSX): пути → исходники, правила для агента.
+model BuildTemplate {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String   @default("")
+  /// Инструкции для LLM: править файлы, а не писать с нуля
+  rules       String   @db.Text
+  /// JSON: { "src/App.tsx": "..." }
+  files       Json
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 /// Промокоды: скидка % с подписки или бонусные токены; правятся в /admin/promocodes.
 model PromoCode {
   id              String    @id @default(cuid())

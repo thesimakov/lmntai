@@ -542,6 +542,12 @@ export const messages = {
     playground_chat_input_placeholder_studio: 'Сообщение для Lemnity AI…',
     playground_chat_visual_editor_title: 'Визуальный редактор: клики по элементам в превью, правка текста и картинок',
     playground_chat_visual_editor_aria: 'Визуальный редактор макета в превью',
+    build_template_aria: 'Каталог шаблонов сборки',
+    build_template_dialog_title: 'Шаблоны',
+    build_template_dialog_desc:
+      'Выберите стартовую вёрстку. Агент правит исходники (как в Lovable), а не создаёт пустой проект. Снимите выбор, если нужен чистый лист.',
+    build_template_none: 'Без шаблона',
+    build_template_active: 'Шаблон',
     playground_chat_you: 'Вы',
     playground_toast_final_prompt_empty: 'Финальный промпт пустой',
     playground_build_share_no_preview: 'Сначала дождитесь готового превью',
@@ -1435,6 +1441,12 @@ export const messages = {
     playground_chat_visual_editor_title:
       'Visual editor: click elements in the preview to edit text and images',
     playground_chat_visual_editor_aria: 'Visual layout editor in preview',
+    build_template_aria: 'Build template catalog',
+    build_template_dialog_title: 'Templates',
+    build_template_dialog_desc:
+      'Pick a starter layout. The agent edits these source files (Lovable-style), not an empty repo. Clear to start from scratch.',
+    build_template_none: 'No template',
+    build_template_active: 'Template',
     playground_chat_you: 'You',
     playground_toast_final_prompt_empty: 'Final prompt is empty',
     playground_build_share_no_preview: 'Wait until the preview is ready',
@@ -2326,6 +2338,12 @@ export const messages = {
     playground_chat_input_placeholder_studio: 'Паём барои Lemnity AI…',
     playground_chat_visual_editor_title: 'Муҳаррири визуалӣ: клик ба элементҳо дар пешнамоиш',
     playground_chat_visual_editor_aria: 'Муҳаррири макет дар пешнамоиш',
+    build_template_aria: 'Каталоги намунаҳои ҷамъоварӣ',
+    build_template_dialog_title: 'Намунаҳо',
+    build_template_dialog_desc:
+      'Намунаи оғозро интихоб кунед. Агент файларро тағйир медиҳад, на аз сифр месозад. Барои саҳифаи холӣ интихобро гиред.',
+    build_template_none: 'Бе намӯна',
+    build_template_active: 'Намуна',
     playground_chat_you: 'Шумо',
     playground_toast_final_prompt_empty: 'Промпти ниҳоӣ холист',
     playground_build_share_no_preview: 'Аввал интизор шавед, ки пешнамоиш омода шавад',

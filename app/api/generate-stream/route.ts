@@ -9,6 +9,7 @@ import { chargeTokensSafely, estimateUsageFromText, normalizeUsage, type TokenUs
 import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
+import { getBuildTemplateBySlug, formatBuildTemplateBlock } from "@/lib/build-templates";
 import { buildRouterGenerationPrompt, isProjectKind, shouldUseLovableBundler } from "@/lib/lemnity-ai-prompt-spec";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -50,7 +51,7 @@ async function postGenerateStream(req: NextRequest) {
   }
 
   const body = (await req.json().catch(() => null)) as
-    | { prompt?: string; projectKind?: string; agentHint?: string }
+    | { prompt?: string; projectKind?: string; agentHint?: string; buildTemplateSlug?: string }
     | null;
   const rawPrompt = body?.prompt?.trim();
   if (!rawPrompt) {
@@ -58,7 +59,15 @@ async function postGenerateStream(req: NextRequest) {
   }
 
   const pk = isProjectKind(body?.projectKind) ? body.projectKind : undefined;
-  const prompt = buildRouterGenerationPrompt(rawPrompt, pk);
+  const tplSlug = typeof body?.buildTemplateSlug === "string" ? body.buildTemplateSlug.trim() : "";
+  let templateBlock: string | null = null;
+  if (tplSlug) {
+    const t = await getBuildTemplateBySlug(tplSlug);
+    if (t) {
+      templateBlock = formatBuildTemplateBlock(t.rules, t.files);
+    }
+  }
+  const prompt = buildRouterGenerationPrompt(rawPrompt, pk, templateBlock);
   const agent = resolveAgentForTask({
     plan: user.plan,
     projectKind: pk,
