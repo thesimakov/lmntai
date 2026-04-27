@@ -16,6 +16,7 @@ import {
 import { PreviewFrame } from "@/components/playground/preview-frame";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
+import { formatBuildElapsed } from "@/lib/build-time-i18n";
 import type { MessageKey } from "@/lib/i18n";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { cn } from "@/lib/utils";
@@ -99,7 +100,7 @@ function GeneratingState({
   streamHint?: string | null;
   projectKind?: ProjectKind | null;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [hintOpen, setHintOpen] = useState(false);
   const lineKey = generatingLineKey(projectKind);
   return (
@@ -134,7 +135,7 @@ function GeneratingState({
                   className="h-7 shrink-0 gap-1 px-2 text-[10px]"
                   onClick={() => setHintOpen((v) => !v)}
                 >
-                  {hintOpen ? "Свернуть" : "Подробнее"}
+                  {hintOpen ? t("playground_coach_collapse") : t("playground_coach_expand")}
                   <ChevronDown
                     className={cn("h-3.5 w-3.5 transition-transform", hintOpen && "rotate-180")}
                   />
@@ -162,7 +163,7 @@ function GeneratingState({
             <span className="text-xs text-muted-foreground">{t("playground_right_build_label")}</span>
             <Progress value={progress} className="h-1.5 flex-1" />
             <span className="text-xs tabular-nums text-muted-foreground">
-              {buildElapsedLabel?.trim() ? buildElapsedLabel : "0 с"}
+              {buildElapsedLabel?.trim() ? buildElapsedLabel : formatBuildElapsed(0, lang)}
             </span>
           </div>
         </div>

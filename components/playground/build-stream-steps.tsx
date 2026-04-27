@@ -4,6 +4,7 @@ import { Check, Circle, Loader2, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 
 import { useI18n } from "@/components/i18n-provider";
+import { getStreamStepTitle } from "@/lib/stream-step-title";
 import { cn } from "@/lib/utils";
 import type { StreamStep } from "@/types/build-stream";
 
@@ -85,7 +86,9 @@ export function BuildStreamSteps({ steps, toolLine, className }: BuildStreamStep
             transition={{ duration: 0.2, delay: Math.min(index * 0.04, 0.24) }}
             className="space-y-1.5"
           >
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{s.id}</p>
+            <p className="text-[10px] font-semibold tracking-wide text-muted-foreground">
+              {getStreamStepTitle(s.id, t)}
+            </p>
             <p className="text-sm leading-relaxed text-foreground/95">{s.description}</p>
             <StepStatusPill status={s.status} />
           </motion.div>

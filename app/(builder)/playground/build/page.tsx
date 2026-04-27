@@ -42,7 +42,9 @@ import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { PromptQA } from "@/types/prompt-builder";
 import type { StreamEvent } from "@/types/build-stream";
 import { isLovableFileFenceDelta, shouldCollapseAssistantCodeDump } from "@/lib/chat-artifact-ui";
+import { formatBuildElapsed, formatBuildTotalDuration } from "@/lib/build-time-i18n";
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
+import { getStreamStepTitle } from "@/lib/stream-step-title";
 
 type LemnityAiBridgeEnvelope<T> = {
   code: number;
@@ -148,28 +150,8 @@ function sseEventName(event: string): string {
   return event.trim().toLowerCase();
 }
 
-/** Для строки «Был собран за …» */
-function formatInterfaceBuildTotalRu(ms: number): string {
-  if (ms < 1000) return "менее 1 с";
-  const s = Math.round(ms / 1000);
-  if (s < 60) return `${s} с`;
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  if (r === 0) return `${m} мин`;
-  return `${m} мин ${r} с`;
-}
-
-/** Тикер во время сборки (мм:сс или только секунды) */
-function formatInterfaceBuildElapsedRu(ms: number): string {
-  const s = Math.floor(ms / 1000);
-  const m = Math.floor(s / 60);
-  const sec = s % 60;
-  if (m === 0) return `${sec} с`;
-  return `${m}:${sec.toString().padStart(2, "0")}`;
-}
-
 export default function PromptBuildPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session } = useSession();
@@ -274,14 +256,15 @@ export default function PromptBuildPage() {
     void buildTimerTick;
     const start = interfaceBuildStartedAtRef.current;
     if (!isGenerating || start == null) return null;
-    return formatInterfaceBuildElapsedRu(Date.now() - start);
-  }, [isGenerating, buildTimerTick]);
+    return formatBuildElapsed(Date.now() - start, lang);
+  }, [isGenerating, buildTimerTick, lang]);
 
   const streamHint = useMemo(() => {
     if (streamToolLine) return streamToolLine;
     const last = streamSteps[streamSteps.length - 1];
-    return last ? `${last.id}: ${last.description}` : null;
-  }, [streamToolLine, streamSteps]);
+    if (!last) return null;
+    return `${getStreamStepTitle(last.id, t)}: ${last.description}`;
+  }, [streamToolLine, streamSteps, t]);
 
   const chatThreadScrollKey = useMemo(
     () =>
@@ -1588,12 +1571,12 @@ export default function PromptBuildPage() {
                   <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
                     <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
                     <span className="min-w-0 truncate">
-                      Сборка интерфейса · {interfaceBuildElapsedLabel ?? "0 с"}
+                      {t("playground_right_build_label")} · {interfaceBuildElapsedLabel ?? formatBuildElapsed(0, lang)}
                     </span>
                   </div>
                 ) : lastInterfaceBuildMs != null ? (
                   <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
-                    Был собран за {formatInterfaceBuildTotalRu(lastInterfaceBuildMs)}
+                    {t("build_footer_built_prefix")} {formatBuildTotalDuration(lastInterfaceBuildMs, lang)}
                   </div>
                 ) : promptCoachLoading ? (
                   <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
