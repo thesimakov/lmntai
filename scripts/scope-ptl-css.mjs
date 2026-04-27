@@ -90,7 +90,7 @@ const root = `.ptlB {
   --ptlB-major: #ef836e;
   --ptlB-minor: #eaeaea;
   --ptlB-mock: rgb(200 200 200 / 0.55);
-  background: hsl(var(--background));
+  background: transparent;
   color: hsl(var(--foreground));
 }
 .dark .ptlB {

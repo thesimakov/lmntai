@@ -107,9 +107,6 @@ export function PageTransitionBuildLoader({ className, overPreview }: PageTransi
           <g className="ptlB-core">
             <circle className="path" cx={50} cy={50} r={1} fill="none" />
           </g>
-          <g className="ptlB-spinner">
-            <circle className="path" cx={50} cy={50} r={20} fill="none" />
-          </g>
           {Array.from({ length: 8 }, (_, i) => (
             <g key={i} className={`ptlB-layer-${i + 1}`}>
               <circle

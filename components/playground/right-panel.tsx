@@ -170,8 +170,7 @@ function GeneratingState({
           </div>
           <div
             className={cn(
-              "relative min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/50",
-              "bg-muted/20 shadow-inner",
+              "relative min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/30",
               !overPreview && "ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
             )}
           >
@@ -233,24 +232,11 @@ export function RightPanel({
     </LemnityAiPreviewChrome>
   );
 
-  /** Идёт пересборка, но макет уже был — оставляем iframe под полупрозрачным оверлеем, не снимаем с монтирования. */
-  if (mode === "generating" && previewUrl && sandboxId) {
-    return (
-      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        <div className="absolute inset-0 z-0 min-h-0">{previewFrame}</div>
-        <div className="absolute inset-0 z-20 flex min-h-0 min-w-0">
-          <GeneratingState
-            overPreview
-            progress={progress}
-            buildElapsedLabel={buildElapsedLabel}
-            streamHint={streamHint}
-            projectKind={projectKind}
-          />
-        </div>
-      </div>
-    );
-  }
-
+  /**
+   * Пока идёт сборка — только лоадер, без iframe под ним.
+   * Иначе при пересборке в iframe может мелькнуть сырой JSON/не тот файл (например package.json с бэка),
+   * если оверлей полупрозрачный или sandbox ещё в переходном состоянии.
+   */
   if (mode === "generating") {
     return (
       <GeneratingState
