@@ -23,13 +23,8 @@ import { AnimatePresence, motion } from "framer-motion";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { BuildTemplateDialogBody } from "@/components/playground/build-template-dialog-body";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +42,7 @@ import {
   type AgentTask,
   type AgentUiLabel
 } from "@/lib/agent-models";
+import { TypingAssistantContent } from "@/components/playground/typing-assistant-content";
 import { cn } from "@/lib/utils";
 import type { UiLanguage } from "@/lib/i18n";
 
@@ -125,8 +121,8 @@ type AgentChatProps = {
     disabled?: boolean;
   } | null;
   /** Выбранный шаблон сборки (Vite+TSX с БД); null — генерация без базы. */
-  buildTemplate?: { slug: string; name: string } | null;
-  onBuildTemplateChange?: (next: { slug: string; name: string } | null) => void;
+  buildTemplate?: { slug: string; name: string; defaultUserPrompt?: string } | null;
+  onBuildTemplateChange?: (next: { slug: string; name: string; defaultUserPrompt: string } | null) => void;
 };
 
 export function AgentChat({
@@ -171,7 +167,7 @@ export function AgentChat({
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templateListLoading, setTemplateListLoading] = useState(false);
   const [templateList, setTemplateList] = useState<
-    Array<{ id: string; slug: string; name: string; description: string }>
+    Array<{ id: string; slug: string; name: string; description: string; defaultUserPrompt: string }>
   >([]);
   const [modelMenuPos, setModelMenuPos] = useState<{
     left: number;
@@ -430,7 +426,7 @@ export function AgentChat({
                         "whitespace-pre-wrap rounded-2xl rounded-tl-sm border border-white/50 bg-white/95 px-3.5 py-2.5 text-sm leading-relaxed text-foreground [word-break:break-word] shadow-sm ring-1 ring-stone-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-white/[0.04]"
                       )}
                     >
-                      {m.content}
+                      <TypingAssistantContent text={m.content} messageId={m.id} />
                     </div>
                     {m.sentAt != null ? (
                       <p className="mt-0.5 pl-1 text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
@@ -477,7 +473,11 @@ export function AgentChat({
                       "ml-auto rounded-[1.25rem] border border-transparent bg-primary font-medium text-primary-foreground shadow-sm"
                   )}
                 >
-                  {m.content}
+                  {m.role === "assistant" ? (
+                    <TypingAssistantContent text={m.content} messageId={m.id} />
+                  ) : (
+                    m.content
+                  )}
                 </div>
               )}
               {m.role === "assistant" && m.showActions ? (
@@ -969,52 +969,30 @@ export function AgentChat({
 
       {onBuildTemplateChange ? (
         <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t("build_template_dialog_title")}</DialogTitle>
-              <DialogDescription>{t("build_template_dialog_desc")}</DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[min(60vh,20rem)] space-y-2 overflow-y-auto py-1">
-              {templateListLoading ? (
-                <p className="text-sm text-muted-foreground">…</p>
-              ) : null}
-              <button
-                type="button"
-                className={cn(
-                  "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                  !buildTemplate
-                    ? "border-sky-500/50 bg-sky-500/5"
-                    : "border-border hover:bg-muted/50"
-                )}
-                onClick={() => {
-                  onBuildTemplateChange(null);
-                  setTemplateDialogOpen(false);
-                }}
-              >
-                {t("build_template_none")}
-              </button>
-              {templateList.map((row) => (
-                <button
-                  key={row.id}
-                  type="button"
-                  className={cn(
-                    "w-full rounded-xl border px-3 py-2.5 text-left text-sm transition-colors",
-                    buildTemplate?.slug === row.slug
-                      ? "border-sky-500/50 bg-sky-500/5"
-                      : "border-border hover:bg-muted/50"
-                  )}
-                  onClick={() => {
-                    onBuildTemplateChange({ slug: row.slug, name: row.name });
-                    setTemplateDialogOpen(false);
-                  }}
-                >
-                  <span className="font-medium text-foreground">{row.name}</span>
-                  {row.description ? (
-                    <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{row.description}</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
+          <DialogContent
+            className={cn(
+              "!flex !h-[min(92vh,920px)] !max-h-[min(98vh,960px)] !w-[min(96vw,72rem)] !min-h-[min(85vh,820px)] !max-w-[min(96vw,72rem)] flex-col !gap-0 !p-0 overflow-hidden border-border bg-background text-foreground shadow-2xl sm:!max-w-[min(96vw,72rem)] sm:rounded-2xl",
+              "[&_[data-slot=dialog-close]]:top-3.5 [&_[data-slot=dialog-close]]:right-3.5 [&_[data-slot=dialog-close]]:rounded-lg [&_[data-slot=dialog-close]]:text-muted-foreground [&_[data-slot=dialog-close]]:hover:bg-muted [&_[data-slot=dialog-close]]:hover:text-foreground"
+            )}
+          >
+            <BuildTemplateDialogBody
+              t={t}
+              templateListLoading={templateListLoading}
+              templateList={templateList}
+              buildTemplate={buildTemplate}
+              onPick={(row) => {
+                const seed = row.defaultUserPrompt?.trim() ? row.defaultUserPrompt : "";
+                if (seed) {
+                  setValue(seed);
+                }
+                onBuildTemplateChange({
+                  slug: row.slug,
+                  name: row.name,
+                  defaultUserPrompt: row.defaultUserPrompt || ""
+                });
+                setTemplateDialogOpen(false);
+              }}
+            />
           </DialogContent>
         </Dialog>
       ) : null}

@@ -32,9 +32,9 @@
 }
 .ptlB--loaded .ptlB-layer-1 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-1 1.25s ease-in;
-  -webkit-animation: ptlB-layer-1 1.25s ease-in;
-  animation: ptlB-layer-1 1.25s ease-in;
+  -moz-animation: ptlB-layer-1 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-1 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-1 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-1 {
@@ -109,9 +109,9 @@
 }
 .ptlB--loaded .ptlB-layer-2 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-2 1.25s ease-in;
-  -webkit-animation: ptlB-layer-2 1.25s ease-in;
-  animation: ptlB-layer-2 1.25s ease-in;
+  -moz-animation: ptlB-layer-2 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-2 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-2 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-2 {
@@ -183,9 +183,9 @@
 }
 .ptlB--loaded .ptlB-layer-3 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-3 1.25s ease-in;
-  -webkit-animation: ptlB-layer-3 1.25s ease-in;
-  animation: ptlB-layer-3 1.25s ease-in;
+  -moz-animation: ptlB-layer-3 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-3 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-3 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-3 {
@@ -257,9 +257,9 @@
 }
 .ptlB--loaded .ptlB-layer-4 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-4 1.25s ease-in;
-  -webkit-animation: ptlB-layer-4 1.25s ease-in;
-  animation: ptlB-layer-4 1.25s ease-in;
+  -moz-animation: ptlB-layer-4 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-4 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-4 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-4 {
@@ -331,9 +331,9 @@
 }
 .ptlB--loaded .ptlB-layer-5 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-5 1.25s ease-in;
-  -webkit-animation: ptlB-layer-5 1.25s ease-in;
-  animation: ptlB-layer-5 1.25s ease-in;
+  -moz-animation: ptlB-layer-5 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-5 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-5 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-5 {
@@ -405,9 +405,9 @@
 }
 .ptlB--loaded .ptlB-layer-6 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-6 1.25s ease-in;
-  -webkit-animation: ptlB-layer-6 1.25s ease-in;
-  animation: ptlB-layer-6 1.25s ease-in;
+  -moz-animation: ptlB-layer-6 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-6 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-6 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-6 {
@@ -479,9 +479,9 @@
 }
 .ptlB--loaded .ptlB-layer-7 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-7 1.25s ease-in;
-  -webkit-animation: ptlB-layer-7 1.25s ease-in;
-  animation: ptlB-layer-7 1.25s ease-in;
+  -moz-animation: ptlB-layer-7 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-7 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-7 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-7 {
@@ -553,9 +553,9 @@
 }
 .ptlB--loaded .ptlB-layer-8 > .path {
   visibility: visible;
-  -moz-animation: ptlB-layer-8 1.25s ease-in;
-  -webkit-animation: ptlB-layer-8 1.25s ease-in;
-  animation: ptlB-layer-8 1.25s ease-in;
+  -moz-animation: ptlB-layer-8 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  -webkit-animation: ptlB-layer-8 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
+  animation: ptlB-layer-8 1.4s cubic-bezier(0.45, 0.05, 0.2, 1);
 }
 
 @-moz-keyframes ptlB-layer-8 {
@@ -911,9 +911,9 @@
 .ptlB--loaded .ptlB-btn {
   color: hsl(var(--background));
   background: var(--ptlB-major);
-  -moz-animation: btn-loaded 0.1s both 0.5s;
-  -webkit-animation: btn-loaded 0.1s both 0.5s;
-  animation: btn-loaded 0.1s both 0.5s;
+  -moz-animation: btn-loaded 0.4s both cubic-bezier(0.25, 0.9, 0.25, 1) 0.45s;
+  -webkit-animation: btn-loaded 0.4s both cubic-bezier(0.25, 0.9, 0.25, 1) 0.45s;
+  animation: btn-loaded 0.4s both cubic-bezier(0.25, 0.9, 0.25, 1) 0.45s;
 }
 .ptlB--restart .ptlB-btn {
   color: var(--ptlB-major);
@@ -1032,19 +1032,19 @@
 }
 
 .ptlB--newPage .ptlB-img {
-  -moz-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  -webkit-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
+  -moz-animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
+  animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
 }
 .ptlB--newPage .ptlB-txt {
-  -moz-animation: scaleX-in 0.1s both ease-out;
-  -webkit-animation: scaleX-in 0.1s both ease-out;
-  animation: scaleX-in 0.1s both ease-out;
+  -moz-animation: scaleX-in 0.45s both cubic-bezier(0.25, 0.9, 0.25, 1);
+  -webkit-animation: scaleX-in 0.45s both cubic-bezier(0.25, 0.9, 0.25, 1);
+  animation: scaleX-in 0.45s both cubic-bezier(0.25, 0.9, 0.25, 1);
 }
 .ptlB--newPage .ptlB-btn {
-  -moz-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  -webkit-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
+  -moz-animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
+  -webkit-animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
+  animation: scale-in 0.55s both cubic-bezier(0.22, 1, 0.36, 1);
 }
 .ptlB--newPage .dl1 {
   -moz-animation-delay: 0.85s;
@@ -1199,32 +1199,38 @@
 
 @-moz-keyframes scaleX-in {
   from {
-    -moz-transform: scaleX(0);
-    transform: scaleX(0);
+    opacity: 0.35;
+    -moz-transform: scaleX(0.04);
+    transform: scaleX(0.04);
   }
   to {
+    opacity: 1;
     -moz-transform: scaleX(1);
     transform: scaleX(1);
   }
 }
 @-webkit-keyframes scaleX-in {
   from {
-    -webkit-transform: scaleX(0);
-    transform: scaleX(0);
+    opacity: 0.35;
+    -webkit-transform: scaleX(0.04);
+    transform: scaleX(0.04);
   }
   to {
+    opacity: 1;
     -webkit-transform: scaleX(1);
     transform: scaleX(1);
   }
 }
 @keyframes scaleX-in {
   from {
-    -moz-transform: scaleX(0);
-    -ms-transform: scaleX(0);
-    -webkit-transform: scaleX(0);
-    transform: scaleX(0);
+    opacity: 0.35;
+    -moz-transform: scaleX(0.04);
+    -ms-transform: scaleX(0.04);
+    -webkit-transform: scaleX(0.04);
+    transform: scaleX(0.04);
   }
   to {
+    opacity: 1;
     -moz-transform: scaleX(1);
     -ms-transform: scaleX(1);
     -webkit-transform: scaleX(1);
@@ -1233,32 +1239,38 @@
 }
 @-moz-keyframes scale-in {
   from {
-    -moz-transform: scale(0);
-    transform: scale(0);
+    opacity: 0.5;
+    -moz-transform: scale(0.88);
+    transform: scale(0.88);
   }
   to {
+    opacity: 1;
     -moz-transform: scale(1);
     transform: scale(1);
   }
 }
 @-webkit-keyframes scale-in {
   from {
-    -webkit-transform: scale(0);
-    transform: scale(0);
+    opacity: 0.5;
+    -webkit-transform: scale(0.88);
+    transform: scale(0.88);
   }
   to {
+    opacity: 1;
     -webkit-transform: scale(1);
     transform: scale(1);
   }
 }
 @keyframes scale-in {
   from {
-    -moz-transform: scale(0);
-    -ms-transform: scale(0);
-    -webkit-transform: scale(0);
-    transform: scale(0);
+    opacity: 0.5;
+    -moz-transform: scale(0.88);
+    -ms-transform: scale(0.88);
+    -webkit-transform: scale(0.88);
+    transform: scale(0.88);
   }
   to {
+    opacity: 1;
     -moz-transform: scale(1);
     -ms-transform: scale(1);
     -webkit-transform: scale(1);

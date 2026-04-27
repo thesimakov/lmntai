@@ -1,17 +1,65 @@
 import { prisma } from "@/lib/prisma";
 import {
+  MASSAGE_DEFAULT_USER_PROMPT,
   MASSAGE_PRESET_FILES,
   MASSAGE_TEMPLATE_DESCRIPTION,
   MASSAGE_TEMPLATE_NAME,
   MASSAGE_TEMPLATE_RULES,
   MASSAGE_TEMPLATE_SLUG
 } from "@/lib/build-template-presets/massage-preset";
+import {
+  IT_STARTUP_DEFAULT_USER_PROMPT,
+  IT_STARTUP_PRESET_FILES,
+  IT_STARTUP_TEMPLATE_DESCRIPTION,
+  IT_STARTUP_TEMPLATE_NAME,
+  IT_STARTUP_TEMPLATE_RULES,
+  IT_STARTUP_TEMPLATE_SLUG
+} from "@/lib/build-template-presets/it-startup-preset";
+
+const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
+  [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
+  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT
+};
+
+const BUILTIN_PRESET_SPECS: Array<{
+  slug: string;
+  name: string;
+  description: string;
+  rules: string;
+  files: Record<string, string>;
+  defaultUserPrompt: string;
+}> = [
+  {
+    slug: MASSAGE_TEMPLATE_SLUG,
+    name: MASSAGE_TEMPLATE_NAME,
+    description: MASSAGE_TEMPLATE_DESCRIPTION,
+    rules: MASSAGE_TEMPLATE_RULES,
+    files: MASSAGE_PRESET_FILES,
+    defaultUserPrompt: MASSAGE_DEFAULT_USER_PROMPT
+  },
+  {
+    slug: IT_STARTUP_TEMPLATE_SLUG,
+    name: IT_STARTUP_TEMPLATE_NAME,
+    description: IT_STARTUP_TEMPLATE_DESCRIPTION,
+    rules: IT_STARTUP_TEMPLATE_RULES,
+    files: IT_STARTUP_PRESET_FILES,
+    defaultUserPrompt: IT_STARTUP_DEFAULT_USER_PROMPT
+  }
+];
+
+function resolveDefaultUserPrompt(slug: string, stored: string | null | undefined): string {
+  const trimmed = typeof stored === "string" ? stored.trim() : "";
+  if (trimmed.length > 0) return stored ?? "";
+  return PRESET_DEFAULT_USER_PROMPT_BY_SLUG[slug] ?? "";
+}
 
 export type BuildTemplateListItem = {
   id: string;
   slug: string;
   name: string;
   description: string;
+  /** Текст для поля ввода / сборки */
+  defaultUserPrompt: string;
 };
 
 export type BuildTemplateRecord = {
@@ -28,21 +76,21 @@ export type BuildTemplateRecord = {
  */
 export async function ensureBuildTemplatesSeeded(): Promise<void> {
   try {
-    const count = await prisma.buildTemplate.count();
-    if (count > 0) return;
-
-    await prisma.buildTemplate.upsert({
-      where: { slug: MASSAGE_TEMPLATE_SLUG },
-      create: {
-        slug: MASSAGE_TEMPLATE_SLUG,
-        name: MASSAGE_TEMPLATE_NAME,
-        description: MASSAGE_TEMPLATE_DESCRIPTION,
-        rules: MASSAGE_TEMPLATE_RULES,
-        files: MASSAGE_PRESET_FILES as object,
-        isActive: true
-      },
-      update: {}
-    });
+    for (const p of BUILTIN_PRESET_SPECS) {
+      const existing = await prisma.buildTemplate.findUnique({ where: { slug: p.slug } });
+      if (existing) continue;
+      await prisma.buildTemplate.create({
+        data: {
+          slug: p.slug,
+          name: p.name,
+          description: p.description,
+          rules: p.rules,
+          files: p.files as object,
+          defaultUserPrompt: p.defaultUserPrompt,
+          isActive: true
+        }
+      });
+    }
   } catch (err) {
     console.warn("[build-templates] seed skipped (db unavailable?)", err);
   }
@@ -54,9 +102,15 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
     const rows = await prisma.buildTemplate.findMany({
       where: { isActive: true },
       orderBy: { name: "asc" },
-      select: { id: true, slug: true, name: true, description: true }
+      select: { id: true, slug: true, name: true, description: true, defaultUserPrompt: true }
     });
-    return rows;
+    return rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      description: r.description,
+      defaultUserPrompt: resolveDefaultUserPrompt(r.slug, r.defaultUserPrompt)
+    }));
   } catch (err) {
     console.warn("[build-templates] list failed", err);
     return [
@@ -64,7 +118,15 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
         id: "preset-massage",
         slug: MASSAGE_TEMPLATE_SLUG,
         name: MASSAGE_TEMPLATE_NAME,
-        description: MASSAGE_TEMPLATE_DESCRIPTION
+        description: MASSAGE_TEMPLATE_DESCRIPTION,
+        defaultUserPrompt: MASSAGE_DEFAULT_USER_PROMPT
+      },
+      {
+        id: "preset-it-startup",
+        slug: IT_STARTUP_TEMPLATE_SLUG,
+        name: IT_STARTUP_TEMPLATE_NAME,
+        description: IT_STARTUP_TEMPLATE_DESCRIPTION,
+        defaultUserPrompt: IT_STARTUP_DEFAULT_USER_PROMPT
       }
     ];
   }
@@ -99,6 +161,16 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
         description: MASSAGE_TEMPLATE_DESCRIPTION,
         rules: MASSAGE_TEMPLATE_RULES,
         files: MASSAGE_PRESET_FILES
+      };
+    }
+    if (s === IT_STARTUP_TEMPLATE_SLUG) {
+      return {
+        id: "preset-it-startup",
+        slug: IT_STARTUP_TEMPLATE_SLUG,
+        name: IT_STARTUP_TEMPLATE_NAME,
+        description: IT_STARTUP_TEMPLATE_DESCRIPTION,
+        rules: IT_STARTUP_TEMPLATE_RULES,
+        files: IT_STARTUP_PRESET_FILES
       };
     }
     return null;

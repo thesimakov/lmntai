@@ -192,7 +192,15 @@ export default function PromptBuildPage() {
   /** `null` — загрузка; `true` — показать шильдик «Сделано на Лемнити» (GET /share, логика как у публичного футера). */
   const [studioBrandingBadge, setStudioBrandingBadge] = useState<boolean | null>(null);
   /** Стартовый шаблон Vite+TSX из БД — агент правит файлы, а не пишет с нуля */
-  const [buildTemplate, setBuildTemplate] = useState<{ slug: string; name: string } | null>(null);
+  const [buildTemplate, setBuildTemplate] = useState<{
+    slug: string;
+    name: string;
+    defaultUserPrompt: string;
+  } | null>(null);
+  /** Символы потока ответа (включая код), чтобы видеть ход генерации при шаблоне */
+  const [streamArtifactChars, setStreamArtifactChars] = useState(0);
+  /** Защита от повторного авто-запуска при повторном выборе того же slug в одной сессии */
+  const templateAutoStartSlugRef = useRef<string | null>(null);
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
@@ -676,7 +684,7 @@ export default function PromptBuildPage() {
   }, [lemnityAiSessionId, router, t]);
 
   const sendLemnityAiChat = useCallback(
-    async (messagePayload: string) => {
+    async (messagePayload: string, opts?: { buildTemplateSlug?: string | null }) => {
       pushRecent(messagePayload.slice(0, 120));
       const ensured = await ensureLemnityAiSession();
       if (ensured.ok === false) {
@@ -684,12 +692,15 @@ export default function PromptBuildPage() {
         return;
       }
       const sid = ensured.sessionId;
+      const effectiveBuildTemplateSlug =
+        opts?.buildTemplateSlug !== undefined ? opts.buildTemplateSlug : (buildTemplate?.slug ?? null);
 
       beginInterfaceBuildTiming();
       setIsGenerating(true);
       setMode("generating");
       setStage("generating");
       setProgress(10);
+      setStreamArtifactChars(0);
       setPreviewArtifactMime(null);
       setPreviewDownloadFilename(null);
       setPresentationPdfExport(null);
@@ -724,7 +735,7 @@ export default function PromptBuildPage() {
             event_id: eventId,
             agent_hint: agentHint,
             project_kind: projectKind ?? undefined,
-            ...(buildTemplate?.slug ? { build_template_slug: buildTemplate.slug } : {})
+            ...(effectiveBuildTemplateSlug ? { build_template_slug: effectiveBuildTemplateSlug } : {})
           }),
           signal: controller.signal
         });
@@ -768,6 +779,7 @@ export default function PromptBuildPage() {
                     ? data.text
                     : "";
               if (piece.length > 0) {
+                setStreamArtifactChars((c) => c + piece.length);
                 const isArtifactKind = data.kind === "artifact";
                 const isFence = !isArtifactKind && isLovableFileFenceDelta(piece);
                 if (!isArtifactKind && !isFence) {
@@ -966,6 +978,39 @@ export default function PromptBuildPage() {
       t,
       lang
     ]
+  );
+
+  const handleBuildTemplateChange = useCallback(
+    (next: { slug: string; name: string; defaultUserPrompt: string } | null) => {
+      setBuildTemplate(next);
+      if (!next) {
+        templateAutoStartSlugRef.current = null;
+        return;
+      }
+      const text = next.defaultUserPrompt?.trim() ?? "";
+      if (text) {
+        setFinalPrompt(text);
+        setIdea(text);
+        setStage("ready");
+        setCoachAwaitingConfirm(false);
+        setPendingTechnicalPrompt(null);
+        setPromptCoachLoading(false);
+      }
+      if (
+        shouldUseLemnityAiBridge &&
+        lemnityAiBridgeReady &&
+        text &&
+        next.slug &&
+        templateAutoStartSlugRef.current !== next.slug
+      ) {
+        templateAutoStartSlugRef.current = next.slug;
+        queueMicrotask(() => {
+          push("user", text);
+          void sendLemnityAiChat(text, { buildTemplateSlug: next.slug });
+        });
+      }
+    },
+    [lemnityAiBridgeReady, shouldUseLemnityAiBridge, push, sendLemnityAiChat]
   );
 
   const runPromptCoach = useCallback(
@@ -1374,6 +1419,7 @@ export default function PromptBuildPage() {
     setIsGenerating(true);
     setMode("generating");
     setStage("generating");
+    setStreamArtifactChars(0);
     push("assistant", "🎯 Анализирую запрос…");
     setProgress(8);
     setPreviewUrl(null);
@@ -1458,6 +1504,9 @@ export default function PromptBuildPage() {
         const { done, value } = await reader.read();
         if (!isCurrentRequest()) break;
         if (value) {
+          if (buildTemplate) {
+            setStreamArtifactChars((c) => c + value.length);
+          }
           buffer += decoder.decode(value, { stream: true });
         }
         if (done) {
@@ -1668,7 +1717,7 @@ export default function PromptBuildPage() {
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
               onModelHintChange={setAgentHint}
               buildTemplate={buildTemplate}
-              onBuildTemplateChange={setBuildTemplate}
+              onBuildTemplateChange={handleBuildTemplateChange}
               visualEditorInChat={visualEditorInChat}
               threadStatusSlot={
                 streamSteps.length > 0 || streamToolLine ? (
@@ -1686,6 +1735,18 @@ export default function PromptBuildPage() {
                       </span>
                     </div>
                     <p className="text-[11px] leading-snug text-foreground/85">{t("playground_choose_assistant_hint")}</p>
+                    {buildTemplate ? (
+                      <p className="text-[11px] leading-snug text-muted-foreground">
+                        {streamArtifactChars > 0
+                          ? t("build_template_stream_progress").replace(
+                              "__N__",
+                              streamArtifactChars.toLocaleString(
+                                lang === "en" ? "en-GB" : lang === "tg" ? "tg" : "ru-RU"
+                              )
+                            )
+                          : t("build_template_stream_waiting")}
+                      </p>
+                    ) : null}
                   </div>
                 ) : lastInterfaceBuildMs != null ? (
                   <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">

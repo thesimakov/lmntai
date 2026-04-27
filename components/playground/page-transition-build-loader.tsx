@@ -6,10 +6,14 @@ import { cn } from "@/lib/utils";
 
 import "./page-transition-build.css";
 
-/** Как в оригинальном codepen: задержка до «morph», затем сетка вайрфрейма. */
+/**
+ * Временная шкала: morph (loaded) → появление вайрфрейма (newPage) → стagger dl1…dl17.
+ * LOOP_MS должен быть > NEW_PAGE_MS + max(dl) + max(длительность scale/scaleX), иначе сброс
+ * обрывает анимации в конце.
+ */
 const LOADED_MS = 1700;
 const NEW_PAGE_MS = 1950;
-const LOOP_MS = 4000;
+const LOOP_MS = 6200;
 
 type PageTransitionBuildLoaderProps = {
   className?: string;
@@ -100,25 +104,6 @@ export function PageTransitionBuildLoader({ className, overPreview }: PageTransi
             <span className="ptlB-btn w15 dl16" aria-hidden />
           </div>
         </div>
-      </div>
-
-      <div className="ptlB-fx" aria-hidden>
-        <svg className="ptlB-loader" viewBox="0 0 100 100" overflow="visible">
-          <g className="ptlB-core">
-            <circle className="path" cx={50} cy={50} r={1} fill="none" />
-          </g>
-          {Array.from({ length: 8 }, (_, i) => (
-            <g key={i} className={`ptlB-layer-${i + 1}`}>
-              <circle
-                className="path"
-                cx={50}
-                cy={50}
-                r={([70, 120, 180, 240, 300, 380, 450, 540] as const)[i]}
-                fill="none"
-              />
-            </g>
-          ))}
-        </svg>
       </div>
     </div>
   );

@@ -544,10 +544,19 @@ export const messages = {
     playground_chat_visual_editor_aria: 'Визуальный редактор макета в превью',
     build_template_aria: 'Каталог шаблонов сборки',
     build_template_dialog_title: 'Шаблоны',
+    build_template_dialog_headline: 'Начни с шаблона',
+    build_template_dialog_subhead:
+      'Начни проект с шаблона — выбери готовый и настрой под себя с помощью ИИ.',
     build_template_dialog_desc:
       'Выберите стартовую вёрстку. Агент правит исходники (как в Lovable), а не создаёт пустой проект. Снимите выбор, если нужен чистый лист.',
     build_template_none: 'Без шаблона',
+    build_template_none_blurb: 'Сборка без готовой вёрстки — с чистого листа.',
+    build_template_card_category_label: 'Категория',
     build_template_active: 'Шаблон',
+    build_template_slot_title: 'Сборка по шаблону',
+    build_template_stream_progress:
+      'Агент пишет правки: __N__ символов (код в чате не дублируем — смотрите превью справа, оно обновится по готовности).',
+    build_template_stream_waiting: 'Получаю ответ модели…',
     playground_chat_you: 'Вы',
     playground_toast_final_prompt_empty: 'Финальный промпт пустой',
     playground_build_share_no_preview: 'Сначала дождитесь готового превью',
@@ -1443,10 +1452,18 @@ export const messages = {
     playground_chat_visual_editor_aria: 'Visual layout editor in preview',
     build_template_aria: 'Build template catalog',
     build_template_dialog_title: 'Templates',
+    build_template_dialog_headline: 'Start from a template',
+    build_template_dialog_subhead: 'Choose a ready-made layout and customize it with AI.',
     build_template_dialog_desc:
       'Pick a starter layout. The agent edits these source files (Lovable-style), not an empty repo. Clear to start from scratch.',
     build_template_none: 'No template',
+    build_template_none_blurb: 'Build without a starter layout — from a blank page.',
+    build_template_card_category_label: 'Category',
     build_template_active: 'Template',
+    build_template_slot_title: 'Building from template',
+    build_template_stream_progress:
+      'Applying edits: __N__ characters (code is not shown in chat — check the live preview on the right).',
+    build_template_stream_waiting: 'Waiting for the model…',
     playground_chat_you: 'You',
     playground_toast_final_prompt_empty: 'Final prompt is empty',
     playground_build_share_no_preview: 'Wait until the preview is ready',
@@ -2340,10 +2357,19 @@ export const messages = {
     playground_chat_visual_editor_aria: 'Муҳаррири макет дар пешнамоиш',
     build_template_aria: 'Каталоги намунаҳои ҷамъоварӣ',
     build_template_dialog_title: 'Намунаҳо',
+    build_template_dialog_headline: 'Аз намӯна оғоз кунед',
+    build_template_dialog_subhead:
+      'Намунаи омодаро интихоб кунед ва бо ИИ таҳти ниёзи худ тағйир диҳед.',
     build_template_dialog_desc:
       'Намунаи оғозро интихоб кунед. Агент файларро тағйир медиҳад, на аз сифр месозад. Барои саҳифаи холӣ интихобро гиред.',
     build_template_none: 'Бе намӯна',
+    build_template_none_blurb: 'Бе вёрсткаи омода — аз саҳифаи холӣ.',
+    build_template_card_category_label: 'Категория',
     build_template_active: 'Намуна',
+    build_template_slot_title: 'Ҷамъ дар асоси намуна',
+    build_template_stream_progress:
+      'Тағйирот: __N__ рамз — пешнамо дар рост баъд аз ҷавоб.',
+    build_template_stream_waiting: 'Интизори ҷавоб…',
     playground_chat_you: 'Шумо',
     playground_toast_final_prompt_empty: 'Промпти ниҳоӣ холист',
     playground_build_share_no_preview: 'Аввал интизор шавед, ки пешнамоиш омода шавад',
