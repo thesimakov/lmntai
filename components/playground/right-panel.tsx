@@ -5,7 +5,6 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
-import { CodepenIsometricBuildLoader } from "@/components/playground/codepen-isometric-build";
 import {
   LemnityAiGridBackdrop,
   LemnityAiOrbitStack,
@@ -13,6 +12,7 @@ import {
   LemnityAiWireframeBlocks,
   LemnityAiPreviewChrome
 } from "@/components/playground/lemnity-ai-preview-animation";
+import { PageTransitionBuildLoader } from "@/components/playground/page-transition-build-loader";
 import { PreviewFrame } from "@/components/playground/preview-frame";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -95,18 +95,28 @@ function GeneratingState({
   progress,
   buildElapsedLabel,
   streamHint,
-  projectKind
+  projectKind,
+  overPreview = false
 }: {
   progress: number;
   buildElapsedLabel?: string | null;
   streamHint?: string | null;
   projectKind?: ProjectKind | null;
+  /** Поверх существующего превью: полупрозрачный слой, предыдущий макет остаётся видимым (меньше «пустой центр»). */
+  overPreview?: boolean;
 }) {
   const { t, lang } = useI18n();
   const [hintOpen, setHintOpen] = useState(false);
   const lineKey = generatingLineKey(projectKind);
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-background">
+    <div
+      className={cn(
+        "relative flex h-full min-h-0 flex-1 flex-col overflow-hidden",
+        overPreview
+          ? "bg-zinc-950/45 backdrop-blur-md dark:bg-zinc-950/60"
+          : "bg-background"
+      )}
+    >
       <LemnityAiGridBackdrop dense />
       <LemnityAiScanBeam />
 
@@ -160,27 +170,15 @@ function GeneratingState({
           </div>
           <div
             className={cn(
-              "relative flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden",
-              "rounded-3xl border border-violet-400/40 bg-gradient-to-b from-violet-500/[0.16] via-fuchsia-500/[0.08] to-background/95",
-              "p-4 shadow-[0_0_0_1px_rgba(167,139,250,0.12),0_20px_50px_-18px_rgba(139,92,246,0.42),inset_0_1px_0_0_rgba(255,255,255,0.06)]",
-              "ring-1 ring-inset ring-violet-300/20 dark:border-violet-400/32 dark:from-violet-500/[0.2] dark:shadow-[0_0_0_1px_rgba(167,139,250,0.1),0_20px_50px_-18px_rgba(139,92,246,0.32),inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:ring-violet-400/10"
+              "relative min-h-0 w-full min-w-0 flex-1 overflow-hidden rounded-2xl border border-border/50",
+              "bg-muted/20 shadow-inner",
+              !overPreview && "ring-1 ring-black/[0.04] dark:ring-white/[0.06]"
             )}
           >
-            <div
-              className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_0%,rgba(167,139,250,0.12),transparent_55%),radial-gradient(60%_40%_at_80%_100%,rgba(236,72,153,0.08),transparent_50%)]"
-              aria-hidden
+            <PageTransitionBuildLoader
+              overPreview={overPreview}
+              className="h-full min-h-[min(36vh,280px)] w-full"
             />
-            <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col">
-              <div className="flex min-h-0 w-full flex-1 items-center justify-center px-0 py-1">
-                <div className="h-full w-full min-h-[min(32vh,220px)] max-h-full">
-                  <CodepenIsometricBuildLoader />
-                </div>
-              </div>
-              <LemnityAiWireframeBlocks
-                animated
-                className="mt-1 w-full shrink-0 border-t border-violet-400/10 pt-3 opacity-95 dark:border-violet-300/10"
-              />
-            </div>
           </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 border-t border-border/80 bg-background/80 px-4 py-3 backdrop-blur-sm">
@@ -215,6 +213,44 @@ export function RightPanel({
   puckEditorHref = null,
   onVisualAgentEdit
 }: RightPanelProps) {
+  const previewFrame = previewUrl && sandboxId && (
+    <LemnityAiPreviewChrome>
+      <PreviewFrame
+        key={sandboxId}
+        previewUrl={previewUrl}
+        sandboxId={sandboxId}
+        mimeType={previewMimeType}
+        downloadFilename={previewDownloadFilename}
+        visualEditMode={visualEditMode}
+        visualEditPersist={visualEditPersist}
+        projectKind={projectKind}
+        presentationPdfExport={presentationPdfExport}
+        presentationExportsPaid={presentationExportsPaid}
+        previewVariant={previewVariant}
+        puckEditorHref={puckEditorHref}
+        onVisualAgentEdit={onVisualAgentEdit}
+      />
+    </LemnityAiPreviewChrome>
+  );
+
+  /** Идёт пересборка, но макет уже был — оставляем iframe под полупрозрачным оверлеем, не снимаем с монтирования. */
+  if (mode === "generating" && previewUrl && sandboxId) {
+    return (
+      <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="absolute inset-0 z-0 min-h-0">{previewFrame}</div>
+        <div className="absolute inset-0 z-20 flex min-h-0 min-w-0">
+          <GeneratingState
+            overPreview
+            progress={progress}
+            buildElapsedLabel={buildElapsedLabel}
+            streamHint={streamHint}
+            projectKind={projectKind}
+          />
+        </div>
+      </div>
+    );
+  }
+
   if (mode === "generating") {
     return (
       <GeneratingState
@@ -228,26 +264,7 @@ export function RightPanel({
 
   /** Готовая сборка: показываем файл/превью, даже если mode ещё «idle» (рассинхрон или после ошибки сброса режима). */
   if (previewUrl && sandboxId) {
-    return (
-      <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-        <LemnityAiPreviewChrome>
-          <PreviewFrame
-            previewUrl={previewUrl}
-            sandboxId={sandboxId}
-            mimeType={previewMimeType}
-            downloadFilename={previewDownloadFilename}
-            visualEditMode={visualEditMode}
-            visualEditPersist={visualEditPersist}
-            projectKind={projectKind}
-            presentationPdfExport={presentationPdfExport}
-            presentationExportsPaid={presentationExportsPaid}
-            previewVariant={previewVariant}
-            puckEditorHref={puckEditorHref}
-            onVisualAgentEdit={onVisualAgentEdit}
-          />
-        </LemnityAiPreviewChrome>
-      </div>
-    );
+    return <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">{previewFrame}</div>;
   }
 
   return <IdleState />;

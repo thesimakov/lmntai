@@ -162,6 +162,8 @@ export default function PromptBuildPage() {
   const requestAbortRef = useRef<AbortController | null>(null);
   const streamRequestSeqRef = useRef(0);
   const sessionLoadSeqRef = useRef(0);
+  /** id песочницы из live SSE `preview` — защищает от перезаписи устаревшим GET /sessions после стрима */
+  const lastSsePreviewSandboxIdRef = useRef<string | null>(null);
   const bridgeAssistantMessageIdRef = useRef<string | null>(null);
   const bridgeSawDeltaRef = useRef(false);
   const coachRequestSeqRef = useRef(0);
@@ -551,20 +553,26 @@ export default function PromptBuildPage() {
           .reverse()
           .find((event) => event?.event === "preview" && typeof event.data?.previewUrl === "string")?.data;
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
-          setPreviewUrl(lastPreview.previewUrl);
-          setSandboxId(lastPreview.sandboxId);
-          setPreviewArtifactMime(typeof lastPreview.mimeType === "string" ? lastPreview.mimeType : null);
-          setPreviewDownloadFilename(
-            typeof lastPreview.filename === "string" ? lastPreview.filename : null
-          );
-          const pe = lastPreview.pdfExport;
-          if (pe?.previewUrl && pe?.filename) {
-            setPresentationPdfExport({ url: pe.previewUrl, filename: pe.filename });
+          const loadedSbx = String(lastPreview.sandboxId);
+          const liveSse = lastSsePreviewSandboxIdRef.current;
+          if (liveSse && liveSse !== loadedSbx) {
+            // Уже пришла более новая песочница по стриму; в GET ещё старый last preview — не откатывать UI.
           } else {
-            setPresentationPdfExport(null);
+            setPreviewUrl(lastPreview.previewUrl);
+            setSandboxId(lastPreview.sandboxId);
+            setPreviewArtifactMime(typeof lastPreview.mimeType === "string" ? lastPreview.mimeType : null);
+            setPreviewDownloadFilename(
+              typeof lastPreview.filename === "string" ? lastPreview.filename : null
+            );
+            const pe = lastPreview.pdfExport;
+            if (pe?.previewUrl && pe?.filename) {
+              setPresentationPdfExport({ url: pe.previewUrl, filename: pe.filename });
+            } else {
+              setPresentationPdfExport(null);
+            }
+            setMode("preview");
+            setProgress(100);
           }
-          setMode("preview");
-          setProgress(100);
         }
         for (const event of payload.events ?? []) {
           if (event?.event === "plan") {
@@ -829,6 +837,7 @@ export default function PromptBuildPage() {
               const data = JSON.parse(chunk.data) as LemnityAiPreviewEvent;
               if (data.previewUrl && data.sandboxId) {
                 interfaceBuildGotPreviewRef.current = true;
+                lastSsePreviewSandboxIdRef.current = String(data.sandboxId);
                 setPreviewUrl(data.previewUrl);
                 setSandboxId(data.sandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
@@ -1097,6 +1106,10 @@ export default function PromptBuildPage() {
       requestAbortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    lastSsePreviewSandboxIdRef.current = null;
+  }, [lemnityAiSessionId]);
 
   /** Подтягивает summary сессии в Prisma (previewArtifactId), чтобы PATCH артефакта не получал 404 сразу после превью. */
   useEffect(() => {
@@ -1494,7 +1507,16 @@ export default function PromptBuildPage() {
       }
 
       if (stage === "ready") {
-        push("user", displayContent);
+        const built = finalPrompt.trim();
+        const isDispatchingAgreedPrompt =
+          !hasFiles &&
+          built.length > 0 &&
+          trimmed === built;
+        if (isDispatchingAgreedPrompt) {
+          push("assistant", t("playground_chat_assistant_dispatch_built_prompt"));
+        } else {
+          push("user", displayContent, userExtras);
+        }
         setPromptCoachDebugLine(null);
         void sendLemnityAiChat(userOutbound);
         return;

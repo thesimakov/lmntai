@@ -416,6 +416,14 @@ export function AgentChat({
                     >
                       {m.content}
                     </div>
+                    {m.promptPlainText &&
+                    m.promptPlainText !== m.content &&
+                    m.content.length < 240 &&
+                    m.promptPlainText.length > 400 ? (
+                      <p className="mt-1 max-w-full pr-0.5 text-right text-[10px] leading-snug text-stone-500/90 dark:text-zinc-400">
+                        {t("playground_chat_user_built_prompt_note")}
+                      </p>
+                    ) : null}
                     {m.sentAt != null ? (
                       <p className="mt-0.5 pr-1 text-right text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
                         {formatMessageClock(m.sentAt, lang)}

@@ -535,6 +535,10 @@ export const messages = {
     /** Подпись в шапке и над пузырями ассистента (студия) */
     playground_chat_brand: 'Lemnity AI',
     playground_chat_input_placeholder: 'Спросить Lemnity AI…',
+    playground_chat_assistant_dispatch_built_prompt:
+      "Запускаю сборку по согласованному промпту (отправляю в Lemnity AI).",
+    playground_chat_user_built_prompt_note:
+      'Полный техпромпт ушёл в запрос; ниже — краткое подтверждение, а не ввод вручную.',
     playground_chat_input_placeholder_studio: 'Сообщение для Lemnity AI…',
     playground_chat_visual_editor_title: 'Визуальный редактор: клики по элементам в превью, правка текста и картинок',
     playground_chat_visual_editor_aria: 'Визуальный редактор макета в превью',
@@ -1399,6 +1403,10 @@ export const messages = {
     playground_chat_secretary: 'Secretary',
     playground_chat_brand: 'Lemnity AI',
     playground_chat_input_placeholder: 'Ask Lemnity AI…',
+    playground_chat_assistant_dispatch_built_prompt:
+      "Starting the build with the agreed prompt (sending to Lemnity AI).",
+    playground_chat_user_built_prompt_note:
+      "The full technical prompt was sent in the request; this bubble is a short confirmation, not something you typed line by line.",
     playground_chat_input_placeholder_studio: 'Message to Lemnity AI…',
     playground_chat_visual_editor_title:
       'Visual editor: click elements in the preview to edit text and images',
@@ -2265,6 +2273,9 @@ export const messages = {
     playground_chat_secretary: 'Котиб',
     playground_chat_brand: 'Lemnity AI',
     playground_chat_input_placeholder: 'Пурсидан аз Lemnity AI…',
+    playground_chat_assistant_dispatch_built_prompt:
+      "Ҷамъсозиро ба промпти тасдиқшуда оғоз мекунам (ба Lemnity AI).",
+    playground_chat_user_built_prompt_note: "Матни пурра дар дархост рафт; ин — тасдиқи кӯтоҳ.",
     playground_chat_input_placeholder_studio: 'Паём барои Lemnity AI…',
     playground_chat_visual_editor_title: 'Муҳаррири визуалӣ: клик ба элементҳо дар пешнамоиш',
     playground_chat_visual_editor_aria: 'Муҳаррири макет дар пешнамоиш',
