@@ -1609,7 +1609,7 @@ export default function PromptBuildPage() {
                     {t("build_footer_built_prefix")} {formatBuildTotalDuration(lastInterfaceBuildMs, lang)}
                   </div>
                 ) : promptCoachLoading ? (
-                  <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
+                  <div className="rounded-none border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
                     <button
                       type="button"
                       className="flex w-full items-center gap-2 text-left"

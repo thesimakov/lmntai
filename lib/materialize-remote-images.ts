@@ -1,11 +1,12 @@
 import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
 import { clearSandboxImageAssets, setSandboxImageAsset } from "@/lib/sandbox-image-assets";
 
-/** Домены, которые сейчас используются в промптах (см. lib/prompt-stock-images.ts). */
+/** Домены, которые сейчас разрешены в промптах (см. lib/prompt-stock-images.ts; Commons — без зарубежного VPN). */
 const HOST_ALLOW = new Set([
   "images.unsplash.com",
   "picsum.photos",
-  "fastly.picsum.photos"
+  "fastly.picsum.photos",
+  "upload.wikimedia.org"
 ]);
 
 const MAX_IMAGES = 24;

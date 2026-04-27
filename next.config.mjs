@@ -35,6 +35,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "fastly.picsum.photos",
         pathname: "/**"
+      },
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+        pathname: "/**"
       }
     ]
   },

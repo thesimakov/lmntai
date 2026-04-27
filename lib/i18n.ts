@@ -563,7 +563,7 @@ export const messages = {
     playground_build_code_visual_edit_hint:
       'Визуальное редактирование: вкладки «Превью» или «Документ» и кнопка «Редактор» в шапке. Здесь — файлы, записанные в песочницу (при многофайловой сборке — несколько путей; иначе часто один index.html).',
     playground_preview_remote_images_hint:
-      'Картинки по HTTPS (например images.unsplash.com, picsum.photos) должны открываться в превью. Не грузятся — проверьте URL в коде и вкладку Network в DevTools.',
+      'Картинки по HTTPS: по возможности используйте upload.wikimedia.org (Commons) или другой доступный без VPN хост; также подойдут images.unsplash.com и picsum.photos. Не грузятся — проверьте URL в коде и вкладку Network в DevTools.',
     playground_dialog_ready_title: 'Готовый промпт',
     playground_dialog_brief_title: 'Брифинг и сбор промпта',
     playground_dialog_ready_desc:
@@ -1418,7 +1418,7 @@ export const messages = {
     playground_build_code_visual_edit_hint:
       'Visual editing: use the Preview or Document tab, then Editor in the header. This tab shows files stored in the sandbox (multi-file builds list several paths; otherwise often a single index.html).',
     playground_preview_remote_images_hint:
-      'Images over HTTPS (e.g. images.unsplash.com, picsum.photos) should load in the preview. If not, check the URL in code and the Network tab in DevTools.',
+      'Images over HTTPS: prefer upload.wikimedia.org (Commons) or another host reachable without a VPN; images.unsplash.com and picsum.photos also work when available. If they do not load, check the URL in code and the Network tab in DevTools.',
     playground_dialog_ready_title: 'Ready prompt',
     playground_dialog_brief_title: 'Briefing & prompt assembly',
     playground_dialog_ready_desc:
@@ -2274,7 +2274,7 @@ export const messages = {
     playground_build_code_visual_edit_hint:
       'Таҳрири визуалӣ: варақаҳои «Пешнамоиш» ё «Ҳуҷҷат» ва тугмаи «Муҳаррир» дар сарбанд. Ин ҷо — файлҳои песочница.',
     playground_preview_remote_images_hint:
-      'Аксҳо аз URL-ҳои HTTPS (мас. images.unsplash.com) бояд кушода шаванд. Агар не — URL дар кодро ва Network-ро чек кунед.',
+      'Аксҳо аз URL-ҳои HTTPS: афзалан upload.wikimedia.org (Commons) ё дигар хости бе VPN. images.unsplash.com низ. Агар не — URL ва Network-ро чек кунед.',
     playground_dialog_ready_title: 'Промпти тайёр',
     playground_dialog_brief_title: 'Брифинг ва ҷамъкунии промпт',
     playground_dialog_ready_desc:

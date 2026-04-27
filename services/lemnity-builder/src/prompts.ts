@@ -7,7 +7,7 @@ export type PlanStep = {
 
 /** Keep in sync with `lib/prompt-stock-images.ts` → `PROMPT_STOCK_IMAGES_RULES_EN`. */
 const STOCK_IMAGES_GUIDANCE =
-  "Images (hero, sections, cards): use only real HTTPS `src` URLs. For stable placeholders use `https://picsum.photos/seed/<short-ascii-seed>/<width>/<height>`. For editorial photos you may use direct `https://images.unsplash.com/...` URLs; add a visible one-line credit (photographer name + link to their Unsplash profile). Do not use deprecated `source.unsplash.com`, `placehold.co` as default stock, broken `example.com` placeholders, or invented image hosts.";
+  "Images (hero, sections, cards): use only real HTTPS `src` URLs. Prefer `https://upload.wikimedia.org/wikipedia/commons/...` (Wikimedia Commons) for editorial/photo placeholders — add a visible one-line credit (title + link to the file page on Commons). Alternatively `https://picsum.photos/seed/<short-ascii-seed>/<width>/<height>` or `https://images.unsplash.com/...` (with photographer credit) where appropriate. Do not use deprecated `source.unsplash.com`, `placehold.co` as default stock, broken `example.com` placeholders, or invented image hosts.";
 
 /** Keep in sync with `lib/prompt-site-footer.ts` → `PROMPT_SITE_FOOTER_RULES_EN`. */
 const SITE_FOOTER_GUIDANCE =

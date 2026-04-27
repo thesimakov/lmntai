@@ -4,7 +4,7 @@ import { unstable_cache } from "next/cache";
 import {
   LANDING_SHOWCASE_ITEMS,
   SHOWCASE_UNSPLASH_QUERY_BY_SLUG,
-  showcasePicsumUrl,
+  showcaseLocalFallbackUrl,
   type ShowcaseImageEntry
 } from "@/lib/landing-showcase";
 
@@ -16,12 +16,12 @@ function hashSlug(s: string): number {
   return h >>> 0;
 }
 
-function picsumPayload(): { source: "picsum"; bySlug: Record<string, ShowcaseImageEntry> } {
+function localShowcasePayload(): { source: "local"; bySlug: Record<string, ShowcaseImageEntry> } {
   const bySlug: Record<string, ShowcaseImageEntry> = {};
   for (const item of LANDING_SHOWCASE_ITEMS) {
-    bySlug[item.slug] = { url: showcasePicsumUrl(item.slug) };
+    bySlug[item.slug] = { url: showcaseLocalFallbackUrl(item.slug) };
   }
-  return { source: "picsum", bySlug };
+  return { source: "local", bySlug };
 }
 
 type UnsplashSearchPhoto = {
@@ -44,11 +44,11 @@ async function triggerDownload(downloadUrl: string, accessKey: string) {
 }
 
 async function loadShowcaseImages(): Promise<{
-  source: "unsplash" | "picsum";
+  source: "unsplash" | "local";
   bySlug: Record<string, ShowcaseImageEntry>;
 }> {
   const accessKey = process.env.UNSPLASH_ACCESS_KEY?.trim();
-  if (!accessKey) return picsumPayload();
+  if (!accessKey) return localShowcasePayload();
 
   const bySlug: Record<string, ShowcaseImageEntry> = {};
   const downloadUrls: string[] = [];
@@ -71,12 +71,12 @@ async function loadShowcaseImages(): Promise<{
       const data = (await res.json()) as UnsplashSearchJson;
       results = data.results ?? [];
     } catch {
-      bySlug[item.slug] = { url: showcasePicsumUrl(item.slug) };
+      bySlug[item.slug] = { url: showcaseLocalFallbackUrl(item.slug) };
       continue;
     }
 
     if (results.length === 0) {
-      bySlug[item.slug] = { url: showcasePicsumUrl(item.slug) };
+      bySlug[item.slug] = { url: showcaseLocalFallbackUrl(item.slug) };
       continue;
     }
 
@@ -84,7 +84,7 @@ async function loadShowcaseImages(): Promise<{
     const ph = results[idx];
     const imgUrl = ph.urls.regular ?? ph.urls.small;
     if (!imgUrl) {
-      bySlug[item.slug] = { url: showcasePicsumUrl(item.slug) };
+      bySlug[item.slug] = { url: showcaseLocalFallbackUrl(item.slug) };
       continue;
     }
 
@@ -105,7 +105,7 @@ async function loadShowcaseImages(): Promise<{
   return { source: "unsplash", bySlug };
 }
 
-const getCachedShowcaseImages = unstable_cache(loadShowcaseImages, ["showcase-images-v1"], {
+const getCachedShowcaseImages = unstable_cache(loadShowcaseImages, ["showcase-images-v2"], {
   revalidate: 3600
 });
 
@@ -114,6 +114,6 @@ export async function GET() {
     const payload = await getCachedShowcaseImages();
     return NextResponse.json(payload);
   } catch {
-    return NextResponse.json(picsumPayload());
+    return NextResponse.json(localShowcasePayload());
   }
 }

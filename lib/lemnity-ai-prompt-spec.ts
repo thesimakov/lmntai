@@ -86,7 +86,7 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Deliverable: **Marketing / product website** as a **React+TS** app (same structure as a real repo: `src/App.tsx` composes sections; extract repeated blocks to `src/components/…`).",
           "Structure: header/nav, hero, value props, social proof, feature grid, pricing or CTA block, FAQ, footer — implemented as components/sections, not one giant return.",
           "Use semantic sections with clear `id` or `data-section` for anchor nav.",
-          "Apply the global stock-image URL rules (Picsum seed URLs or Unsplash CDN + credit) for any photos in the layout.",
+          "Apply the global stock-image URL rules (prefer Wikimedia Commons direct URLs + credit; otherwise Picsum seed or Unsplash + credit) for any photos in the layout.",
           "Apply the global site-footer bar rules (copyright + privacy placeholder left; build date + «Сделано на Lemnity» right)."
         ];
       case "presentation":
@@ -108,7 +108,7 @@ export function buildRouterGenerationPrompt(userPrompt: string, projectKind?: Pr
           "Deliverable: **UI/UX design concept** in React+TS: design system / component gallery as real components (e.g. `src/components/ui/`).",
           "Include: color tokens, typography scale, button/input/card variants, empty and error states; spacing notes in comments.",
           "Compose in `App.tsx` or a `src/pages/DesignSystem.tsx` story layout; emphasize hierarchy and reuse, not a marketing one-pager.",
-          "For sample imagery in cards/hero mockups, follow the global stock-image URL rules (Picsum or Unsplash + credit)."
+          "For sample imagery in cards/hero mockups, follow the global stock-image URL rules (Commons / Picsum / Unsplash + credit)."
         ];
       case "visitcard":
         return [
@@ -156,17 +156,17 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
   if (!kind) return "";
   const m: Record<ProjectKind, string> = {
     website:
-      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML. **Картинки:** в итоговом промпте заложи рабочие URL — `https://picsum.photos/seed/<латиница>/ширина/высота` или `https://images.unsplash.com/...` с короткой подписью фотографа (имя + ссылка на профиль Unsplash). **Футер:** нижняя полоса с `footer-bottom`: слева © и «Политика конфиденциальности» (пока `href=\"#\"`, URL позже); справа дата сборки и ссылка «Сделано на Lemnity» → `https://lemnity.com`.",
+      "маркетинговый/продуктовый сайт в виде **React+TypeScript-проекта** (несколько файлов в `src/`, как в Vite-репозитории): компоненты, секции, навигация, hero, CTA — не один монолитный HTML. **Картинки:** по возможности прямые URL **Wikimedia Commons** — `https://upload.wikimedia.org/wikipedia/commons/...` с короткой подписью (название файла / ссылка на страницу файла); при необходимости — `https://picsum.photos/seed/<латиница>/ширина/высота` или `https://images.unsplash.com/...` с подписью фотографа. **Футер:** нижняя полоса с `footer-bottom`: слева © и «Политика конфиденциальности» (пока `href=\"#\"`, URL позже); справа дата сборки и ссылка «Сделано на Lemnity» → `https://lemnity.com`.",
     presentation:
       "презентация как документ: целевые форматы PPTX/PDF; в HTML — редактируемые полноэкранные слайды по одной мысли.",
     resume:
       "резюме как документ: целевые форматы DOCX/PDF; в HTML — редактируемая печатная вёрстка CV, не лендинг.",
     design:
-      "UI/UX-концепт, дизайн-система, варианты компонентов и состояний. Для примеров картинок в макетах — те же правила URL, что для сайта (Picsum seed или Unsplash + подпись).",
+      "UI/UX-концепт, дизайн-система, варианты компонентов и состояний. Для примеров картинок в макетах — те же правила URL, что для сайта (Commons / Picsum / Unsplash + подпись).",
     visitcard:
-      "цифровая визитка, компактный экран, контакты и ссылки. Фон/фото при необходимости — Picsum seed или Unsplash с подписью.",
+      "цифровая визитка, компактный экран, контакты и ссылки. Фон/фото при необходимости — Commons / Picsum / Unsplash с подписью.",
     lovable:
-      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Picsum/Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity)."
+      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Commons / Picsum / Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity)."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }

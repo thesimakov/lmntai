@@ -110,15 +110,15 @@ function GeneratingState({
       <LemnityAiGridBackdrop dense />
       <LemnityAiScanBeam />
 
-      <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 pb-16 pt-8 text-center">
+      <div className="relative z-10 flex h-full min-h-0 w-full min-w-0 flex-1 flex-col px-5 pb-16 pt-6 text-center sm:px-6 sm:pt-8">
         {streamHint ? (
-          <div className="mb-3 w-full max-w-lg">
+          <div className="mb-2 w-full shrink-0 sm:mb-3">
             <motion.div
               key={streamHint}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25 }}
-              className="flex flex-col gap-1 rounded-xl border border-border bg-muted/40 px-3 py-2 text-left text-xs text-muted-foreground"
+              className="mx-auto flex w-full max-w-3xl flex-col gap-1 rounded-xl border border-border/80 bg-muted/35 px-3 py-2 text-left text-xs text-muted-foreground shadow-sm backdrop-blur-sm"
             >
               <div className="flex items-start justify-between gap-2">
                 <p
@@ -146,22 +146,42 @@ function GeneratingState({
             </motion.div>
           </div>
         ) : null}
-        <p className="max-w-md text-balance text-base font-medium text-foreground">{t(lineKey)}</p>
-        <p className="mt-2 max-w-md text-balance text-sm text-muted-foreground">
-          {t("playground_right_generating_line2")}
-        </p>
-        <p className="mt-3 max-w-md text-balance text-xs font-medium text-foreground/90">
-          {t("playground_choose_assistant_hint")}
-        </p>
-        <div
-          className={cn(
-            "relative z-10 mt-10 flex w-full max-w-lg flex-col items-center rounded-2xl border border-violet-400/45 bg-gradient-to-b from-violet-500/[0.14] via-fuchsia-500/[0.07] to-background/95 p-5 shadow-[0_12px_48px_-12px_rgba(139,92,246,0.45)] ring-1 ring-violet-400/20 dark:border-violet-400/35 dark:from-violet-500/[0.18] dark:shadow-[0_12px_48px_-12px_rgba(139,92,246,0.35)] dark:ring-violet-300/15"
-          )}
-        >
-          <div className="w-full max-h-[min(48vh,340px)] min-h-[200px]">
-            <CodepenIsometricBuildLoader />
+        <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col gap-3">
+          <div className="shrink-0 space-y-1.5">
+            <p className="mx-auto max-w-2xl text-balance text-base font-medium text-foreground">
+              {t(lineKey)}
+            </p>
+            <p className="mx-auto max-w-2xl text-balance text-sm text-muted-foreground">
+              {t("playground_right_generating_line2")}
+            </p>
+            <p className="mx-auto max-w-2xl text-balance text-xs font-medium text-foreground/90">
+              {t("playground_choose_assistant_hint")}
+            </p>
           </div>
-          <LemnityAiWireframeBlocks animated className="mt-4 w-full opacity-95" />
+          <div
+            className={cn(
+              "relative flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden",
+              "rounded-3xl border border-violet-400/40 bg-gradient-to-b from-violet-500/[0.16] via-fuchsia-500/[0.08] to-background/95",
+              "p-4 shadow-[0_0_0_1px_rgba(167,139,250,0.12),0_20px_50px_-18px_rgba(139,92,246,0.42),inset_0_1px_0_0_rgba(255,255,255,0.06)]",
+              "ring-1 ring-inset ring-violet-300/20 dark:border-violet-400/32 dark:from-violet-500/[0.2] dark:shadow-[0_0_0_1px_rgba(167,139,250,0.1),0_20px_50px_-18px_rgba(139,92,246,0.32),inset_0_1px_0_0_rgba(255,255,255,0.04)] dark:ring-violet-400/10"
+            )}
+          >
+            <div
+              className="pointer-events-none absolute inset-0 bg-[radial-gradient(80%_60%_at_50%_0%,rgba(167,139,250,0.12),transparent_55%),radial-gradient(60%_40%_at_80%_100%,rgba(236,72,153,0.08),transparent_50%)]"
+              aria-hidden
+            />
+            <div className="relative z-10 flex min-h-0 w-full flex-1 flex-col">
+              <div className="flex min-h-0 w-full flex-1 items-center justify-center px-0 py-1">
+                <div className="h-full w-full min-h-[min(32vh,220px)] max-h-full">
+                  <CodepenIsometricBuildLoader />
+                </div>
+              </div>
+              <LemnityAiWireframeBlocks
+                animated
+                className="mt-1 w-full shrink-0 border-t border-violet-400/10 pt-3 opacity-95 dark:border-violet-300/10"
+              />
+            </div>
+          </div>
         </div>
         <div className="absolute bottom-0 left-0 right-0 border-t border-border/80 bg-background/80 px-4 py-3 backdrop-blur-sm">
           <div className="mx-auto flex max-w-md items-center gap-3">
