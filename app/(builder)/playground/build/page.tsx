@@ -316,6 +316,29 @@ export default function PromptBuildPage() {
     return `/playground/puck?${q.toString()}`;
   }, [sandboxId, previewUrl, lemnityAiSessionId]);
 
+  const handleChatVisualEditorToggle = useCallback(() => {
+    if (!previewUrl) return;
+    if (isPptxArtifact(previewArtifactMime)) return;
+    if (tab === "code" || tab === "settings") {
+      setTab("preview");
+      setVisualLayoutEditor(true);
+      return;
+    }
+    if (tab === "document") {
+      setVisualLayoutEditor(true);
+      return;
+    }
+    setVisualLayoutEditor((v) => !v);
+  }, [previewUrl, previewArtifactMime, tab]);
+
+  const visualEditorInChat = useMemo(() => {
+    if (!previewUrl || isPptxArtifact(previewArtifactMime)) return null;
+    return {
+      active: (tab === "preview" || tab === "document") && visualLayoutEditor,
+      onToggle: handleChatVisualEditorToggle
+    };
+  }, [previewUrl, previewArtifactMime, tab, visualLayoutEditor, handleChatVisualEditorToggle]);
+
   const settingsProjectTitle = useMemo(() => {
     const raw = finalPrompt.trim() || idea.trim();
     if (!raw) return "";
@@ -1587,6 +1610,7 @@ export default function PromptBuildPage() {
               projectKind={projectKind}
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
               onModelHintChange={setAgentHint}
+              visualEditorInChat={visualEditorInChat}
               threadStatusSlot={
                 streamSteps.length > 0 || streamToolLine ? (
                   <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="border-0 bg-transparent" />
