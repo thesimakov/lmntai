@@ -43,8 +43,12 @@ export async function middleware(req: NextRequest) {
   return NextResponse.rewrite(rewriteUrl);
 }
 
+/**
+ * Все запросы под `/_next/*` (static chunks, RSC `/_next/data/*`, HMR, image optimizer и т.д.)
+ * должны обходить publish-domain rewrite. Иначе на кастомном домене с rewrite на `/share/:id`
+ * HTML грузится с основного приложения, а `/_next/data/...` и часть внутренних `/_next/*`
+ * уходили бы в ветку middleware → ломается загрузка чанков / App Router.
+ */
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|assets|images|fonts).*)"
-  ]
+  matcher: ["/((?!api|_next/|favicon.ico|robots.txt|sitemap.xml|assets|images|fonts).*)"]
 };
