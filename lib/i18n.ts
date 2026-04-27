@@ -869,6 +869,13 @@ export const messages = {
     playground_choose_assistant_hint:
       'Выберите своего помощника (модель) в чате слева — от выбора зависит стиль и логика сборки макета.',
     playground_session_create_error: 'Не удалось создать сессию Lemnity AI.',
+    playground_lemnity_api_network_error: 'Сервис Lemnity AI не ответил. Повторите попытку.',
+    error_lemnity_builder_db_unavailable:
+      'Сборка: база данных недоступна. Запустите PostgreSQL, проверьте DATABASE_URL (и настройки lemnity-builder), затем: pm2 restart lemnity-builder',
+    error_lemnity_unauthorized: 'Нет доступа к сервису сборки. Войдите в аккаунт снова.',
+    playground_lemnity_message_required: 'Пустое сообщение.',
+    playground_lemnity_not_found: 'Сессия или ресурс не найдены.',
+    playground_lemnity_bad_request: 'Некорректный запрос к сервису сборки.',
     build_stream_empty_hint: 'Шаги сборки появятся после старта генерации.',
     build_stream_aria_log: 'Пошаговый отчёт агента',
     build_stream_tool_activity: 'Сейчас',
@@ -1725,6 +1732,13 @@ export const messages = {
     playground_choose_assistant_hint:
       'Choose your assistant (model) in the chat on the left — it shapes how the layout is built.',
     playground_session_create_error: 'Could not create a Lemnity AI session.',
+    playground_lemnity_api_network_error: 'Lemnity AI did not respond. Please try again.',
+    error_lemnity_builder_db_unavailable:
+      'Build service: database unavailable. Start PostgreSQL, check DATABASE_URL, then: pm2 restart lemnity-builder',
+    error_lemnity_unauthorized: 'Not authorized to access the build service. Sign in again.',
+    playground_lemnity_message_required: 'Empty message.',
+    playground_lemnity_not_found: 'Session or resource not found.',
+    playground_lemnity_bad_request: 'Invalid request to the build service.',
     build_stream_empty_hint: 'Build steps will appear after generation starts.',
     build_stream_aria_log: 'Agent step log',
     build_stream_tool_activity: 'Now',
@@ -2586,6 +2600,13 @@ export const messages = {
     playground_choose_assistant_hint:
       'Ёрии худро (модел) дар чати чап интихоб кунед — аз ин вобаста аст, чӣ тавр макет ҷамъ мешавад.',
     playground_session_create_error: 'Натавонист сессияи Lemnity AI эҷод шавад.',
+    playground_lemnity_api_network_error: 'Lemnity AI ҷавоб надод. Такрор кунед.',
+    error_lemnity_builder_db_unavailable:
+      'Ҷамъсозӣ: пойгоҳи дода дастнорас аст. PostgreSQL, DATABASE_URL, сонан pm2 restart lemnity-builder',
+    error_lemnity_unauthorized: 'Дастрасии хизматрасонии ҷамъсозӣ нест. Воред.',
+    playground_lemnity_message_required: 'Паёми холӣ.',
+    playground_lemnity_not_found: 'Сессия ё манбаъ ёфт нашуд.',
+    playground_lemnity_bad_request: 'Дархости нодуруст.',
     build_stream_empty_hint: 'Қадамҳои ҷамъсозӣ пас аз оғози тавлид пайдо мешаванд.',
     build_stream_aria_log: 'Гузориши агент ба қадамҳо',
     build_stream_tool_activity: 'Акнун',

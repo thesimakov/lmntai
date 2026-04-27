@@ -45,6 +45,7 @@ import { isLovableFileFenceDelta, shouldCollapseAssistantCodeDump } from "@/lib/
 import { formatBuildElapsed, formatBuildTotalDuration } from "@/lib/build-time-i18n";
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 import { getStreamStepTitle } from "@/lib/stream-step-title";
+import { formatLemnityBridgeErrorBody } from "@/lib/lemnity-bridge-error-format";
 
 type LemnityAiBridgeEnvelope<T> = {
   code: number;
@@ -624,7 +625,10 @@ export default function PromptBuildPage() {
             : t("playground_session_create_error");
         return { ok: false, message: msg };
       }
-      if (!res.ok) return { ok: false, message: t("playground_session_create_error") };
+      if (!res.ok) {
+        const errText = await res.text();
+        return { ok: false, message: formatLemnityBridgeErrorBody(errText, t) };
+      }
       const envelope = (await res.json()) as LemnityAiBridgeEnvelope<{ session_id?: string }>;
       const createdId = envelope?.data?.session_id;
       if (!createdId) return { ok: false, message: t("playground_session_create_error") };
@@ -690,8 +694,9 @@ export default function PromptBuildPage() {
         });
         if (!isCurrentRequest()) return;
         if (!response.ok || !response.body) {
-          const message = await response.text().catch(() => "Ошибка API Lemnity AI");
+          const raw = await response.text().catch(() => "");
           if (!isCurrentRequest()) return;
+          const message = formatLemnityBridgeErrorBody(raw, t);
           push("assistant", `❌ ${message}`);
           setMode("idle");
           setStage("ready");
