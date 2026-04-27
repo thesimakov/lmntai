@@ -135,7 +135,7 @@ async function postPromptCoach(req: NextRequest) {
     } catch (err) {
       console.error("[api/prompt-coach] RouterAI", err);
       const kind = isProjectKind(body?.projectKind) ? body.projectKind : null;
-      const demo = coachOfflineDemoReply(messages, kind);
+      const demo = coachOfflineDemoReply(messages, kind, { introVariant: "router_error" });
       return Response.json({ ...demo, fallback: true });
     }
   } catch (err) {

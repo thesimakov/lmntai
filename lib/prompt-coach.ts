@@ -66,10 +66,18 @@ export function parsePromptCoachJson(text: string): PromptCoachModelJson | null 
   }
 }
 
+export type CoachOfflineDemoIntroVariant = "offline_dev" | "router_error";
+
 export function coachOfflineDemoReply(
   messages: Array<{ role: string; content: string }>,
-  projectKind: ProjectKind | null
+  projectKind: ProjectKind | null,
+  options?: { introVariant?: CoachOfflineDemoIntroVariant }
 ): PromptCoachModelJson {
+  const intro =
+    options?.introVariant === "router_error"
+      ? "Сейчас не удалось получить ответ от модели. Ниже — черновик технического промпта по вашему последнему сообщению."
+      : "В офлайн-демо я собрал черновик технического промпта по вашему последнему сообщению.";
+
   const lastUser = [...messages].reverse().find((m) => m.role === "user" && m.content?.trim());
   const seed = lastUser?.content?.trim() ?? "лендинг";
   const kindLabel =
@@ -96,7 +104,7 @@ export function coachOfflineDemoReply(
 
   return {
     reply: [
-      "В офлайн-демо я собрал черновик технического промпта по вашему последнему сообщению.",
+      intro,
       "",
       technical_prompt,
       "",
