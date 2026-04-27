@@ -12,6 +12,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { lemnityPuckConfig } from "@/lib/puck-lemnity-config";
 import { mergePuckData } from "@/lib/puck-lemnity-data";
+import { rememberBuildSessionForPuckReturn, readBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { cn } from "@/lib/utils";
 
 type PreviewChrome = "none" | "minimal";
@@ -66,16 +67,38 @@ function PlaygroundPuckPreviewInner() {
     };
   }, [sandboxId, rev]);
 
-  const backHref = sessionId
-    ? `/playground/build?sessionId=${encodeURIComponent(sessionId)}`
-    : "/playground/build";
-  const editorHref = (() => {
+  const [backToBuildHref, setBackToBuildHref] = useState(() =>
+    sessionId ? `/playground/build?sessionId=${encodeURIComponent(sessionId)}` : "/playground/build"
+  );
+
+  const [editorHref, setEditorHref] = useState(() => {
     if (!sandboxId) return "/playground/puck";
     const q = new URLSearchParams();
     q.set("sandboxId", sandboxId);
     if (sessionId) q.set("sessionId", sessionId);
     return `/playground/puck?${q.toString()}`;
-  })();
+  });
+
+  useEffect(() => {
+    if (sessionId) {
+      rememberBuildSessionForPuckReturn(sessionId);
+      setBackToBuildHref(`/playground/build?sessionId=${encodeURIComponent(sessionId)}`);
+    } else {
+      const stored = readBuildSessionForPuckReturn();
+      setBackToBuildHref(
+        stored ? `/playground/build?sessionId=${encodeURIComponent(stored)}` : "/playground/build"
+      );
+    }
+    if (!sandboxId) {
+      setEditorHref("/playground/puck");
+      return;
+    }
+    const sid = sessionId ?? readBuildSessionForPuckReturn();
+    const q = new URLSearchParams();
+    q.set("sandboxId", sandboxId);
+    if (sid) q.set("sessionId", sid);
+    setEditorHref(`/playground/puck?${q.toString()}`);
+  }, [sessionId, sandboxId]);
 
   if (!data) {
     return (
@@ -91,7 +114,7 @@ function PlaygroundPuckPreviewInner() {
       <div className="flex min-h-0 flex-1 flex-col gap-3 bg-background p-4">
         <p className="text-sm text-muted-foreground">{t("puck_page_need_sandbox")}</p>
         <Button type="button" variant="outline" size="sm" className="w-fit" asChild>
-          <Link href={backHref}>{t("puck_page_back_build")}</Link>
+          <Link href={backToBuildHref}>{t("puck_page_back_build")}</Link>
         </Button>
       </div>
     );
@@ -131,7 +154,7 @@ function PlaygroundPuckPreviewInner() {
           </a>
         </Button>
         <Button type="button" variant="ghost" size="icon" className="h-8 w-8 shrink-0" asChild>
-          <a href={backHref} aria-label={t("puck_page_back_aria")}>
+          <a href={backToBuildHref} aria-label={t("puck_page_back_aria")}>
             <ArrowLeft className="h-4 w-4" />
           </a>
         </Button>

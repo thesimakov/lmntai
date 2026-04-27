@@ -12,6 +12,7 @@ import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { lemnityPuckConfig } from "@/lib/puck-lemnity-config";
 import { mergePuckData } from "@/lib/puck-lemnity-data";
+import { rememberBuildSessionForPuckReturn, readBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { cn } from "@/lib/utils";
 
 function PlaygroundPuckPageInner() {
@@ -105,20 +106,42 @@ function PlaygroundPuckPageInner() {
         await persist(next);
         setPreviewRev((n) => n + 1);
         toast.success(t("puck_page_saved"));
+        try {
+          if (typeof window !== "undefined" && window.parent && window.parent !== window) {
+            window.parent.postMessage(
+              { type: "lemnity-puck-published", sandboxId: sandboxId ?? undefined },
+              "*"
+            );
+          }
+        } catch {
+          /* ignore */
+        }
       } catch {
         toast.error(t("puck_page_save_failed"));
       }
     },
-    [persist, t]
+    [persist, sandboxId, t]
   );
 
   const onChange = useCallback((next: Data) => {
     setData(next);
   }, []);
 
-  const backHref = sessionId
-    ? `/playground/build?sessionId=${encodeURIComponent(sessionId)}`
-    : "/playground/build";
+  const [backToBuildHref, setBackToBuildHref] = useState(() =>
+    sessionId ? `/playground/build?sessionId=${encodeURIComponent(sessionId)}` : "/playground/build"
+  );
+
+  useEffect(() => {
+    if (sessionId) {
+      rememberBuildSessionForPuckReturn(sessionId);
+      setBackToBuildHref(`/playground/build?sessionId=${encodeURIComponent(sessionId)}`);
+      return;
+    }
+    const stored = readBuildSessionForPuckReturn();
+    setBackToBuildHref(
+      stored ? `/playground/build?sessionId=${encodeURIComponent(stored)}` : "/playground/build"
+    );
+  }, [sessionId]);
 
   if (!data) {
     return (
@@ -132,7 +155,7 @@ function PlaygroundPuckPageInner() {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 bg-background p-4">
         <Button type="button" variant="ghost" size="sm" className="w-fit" asChild>
-          <a href={backHref} className="inline-flex items-center gap-2">
+          <a href={backToBuildHref} className="inline-flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             {t("puck_page_back_build")}
           </a>
@@ -157,7 +180,7 @@ function PlaygroundPuckPageInner() {
     <div className={cn("flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-background")}>
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-2 py-1.5">
         <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0" asChild>
-          <a href={backHref} aria-label={t("puck_page_back_aria")}>
+          <a href={backToBuildHref} aria-label={t("puck_page_back_aria")}>
             <ArrowLeft className="h-5 w-5" />
           </a>
         </Button>

@@ -28,6 +28,7 @@ import {
   BUILDER_NAV_TOKEN_KEY,
   readBuilderHandoff
 } from "@/lib/landing-handoff";
+import { rememberBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
 import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
@@ -208,6 +209,10 @@ export default function PromptBuildPage() {
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
+  /** Смена key iframe Puck: после нового превью / тем же sandboxId — подтянуть актуальный puck.json. */
+  const [puckIframeReloadKey, setPuckIframeReloadKey] = useState(0);
+  /** Обновление встроенного превью макета Puck (Render) после шаблона / «Опубликовать» в Puck. */
+  const [puckLayoutPreviewRev, setPuckLayoutPreviewRev] = useState(0);
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
@@ -612,6 +617,7 @@ export default function PromptBuildPage() {
             }
             setMode("preview");
             setProgress(100);
+            setPuckIframeReloadKey((k) => k + 1);
           }
         }
         for (const event of payload.events ?? []) {
@@ -898,6 +904,7 @@ export default function PromptBuildPage() {
                 setMode("preview");
                 setStage("ready");
                 setProgress(100);
+                setPuckIframeReloadKey((k) => k + 1);
                 const isPptx =
                   typeof data.mimeType === "string" && data.mimeType.includes("presentationml");
                 push(
@@ -1017,6 +1024,8 @@ export default function PromptBuildPage() {
         setShareIsPublic(false);
         setMode("preview");
         setProgress(100);
+        setPuckIframeReloadKey((k) => k + 1);
+        setPuckLayoutPreviewRev((n) => n + 1);
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
         if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
@@ -1024,6 +1033,19 @@ export default function PromptBuildPage() {
     },
     [t]
   );
+
+  useEffect(() => {
+    function onPuckPublished(e: MessageEvent) {
+      const d = e.data as { type?: string; sandboxId?: string } | null;
+      if (!d || d.type !== "lemnity-puck-published") return;
+      if (d.sandboxId && sandboxId && d.sandboxId !== sandboxId) return;
+      setPuckIframeReloadKey((k) => k + 1);
+      setPuckLayoutPreviewRev((n) => n + 1);
+      toast.message(t("build_puck_publish_sync_toast"));
+    }
+    window.addEventListener("message", onPuckPublished);
+    return () => window.removeEventListener("message", onPuckPublished);
+  }, [sandboxId, t]);
 
   const handleBuildTemplateChange = useCallback(
     (next: { slug: string; name: string; defaultUserPrompt: string } | null) => {
@@ -1055,17 +1077,12 @@ export default function PromptBuildPage() {
         setPendingTechnicalPrompt(null);
         setPromptCoachLoading(false);
       }
-      if (
-        shouldUseLemnityAiBridge &&
-        lemnityAiBridgeReady &&
-        text &&
-        next.slug &&
-        templateAutoStartSlugRef.current !== next.slug
-      ) {
+      if (shouldUseLemnityAiBridge && lemnityAiBridgeReady && next.slug && templateAutoStartSlugRef.current !== next.slug) {
         templateAutoStartSlugRef.current = next.slug;
+        const opening = t("build_template_agent_opening").replace("{name}", next.name);
         queueMicrotask(() => {
-          push("user", text);
-          void sendLemnityAiChat(text, { buildTemplateSlug: next.slug });
+          push("user", opening);
+          void sendLemnityAiChat(opening, { buildTemplateSlug: next.slug });
         });
       }
     },
@@ -1075,7 +1092,8 @@ export default function PromptBuildPage() {
       sandboxId,
       shouldUseLemnityAiBridge,
       push,
-      sendLemnityAiChat
+      sendLemnityAiChat,
+      t
     ]
   );
 
@@ -1288,6 +1306,10 @@ export default function PromptBuildPage() {
     setLemnityAiSessionId(requestedSessionId);
     void loadLemnityAiSession(requestedSessionId);
   }, [loadLemnityAiSession, requestedSessionId, shouldUseLemnityAiBridge, lemnityAiBridgeReady]);
+
+  useEffect(() => {
+    rememberBuildSessionForPuckReturn(lemnityAiSessionId);
+  }, [lemnityAiSessionId]);
 
   useEffect(() => {
     if (!lemnityAiBridgeReady || shouldUseLemnityAiBridge) return;
@@ -1542,6 +1564,7 @@ export default function PromptBuildPage() {
           setPreviewUrl(eventData.previewUrl);
           setSandboxId(eventData.sandboxId);
           setMode("preview");
+          setPuckIframeReloadKey((k) => k + 1);
           push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
         }
         if (eventData.type === "error") {
@@ -1985,6 +2008,9 @@ export default function PromptBuildPage() {
                     presentationExportsPaid={hasCustomDomainAccess}
                     previewVariant={tab === "document" ? "document" : "default"}
                     puckEditorHref={puckEditorHref}
+                    puckIframeReloadKey={puckIframeReloadKey}
+                    puckLayoutPreviewRev={puckLayoutPreviewRev}
+                    puckLayoutSessionId={lemnityAiSessionId}
                     onVisualAgentEdit={
                       lemnityAiBridgeReady
                         ? (msg) => {

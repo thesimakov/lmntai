@@ -46,6 +46,11 @@ type RightPanelProps = {
   previewVariant?: "default" | "document";
   /** Второй iframe с Puck при визуальном режиме (тот же URL, что кнопка Puck) */
   puckEditorHref?: string | null;
+  /** Увеличить при новом превью той же песочницы — перезагрузка iframe Puck (актуальный puck.json). */
+  puckIframeReloadKey?: number;
+  /** Версия превью макета Puck (Render) при шаблоне / публикации в Puck. */
+  puckLayoutPreviewRev?: number;
+  puckLayoutSessionId?: string | null;
   /** Запрос в чат по выбранному в превью элементу (Lemnity AI) */
   onVisualAgentEdit?: (message: string) => void;
   /** Плавающий шильдик «Сделано на Лемнити» (тариф Стандарт / пока не снят брендинг) */
@@ -213,6 +218,9 @@ export function RightPanel({
   presentationExportsPaid = false,
   previewVariant = "default",
   puckEditorHref = null,
+  puckIframeReloadKey = 0,
+  puckLayoutPreviewRev = 0,
+  puckLayoutSessionId = null,
   onVisualAgentEdit,
   studioBrandingBadge = null
 }: RightPanelProps) {
@@ -231,6 +239,9 @@ export function RightPanel({
         presentationExportsPaid={presentationExportsPaid}
         previewVariant={previewVariant}
         puckEditorHref={puckEditorHref}
+        puckIframeReloadKey={puckIframeReloadKey}
+        puckLayoutPreviewRev={puckLayoutPreviewRev}
+        puckLayoutSessionId={puckLayoutSessionId}
         onVisualAgentEdit={onVisualAgentEdit}
       />
     </LemnityAiPreviewChrome>

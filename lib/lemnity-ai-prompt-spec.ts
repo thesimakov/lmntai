@@ -150,7 +150,8 @@ export function buildRouterGenerationPrompt(
       ? [
           "",
           "---",
-          "BUILD TEMPLATE: start from the following repo snapshot — **edit** these files to match the user. Output updated full files in fences; keep paths stable unless refactor is required.",
+          "BUILD TEMPLATE (active session): the **preview is already built** from this snapshot. **Do not** parrot the long template spec to the user. **On the first reply,** ask (in the user's language) what they want to change next. **Edits:** surgical — find the right file/section (hero, pricing, `puck.json` blocks by `props.id`, etc.) and output only the **changed** files in fences; keep `puck.json` and React copy aligned when both exist.",
+          "The repo snapshot below is your ground truth for paths — keep editing, not greenfield rewrites, unless the user asks.",
           buildTemplateBlock.trim(),
         ]
       : [];

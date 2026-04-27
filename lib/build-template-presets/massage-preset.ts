@@ -26,7 +26,8 @@ export const MASSAGE_TEMPLATE_RULES = `ИНСТРУКЦИЯ ПО ШАБЛОНУ 
 - Сохраняйте иерархию секций и якоря: #services, #about, #contact — пока пользователь не просит иное.
 - Меняйте копирайт, цены, телефон, адрес, название бренда, список услуг; при необходимости выносите повторяющиеся карточки в src/components.
 - Не подключайте Next.js, next/image, shadcn из npm — только то, что уже в превью (react, react-dom, lucide-react при необходимости).
-- Вывод: полные обновлённые файлы в фенсах \`\`\`tsx:путь\` … \`\`\` для КАЖДОГО изменённого файла. Если файл не трогали — не дублируйте.`;
+- Вывод: полные обновлённые файлы в фенсах \`\`\`tsx:путь\` … \`\`\` для КАЖДОГО изменённого файла. Если файл не трогали — не дублируйте.
+- \`puck.json\` — макет для редактора Puck; при правках копирайта/секций синхронизируйте содержимое с изменениями в \`src/App.tsx\` и компонентах.`;
 
 const MAIN = `import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -236,7 +237,56 @@ export default function App() {
 }
 `;
 
+/** Стартовый Puck: тексты и секции в духе лендинга Wellness Massage (упрощённый макет для правок). */
+const MASSAGE_PUCK_DATA = {
+  root: { props: { title: "Wellness Massage" } },
+  content: [
+    { type: "Heading", props: { text: "Профессиональный массаж для вашего здоровья", level: "1" } },
+    {
+      type: "TextBlock",
+      props: {
+        text:
+          "Универсальный подход к восстановлению и релаксации. Авторские техники, внимание к деталям и результат, который ощущается сразу.",
+        size: "md"
+      }
+    },
+    { type: "Spacer", props: { height: 16 } },
+    { type: "Heading", props: { text: "Услуги", level: "2" } },
+    {
+      type: "Card",
+      props: {
+        title: "Общий расслабляющий",
+        body: "Классические техники для снятия стресса и мышечного напряжения. Длительность: 60/90 мин."
+      }
+    },
+    {
+      type: "Card",
+      props: {
+        title: "Оздоровительный / спортивный",
+        body: "Для снятия зажимов, восстановления после тренировок, улучшения мобильности."
+      }
+    },
+    { type: "Spacer", props: { height: 20 } },
+    { type: "Heading", props: { text: "Обо мне", level: "2" } },
+    {
+      type: "TextBlock",
+      props: {
+        text: "Сертифицированный специалист с опытом более 7 лет, индивидуальный подход к каждому клиенту.",
+        size: "md"
+      }
+    },
+    { type: "Spacer", props: { height: 20 } },
+    { type: "Heading", props: { text: "Контакты", level: "2" } },
+    { type: "Card", props: { title: "Телефон", body: "+7 (999) 123-45-67 · 9:00–21:00" } },
+    { type: "Card", props: { title: "Адрес", body: "ул. Примерная, 42, Москва" } },
+    { type: "ButtonBlock", props: { label: "Записаться на сеанс", href: "tel:+79991234567", variant: "solid" } }
+  ]
+};
+
+export const MASSAGE_PUCK_JSON = JSON.stringify(MASSAGE_PUCK_DATA);
+
 export const MASSAGE_PRESET_FILES: Record<string, string> = {
   "src/main.tsx": MAIN,
-  "src/App.tsx": APP
+  "src/App.tsx": APP,
+  "puck.json": MASSAGE_PUCK_JSON
 };

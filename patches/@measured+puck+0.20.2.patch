@@ -1,0 +1,24 @@
+diff --git a/node_modules/@measured/puck/dist/chunk-QIGVND56.mjs b/node_modules/@measured/puck/dist/chunk-QIGVND56.mjs
+index ee1d987..d550654 100644
+--- a/node_modules/@measured/puck/dist/chunk-QIGVND56.mjs
++++ b/node_modules/@measured/puck/dist/chunk-QIGVND56.mjs
+@@ -7568,7 +7568,9 @@ var defaultZoomOptions = [
+   { label: "100%", value: 1 },
+   { label: "125%", value: 1.25 },
+   { label: "150%", value: 1.5 },
+-  { label: "200%", value: 2 }
++  { label: "200%", value: 2 },
++  { label: "250%", value: 2.5 },
++  { label: "300%", value: 3 }
+ ];
+ var ViewportControls = ({
+   autoZoom,
+@@ -7590,7 +7592,7 @@ var ViewportControls = ({
+           label: `${(autoZoom * 100).toFixed(0)}% (Auto)`
+         }
+       ]
+-    ].filter((a) => a.value <= autoZoom).sort((a, b) => a.value > b.value ? 1 : -1),
++    ].filter((a) => a.value <= Math.max(autoZoom, 3)).sort((a, b) => a.value > b.value ? 1 : -1),
+     [autoZoom]
+   );
+   return /* @__PURE__ */ jsxs16("div", { className: getClassName25(), children: [

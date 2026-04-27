@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import {
   MASSAGE_DEFAULT_USER_PROMPT,
+  MASSAGE_PUCK_JSON,
   MASSAGE_PRESET_FILES,
   MASSAGE_TEMPLATE_DESCRIPTION,
   MASSAGE_TEMPLATE_NAME,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/build-template-presets/massage-preset";
 import {
   IT_STARTUP_DEFAULT_USER_PROMPT,
+  IT_STARTUP_PUCK_JSON,
   IT_STARTUP_PRESET_FILES,
   IT_STARTUP_TEMPLATE_DESCRIPTION,
   IT_STARTUP_TEMPLATE_NAME,
@@ -20,6 +22,22 @@ const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT
 };
+
+/** Встроенный макет Puck по slug (если в БД нет puck.json — подмешиваем). */
+const PRESET_PUCK_JSON_BY_SLUG: Record<string, string> = {
+  [MASSAGE_TEMPLATE_SLUG]: MASSAGE_PUCK_JSON,
+  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON
+};
+
+function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): Record<string, string> {
+  const out = { ...files };
+  const cur = typeof out["puck.json"] === "string" ? out["puck.json"].trim() : "";
+  if (!cur) {
+    const def = PRESET_PUCK_JSON_BY_SLUG[slug];
+    if (def) out["puck.json"] = def;
+  }
+  return out;
+}
 
 const BUILTIN_PRESET_SPECS: Array<{
   slug: string;
@@ -149,7 +167,7 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
       name: row.name,
       description: row.description,
       rules: row.rules,
-      files: files as Record<string, string>
+      files: mergePresetPuckIntoFiles(s, files as Record<string, string>)
     };
   } catch (err) {
     console.warn("[build-templates] getBySlug failed", err);
@@ -160,7 +178,7 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
         name: MASSAGE_TEMPLATE_NAME,
         description: MASSAGE_TEMPLATE_DESCRIPTION,
         rules: MASSAGE_TEMPLATE_RULES,
-        files: MASSAGE_PRESET_FILES
+        files: mergePresetPuckIntoFiles(MASSAGE_TEMPLATE_SLUG, MASSAGE_PRESET_FILES)
       };
     }
     if (s === IT_STARTUP_TEMPLATE_SLUG) {
@@ -170,7 +188,7 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
         name: IT_STARTUP_TEMPLATE_NAME,
         description: IT_STARTUP_TEMPLATE_DESCRIPTION,
         rules: IT_STARTUP_TEMPLATE_RULES,
-        files: IT_STARTUP_PRESET_FILES
+        files: mergePresetPuckIntoFiles(IT_STARTUP_TEMPLATE_SLUG, IT_STARTUP_PRESET_FILES)
       };
     }
     return null;
@@ -199,6 +217,8 @@ export async function mergeBuildTemplateIntoUserMessage(
   return [
     `[Build template: ${t.name} (${t.slug})]`,
     block,
+    "---",
+    "Upstream instructions: the preview is already built from this snapshot. **Do not** recite the long template brief. **First response:** ask what to change. **Edits:** minimal — the right `src/...` files and `puck.json` (keep marketing copy in TSX and `puck.json` in sync).",
     "---",
     "User request:",
     userMessage.trim()

@@ -557,6 +557,10 @@ export const messages = {
     build_template_stream_progress:
       'Агент пишет правки: __N__ символов (код в чате не дублируем — смотрите превью справа, оно обновится по готовности).',
     build_template_stream_waiting: 'Получаю ответ модели…',
+    build_template_agent_opening:
+      'Шаблон «{name}» подключён, превью обновлено. Напишите, что изменить в первую очередь (секция, текст, блок в Puck) — внесу точечные правки в код и puck.json.',
+    build_puck_publish_sync_toast: 'Макет Puck сохранён — превью блоков обновлено.',
+    build_puck_layout_strip_label: 'Превью макета Puck (как после «Опубликовать» в редакторе)',
     playground_chat_you: 'Вы',
     playground_toast_final_prompt_empty: 'Финальный промпт пустой',
     playground_build_share_no_preview: 'Сначала дождитесь готового превью',
@@ -1465,6 +1469,10 @@ export const messages = {
     build_template_stream_progress:
       'Applying edits: __N__ characters (code is not shown in chat — check the live preview on the right).',
     build_template_stream_waiting: 'Waiting for the model…',
+    build_template_agent_opening:
+      'Template «{name}» is loaded and the preview is ready. Say what you want to change first (section, copy, Puck block) — I’ll apply targeted edits in code and puck.json.',
+    build_puck_publish_sync_toast: 'Puck layout saved — block preview refreshed.',
+    build_puck_layout_strip_label: 'Puck layout preview (after Publish in the editor)',
     playground_chat_you: 'You',
     playground_toast_final_prompt_empty: 'Final prompt is empty',
     playground_build_share_no_preview: 'Wait until the preview is ready',
@@ -2372,6 +2380,10 @@ export const messages = {
     build_template_stream_progress:
       'Тағйирот: __N__ рамз — пешнамо дар рост баъд аз ҷавоб.',
     build_template_stream_waiting: 'Интизори ҷавоб…',
+    build_template_agent_opening:
+      'Намунаи «{name}» пайваст шуд, пешнамоиш навсозӣ шуд. Бигӯед, чиро аввал тағйир диҳем — ман дар код ва puck.json тағйирҳои нуқтаро мегузорам.',
+    build_puck_publish_sync_toast: 'Макети Puck сабт шуд — пешнамоиши блокҳо нав шуд.',
+    build_puck_layout_strip_label: 'Пешнамоиши макети Puck (пас аз «Нашр» дар таҳриргар)',
     playground_chat_you: 'Шумо',
     playground_toast_final_prompt_empty: 'Промпти ниҳоӣ холист',
     playground_build_share_no_preview: 'Аввал интизор шавед, ки пешнамоиш омода шавад',

@@ -32,6 +32,19 @@ import {
 
 type SandboxMode = "memory" | "docker";
 
+/** Не затирать puck.json при очередной выдаче кода, если новый бандл не прислал свой puck.json. */
+function mergeFilesPreservingPuck(
+  previous: MemoryState | undefined,
+  nextFiles: Record<string, string>
+): Record<string, string> {
+  const out = { ...nextFiles };
+  const existing = previous?.files?.["puck.json"];
+  if (typeof existing === "string" && existing.trim() && !("puck.json" in out)) {
+    out["puck.json"] = existing;
+  }
+  return out;
+}
+
 let lemnityDockerClient: any = null;
 
 function sandboxDockerImage(): string {
@@ -393,6 +406,10 @@ export const sandboxManager = {
       throw new Error("Песочница не найдена.");
     }
     const html = toHtml(code);
+    const files = mergeFilesPreservingPuck(previous, {
+      "index.html": html,
+      "generated.txt": code
+    });
     const next: MemoryState = {
       id: sandboxId,
       ownerId: previous.ownerId,
@@ -400,10 +417,7 @@ export const sandboxManager = {
       createdAt: previous.createdAt,
       updatedAt: Date.now(),
       html,
-      files: {
-        "index.html": html,
-        "generated.txt": code
-      }
+      files
     };
     memoryStore.set(sandboxId, next);
     return { previewUrl: `/api/sandbox/${sandboxId}` };
@@ -465,11 +479,11 @@ export const sandboxManager = {
     if (!previous) {
       throw new Error("Песочница не найдена.");
     }
-    const files: Record<string, string> = {
+    const files = mergeFilesPreservingPuck(previous, {
       ...projectFiles,
       "index.html": html,
       "generated.txt": generatedTxt
-    };
+    });
     const next: MemoryState = {
       ...previous,
       updatedAt: Date.now(),
