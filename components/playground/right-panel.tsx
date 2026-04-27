@@ -150,6 +150,9 @@ function GeneratingState({
         <p className="mt-2 max-w-md text-balance text-sm text-muted-foreground">
           {t("playground_right_generating_line2")}
         </p>
+        <p className="mt-3 max-w-md text-balance text-xs font-medium text-foreground/90">
+          {t("playground_choose_assistant_hint")}
+        </p>
         <div
           className={cn(
             "relative z-10 mt-10 flex w-full max-w-lg flex-col items-center rounded-2xl border border-violet-400/45 bg-gradient-to-b from-violet-500/[0.14] via-fuchsia-500/[0.07] to-background/95 p-5 shadow-[0_12px_48px_-12px_rgba(139,92,246,0.45)] ring-1 ring-violet-400/20 dark:border-violet-400/35 dark:from-violet-500/[0.18] dark:shadow-[0_12px_48px_-12px_rgba(139,92,246,0.35)] dark:ring-violet-300/15"

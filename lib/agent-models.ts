@@ -156,21 +156,28 @@ export function resolveAgentForTask(input: {
 }): AgentProfile {
   const plan = normalizePlanId(input.plan);
   const kind = fallbackKind(input.projectKind);
-
-  // Вопросы по умолчанию — лёгкая модель; при явном выборе DeepSeek — RouterAI deepseek-v4-flash.
-  if (input.task === "prompt-questions") {
-    const hintQs = parseAgentUiLabel(input.hint);
-    if (hintQs === "DeepSeek" && canUseAgent(plan, "DeepSeek")) {
-      return AGENT_PROFILES["DeepSeek"];
-    }
-    return AGENT_PROFILES["GPT-4.1"];
-  }
-
-  const defaultAgent = defaultAgentByPlanAndKind(plan, kind);
   const hint = parseAgentUiLabel(input.hint);
+
   if (hint && canUseAgent(plan, hint)) {
     return AGENT_PROFILES[hint];
   }
+
+  // Промпт, коуч и сборка вопросов — по умолчанию DeepSeek (RouterAI deepseek-v4-flash), пока нет явного hint.
+  if (
+    input.task === "prompt-questions" ||
+    input.task === "prompt-coach" ||
+    input.task === "prompt-compose"
+  ) {
+    if (canUseAgent(plan, "DeepSeek")) {
+      return AGENT_PROFILES["DeepSeek"];
+    }
+    if (input.task === "prompt-questions") {
+      return AGENT_PROFILES["GPT-4.1"];
+    }
+    return AGENT_PROFILES[defaultAgentByPlanAndKind(plan, kind)];
+  }
+
+  const defaultAgent = defaultAgentByPlanAndKind(plan, kind);
   return AGENT_PROFILES[defaultAgent];
 }
 

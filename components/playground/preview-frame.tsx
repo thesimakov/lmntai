@@ -760,6 +760,12 @@ export function PreviewFrame({
         </div>
       </div>
 
+      {!isPptx && !isDocumentChrome ? (
+        <p className="shrink-0 rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-[10px] leading-snug text-muted-foreground">
+          {t("playground_preview_remote_images_hint")}
+        </p>
+      ) : null}
+
       {visualEditMode && !isPptx ? (
         <p
           className={cn(

@@ -560,6 +560,10 @@ export const messages = {
       '✨ Код сгенерирован. Откройте вкладку «Код» — там дерево файлов (src, public, components…), как в проекте.',
     playground_build_code_files: 'Файлы проекта',
     playground_build_code_generated: 'generated.txt',
+    playground_build_code_visual_edit_hint:
+      'Визуальное редактирование: вкладки «Превью» или «Документ» и кнопка «Редактор» в шапке. Здесь — файлы, записанные в песочницу (при многофайловой сборке — несколько путей; иначе часто один index.html).',
+    playground_preview_remote_images_hint:
+      'Картинки по HTTPS (например images.unsplash.com, picsum.photos) должны открываться в превью. Не грузятся — проверьте URL в коде и вкладку Network в DevTools.',
     playground_dialog_ready_title: 'Готовый промпт',
     playground_dialog_brief_title: 'Брифинг и сбор промпта',
     playground_dialog_ready_desc:
@@ -860,6 +864,8 @@ export const messages = {
     playground_right_generating_line2:
       'Скачайте приложение и получите уведомление, когда превью будет готово (скоро).',
     playground_right_build_label: 'Сборка интерфейса',
+    playground_choose_assistant_hint:
+      'Выберите своего помощника (модель) в чате слева — от выбора зависит стиль и логика сборки макета.',
     playground_session_create_error: 'Не удалось создать сессию Lemnity AI.',
     build_stream_empty_hint: 'Шаги сборки появятся после старта генерации.',
     build_stream_aria_log: 'Пошаговый отчёт агента',
@@ -1409,6 +1415,10 @@ export const messages = {
       '✨ Code generated. Open the Code tab — file tree (src, public, components…), like a real project.',
     playground_build_code_files: 'Project files',
     playground_build_code_generated: 'generated.txt',
+    playground_build_code_visual_edit_hint:
+      'Visual editing: use the Preview or Document tab, then Editor in the header. This tab shows files stored in the sandbox (multi-file builds list several paths; otherwise often a single index.html).',
+    playground_preview_remote_images_hint:
+      'Images over HTTPS (e.g. images.unsplash.com, picsum.photos) should load in the preview. If not, check the URL in code and the Network tab in DevTools.',
     playground_dialog_ready_title: 'Ready prompt',
     playground_dialog_brief_title: 'Briefing & prompt assembly',
     playground_dialog_ready_desc:
@@ -1707,6 +1717,8 @@ export const messages = {
     playground_coach_model_prefix: 'Chat model:',
     playground_right_generating_line2: 'Get the app and be notified when the preview is ready (soon).',
     playground_right_build_label: 'UI build',
+    playground_choose_assistant_hint:
+      'Choose your assistant (model) in the chat on the left — it shapes how the layout is built.',
     playground_session_create_error: 'Could not create a Lemnity AI session.',
     build_stream_empty_hint: 'Build steps will appear after generation starts.',
     build_stream_aria_log: 'Agent step log',
@@ -2259,6 +2271,10 @@ export const messages = {
       '✨ Код эҷод шуд. Варақаи «Код»-ро кушоед — дарахти файлҳо (src, public, components…).',
     playground_build_code_files: 'Файлҳои лоиҳа',
     playground_build_code_generated: 'generated.txt',
+    playground_build_code_visual_edit_hint:
+      'Таҳрири визуалӣ: варақаҳои «Пешнамоиш» ё «Ҳуҷҷат» ва тугмаи «Муҳаррир» дар сарбанд. Ин ҷо — файлҳои песочница.',
+    playground_preview_remote_images_hint:
+      'Аксҳо аз URL-ҳои HTTPS (мас. images.unsplash.com) бояд кушода шаванд. Агар не — URL дар кодро ва Network-ро чек кунед.',
     playground_dialog_ready_title: 'Промпти тайёр',
     playground_dialog_brief_title: 'Брифинг ва ҷамъкунии промпт',
     playground_dialog_ready_desc:
@@ -2560,6 +2576,8 @@ export const messages = {
     playground_right_generating_line2:
       'Барномаро боргирӣ кунед, вақте пешнамоиш омода шуд, огоҳӣ мегиред (ба зудӣ).',
     playground_right_build_label: 'Ҷамъсозии интерфейс',
+    playground_choose_assistant_hint:
+      'Ёрии худро (модел) дар чати чап интихоб кунед — аз ин вобаста аст, чӣ тавр макет ҷамъ мешавад.',
     playground_session_create_error: 'Натавонист сессияи Lemnity AI эҷод шавад.',
     build_stream_empty_hint: 'Қадамҳои ҷамъсозӣ пас аз оғози тавлид пайдо мешаванд.',
     build_stream_aria_log: 'Гузориши агент ба қадамҳо',

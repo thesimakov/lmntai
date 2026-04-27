@@ -143,7 +143,7 @@ export function AgentChat({
     Array<{ id: string; file: File; kind: "image" | "video" | "file" }>
   >([]);
   const isEditor = onIsEditorChange != null ? Boolean(isEditorProp) : false;
-  const [model, setModel] = useState<AgentUiLabel>("GPT-4.1");
+  const [model, setModel] = useState<AgentUiLabel>("DeepSeek");
   const [modelOpen, setModelOpen] = useState(false);
   const [modelMenuPos, setModelMenuPos] = useState<{
     left: number;
@@ -164,7 +164,7 @@ export function AgentChat({
     [modelOptions]
   );
   const recommendedModel = useMemo<AgentUiLabel>(() => {
-    return modelOptions.find((x) => x.recommended && x.available)?.label ?? "GPT-4.1";
+    return modelOptions.find((x) => x.recommended && x.available)?.label ?? "DeepSeek";
   }, [modelOptions]);
 
   const visible = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);

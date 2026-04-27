@@ -204,9 +204,12 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
         <div className="shrink-0 border-b border-border/60 bg-muted/20 px-2 py-1 text-[10px] font-mono text-muted-foreground">
           {selectedPath ?? "—"}
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <pre className="m-0 p-3 text-xs leading-relaxed text-zinc-100">
-            <code>{activeBody}</code>
+        <div className="min-h-0 flex-1 overflow-y-auto bg-muted/20">
+          <p className="border-b border-border/50 px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+            {t("playground_build_code_visual_edit_hint")}
+          </p>
+          <pre className="m-0 p-3 text-xs leading-relaxed text-foreground">
+            <code className="font-mono text-foreground [font-variant-ligatures:none]">{activeBody}</code>
           </pre>
         </div>
       </div>

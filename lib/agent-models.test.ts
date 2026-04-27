@@ -70,7 +70,7 @@ describe("agent models catalog", () => {
     expect(website.uiLabel).toBe("Claude Sonnet 4.5");
     expect(presentation.uiLabel).toBe("Gemini 3 Pro");
     expect(resume.uiLabel).toBe("GPT-4.1");
-    expect(questions.uiLabel).toBe("GPT-4.1");
+    expect(questions.uiLabel).toBe("DeepSeek");
   });
 
   it("keeps TEAM defaults aligned with PRO for stream and compose tasks", () => {

@@ -1595,11 +1595,14 @@ export default function PromptBuildPage() {
               threadScrollKey={chatThreadScrollKey}
               footerSlot={
                 isGenerating ? (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                    <span className="min-w-0 truncate">
-                      {t("playground_right_build_label")} · {interfaceBuildElapsedLabel ?? formatBuildElapsed(0, lang)}
-                    </span>
+                  <div className="space-y-1.5 rounded-lg border border-border bg-muted/50 px-2.5 py-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                      <span className="min-w-0 truncate">
+                        {t("playground_right_build_label")} · {interfaceBuildElapsedLabel ?? formatBuildElapsed(0, lang)}
+                      </span>
+                    </div>
+                    <p className="text-[11px] leading-snug text-foreground/85">{t("playground_choose_assistant_hint")}</p>
                   </div>
                 ) : lastInterfaceBuildMs != null ? (
                   <div className="rounded-lg border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground">

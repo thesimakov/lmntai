@@ -27,7 +27,7 @@ describe("agent routing integration", () => {
     expect(resume.modelId).toBe("openai/gpt-4.1");
   });
 
-  it("keeps prompt-builder questions on lightweight model", () => {
+  it("defaults prompt-builder questions to DeepSeek", () => {
     const freeQuestions = resolveAgentForTask({
       plan: "FREE",
       projectKind: "website",
@@ -39,7 +39,7 @@ describe("agent routing integration", () => {
       task: "prompt-questions"
     });
 
-    expect(freeQuestions.modelId).toBe("openai/gpt-4.1");
-    expect(proQuestions.modelId).toBe("openai/gpt-4.1");
+    expect(freeQuestions.modelId).toBe("deepseek/deepseek-v4-flash");
+    expect(proQuestions.modelId).toBe("deepseek/deepseek-v4-flash");
   });
 });
