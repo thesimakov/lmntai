@@ -66,9 +66,6 @@ type PreviewFrameProps = {
   puckEditorHref?: string | null;
   /** Счётчик для key iframe Puck (новое превью той же песочницы). */
   puckIframeReloadKey?: number;
-  /** Полоса превью Render по `puck.json` (после шаблона / публикации в Puck). */
-  puckLayoutPreviewRev?: number;
-  puckLayoutSessionId?: string | null;
   /**
    * Запрос в чат агенту по выбранному в макете элементу (Lemnity AI).
    * Текст формата: `[Визуальный редактор] Измени <tag> «фрагмент»: …`
@@ -133,8 +130,6 @@ export function PreviewFrame({
   previewVariant = "default",
   puckEditorHref = null,
   puckIframeReloadKey = 0,
-  puckLayoutPreviewRev = 0,
-  puckLayoutSessionId = null,
   onVisualAgentEdit
 }: PreviewFrameProps) {
   const { t } = useI18n();
@@ -769,26 +764,9 @@ export function PreviewFrame({
         </div>
       </div>
 
-      {!isPptx && !isDocumentChrome ? (
-        <p className="shrink-0 rounded-md border border-border/60 bg-muted/20 px-2 py-1 text-[10px] leading-snug text-muted-foreground">
-          {t("playground_preview_remote_images_hint")}
-        </p>
-      ) : null}
-
-      {visualEditMode && !isPptx ? (
-        <p
-          className={cn(
-            "shrink-0 rounded-md border px-2 py-1.5 text-xs",
-            iframeBlocked
-              ? "border-destructive/40 bg-destructive/5 text-destructive"
-              : "border-border bg-muted/40 text-muted-foreground"
-          )}
-        >
-          {iframeBlocked
-            ? t("build_visual_no_iframe_access")
-            : visualEditPersist
-              ? `${t("build_visual_edit_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`
-              : `${t("build_visual_read_only_hint")}${visualPickLabel ? ` ${t("build_visual_pick_selected").replace("{tag}", visualPickLabel)}` : ""}`}
+      {visualEditMode && !isPptx && iframeBlocked ? (
+        <p className="shrink-0 rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-xs text-destructive">
+          {t("build_visual_no_iframe_access")}
         </p>
       ) : null}
       {visualEditMode && !isPptx && onVisualAgentEdit && visualPickLabel && visualPickInfo && !iframeBlocked ? (
@@ -1064,27 +1042,6 @@ export function PreviewFrame({
         >
           {visualEditMode && puckEditorHref && !isDocumentChrome ? (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
-              <p className="shrink-0 text-[11px] leading-snug text-muted-foreground">{t("build_visual_puck_split_hint")}</p>
-              {puckLayoutPreviewRev > 0 ? (
-                <div className="flex shrink-0 flex-col gap-1 border-b border-border/60 pb-2">
-                  <p className="text-[11px] text-muted-foreground">{t("build_puck_layout_strip_label")}</p>
-                  <div className="relative h-[min(28vh,220px)] min-h-[120px] w-full overflow-hidden rounded-md border border-border bg-muted/30">
-                    <iframe
-                      key={`puck-layout-${sandboxId}-${puckLayoutPreviewRev}`}
-                      title={t("puck_preview_title")}
-                      className="absolute inset-0 h-full w-full border-0 bg-background"
-                      src={(() => {
-                        const q = new URLSearchParams();
-                        q.set("sandboxId", sandboxId);
-                        q.set("rev", String(puckLayoutPreviewRev));
-                        q.set("chrome", "none");
-                        if (puckLayoutSessionId) q.set("sessionId", puckLayoutSessionId);
-                        return `/playground/puck/preview?${q.toString()}`;
-                      })()}
-                    />
-                  </div>
-                </div>
-              ) : null}
               <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
                 <div className={cn("relative min-h-[200px] min-w-0 flex-1 lg:min-h-0", modeStyles[deviceMode])}>
                   <iframe

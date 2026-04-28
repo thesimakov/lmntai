@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LayoutTemplate } from "lucide-react";
+import { Check, LayoutTemplate, Loader2 } from "lucide-react";
 
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { MessageKey } from "@/lib/i18n";
@@ -120,7 +120,18 @@ export function BuildTemplateDialogBody({
         data-slot="build-template-dialog-scroll"
       >
         {templateListLoading ? (
-          <p className="text-center text-sm text-muted-foreground">…</p>
+          <div
+            className="flex min-h-[140px] flex-col items-center justify-center gap-4 py-8"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2
+              className="h-14 w-14 shrink-0 animate-spin text-sky-600 dark:text-sky-400"
+              strokeWidth={2}
+              aria-hidden
+            />
+            <p className="text-center text-base text-muted-foreground">{t("build_template_list_loading")}</p>
+          </div>
         ) : null}
 
         <div className="grid grid-cols-1 content-start items-start gap-3 sm:grid-cols-3 sm:gap-4">

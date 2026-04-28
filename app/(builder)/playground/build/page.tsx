@@ -212,7 +212,6 @@ export default function PromptBuildPage() {
   /** Смена key iframe Puck: после нового превью / тем же sandboxId — подтянуть актуальный puck.json. */
   const [puckIframeReloadKey, setPuckIframeReloadKey] = useState(0);
   /** Обновление встроенного превью макета Puck (Render) после шаблона / «Опубликовать» в Puck. */
-  const [puckLayoutPreviewRev, setPuckLayoutPreviewRev] = useState(0);
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
@@ -1025,7 +1024,6 @@ export default function PromptBuildPage() {
         setMode("preview");
         setProgress(100);
         setPuckIframeReloadKey((k) => k + 1);
-        setPuckLayoutPreviewRev((n) => n + 1);
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
         if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
@@ -1040,7 +1038,6 @@ export default function PromptBuildPage() {
       if (!d || d.type !== "lemnity-puck-published") return;
       if (d.sandboxId && sandboxId && d.sandboxId !== sandboxId) return;
       setPuckIframeReloadKey((k) => k + 1);
-      setPuckLayoutPreviewRev((n) => n + 1);
       toast.message(t("build_puck_publish_sync_toast"));
     }
     window.addEventListener("message", onPuckPublished);
@@ -1068,14 +1065,24 @@ export default function PromptBuildPage() {
         return;
       }
       void runBuildTemplatePreview(next.slug);
-      const text = next.defaultUserPrompt?.trim() ?? "";
-      if (text) {
-        setFinalPrompt(text);
-        setIdea(text);
+      if (shouldUseLemnityAiBridge) {
+        // Не заполняем поле финального промпта длинным defaultUserPrompt — шаблон уже в превью/агенте; в чат уходит короткое opening.
+        setFinalPrompt("");
+        setIdea(next.name.trim() || next.slug);
         setStage("ready");
         setCoachAwaitingConfirm(false);
         setPendingTechnicalPrompt(null);
         setPromptCoachLoading(false);
+      } else {
+        const text = next.defaultUserPrompt?.trim() ?? "";
+        if (text) {
+          setFinalPrompt(text);
+          setIdea(text);
+          setStage("ready");
+          setCoachAwaitingConfirm(false);
+          setPendingTechnicalPrompt(null);
+          setPromptCoachLoading(false);
+        }
       }
       if (shouldUseLemnityAiBridge && lemnityAiBridgeReady && next.slug && templateAutoStartSlugRef.current !== next.slug) {
         templateAutoStartSlugRef.current = next.slug;
@@ -2009,8 +2016,6 @@ export default function PromptBuildPage() {
                     previewVariant={tab === "document" ? "document" : "default"}
                     puckEditorHref={puckEditorHref}
                     puckIframeReloadKey={puckIframeReloadKey}
-                    puckLayoutPreviewRev={puckLayoutPreviewRev}
-                    puckLayoutSessionId={lemnityAiSessionId}
                     onVisualAgentEdit={
                       lemnityAiBridgeReady
                         ? (msg) => {

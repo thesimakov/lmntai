@@ -549,6 +549,7 @@ export const messages = {
       'Начни проект с шаблона — выбери готовый и настрой под себя с помощью ИИ.',
     build_template_dialog_desc:
       'Выберите стартовую вёрстку. Агент правит исходники (как в Lovable), а не создаёт пустой проект. Снимите выбор, если нужен чистый лист.',
+    build_template_list_loading: 'Загрузка шаблонов…',
     build_template_none: 'Без шаблона',
     build_template_none_blurb: 'Сборка без готовой вёрстки — с чистого листа.',
     build_template_card_category_label: 'Категория',
@@ -844,7 +845,7 @@ export const messages = {
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Визуальный редактор макета (Puck): блоки и puck.json',
     build_visual_puck_split_hint:
-      'Слева — превью сборки; справа — Puck (блоки и puck.json). Клики по DOM слева — быстрые правки; справа — структура макета.',
+      'Слева — живой сайт из кода, справа — макет `puck.json` в Puck (упрощённый вид, не 1:1 с Tailwind-стилем). Текст совпадает только если модель обновляла `puck.json` вместе с TSX; иначе отредактируйте копирайт в чате с явным «обнови puck.json» либо правьте блоки в Puck.',
     build_aria_refresh_preview: 'Обновить превью',
     puck_page_title: 'Редактор Puck',
     puck_page_header: 'Lemnity · Puck',
@@ -1461,6 +1462,7 @@ export const messages = {
     build_template_dialog_subhead: 'Choose a ready-made layout and customize it with AI.',
     build_template_dialog_desc:
       'Pick a starter layout. The agent edits these source files (Lovable-style), not an empty repo. Clear to start from scratch.',
+    build_template_list_loading: 'Loading templates…',
     build_template_none: 'No template',
     build_template_none_blurb: 'Build without a starter layout — from a blank page.',
     build_template_card_category_label: 'Category',
@@ -1755,7 +1757,7 @@ export const messages = {
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Visual layout editor (Puck) — blocks and puck.json',
     build_visual_puck_split_hint:
-      'Left: build preview. Right: Puck (blocks and puck.json). Click the DOM on the left for quick edits; structure on the right.',
+      'Left: live site from code. Right: `puck.json` in Puck (simplified, not a pixel-perfect match to Tailwind). Copy matches only if the model updated `puck.json` with TSX; otherwise ask the chat to align `puck.json`, or edit blocks in Puck.',
     build_aria_refresh_preview: 'Refresh preview',
     puck_page_title: 'Puck editor',
     puck_page_header: 'Lemnity · Puck',
@@ -2372,6 +2374,7 @@ export const messages = {
       'Намунаи омодаро интихоб кунед ва бо ИИ таҳти ниёзи худ тағйир диҳед.',
     build_template_dialog_desc:
       'Намунаи оғозро интихоб кунед. Агент файларро тағйир медиҳад, на аз сифр месозад. Барои саҳифаи холӣ интихобро гиред.',
+    build_template_list_loading: 'Бор кардани намунаҳо…',
     build_template_none: 'Бе намӯна',
     build_template_none_blurb: 'Бе вёрсткаи омода — аз саҳифаи холӣ.',
     build_template_card_category_label: 'Категория',
@@ -2667,7 +2670,7 @@ export const messages = {
     build_puck_editor: 'Puck',
     build_puck_editor_aria: 'Таҳриргари визуалӣ (Puck) — блокҳо ва puck.json',
     build_visual_puck_split_hint:
-      'Чап — пешнамоиши таҳрир; рост — Puck (блокҳо). Клик ба DOM чап; сохтор рост.',
+      'Чап — сомона аз код, рост — `puck.json` дар Puck. Матн яксон аст, агар модел puck.json-ро дар як ҷавоб бо TSX нав кунад; вагарна ба чат бигӯ ё дар Puck ислоҳ кун.',
     build_aria_refresh_preview: 'Навсозии пешнамоиш',
     puck_page_title: 'Муҳаррири Puck',
     puck_page_header: 'Lemnity · Puck',

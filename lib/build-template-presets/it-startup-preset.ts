@@ -62,6 +62,14 @@ const IT_STARTUP_PUCK_DATA = {
     { type: "ButtonBlock" as const, props: { label: "Начать бесплатно", href: "#", variant: "solid" } },
     { type: "ButtonBlock" as const, props: { label: "Смотреть демо", href: "#", variant: "ghost" } },
     { type: "TextBlock" as const, props: { text: "14 дней бесплатно • Без карты • Отмена в любой момент", size: "sm" } },
+    {
+      type: "ImageBlock" as const,
+      props: {
+        src: "https://picsum.photos/seed/flowsync-hero/960/540",
+        alt: "Интерактивная панель управления",
+        width: "full"
+      }
+    },
     { type: "Spacer" as const, props: { height: 20 } },
     { type: "Heading" as const, props: { text: "Секция: Logos", level: "3" } },
     { type: "TextBlock" as const, props: { text: "Нам доверяют более 1000+ компаний по всей России (логотипы-плейсхолдеры).", size: "sm" } },

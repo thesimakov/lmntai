@@ -239,7 +239,8 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       "- Build like a real repo: `src/main.tsx` + `src/App.tsx` + `src/components/*` for sections (Hero, Features, CTA, FAQ, Footer).",
       "- Classic conversion layout is OK: hero, value props, social proof, CTA, footer — as components.",
       "- Tailwind: `className` only. Match the user's product/service, not a generic template.",
-      "- Footer row: follow global SITE_FOOTER_GUIDANCE (Lemnity link + build date + privacy placeholder)."
+      "- Footer row: follow global SITE_FOOTER_GUIDANCE (Lemnity link + build date + privacy placeholder).",
+      "- If you use `puck.json` for Lemnity Puck, keep it aligned with the same visible strings as in the TSX whenever copy changes; emit ` ```json:puck.json` in the same response."
     ].join("\n"),
     lovable: [
       "ARTIFACT TYPE: REACT + TYPESCRIPT APP (Lovable-style).",
@@ -248,7 +249,11 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       "- Styling: Tailwind utility `className` (preview shell injects Tailwind CDN; no PostCSS in output).",
       "- Imports: relative paths only under `src/`. Entry mounts with `createRoot` on `#root`.",
       "- Split UI into small components; `useState` and simple hooks OK; mock data in-module; no real backend.",
-      "- If the UI has a site footer, follow SITE_FOOTER_GUIDANCE."
+      "- If the UI has a site footer, follow SITE_FOOTER_GUIDANCE.",
+      "",
+      "Puck (`puck.json`, Lemnity):",
+      "- If the project has or should have `puck.json` (visual layout in the Lemnity Puck editor), keep **the same headlines, body copy, and CTA labels** in `puck.json` as in the live TSX. Use a fence ` ```json:puck.json` for the file.",
+      "- On **every** turn where you change marketing copy in `src/**` (hero, sections, buttons), you MUST output an **updated** `puck.json` in the same response. If you omit it, the server may keep the previous file and the Puck editor will show **stale** text next to the preview."
     ].join("\n"),
     other: [
       "ARTIFACT TYPE: OTHER / EXTENSIBLE (HTML preview today; reserved for more export pipelines).",
@@ -448,7 +453,7 @@ export function executeLovableUiPrompt(input: {
     kindGuidance,
     "",
     "Strict output rules:",
-    "- Output one or more fenced code blocks. Each block opens with ` ```tsx:relative/path.tsx` or ` ```ts:relative/path.ts` (language, colon, path on the same line as the opening fence), then the file body, then closing fence.",
+    "- Output one or more fenced code blocks. Each block opens with ` ```tsx:relative/path.tsx`, ` ```ts:...`, or ` ```json:puck.json` (language, colon, path on the same line as the opening fence), then the file body, then closing fence.",
     "- Required files: `src/main.tsx` (createRoot on document.getElementById('root')), `src/App.tsx`, `src/index.css`, `index.html`, `package.json`, `vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`.",
     "- Use Tailwind classes in `className` only (Tailwind CDN is injected in preview).",
     "- Use relative imports between files under `src/`.",
@@ -460,6 +465,11 @@ export function executeLovableUiPrompt(input: {
     "- Strong visual hierarchy; responsive layout with flex/grid utilities.",
     "- Include loading/empty/error states for key interactive areas (tables, lists, cards) where it makes sense.",
     "- If request implies plans/roles/access, reflect feature gating in UI structure and copy.",
+    "",
+    "Puck layout file (Lemnity) — `puck.json`:",
+    "- The preview may be paired with a **Puck** editor. If this project includes `puck.json` or a template that expects it, you MUST keep the **same** user-facing strings in `puck.json` (Heading, TextBlock, ButtonBlock, etc.) as in the React source.",
+    "- Whenever you change hero text, section titles, or CTAs in `src/**/*.tsx` or `src/App.tsx`, include an updated ` ```json:puck.json` **in the same response**.",
+    "- If you change TSX but omit `puck.json`, the server may keep the old layout file — the in-app Puck panel will be **out of sync** with the live preview. Avoid that by always re-emitting `puck.json` when copy in TSX changes.",
     "",
     input.modelContext ? `Additional Lemnity context:\n${input.modelContext}\n` : "",
     `Plan title: ${input.plan.title}`,
