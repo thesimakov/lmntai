@@ -5,6 +5,8 @@ set -euo pipefail
 export PAGER=cat
 export GIT_PAGER=cat
 export CI=true
+# npm: не молчать после списка deprecated — показывать прогресс скачивания/распаковки.
+export NPM_CONFIG_PROGRESS=true
 
 ENV_FILE="${LEMNITY_ENV_FILE:-/etc/lemnity/production.env}"
 APP_NAME="${LEMNITY_PM2_APP_NAME:-lemnity}"
@@ -23,20 +25,28 @@ set +a
 
 echo "==> [deploy] git pull"
 git pull --ff-only
+echo "==> [deploy] npm ci — старт $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+echo "    Предупреждения «deprecated» — норма. Дальше может быть тишина: скачивание пакетов, postinstall (patch-package)."
+echo "    Это не зависание; на слабом CPU шаг идёт долго. Для детализации: DEBUG_DEPLOY=1 bash $0"
 echo "==> [deploy] npm ci (может занять много минут на слабом CPU/RAM)…"
+if [[ "${DEBUG_DEPLOY:-}" == "1" ]]; then set -x; fi
 npm ci --no-fund --no-audit
+if [[ "${DEBUG_DEPLOY:-}" == "1" ]]; then set +x; fi
+echo "==> [deploy] npm ci — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "==> [deploy] prisma generate + migrate"
 npm run prisma:generate
 npx prisma migrate deploy
-echo "==> [deploy] next build (часто 5–20+ мин; при OOM смотрите dmesg / free -h)…"
+echo "==> [deploy] next build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ) (часто 5–20+ мин; при «зависании» проверьте free -h, dmesg | tail; при OOM NODE_OPTIONS=--max-old-space-size=3072)"
 rm -rf .next
 # Явно production: если в ENV_FILE есть NODE_ENV=development, без этого ломается пререндер /404 (Next 15).
 NODE_ENV=production npm run build
+echo "==> [deploy] next build — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [[ -f services/lemnity-builder/package.json ]]; then
-  echo "==> [deploy] lemnity-builder: npm ci + build"
+  echo "==> [deploy] lemnity-builder: npm ci + build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   npm ci --no-fund --no-audit --prefix services/lemnity-builder
   NODE_ENV=production npm run build --prefix services/lemnity-builder
+  echo "==> [deploy] lemnity-builder — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 fi
 
 echo "==> [deploy] pm2"
