@@ -104,6 +104,7 @@ function PlaygroundPuckPageInner() {
       setData(next);
       try {
         await persist(next);
+        if (!sandboxId) return;
         setPreviewRev((n) => n + 1);
         toast.success(t("puck_page_saved"));
         try {
@@ -116,7 +117,7 @@ function PlaygroundPuckPageInner() {
         } catch {
           /* ignore */
         }
-      } catch {
+      } catch (e) {
         toast.error(t("puck_page_save_failed"));
       }
     },

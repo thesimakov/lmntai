@@ -209,9 +209,6 @@ export default function PromptBuildPage() {
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
-  /** Смена key iframe Puck: после нового превью / тем же sandboxId — подтянуть актуальный puck.json. */
-  const [puckIframeReloadKey, setPuckIframeReloadKey] = useState(0);
-  /** Обновление встроенного превью макета Puck (Render) после шаблона / «Опубликовать» в Puck. */
   const [visualLayoutEditor, setVisualLayoutEditor] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [publishPending, setPublishPending] = useState(false);
@@ -329,15 +326,6 @@ export default function PromptBuildPage() {
       return "/";
     }
   }, [previewUrl]);
-
-  const puckEditorHref = useMemo(() => {
-    if (!sandboxId || sandboxId.startsWith("artifact_")) return null;
-    if (!previewUrl || !String(previewUrl).includes("/api/sandbox/")) return null;
-    const q = new URLSearchParams();
-    q.set("sandboxId", sandboxId);
-    if (lemnityAiSessionId) q.set("sessionId", lemnityAiSessionId);
-    return `/playground/puck?${q.toString()}`;
-  }, [sandboxId, previewUrl, lemnityAiSessionId]);
 
   const handleChatVisualEditorToggle = useCallback(() => {
     if (!previewUrl) return;
@@ -616,7 +604,6 @@ export default function PromptBuildPage() {
             }
             setMode("preview");
             setProgress(100);
-            setPuckIframeReloadKey((k) => k + 1);
           }
         }
         for (const event of payload.events ?? []) {
@@ -903,7 +890,6 @@ export default function PromptBuildPage() {
                 setMode("preview");
                 setStage("ready");
                 setProgress(100);
-                setPuckIframeReloadKey((k) => k + 1);
                 const isPptx =
                   typeof data.mimeType === "string" && data.mimeType.includes("presentationml");
                 push(
@@ -1023,7 +1009,6 @@ export default function PromptBuildPage() {
         setShareIsPublic(false);
         setMode("preview");
         setProgress(100);
-        setPuckIframeReloadKey((k) => k + 1);
       } catch (e) {
         if ((e as Error).name === "AbortError") return;
         if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
@@ -1031,18 +1016,6 @@ export default function PromptBuildPage() {
     },
     [t]
   );
-
-  useEffect(() => {
-    function onPuckPublished(e: MessageEvent) {
-      const d = e.data as { type?: string; sandboxId?: string } | null;
-      if (!d || d.type !== "lemnity-puck-published") return;
-      if (d.sandboxId && sandboxId && d.sandboxId !== sandboxId) return;
-      setPuckIframeReloadKey((k) => k + 1);
-      toast.message(t("build_puck_publish_sync_toast"));
-    }
-    window.addEventListener("message", onPuckPublished);
-    return () => window.removeEventListener("message", onPuckPublished);
-  }, [sandboxId, t]);
 
   const handleBuildTemplateChange = useCallback(
     (next: { slug: string; name: string; defaultUserPrompt: string } | null) => {
@@ -1571,7 +1544,6 @@ export default function PromptBuildPage() {
           setPreviewUrl(eventData.previewUrl);
           setSandboxId(eventData.sandboxId);
           setMode("preview");
-          setPuckIframeReloadKey((k) => k + 1);
           push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
         }
         if (eventData.type === "error") {
@@ -1967,7 +1939,6 @@ export default function PromptBuildPage() {
                 if (next !== "preview" && next !== "document") setVisualLayoutEditor(false);
               }}
               sandboxId={sandboxId}
-              puckEditorHref={puckEditorHref}
               shareMenu={
                 <BuildSharePopover
                   sandboxId={sandboxId}
@@ -1991,69 +1962,78 @@ export default function PromptBuildPage() {
               }
             />
 
-            <div
-              className={cn(
-                "flex min-h-0 flex-1 flex-col overflow-hidden",
-                tab === "preview" || tab === "document" ? "gap-0 p-0" : "gap-2 p-2 pt-1"
-              )}
-            >
-              {tab === "preview" || tab === "document" ? (
-                <div className="flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-background">
-                  <RightPanel
-                    mode={mode}
-                    progress={progress}
-                    buildElapsedLabel={mode === "generating" ? interfaceBuildElapsedLabel : null}
-                    previewUrl={previewUrl}
-                    sandboxId={sandboxId}
-                    projectKind={projectKind}
-                    streamHint={mode === "generating" ? streamHint : null}
-                    previewMimeType={previewArtifactMime}
-                    previewDownloadFilename={previewDownloadFilename}
-                    visualEditMode={visualLayoutEditor}
-                    visualEditPersist={visualEditPersist}
-                    presentationPdfExport={presentationPdfExport}
-                    presentationExportsPaid={hasCustomDomainAccess}
-                    previewVariant={tab === "document" ? "document" : "default"}
-                    puckEditorHref={puckEditorHref}
-                    puckIframeReloadKey={puckIframeReloadKey}
-                    onVisualAgentEdit={
-                      lemnityAiBridgeReady
-                        ? (msg) => {
-                            void onSend(msg);
-                          }
-                        : undefined
-                    }
-                    studioBrandingBadge={studioBrandingBadge}
-                  />
-                </div>
-              ) : tab === "settings" ? (
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background">
-                  <BuildSettings
-                    className="min-h-0"
-                    projectTitle={settingsProjectTitle}
-                    studioOpenedAt={studioSettingsOpenedAt}
-                    sandboxId={sandboxId}
-                    hasPreview={Boolean(previewUrl)}
-                    shareIsPublic={shareIsPublic}
-                    onShareIsPublicChange={setShareIsPublic}
-                    hasProPlan={hasCustomDomainAccess}
-                    shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
-                    publishSeedText={idea}
-                    onOpenPublishDialog={() => setPublishDialogOpen(true)}
-                    onBrandingPreferenceSaved={() => {
-                      void loadShareBranding();
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="flex h-full min-h-[280px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background p-2 sm:p-3">
-                  <BuildCode
-                    className="min-h-0 flex-1"
-                    sandboxId={sandboxId}
-                    artifactMimeType={previewArtifactMime}
-                  />
-                </div>
-              )}
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              {/* Все вкладки остаются смонтированными: iframe превью не сбрасывается при уходе на «Код» / «Настройки». */}
+              <div
+                className={cn(
+                  "flex h-full min-h-0 w-full min-w-0 max-w-full flex-1 flex-col overflow-hidden bg-background",
+                  tab !== "preview" && tab !== "document"
+                    ? "pointer-events-none invisible absolute inset-0 z-0 min-h-0"
+                    : "relative z-10"
+                )}
+                aria-hidden={tab !== "preview" && tab !== "document"}
+              >
+                <RightPanel
+                  mode={mode}
+                  progress={progress}
+                  buildElapsedLabel={mode === "generating" ? interfaceBuildElapsedLabel : null}
+                  previewUrl={previewUrl}
+                  sandboxId={sandboxId}
+                  projectKind={projectKind}
+                  streamHint={mode === "generating" ? streamHint : null}
+                  previewMimeType={previewArtifactMime}
+                  previewDownloadFilename={previewDownloadFilename}
+                  visualEditMode={visualLayoutEditor}
+                  visualEditPersist={visualEditPersist}
+                  presentationPdfExport={presentationPdfExport}
+                  presentationExportsPaid={hasCustomDomainAccess}
+                  previewVariant={tab === "document" ? "document" : "default"}
+                  studioBrandingBadge={studioBrandingBadge}
+                />
+              </div>
+
+              <div
+                className={cn(
+                  "flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background m-2 mt-1 min-h-[200px]",
+                  tab !== "settings"
+                    ? "pointer-events-none invisible absolute inset-0 z-0 m-2 mt-1"
+                    : "relative z-10"
+                )}
+                aria-hidden={tab !== "settings"}
+              >
+                <BuildSettings
+                  className="min-h-0"
+                  projectTitle={settingsProjectTitle}
+                  studioOpenedAt={studioSettingsOpenedAt}
+                  sandboxId={sandboxId}
+                  hasPreview={Boolean(previewUrl)}
+                  shareIsPublic={shareIsPublic}
+                  onShareIsPublicChange={setShareIsPublic}
+                  hasProPlan={hasCustomDomainAccess}
+                  shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
+                  publishSeedText={idea}
+                  onOpenPublishDialog={() => setPublishDialogOpen(true)}
+                  onBrandingPreferenceSaved={() => {
+                    void loadShareBranding();
+                  }}
+                />
+              </div>
+
+              <div
+                className={cn(
+                  "flex h-full min-h-[280px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-background p-2 sm:p-3",
+                  tab !== "code"
+                    ? "pointer-events-none invisible absolute inset-0 z-0 m-2 mt-1 min-h-[280px]"
+                    : "relative z-10 m-2 mt-1"
+                )}
+                aria-hidden={tab !== "code"}
+              >
+                <BuildCode
+                  className="min-h-0 flex-1"
+                  sandboxId={sandboxId}
+                  artifactMimeType={previewArtifactMime}
+                />
+              </div>
             </div>
           </section>
         </div>

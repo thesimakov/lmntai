@@ -18,7 +18,7 @@ type ProvidersProps = {
 export function Providers({ children, initialLang, session }: ProvidersProps) {
   return (
     <SessionProvider session={session}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <I18nProvider initialLang={initialLang}>
           <ReferralCapture />
           {children}

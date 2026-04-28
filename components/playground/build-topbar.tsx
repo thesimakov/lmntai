@@ -17,7 +17,6 @@ import {
   Settings2,
   Upload
 } from "lucide-react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useState } from "react";
@@ -54,8 +53,6 @@ type BuildPreviewChromeProps = {
     active: boolean;
     onToggle: () => void;
   };
-  /** Ссылка на визуальный редактор Puck (puck.json в песочнице) */
-  puckEditorHref?: string | null;
   onHistoryClick?: () => void;
 };
 
@@ -70,7 +67,6 @@ export function BuildPreviewChrome({
   addressPath,
   onRefresh,
   previewEditorToggle,
-  puckEditorHref = null,
   onHistoryClick
 }: BuildPreviewChromeProps) {
   const [taskFilesOpen, setTaskFilesOpen] = useState(false);
@@ -145,20 +141,6 @@ export function BuildPreviewChrome({
               <PenLine className="h-3.5 w-3.5 shrink-0" />
               {t("build_editor_label")}
             </button>
-          ) : null}
-
-          {puckEditorHref ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 gap-1.5 px-2.5 text-xs font-medium sm:text-sm"
-              asChild
-            >
-              <Link href={puckEditorHref} aria-label={t("build_puck_editor_aria")}>
-                {t("build_puck_editor")}
-              </Link>
-            </Button>
           ) : null}
 
           <Button

@@ -1,4 +1,10 @@
-/** Визуальное редактирование HTML внутри iframe превью (тот же origin). Выбор элемента: hover + клик. Текст: второй клик по тому же блоку (~0,42 с) или dblclick — правка (preventDefault на pointerdown ломает нативный dblclick у части браузеров). */
+/**
+ * Визуальный режим превью в iframe (same origin): hover + выбор; правки применяются к DOM превью (см. apply-visual-updates).
+ */
+
+import { buildLayoutSnapshot, formatOverlayLabel } from "@/lib/editor/layout-element";
+import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
+import { createOverlayController, removeOverlayRoot } from "@/lib/editor/canvas-overlay";
 
 export const LEMNITY_VISUAL_EDIT_STYLE_ID = "lemnity-visual-edit-style";
 
@@ -12,7 +18,6 @@ const NON_TEXT_TAGS = new Set([
   "TITLE",
   "NOSCRIPT",
   "IFRAME",
-  "IMG",
   "SVG",
   "CANVAS",
   "INPUT",
@@ -27,18 +32,9 @@ const NON_TEXT_TAGS = new Set([
   "AREA"
 ]);
 
-/** Не предлагаем как цель «пикера» (корень документа и служебные узлы). */
-const PICK_SKIP_TAGS = new Set([
-  "HTML",
-  "BODY",
-  "HEAD",
-  "SCRIPT",
-  "STYLE",
-  "META",
-  "LINK",
-  "TITLE",
-  "NOSCRIPT"
-]);
+const PICK_SKIP_TAGS = new Set(["HTML", "BODY", "HEAD", "SCRIPT", "STYLE", "META", "LINK", "TITLE", "NOSCRIPT"]);
+
+const SVG_NS = "http://www.w3.org/2000/svg";
 
 const TEXT_HOST_TAGS = new Set([
   "P",
@@ -83,9 +79,12 @@ const TEXT_HOST_TAGS = new Set([
   "CAPTION"
 ]);
 
-/** Обёртки таблицы (без TABLE — иначе клик вылезает к секции снаружи). */
-const TEXT_HOST_TRANSPARENT = new Set(["TR", "TBODY", "THEAD", "TFOOT", "COLGROUP", "COL"]);
+/** Узлы из iframe принадлежат другому realm — `instanceof Element` даёт false (логи: topTags «?», pick null). */
+function isElementNode(n: unknown): n is Element {
+  return typeof n === "object" && n !== null && (n as Node).nodeType === Node.ELEMENT_NODE;
+}
 
+/** @deprecated используйте LayoutElementSnapshot */
 export type VisualPickInfo = {
   tagName: string;
   id: string;
@@ -93,8 +92,10 @@ export type VisualPickInfo = {
 };
 
 function eventTargetToElement(target: EventTarget | null): Element | null {
-  if (target instanceof Element) return target;
-  if (target instanceof Text) return target.parentElement;
+  if (target == null) return null;
+  const node = target as Node;
+  if (node.nodeType === Node.TEXT_NODE) return (target as Text).parentElement;
+  if (node.nodeType === Node.ELEMENT_NODE) return target as Element;
   return null;
 }
 
@@ -109,10 +110,6 @@ function normalizePickTarget(doc: Document, start: Element | null): Element | nu
   return null;
 }
 
-/**
- * Координаты для doc.elementsFromPoint: в большинстве случаев clientX/Y уже относительно iframe,
- * но если view события не совпадает с документом превью — переводим через getBoundingClientRect рамки.
- */
 function viewportPointForVisualPick(ev: PointerEvent | MouseEvent, doc: Document): { x: number; y: number } {
   const win = doc.defaultView;
   if (!win) return { x: ev.clientX, y: ev.clientY };
@@ -125,22 +122,44 @@ function viewportPointForVisualPick(ev: PointerEvent | MouseEvent, doc: Document
   return { x: ev.clientX, y: ev.clientY };
 }
 
-/** Обход перекрывающих full-screen слоёв: elementFromPoint часто попадает только в верхний div. */
 function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Element | null {
-  let stack: Element[];
+  let stack: unknown[];
   try {
-    stack = doc.elementsFromPoint(x, y) as Element[];
+    stack = [...doc.elementsFromPoint(x, y)];
   } catch {
     return null;
   }
   if (!stack?.length) return null;
 
   for (const node of stack) {
-    if (node instanceof HTMLImageElement) return node;
+    if (!isElementNode(node)) continue;
+    if (node.tagName === "IMG") return node;
+  }
+
+  for (const node of stack) {
+    if (!isElementNode(node)) continue;
+    if (node.namespaceURI === SVG_NS && node.tagName.toLowerCase() === "image") return node as Element;
+  }
+
+  // Иначе meaningful() выберет DIV-обёртку из‑за querySelector("svg") — берём верхний узел внутри svg (path, g…).
+  for (const node of stack) {
+    if (!isElementNode(node)) continue;
+    const svgRoot = node.closest?.("svg");
+    if (!svgRoot) continue;
+    if (node === svgRoot) continue;
+    const tag = node.tagName.toUpperCase();
+    if (PICK_SKIP_TAGS.has(tag)) continue;
+    const normalized = normalizePickTarget(doc, node as Element);
+    if (normalized) return normalized;
+  }
+
+  for (const node of stack) {
+    if (!isElementNode(node)) continue;
+    if (node.tagName === "SVG") return node as Element;
   }
 
   function meaningful(el: Element): boolean {
-    if (el instanceof HTMLImageElement) return true;
+    if (el.tagName === "IMG") return true;
     if (NON_TEXT_TAGS.has(el.tagName) && el.tagName !== "IMG") return false;
     if (el.tagName === "BODY" || el.tagName === "HTML") return false;
     if (TEXT_HOST_TAGS.has(el.tagName)) {
@@ -158,14 +177,14 @@ function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Elem
   }
 
   for (const node of stack) {
-    if (!(node instanceof Element)) continue;
+    if (!isElementNode(node)) continue;
     const normalized = normalizePickTarget(doc, node);
     if (!normalized) continue;
     if (meaningful(normalized)) return normalized;
   }
 
   for (const node of stack) {
-    if (!(node instanceof Element)) continue;
+    if (!isElementNode(node)) continue;
     const normalized = normalizePickTarget(doc, node);
     if (normalized && !PICK_SKIP_TAGS.has(normalized.tagName)) return normalized;
   }
@@ -193,13 +212,31 @@ export function formatVisualPickLabel(info: VisualPickInfo): string {
 }
 
 export type VisualPreviewEditorHandlers = {
-  onImageActivate: (img: HTMLImageElement) => void;
-  onSelectionChange?: (info: VisualPickInfo | null, element: Element | null, elements: Element[]) => void;
+  onSelectionChange?: (
+    snapshot: LayoutElementSnapshot | null,
+    legacyPick: VisualPickInfo | null,
+    element: Element | null,
+    elements: Element[]
+  ) => void;
 };
 
-export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreviewEditorHandlers): () => void {
+export type VisualPreviewEditorHandle = {
+  detach: () => void;
+  /** Снять выделение в iframe и обновить overlay/React-состояние через onSelectionChange. */
+  clearSelection: () => void;
+};
+
+export function attachVisualPreviewEditor(
+  doc: Document,
+  handlers: VisualPreviewEditorHandlers
+): VisualPreviewEditorHandle {
   const body = doc.body;
-  if (!body) return () => {};
+  if (!body) {
+    return {
+      detach: () => {},
+      clearSelection: () => {}
+    };
+  }
 
   body.classList.add("lemnity-visual-edit-mode");
 
@@ -212,46 +249,42 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
         cursor: crosshair !important;
         user-select: none !important;
       }
-      .lemnity-visual-edit-mode [contenteditable="true"] {
-        cursor: text !important;
-        user-select: text !important;
-      }
       .lemnity-visual-edit-mode [data-lemnity-pick-hover="1"] {
-        outline: 2px solid rgba(96, 165, 250, 0.95) !important;
+        outline: 2px solid #9333EA !important;
         outline-offset: 2px;
       }
       .lemnity-visual-edit-mode [data-lemnity-selected="1"] {
-        outline: 2px solid rgb(37, 99, 235) !important;
+        outline: 3px solid #6C4EFF !important;
         outline-offset: 2px;
       }
       .lemnity-visual-edit-mode img {
         cursor: pointer !important;
-        outline: 2px dashed rgba(168, 85, 247, 0.85) !important;
-      }
-      .lemnity-visual-edit-mode [data-lemnity-editing="1"] {
-        outline: 2px solid rgb(59, 130, 246) !important;
-        outline-offset: 2px;
       }
     `;
     doc.head.appendChild(styleEl);
   }
 
-  let activeHost: HTMLElement | null = null;
+  const overlay = createOverlayController(doc);
+
   let hoverEl: Element | null = null;
   let selectedEl: Element | null = null;
   const selectedEls = new Set<Element>();
   let rafHover = 0;
-  /** Двойной клик по тексту: preventDefault на pointerdown ломает нативный dblclick в части браузеров. */
-  let lastTextHostPointer: HTMLElement | null = null;
-  let lastTextHostPointerAt = 0;
+
+  function legacyFrom(el: Element | null): VisualPickInfo | null {
+    return el ? describePickTarget(el) : null;
+  }
 
   function notifySelection() {
     const primary = selectedEl;
-    handlers.onSelectionChange?.(
-      primary ? describePickTarget(primary) : null,
-      primary,
-      Array.from(selectedEls)
-    );
+    const snap = primary ? buildLayoutSnapshot(primary) : null;
+    handlers.onSelectionChange?.(snap, legacyFrom(primary), primary, Array.from(selectedEls));
+    if (primary) {
+      const lab = formatOverlayLabel(primary);
+      overlay.setSelected(primary, lab.primary, lab.secondary);
+    } else {
+      overlay.setSelected(null, "", "");
+    }
   }
 
   function setHover(el: Element | null) {
@@ -259,6 +292,12 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     if (hoverEl) hoverEl.removeAttribute("data-lemnity-pick-hover");
     hoverEl = el;
     if (hoverEl) hoverEl.setAttribute("data-lemnity-pick-hover", "1");
+    if (hoverEl && hoverEl !== selectedEl) {
+      const lab = formatOverlayLabel(hoverEl);
+      overlay.setHover(hoverEl, lab.primary, lab.secondary);
+    } else {
+      overlay.setHover(null, "", "");
+    }
   }
 
   function clearSelected() {
@@ -301,63 +340,13 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     notifySelection();
   }
 
-  function deactivateHost() {
-    if (!activeHost) return;
-    activeHost.removeAttribute("data-lemnity-editing");
-    activeHost.removeAttribute("contenteditable");
-    activeHost = null;
-  }
-
-  function resolveTextHost(start: Element | null): HTMLElement | null {
-    if (start?.closest) {
-      const cell = start.closest("td, th, caption");
-      if (cell instanceof HTMLElement) start = cell;
-    }
-    let el: Element | null = start;
-    while (el && el !== body) {
-      const tag = el.tagName;
-      if (NON_TEXT_TAGS.has(tag)) return null;
-      if (tag === "IMG") return null;
-      if (TEXT_HOST_TRANSPARENT.has(tag)) {
-        el = el.parentElement;
-        continue;
-      }
-      if (TEXT_HOST_TAGS.has(tag)) return el as HTMLElement;
-      el = el.parentElement;
-    }
-    return null;
-  }
-
-  function enterTextEdit(host: HTMLElement) {
-    deactivateHost();
-    setSingleSelected(host);
-    activeHost = host;
-    host.setAttribute("contenteditable", "true");
-    host.setAttribute("data-lemnity-editing", "1");
-    host.focus();
-    const sel = doc.getSelection();
-    if (sel) {
-      try {
-        const r = doc.createRange();
-        r.selectNodeContents(host);
-        r.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(r);
-      } catch {
-        // ignore
-      }
-    }
-  }
-
   function onPointerMove(ev: PointerEvent) {
-    if (activeHost) return;
     if (rafHover) return;
     rafHover = requestAnimationFrame(() => {
       rafHover = 0;
-      if (activeHost) return;
       const { x, y } = viewportPointForVisualPick(ev, doc);
       const el = pickInteractiveTargetAtPoint(doc, x, y);
-      if (el instanceof HTMLImageElement || (el != null && selectedEls.has(el))) {
+      if ((el != null && el.tagName === "IMG") || (el != null && selectedEls.has(el))) {
         setHover(null);
       } else {
         setHover(el);
@@ -366,28 +355,19 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
   }
 
   function onPointerDown(ev: PointerEvent) {
-    if (activeHost && activeHost.contains(ev.target as Node)) {
-      return;
-    }
-
     const { x, y } = viewportPointForVisualPick(ev, doc);
     const pick =
-      pickInteractiveTargetAtPoint(doc, x, y) ??
-      normalizePickTarget(doc, eventTargetToElement(ev.target));
+      pickInteractiveTargetAtPoint(doc, x, y) ?? normalizePickTarget(doc, eventTargetToElement(ev.target));
     const additiveSelect = ev.metaKey || ev.ctrlKey;
 
-    if (pick instanceof HTMLImageElement) {
-      lastTextHostPointer = null;
-      lastTextHostPointerAt = 0;
+    if (pick != null && pick.tagName === "IMG") {
       ev.preventDefault();
       ev.stopPropagation();
-      deactivateHost();
       setHover(null);
       if (additiveSelect) {
         toggleSelected(pick);
       } else {
         setSingleSelected(pick);
-        handlers.onImageActivate(pick);
       }
       return;
     }
@@ -397,95 +377,49 @@ export function attachVisualPreviewEditor(doc: Document, handlers: VisualPreview
     ev.preventDefault();
     ev.stopPropagation();
 
-    const textHost = resolveTextHost(pick);
     if (additiveSelect) {
-      lastTextHostPointer = null;
-      lastTextHostPointerAt = 0;
-      deactivateHost();
       setHover(null);
-      toggleSelected(textHost ?? pick);
+      toggleSelected(pick);
       return;
     }
 
-    if (textHost) {
-      const now = Date.now();
-      if (textHost === lastTextHostPointer && now - lastTextHostPointerAt < 420) {
-        lastTextHostPointer = null;
-        lastTextHostPointerAt = 0;
-        setHover(null);
-        enterTextEdit(textHost);
-        return;
-      }
-      lastTextHostPointer = textHost;
-      lastTextHostPointerAt = now;
-      deactivateHost();
-      setHover(null);
-      setSingleSelected(textHost);
-      return;
-    }
-
-    lastTextHostPointer = null;
-    lastTextHostPointerAt = 0;
-    deactivateHost();
     setHover(null);
     setSingleSelected(pick);
   }
 
-  function onDoubleClick(ev: MouseEvent) {
-    if (activeHost) return;
-    if (selectedEls.size > 1) return;
-    const { x, y } = viewportPointForVisualPick(ev, doc);
-    const raw = pickInteractiveTargetAtPoint(doc, x, y) ?? eventTargetToElement(ev.target);
-    const host = resolveTextHost(raw);
-    if (!host) return;
-    ev.preventDefault();
-    ev.stopPropagation();
-    lastTextHostPointer = null;
-    lastTextHostPointerAt = 0;
-    enterTextEdit(host);
-  }
-
-  function onFocusOut(ev: FocusEvent) {
-    const related = ev.relatedTarget as Node | null;
-    window.requestAnimationFrame(() => {
-      if (!activeHost) return;
-      if (related instanceof Node && activeHost.contains(related)) return;
-      if (doc.activeElement && activeHost.contains(doc.activeElement)) return;
-      deactivateHost();
-    });
-  }
-
   doc.addEventListener("pointermove", onPointerMove, true);
   doc.addEventListener("pointerdown", onPointerDown, true);
-  doc.addEventListener("dblclick", onDoubleClick, true);
-  body.addEventListener("focusout", onFocusOut, true);
 
-  return () => {
+  function detachImpl() {
     cancelAnimationFrame(rafHover);
     doc.removeEventListener("pointermove", onPointerMove, true);
     doc.removeEventListener("pointerdown", onPointerDown, true);
-    doc.removeEventListener("dblclick", onDoubleClick, true);
-    body.removeEventListener("focusout", onFocusOut, true);
-    deactivateHost();
+    overlay.destroy();
+    removeOverlayRoot(doc);
     setHover(null);
-    clearSelected();
+    selectedEls.forEach((n) => n.removeAttribute("data-lemnity-selected"));
+    selectedEls.clear();
+    selectedEl = null;
+    doc.querySelectorAll("[data-lemnity-pick-hover]").forEach((n) => n.removeAttribute("data-lemnity-pick-hover"));
     body.classList.remove("lemnity-visual-edit-mode");
     doc.getElementById(LEMNITY_VISUAL_EDIT_STYLE_ID)?.remove();
-    doc.querySelectorAll("[data-lemnity-pick-hover]").forEach((n) => n.removeAttribute("data-lemnity-pick-hover"));
-    doc.querySelectorAll("[data-lemnity-selected]").forEach((n) => n.removeAttribute("data-lemnity-selected"));
+  }
+
+  return {
+    detach: detachImpl,
+    clearSelection: clearSelected
   };
 }
 
-/** Снимает служебную разметку редактора и возвращает полный HTML документа. */
 export function serializeIframeDocument(doc: Document): string {
-  doc.querySelectorAll("[data-lemnity-editing]").forEach((el) => {
-    el.removeAttribute("data-lemnity-editing");
-    el.removeAttribute("contenteditable");
-  });
-  doc.querySelectorAll("[data-lemnity-pick-hover]").forEach((el) => el.removeAttribute("data-lemnity-pick-hover"));
-  doc.querySelectorAll("[data-lemnity-selected]").forEach((el) => el.removeAttribute("data-lemnity-selected"));
-  doc.getElementById(LEMNITY_VISUAL_EDIT_STYLE_ID)?.remove();
-  doc.body?.classList.remove("lemnity-visual-edit-mode");
+  /** Парсим клон дерева: не трогаем живой документ iframe (иначе при сохранении исчезает overlay и стили режима — кажется «сбросом»). */
+  const parsed = new DOMParser().parseFromString(doc.documentElement.outerHTML, "text/html");
+  parsed.querySelectorAll("[data-lemnity-pick-hover]").forEach((el) => el.removeAttribute("data-lemnity-pick-hover"));
+  parsed.querySelectorAll("[data-lemnity-selected]").forEach((el) => el.removeAttribute("data-lemnity-selected"));
+  parsed.getElementById(LEMNITY_VISUAL_EDIT_STYLE_ID)?.remove();
+  parsed.getElementById("lemnity-visual-overlay-root")?.remove();
+  parsed.getElementById("lemnity-visual-overlay-style")?.remove();
+  parsed.body?.classList.remove("lemnity-visual-edit-mode");
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : "<!DOCTYPE html>";
-  return `${doctype}\n${doc.documentElement.outerHTML}`;
+  return `${doctype}\n${parsed.documentElement.outerHTML}`;
 }

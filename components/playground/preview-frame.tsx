@@ -1,33 +1,23 @@
 "use client";
 
 import JSZip from "jszip";
-import {
-  ArrowLeft,
-  ArrowUp,
-  Download,
-  ExternalLink,
-  Monitor,
-  Presentation,
-  Smartphone,
-  Sparkles,
-  Tablet
-} from "lucide-react";
+import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+  ElementEditorPanel,
+  type ElementEditorPanelHandle
+} from "@/components/editor/ElementEditorPanel";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
+import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
+import { applyVisualUpdatesToElement } from "@/lib/editor/apply-visual-updates";
+import { buildLayoutSnapshot, type LayoutElementSnapshot } from "@/lib/editor/layout-element";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
-import { SITE_URL } from "@/lib/site";
-import {
-  attachVisualPreviewEditor,
-  formatVisualPickLabel,
-  type VisualPickInfo,
-  serializeIframeDocument
-} from "@/lib/visual-preview-editor";
+import { attachVisualPreviewEditor, serializeIframeDocument } from "@/lib/visual-preview-editor";
 import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -62,60 +52,9 @@ type PreviewFrameProps = {
   presentationExportsPaid?: boolean;
   /** Отдельный режим «Редактор документа»: без эмуляции устройств, фокус на печатной области */
   previewVariant?: "default" | "document";
-  /** Редактор Puck (второй iframe при включённом визуальном режиме) */
-  puckEditorHref?: string | null;
-  /** Счётчик для key iframe Puck (новое превью той же песочницы). */
-  puckIframeReloadKey?: number;
-  /**
-   * Запрос в чат агенту по выбранному в макете элементу (Lemnity AI).
-   * Текст формата: `[Визуальный редактор] Измени <tag> «фрагмент»: …`
-   */
-  onVisualAgentEdit?: (message: string) => void;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
-type VisualQuickStyles = {
-  padding: string;
-  margin: string;
-  borderRadius: string;
-  borderWidth: string;
-  fontSize: string;
-  width: string;
-  height: string;
-  color: string;
-  backgroundColor: string;
-  fontWeight: string;
-  textAlign: "left" | "center" | "right" | "justify";
-};
-
-function pxToInput(value: string): string {
-  const raw = value.trim();
-  if (!raw || /\s/.test(raw)) return "";
-  const m = raw.match(/^(-?\d+(?:\.\d+)?)px$/i);
-  if (!m) return "";
-  return String(Number(m[1]));
-}
-
-function readQuickStyles(el: HTMLElement): VisualQuickStyles {
-  const doc = el.ownerDocument;
-  const computed = doc.defaultView?.getComputedStyle(el);
-  const alignRaw = (el.style.textAlign || computed?.textAlign || "left").trim().toLowerCase();
-  const textAlign: VisualQuickStyles["textAlign"] =
-    alignRaw === "center" || alignRaw === "right" || alignRaw === "justify" ? alignRaw : "left";
-  return {
-    padding: pxToInput(el.style.padding || computed?.padding || ""),
-    margin: pxToInput(el.style.margin || computed?.margin || ""),
-    borderRadius: pxToInput(el.style.borderRadius || computed?.borderRadius || ""),
-    borderWidth: pxToInput(el.style.borderWidth || computed?.borderWidth || ""),
-    fontSize: pxToInput(el.style.fontSize || computed?.fontSize || ""),
-    width: pxToInput(el.style.width || computed?.width || ""),
-    height: pxToInput(el.style.height || computed?.height || ""),
-    color: (el.style.color || computed?.color || "").trim(),
-    backgroundColor: (el.style.backgroundColor || computed?.backgroundColor || "").trim(),
-    fontWeight: (el.style.fontWeight || computed?.fontWeight || "400").trim(),
-    textAlign
-  };
-}
 
 export function PreviewFrame({
   previewUrl,
@@ -127,10 +66,7 @@ export function PreviewFrame({
   projectKind = null,
   presentationPdfExport = null,
   presentationExportsPaid = false,
-  previewVariant = "default",
-  puckEditorHref = null,
-  puckIframeReloadKey = 0,
-  onVisualAgentEdit
+  previewVariant = "default"
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -138,17 +74,13 @@ export function PreviewFrame({
   const [savePending, setSavePending] = useState(false);
   const [iframeBlocked, setIframeBlocked] = useState(false);
   const [iframeSrc, setIframeSrc] = useState(previewUrl);
-  const [visualPickLabel, setVisualPickLabel] = useState<string | null>(null);
-  const [visualPickInfo, setVisualPickInfo] = useState<VisualPickInfo | null>(null);
-  const [visualAgentEditOpen, setVisualAgentEditOpen] = useState(false);
-  const [visualAgentEditText, setVisualAgentEditText] = useState("");
-  const [visualQuickStyles, setVisualQuickStyles] = useState<VisualQuickStyles | null>(null);
+  const [visualSnapshot, setVisualSnapshot] = useState<LayoutElementSnapshot | null>(null);
   const [visualSelectedCount, setVisualSelectedCount] = useState(0);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const detachEditorRef = useRef<(() => void) | null>(null);
-  const imgTargetRef = useRef<HTMLImageElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const visualEditorPanelRef = useRef<ElementEditorPanelHandle | null>(null);
+  const visualEditorHandleRef = useRef<{ detach: () => void; clearSelection: () => void } | null>(null);
+  const visualSelectedPrimaryRef = useRef<Element | null>(null);
 
   const isPptx = isPptxArtifact(mimeType);
   const exportBusy = exportTask !== null;
@@ -176,16 +108,14 @@ export function PreviewFrame({
     setIframeSrc(previewUrl);
   }, [previewUrl]);
 
+  /** Визуальный редактор: слушатель `load` привязан к одному узлу iframe; `key={iframeSrc}` пересоздавал iframe без нового эффекта. После сохранения — снова bumpIframeCache + стабильный `key={sandboxId}`. */
   useEffect(() => {
     if (!visualEditMode || isPptx) {
-      detachEditorRef.current?.();
-      detachEditorRef.current = null;
+      visualEditorHandleRef.current?.detach();
+      visualEditorHandleRef.current = null;
+      visualSelectedPrimaryRef.current = null;
       setIframeBlocked(false);
-      setVisualPickLabel(null);
-      setVisualPickInfo(null);
-      setVisualAgentEditOpen(false);
-      setVisualAgentEditText("");
-      setVisualQuickStyles(null);
+      setVisualSnapshot(null);
       setVisualSelectedCount(0);
       return;
     }
@@ -199,21 +129,12 @@ export function PreviewFrame({
         return;
       }
       setIframeBlocked(false);
-      detachEditorRef.current?.();
-      detachEditorRef.current = attachVisualPreviewEditor(doc, {
-        onImageActivate: (img) => {
-          imgTargetRef.current = img;
-          fileInputRef.current?.click();
-        },
-        onSelectionChange: (info, element, elements) => {
-          setVisualPickInfo(info);
-          setVisualPickLabel(info ? formatVisualPickLabel(info) : null);
+      visualEditorHandleRef.current?.detach();
+      visualEditorHandleRef.current = attachVisualPreviewEditor(doc, {
+        onSelectionChange: (snapshot, _legacy, element, elements) => {
+          visualSelectedPrimaryRef.current = element;
+          setVisualSnapshot(snapshot);
           setVisualSelectedCount(elements.length);
-          if (element instanceof HTMLElement) {
-            setVisualQuickStyles(readQuickStyles(element));
-          } else {
-            setVisualQuickStyles(null);
-          }
         }
       });
     }
@@ -224,8 +145,8 @@ export function PreviewFrame({
       const doc = el.contentDocument;
       if (!doc) {
         setIframeBlocked(true);
-        detachEditorRef.current?.();
-        detachEditorRef.current = null;
+        visualEditorHandleRef.current?.detach();
+        visualEditorHandleRef.current = null;
         return;
       }
       attachFromDoc();
@@ -241,17 +162,11 @@ export function PreviewFrame({
 
     return () => {
       mountEl?.removeEventListener("load", onLoad);
-      detachEditorRef.current?.();
-      detachEditorRef.current = null;
+      visualEditorHandleRef.current?.detach();
+      visualEditorHandleRef.current = null;
+      visualSelectedPrimaryRef.current = null;
     };
-  }, [visualEditMode, isPptx, iframeSrc]);
-
-  useEffect(() => {
-    if (!visualPickLabel) {
-      setVisualAgentEditOpen(false);
-      setVisualAgentEditText("");
-    }
-  }, [visualPickLabel]);
+  }, [visualEditMode, isPptx, sandboxId]);
 
   const controlButtons = useMemo(
     () => [
@@ -261,169 +176,6 @@ export function PreviewFrame({
     ],
     []
   );
-
-  function getSelectedVisualElements(): HTMLElement[] {
-    const doc = iframeRef.current?.contentDocument;
-    if (!doc) return [];
-    return Array.from(doc.querySelectorAll("[data-lemnity-selected='1']")).filter(
-      (node): node is HTMLElement => node instanceof HTMLElement
-    );
-  }
-
-  function getSelectedVisualElement(): HTMLElement | null {
-    const all = getSelectedVisualElements();
-    return all.length > 0 ? all[all.length - 1] : null;
-  }
-
-  function buildVisualAgentMessage(instruction: string): string {
-    const el = getSelectedVisualElement();
-    const tag = visualPickInfo?.tagName ?? "element";
-    let snippet = "";
-    if (el) {
-      if (el instanceof HTMLImageElement) {
-        snippet = (el.alt || el.title || "").trim();
-      } else {
-        snippet = el.innerText?.trim().replace(/\s+/g, " ") ?? "";
-      }
-      if (snippet.length > 120) {
-        snippet = `${snippet.slice(0, 120)}…`;
-      }
-    }
-    return `[Визуальный редактор] Измени <${tag}>${snippet ? ` «${snippet}»` : ""}: ${instruction}`;
-  }
-
-  function submitVisualAgentEdit() {
-    if (!onVisualAgentEdit || !visualPickInfo) return;
-    const text = visualAgentEditText.trim();
-    if (!text) return;
-    onVisualAgentEdit(buildVisualAgentMessage(text));
-    setVisualAgentEditOpen(false);
-    setVisualAgentEditText("");
-  }
-
-  function applyQuickStyle(prop: keyof VisualQuickStyles, value: string) {
-    const selected = getSelectedVisualElements();
-    if (selected.length === 0) return;
-    const normalized = value.trim();
-    const cssPx = normalized === "" ? "" : `${normalized}px`;
-    if (prop === "padding") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.padding = cssPx;
-        else el.style.removeProperty("padding");
-      });
-    }
-    if (prop === "margin") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.margin = cssPx;
-        else el.style.removeProperty("margin");
-      });
-    }
-    if (prop === "borderRadius") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.borderRadius = cssPx;
-        else el.style.removeProperty("border-radius");
-      });
-    }
-    if (prop === "borderWidth") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.borderWidth = cssPx;
-        else el.style.removeProperty("border-width");
-      });
-    }
-    if (prop === "fontSize") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.fontSize = cssPx;
-        else el.style.removeProperty("font-size");
-      });
-    }
-    if (prop === "width") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.width = cssPx;
-        else el.style.removeProperty("width");
-      });
-    }
-    if (prop === "height") {
-      selected.forEach((el) => {
-        if (cssPx) el.style.height = cssPx;
-        else el.style.removeProperty("height");
-      });
-    }
-    if (prop === "color") {
-      selected.forEach((el) => {
-        if (normalized) el.style.color = normalized;
-        else el.style.removeProperty("color");
-      });
-    }
-    if (prop === "backgroundColor") {
-      selected.forEach((el) => {
-        if (normalized) el.style.backgroundColor = normalized;
-        else el.style.removeProperty("background-color");
-      });
-    }
-    if (prop === "fontWeight") {
-      selected.forEach((el) => {
-        if (normalized) el.style.fontWeight = normalized;
-        else el.style.removeProperty("font-weight");
-      });
-    }
-    if (prop === "textAlign") {
-      selected.forEach((el) => {
-        if (normalized) el.style.textAlign = normalized as VisualQuickStyles["textAlign"];
-        else el.style.removeProperty("text-align");
-      });
-    }
-    setVisualQuickStyles((prev) => {
-      const next: VisualQuickStyles = {
-        ...(prev ?? {
-          padding: "",
-          margin: "",
-          borderRadius: "",
-          borderWidth: "",
-          fontSize: "",
-          width: "",
-          height: "",
-          color: "",
-          backgroundColor: "",
-          fontWeight: "400",
-          textAlign: "left"
-        })
-      };
-      if (prop === "padding") next.padding = normalized;
-      else if (prop === "margin") next.margin = normalized;
-      else if (prop === "borderRadius") next.borderRadius = normalized;
-      else if (prop === "borderWidth") next.borderWidth = normalized;
-      else if (prop === "fontSize") next.fontSize = normalized;
-      else if (prop === "width") next.width = normalized;
-      else if (prop === "height") next.height = normalized;
-      else if (prop === "color") next.color = normalized;
-      else if (prop === "backgroundColor") next.backgroundColor = normalized;
-      else if (prop === "fontWeight") next.fontWeight = normalized || "400";
-      else if (prop === "textAlign") {
-        next.textAlign = normalized === "center" || normalized === "right" || normalized === "justify" ? normalized : "left";
-      }
-      return next;
-    });
-  }
-
-  function resetQuickStyles() {
-    const all = getSelectedVisualElements();
-    if (all.length === 0) return;
-    all.forEach((selected) => {
-      selected.style.removeProperty("padding");
-      selected.style.removeProperty("margin");
-      selected.style.removeProperty("border-radius");
-      selected.style.removeProperty("border-width");
-      selected.style.removeProperty("font-size");
-      selected.style.removeProperty("width");
-      selected.style.removeProperty("height");
-      selected.style.removeProperty("color");
-      selected.style.removeProperty("background-color");
-      selected.style.removeProperty("font-weight");
-      selected.style.removeProperty("text-align");
-    });
-    const primary = getSelectedVisualElement();
-    setVisualQuickStyles(primary ? readQuickStyles(primary) : null);
-  }
 
   async function downloadBlobFromResponse(response: Response, filename: string) {
     if (!response.ok) {
@@ -566,10 +318,24 @@ export function PreviewFrame({
     setIframeSrc(`${u.pathname}${u.search}${u.hash}`);
   }
 
+  /** Превью в новой вкладке: `_open` ломает HTTP-кэш, иначе возможен старый HTML после PATCH. */
+  function openPreviewInNewTab() {
+    const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
+    u.searchParams.set("_open", String(Date.now()));
+    const href = `${u.pathname}${u.search}${u.hash}`;
+    window.open(href, "_blank", "noopener,noreferrer");
+  }
+
+  function handleDismissVisualEditor() {
+    visualEditorHandleRef.current?.clearSelection();
+  }
+
   async function handleSaveVisual() {
     const iframe = iframeRef.current;
     const doc = iframe?.contentDocument;
     if (!doc || !visualEditPersist) return;
+
+    visualEditorPanelRef.current?.flushPendingApply();
 
     setSavePending(true);
     try {
@@ -608,34 +374,49 @@ export function PreviewFrame({
     }
   }
 
-  function onImageFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    const img = imgTargetRef.current;
-    imgTargetRef.current = null;
-    e.target.value = "";
-    if (!file || !img) return;
-    if (!file.type.startsWith("image/")) {
-      toast.error(t("build_visual_replace_image"), { description: t("build_visual_image_type_error") });
+  function handleApplyVisualEdit(payload: VisualEditorSubmitPayload) {
+    const iframe = iframeRef.current;
+    const doc = iframe?.contentDocument;
+    const el = visualSelectedPrimaryRef.current;
+    if (!doc?.body || !el || el.ownerDocument !== doc) {
+      toast.error(t("build_visual_apply_failed"));
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      img.src = reader.result as string;
-    };
-    reader.readAsDataURL(file);
+    if (!payload.structured.updates.length) return;
+    applyVisualUpdatesToElement(el, payload.structured.element_type, payload.structured.updates);
+    setVisualSnapshot(buildLayoutSnapshot(el));
   }
+
+  const editorPanelLabels = useMemo(
+    () => ({
+      title: t("build_visual_editor_panel_title"),
+      empty: t("build_visual_editor_panel_empty"),
+      submit: t("build_visual_editor_submit"),
+      close: t("build_visual_editor_panel_close"),
+      fields: {
+        text: t("build_visual_field_text"),
+        color: t("build_visual_field_color"),
+        size: t("build_visual_field_size"),
+        alignment: t("build_visual_field_alignment"),
+        href: t("build_visual_field_href"),
+        icon: t("build_visual_field_icon"),
+        variant: t("build_visual_field_variant"),
+        src: t("build_visual_field_src"),
+        alt: t("build_visual_field_alt"),
+        width: t("build_visual_field_width"),
+        height: t("build_visual_field_height"),
+        borderRadius: t("build_visual_field_border_radius"),
+        backgroundImage: t("build_visual_field_background_image")
+      },
+      upload: t("build_visual_upload_image"),
+      uploading: t("build_visual_uploading"),
+      imageTypeError: t("build_visual_image_type_error")
+    }),
+    [t]
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col gap-2">
-      <input
-        ref={fileInputRef}
-        type="file"
-        className="sr-only"
-        accept="image/*"
-        aria-label={t("build_visual_replace_image")}
-        onChange={onImageFileChange}
-      />
-
       <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 px-2 py-1.5">
         {!isPptx
           ? isDocumentChrome
@@ -756,7 +537,7 @@ export function PreviewFrame({
             </Button>
           ) : null}
           {!isPptx ? (
-            <Button size="sm" variant="outline" className="h-8" onClick={() => window.open(previewUrl, "_blank")}>
+            <Button size="sm" variant="outline" className="h-8" type="button" onClick={openPreviewInNewTab}>
               <ExternalLink className="h-4 w-4" />
               {t("build_preview_open_tab")}
             </Button>
@@ -769,244 +550,6 @@ export function PreviewFrame({
           {t("build_visual_no_iframe_access")}
         </p>
       ) : null}
-      {visualEditMode && !isPptx && onVisualAgentEdit && visualPickLabel && visualPickInfo && !iframeBlocked ? (
-        <div className="shrink-0 rounded-lg border border-violet-300/50 bg-gradient-to-b from-violet-500/[0.06] to-background p-2 dark:border-violet-500/25">
-          {!visualAgentEditOpen ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="h-9 w-full gap-2 border-violet-200/80 bg-violet-500/10 text-foreground hover:bg-violet-500/15 dark:border-violet-500/30"
-              onClick={() => setVisualAgentEditOpen(true)}
-            >
-              <Sparkles className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
-              {t("build_visual_agent_edit")}
-            </Button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center gap-1.5">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-9 w-9 shrink-0"
-                  aria-label="Back"
-                  onClick={() => {
-                    setVisualAgentEditOpen(false);
-                    setVisualAgentEditText("");
-                  }}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <Input
-                  value={visualAgentEditText}
-                  onChange={(e) => setVisualAgentEditText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      submitVisualAgentEdit();
-                    }
-                  }}
-                  placeholder={t("build_visual_agent_placeholder")}
-                  className="h-9 min-w-0 flex-1 text-sm"
-                  autoFocus
-                />
-                <Button
-                  type="button"
-                  size="icon"
-                  className="h-9 w-9 shrink-0 bg-violet-600 text-white hover:bg-violet-500"
-                  aria-label="Send"
-                  onClick={() => submitVisualAgentEdit()}
-                >
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-              </div>
-              <p className="px-1 text-[10px] leading-snug text-muted-foreground">{t("build_visual_agent_hint")}</p>
-            </div>
-          )}
-        </div>
-      ) : null}
-      {visualEditMode && !isPptx && visualEditPersist && !iframeBlocked && visualQuickStyles ? (
-        <div className="shrink-0 rounded-md border border-border bg-muted/30 p-2">
-          <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-foreground">{t("build_visual_quick_styles")}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {t("build_visual_multi_select_hint")}
-                {visualSelectedCount > 0
-                  ? ` · ${t("build_visual_selected_count").replace("{count}", String(visualSelectedCount))}`
-                  : ""}
-              </p>
-            </div>
-            <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={resetQuickStyles}>
-              {t("build_visual_style_reset")}
-            </Button>
-          </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_padding")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.padding}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, padding: next } : prev));
-                  applyQuickStyle("padding", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="0"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_margin")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.margin}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, margin: next } : prev));
-                  applyQuickStyle("margin", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="0"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_radius")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.borderRadius}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, borderRadius: next } : prev));
-                  applyQuickStyle("borderRadius", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="0"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_border_width")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.borderWidth}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, borderWidth: next } : prev));
-                  applyQuickStyle("borderWidth", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="0"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_font_size")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.fontSize}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, fontSize: next } : prev));
-                  applyQuickStyle("fontSize", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="16"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_font_weight")}</span>
-              <select
-                value={visualQuickStyles.fontWeight}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, fontWeight: next } : prev));
-                  applyQuickStyle("fontWeight", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-              >
-                <option value="300">300</option>
-                <option value="400">400</option>
-                <option value="500">500</option>
-                <option value="600">600</option>
-                <option value="700">700</option>
-                <option value="800">800</option>
-              </select>
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_width")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.width}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, width: next } : prev));
-                  applyQuickStyle("width", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="auto"
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_height")}</span>
-              <input
-                inputMode="decimal"
-                value={visualQuickStyles.height}
-                onChange={(e) => {
-                  const next = e.target.value.replace(/[^\d.-]/g, "");
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, height: next } : prev));
-                  applyQuickStyle("height", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="auto"
-              />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_color")}</span>
-              <input
-                value={visualQuickStyles.color}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, color: next } : prev));
-                  applyQuickStyle("color", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="#111827 / rgb(17,24,39)"
-              />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_background")}</span>
-              <input
-                value={visualQuickStyles.backgroundColor}
-                onChange={(e) => {
-                  const next = e.target.value;
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, backgroundColor: next } : prev));
-                  applyQuickStyle("backgroundColor", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-                placeholder="#ffffff / rgba(255,255,255,.9)"
-              />
-            </label>
-            <label className="space-y-1 sm:col-span-2">
-              <span className="text-[11px] text-muted-foreground">{t("build_visual_style_text_align")}</span>
-              <select
-                value={visualQuickStyles.textAlign}
-                onChange={(e) => {
-                  const next = e.target.value as VisualQuickStyles["textAlign"];
-                  setVisualQuickStyles((prev) => (prev ? { ...prev, textAlign: next } : prev));
-                  applyQuickStyle("textAlign", next);
-                }}
-                className="h-8 w-full rounded-md border border-border bg-background px-2 text-xs"
-              >
-                <option value="left">{t("build_visual_align_left")}</option>
-                <option value="center">{t("build_visual_align_center")}</option>
-                <option value="right">{t("build_visual_align_right")}</option>
-                <option value="justify">{t("build_visual_align_justify")}</option>
-              </select>
-            </label>
-          </div>
-        </div>
-      ) : null}
-
       {isPptx ? (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 rounded-lg border border-border bg-muted/20 p-8 text-center">
           <Presentation className="h-16 w-16 text-primary/80" strokeWidth={1.25} />
@@ -1034,35 +577,19 @@ export function PreviewFrame({
           </div>
         </div>
       ) : (
-        <div
-          className={cn(
-            "flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border p-2",
-            isDocumentChrome ? "bg-zinc-200/70 dark:bg-zinc-900/60" : "bg-muted/20"
-          )}
-        >
-          {visualEditMode && puckEditorHref && !isDocumentChrome ? (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-1.5">
-              <div className="flex min-h-0 flex-1 flex-col gap-2 lg:flex-row lg:gap-3">
-                <div className={cn("relative min-h-[200px] min-w-0 flex-1 lg:min-h-0", modeStyles[deviceMode])}>
-                  <iframe
-                    ref={iframeRef}
-                    key={iframeSrc}
-                    src={iframeSrc}
-                    title="Lemnity Preview"
-                    className="absolute inset-0 h-full w-full rounded-md border-0 bg-background"
-                  />
-                </div>
-                <div className="relative flex min-h-[min(40vh,380px)] min-w-0 flex-1 flex-col border-t border-border pt-2 lg:min-h-0 lg:max-w-[min(100%,52%)] lg:border-l lg:border-t-0 lg:pl-3 lg:pt-0">
-                  <iframe
-                    key={`puck-embed-${sandboxId}-${puckIframeReloadKey}`}
-                    src={puckEditorHref}
-                    title={t("puck_page_title")}
-                    className="h-full min-h-[280px] w-full flex-1 rounded-md border-0 bg-background lg:min-h-0"
-                  />
-                </div>
-              </div>
-            </div>
-          ) : (
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+          {visualEditMode && !iframeBlocked && visualSelectedCount > 1 ? (
+            <p className="shrink-0 rounded-md border border-border/50 bg-muted/35 px-2 py-1.5 text-[11px] text-muted-foreground">
+              {t("build_visual_multi_select_hint")}{" "}
+              {t("build_visual_selected_count").replace("{count}", String(visualSelectedCount))}
+            </p>
+          ) : null}
+          <div
+            className={cn(
+              "relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border p-2",
+              isDocumentChrome ? "bg-zinc-200/70 dark:bg-zinc-900/60" : "bg-muted/20"
+            )}
+          >
             <div
               className={cn(
                 "relative min-h-0 flex-1",
@@ -1072,7 +599,7 @@ export function PreviewFrame({
             >
               <iframe
                 ref={iframeRef}
-                key={iframeSrc}
+                key={sandboxId}
                 src={iframeSrc}
                 title={isDocumentChrome ? "Lemnity Document" : "Lemnity Preview"}
                 className={cn(
@@ -1080,8 +607,25 @@ export function PreviewFrame({
                   isDocumentChrome ? "rounded-lg" : "rounded-md"
                 )}
               />
+              {visualEditMode && !iframeBlocked ? (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-2 sm:justify-end sm:p-4">
+                  <div className="pointer-events-auto flex w-full max-w-md flex-col gap-1.5">
+                    <ElementEditorPanel
+                      ref={visualEditorPanelRef}
+                      snapshot={visualSelectedCount <= 1 ? visualSnapshot : null}
+                      sandboxId={sandboxId}
+                      labels={editorPanelLabels}
+                      onSubmitPayload={handleApplyVisualEdit}
+                      onClose={handleDismissVisualEditor}
+                    />
+                    <p className="rounded-md border border-border/45 bg-background/92 px-2.5 py-1.5 text-center text-[10px] leading-snug text-muted-foreground shadow-md backdrop-blur-sm dark:bg-zinc-950/92">
+                      {t("build_visual_agent_hint")}
+                    </p>
+                  </div>
+                </div>
+              ) : null}
             </div>
-          )}
+          </div>
         </div>
       )}
     </div>

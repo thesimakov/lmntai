@@ -44,12 +44,6 @@ type RightPanelProps = {
   presentationExportsPaid?: boolean;
   /** Режим отдельного редактора документа (вкладка «Документ») */
   previewVariant?: "default" | "document";
-  /** Второй iframe с Puck при визуальном режиме (тот же URL, что кнопка Puck) */
-  puckEditorHref?: string | null;
-  /** Увеличить при новом превью той же песочницы — перезагрузка iframe Puck (актуальный puck.json). */
-  puckIframeReloadKey?: number;
-  /** Запрос в чат по выбранному в превью элементу (Lemnity AI) */
-  onVisualAgentEdit?: (message: string) => void;
   /** Плавающий шильдик «Сделано на Лемнити» (тариф Стандарт / пока не снят брендинг) */
   studioBrandingBadge?: boolean | null;
 };
@@ -214,9 +208,6 @@ export function RightPanel({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  puckEditorHref = null,
-  puckIframeReloadKey = 0,
-  onVisualAgentEdit,
   studioBrandingBadge = null
 }: RightPanelProps) {
   const previewFrame = previewUrl && sandboxId && (
@@ -233,9 +224,6 @@ export function RightPanel({
         presentationPdfExport={presentationPdfExport}
         presentationExportsPaid={presentationExportsPaid}
         previewVariant={previewVariant}
-        puckEditorHref={puckEditorHref}
-        puckIframeReloadKey={puckIframeReloadKey}
-        onVisualAgentEdit={onVisualAgentEdit}
       />
     </LemnityAiPreviewChrome>
   );

@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3001",
+    "dev:net": "next dev --hostname 0.0.0.0 -p 3001",
     "dev:3002": "next dev -p 3002",
-    "dev:clean": "rm -rf .next && next dev",
+    "dev:3030": "next dev -p 3030",
+    "dev:clean": "rm -rf .next && next dev -p 3001",
     "dev:clean:3002": "rm -rf .next && next dev -p 3002",
-    "dev:poll": "WATCHPACK_POLLING=true next dev",
+    "dev:poll": "WATCHPACK_POLLING=true next dev -p 3001",
     "build": "NODE_ENV=production next build",
     "build:clean": "rm -rf .next && next build",
     "start": "next start",
@@ -34,7 +36,9 @@
     "lemnity-ai:up": "bash scripts/lemnity-ai-stack-up.sh",
     "lemnity-ai:health": "bash scripts/lemnity-ai-stack-health.sh",
     "manus:up": "npm run lemnity-ai:up",
-    "manus:health": "npm run lemnity-ai:health"
+    "manus:health": "npm run lemnity-ai:health",
+    "debug:verify-session-log": "node scripts/check-debug-session-log.mjs",
+    "debug:verify-session-log:apply": "REQUIRE_APPLY=1 node scripts/check-debug-session-log.mjs"
   },
   "dependencies": {
     "@measured/puck": "^0.20.2",

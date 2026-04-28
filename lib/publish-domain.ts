@@ -32,6 +32,10 @@ export function getAppHosts(): Set<string> {
   if (fromAuth) out.add(fromAuth);
   out.add("localhost:3000");
   out.add("127.0.0.1:3000");
+  out.add("localhost:3001");
+  out.add("127.0.0.1:3001");
+  out.add("localhost:3030");
+  out.add("127.0.0.1:3030");
   out.add("localhost");
   out.add("127.0.0.1");
   return out;

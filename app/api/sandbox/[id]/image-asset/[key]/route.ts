@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
+import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -25,7 +26,7 @@ async function getSandboxImage(
 
   const guard = await requireDbUser();
   if (guard.ok) {
-    const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
+    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
     if (allowed) {
       return new Response(new Uint8Array(asset.data), { headers });
     }
