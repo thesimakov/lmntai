@@ -9,6 +9,8 @@ import {
   Link2,
   MousePointerClick,
   Send,
+  SquareStack,
+  Trash2,
   Type,
   Boxes,
   X
@@ -21,6 +23,7 @@ import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
 import { buildVisualEditorPayload } from "@/lib/editor/AICommandBuilder";
 import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
 import { ImageUploader } from "@/components/editor/ImageUploader";
+import { LmnyIconPicker } from "@/components/editor/LmnyIconPicker";
 
 type ElementEditorPanelLabels = {
   title: string;
@@ -35,6 +38,7 @@ type ElementEditorPanelLabels = {
     alignment: string;
     href: string;
     icon: string;
+    iconColor: string;
     variant: string;
     src: string;
     alt: string;
@@ -44,6 +48,19 @@ type ElementEditorPanelLabels = {
     /** URL фона блока (CSS background-image) */
     backgroundImage: string;
   };
+  /** Подписи варианта кнопки — в стиле shadcn/ui (`components/ui/button`). */
+  buttonVariantOptions: Array<{ value: string; label: string }>;
+  /** Подсказка над сеткой иконок LMNY */
+  iconLibraryHint: string;
+  /** Подпись поля произвольного URL иконки */
+  iconManualHint: string;
+  /** Очистить иконку (aria) */
+  iconClear: string;
+  /** Плейсхолдер поля цвета иконки (пусто = currentColor) */
+  iconColorPlaceholder: string;
+  /** Подписи кнопок структуры блока */
+  deleteBlock: string;
+  cloneBlock: string;
   upload: string;
   uploading: string;
   imageTypeError: string;
@@ -55,6 +72,10 @@ type ElementEditorPanelProps = {
   disabled?: boolean;
   labels: ElementEditorPanelLabels;
   onSubmitPayload: (payload: VisualEditorSubmitPayload) => void;
+  /** Удалить выбранный узел из DOM превью */
+  onDeleteBlock?: () => void;
+  /** Дублировать выбранный узел сразу после оригинала */
+  onCloneBlock?: () => void;
   /** Снять выделение в превью и скрыть поля редактирования */
   onClose?: () => void;
 };
@@ -94,7 +115,7 @@ function pickChanges(initial: Record<string, string>, cur: Record<string, string
 
 export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEditorPanelProps>(
   function ElementEditorPanel(
-    { snapshot, sandboxId, disabled, labels, onSubmitPayload, onClose },
+    { snapshot, sandboxId, disabled, labels, onSubmitPayload, onDeleteBlock, onCloneBlock, onClose },
     ref
   ) {
     const [fields, setFields] = useState<Record<string, string>>({});
@@ -269,25 +290,67 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
           <>
             <Field label={field("text")} value={fields.text ?? ""} onChange={set("text")} />
             <Field label={field("href")} value={fields.href ?? ""} onChange={set("href")} />
-            <Field label={field("icon")} value={fields.icon ?? ""} onChange={set("icon")} />
+            <div className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{field("icon")}</span>
+              <LmnyIconPicker
+                value={fields.icon ?? ""}
+                onChange={set("icon")}
+                disabled={disabled}
+                labels={{
+                  hint: labels.iconLibraryHint,
+                  clear: labels.iconClear,
+                  manualPlaceholder: labels.iconManualHint
+                }}
+              />
+            </div>
+            <ColorField
+              label={field("iconColor")}
+              value={fields.iconColor ?? ""}
+              onChange={set("iconColor")}
+              textPlaceholder={labels.iconColorPlaceholder}
+            />
           </>
         )}
 
         {snapshot.elementType === "button" && (
           <>
             <Field label={field("text")} value={fields.text ?? ""} onChange={set("text")} />
-            <Field label={field("icon")} value={fields.icon ?? ""} onChange={set("icon")} />
+            <div className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{field("icon")}</span>
+              <LmnyIconPicker
+                value={fields.icon ?? ""}
+                onChange={set("icon")}
+                disabled={disabled}
+                labels={{
+                  hint: labels.iconLibraryHint,
+                  clear: labels.iconClear,
+                  manualPlaceholder: labels.iconManualHint
+                }}
+              />
+            </div>
+            <ColorField
+              label={field("iconColor")}
+              value={fields.iconColor ?? ""}
+              onChange={set("iconColor")}
+              textPlaceholder={labels.iconColorPlaceholder}
+            />
             <ColorField label={field("color")} value={fields.color ?? ""} onChange={set("color")} />
             <div className="space-y-1">
               <span className="text-[11px] text-muted-foreground">{field("variant")}</span>
               <select
-                value={fields.variant ?? "default"}
+                value={
+                  labels.buttonVariantOptions.some((o) => o.value === (fields.variant ?? "default"))
+                    ? fields.variant ?? "default"
+                    : "default"
+                }
                 onChange={(e) => setFields((p) => ({ ...p, variant: e.target.value }))}
                 className="h-9 w-full rounded-md border border-border bg-background px-2 text-xs"
               >
-                <option value="default">default</option>
-                <option value="outline">outline</option>
-                <option value="ghost">ghost</option>
+                {labels.buttonVariantOptions.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </div>
           </>
@@ -329,10 +392,47 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
 
         {snapshot.elementType === "icon" && (
           <>
-            <Field label={field("icon")} value={fields.icon ?? ""} onChange={set("icon")} />
+            <div className="space-y-1">
+              <span className="text-[11px] text-muted-foreground">{field("icon")}</span>
+              <LmnyIconPicker
+                value={fields.icon ?? ""}
+                onChange={set("icon")}
+                disabled={disabled}
+                labels={{
+                  hint: labels.iconLibraryHint,
+                  clear: labels.iconClear,
+                  manualPlaceholder: labels.iconManualHint
+                }}
+              />
+            </div>
             <ColorField label={field("color")} value={fields.color ?? ""} onChange={set("color")} />
           </>
         )}
+      </div>
+
+      <div className="flex shrink-0 gap-2 border-t border-border/70 px-3 py-2 dark:border-zinc-800">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 flex-1 gap-1.5 text-xs"
+          disabled={disabled || !onCloneBlock}
+          onClick={() => onCloneBlock?.()}
+        >
+          <SquareStack className="h-3.5 w-3.5 shrink-0" />
+          {labels.cloneBlock}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 flex-1 gap-1.5 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={disabled || !onDeleteBlock}
+          onClick={() => onDeleteBlock?.()}
+        >
+          <Trash2 className="h-3.5 w-3.5 shrink-0" />
+          {labels.deleteBlock}
+        </Button>
       </div>
 
       <div className="shrink-0 border-t border-border/70 bg-muted/30 px-3 py-2.5 dark:bg-zinc-900/90">
@@ -397,13 +497,16 @@ function hexToRgbCss(hex: string): string {
 function ColorField({
   label,
   value,
-  onChange
+  onChange,
+  textPlaceholder
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
+  /** Подсказка в текстовом поле (например, «пусто = цвет текста»). */
+  textPlaceholder?: string;
 }) {
-  const hex = cssColorToHex(value ?? "");
+  const hex = value?.trim() ? cssColorToHex(value) : "#737373";
   return (
     <div className="space-y-1">
       <span className="text-[11px] text-muted-foreground">{label}</span>
@@ -417,6 +520,7 @@ function ColorField({
         />
         <Input
           value={value}
+          placeholder={textPlaceholder}
           onChange={(e) => onChange(e.target.value)}
           className="h-9 min-w-0 flex-1 font-mono text-xs"
         />

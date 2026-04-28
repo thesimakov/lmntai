@@ -14,10 +14,14 @@ import { Button } from "@/components/ui/button";
 import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
 import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
 import { applyVisualUpdatesToElement } from "@/lib/editor/apply-visual-updates";
-import { buildLayoutSnapshot, type LayoutElementSnapshot } from "@/lib/editor/layout-element";
+import { buildLayoutSnapshot, stripLmntElementIdsFromSubtree, type LayoutElementSnapshot } from "@/lib/editor/layout-element";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
-import { attachVisualPreviewEditor, serializeIframeDocument } from "@/lib/visual-preview-editor";
+import {
+  attachVisualPreviewEditor,
+  serializeIframeDocument,
+  type VisualPreviewEditorHandle
+} from "@/lib/visual-preview-editor";
 import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -79,7 +83,7 @@ export function PreviewFrame({
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const visualEditorPanelRef = useRef<ElementEditorPanelHandle | null>(null);
-  const visualEditorHandleRef = useRef<{ detach: () => void; clearSelection: () => void } | null>(null);
+  const visualEditorHandleRef = useRef<VisualPreviewEditorHandle | null>(null);
   const visualSelectedPrimaryRef = useRef<Element | null>(null);
 
   const isPptx = isPptxArtifact(mimeType);
@@ -387,12 +391,60 @@ export function PreviewFrame({
     setVisualSnapshot(buildLayoutSnapshot(el));
   }
 
+  function handleVisualDeleteBlock() {
+    const doc = iframeRef.current?.contentDocument;
+    const el = visualSelectedPrimaryRef.current;
+    if (!doc?.body || !el || el.ownerDocument !== doc) {
+      toast.error(t("build_visual_apply_failed"));
+      return;
+    }
+    const tag = el.tagName.toUpperCase();
+    if (tag === "BODY" || tag === "HTML") {
+      toast.error(t("build_visual_cannot_delete_root"));
+      return;
+    }
+    visualEditorPanelRef.current?.flushPendingApply();
+    el.remove();
+    visualSelectedPrimaryRef.current = null;
+    visualEditorHandleRef.current?.clearSelection();
+    setVisualSnapshot(null);
+    setVisualSelectedCount(0);
+    toast.success(t("build_visual_block_deleted"));
+  }
+
+  function handleVisualCloneBlock() {
+    const doc = iframeRef.current?.contentDocument;
+    const el = visualSelectedPrimaryRef.current;
+    if (!doc?.body || !el || el.ownerDocument !== doc) {
+      toast.error(t("build_visual_apply_failed"));
+      return;
+    }
+    const tag = el.tagName.toUpperCase();
+    if (tag === "BODY" || tag === "HTML") {
+      toast.error(t("build_visual_cannot_clone_root"));
+      return;
+    }
+    const parent = el.parentNode;
+    if (!parent) {
+      toast.error(t("build_visual_clone_failed"));
+      return;
+    }
+    visualEditorPanelRef.current?.flushPendingApply();
+    const clone = el.cloneNode(true) as Element;
+    stripLmntElementIdsFromSubtree(clone);
+    parent.insertBefore(clone, el.nextSibling);
+    visualEditorHandleRef.current?.selectElement(clone);
+    toast.success(t("build_visual_block_cloned"));
+  }
+
   const editorPanelLabels = useMemo(
     () => ({
       title: t("build_visual_editor_panel_title"),
       empty: t("build_visual_editor_panel_empty"),
       submit: t("build_visual_editor_submit"),
       close: t("build_visual_editor_panel_close"),
+      deleteBlock: t("build_visual_delete_block"),
+      cloneBlock: t("build_visual_clone_block"),
       fields: {
         text: t("build_visual_field_text"),
         color: t("build_visual_field_color"),
@@ -400,6 +452,7 @@ export function PreviewFrame({
         alignment: t("build_visual_field_alignment"),
         href: t("build_visual_field_href"),
         icon: t("build_visual_field_icon"),
+        iconColor: t("build_visual_field_icon_color"),
         variant: t("build_visual_field_variant"),
         src: t("build_visual_field_src"),
         alt: t("build_visual_field_alt"),
@@ -408,6 +461,18 @@ export function PreviewFrame({
         borderRadius: t("build_visual_field_border_radius"),
         backgroundImage: t("build_visual_field_background_image")
       },
+      buttonVariantOptions: [
+        { value: "default", label: t("build_visual_variant_opt_default") },
+        { value: "destructive", label: t("build_visual_variant_opt_destructive") },
+        { value: "outline", label: t("build_visual_variant_opt_outline") },
+        { value: "secondary", label: t("build_visual_variant_opt_secondary") },
+        { value: "ghost", label: t("build_visual_variant_opt_ghost") },
+        { value: "link", label: t("build_visual_variant_opt_link") }
+      ],
+      iconLibraryHint: t("build_visual_icon_library_hint"),
+      iconManualHint: t("build_visual_icon_manual_hint"),
+      iconClear: t("build_visual_icon_clear"),
+      iconColorPlaceholder: t("build_visual_icon_color_placeholder"),
       upload: t("build_visual_upload_image"),
       uploading: t("build_visual_uploading"),
       imageTypeError: t("build_visual_image_type_error")
@@ -616,6 +681,8 @@ export function PreviewFrame({
                       sandboxId={sandboxId}
                       labels={editorPanelLabels}
                       onSubmitPayload={handleApplyVisualEdit}
+                      onDeleteBlock={handleVisualDeleteBlock}
+                      onCloneBlock={handleVisualCloneBlock}
                       onClose={handleDismissVisualEditor}
                     />
                     <p className="rounded-md border border-border/45 bg-background/92 px-2.5 py-1.5 text-center text-[10px] leading-snug text-muted-foreground shadow-md backdrop-blur-sm dark:bg-zinc-950/92">

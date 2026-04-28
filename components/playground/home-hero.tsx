@@ -1,15 +1,12 @@
 "use client";
 
 import {
-  Activity,
   AppWindow,
   ArrowUp,
-  BookOpen,
   Building2,
   ChevronRight,
   Clock,
   Code2,
-  Coffee,
   FileText,
   Globe,
   IdCard,
@@ -19,7 +16,6 @@ import {
   Plus,
   Presentation,
   ShoppingCart,
-  Sparkles,
   X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -40,7 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { PLAYGROUND_QUICK_TEMPLATES } from "@/lib/playground-templates";
+import { BuildTemplateCatalogGrid, type BuildTemplateRow } from "@/components/playground/build-template-dialog-body";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -163,13 +159,6 @@ function isProjectKindComingSoon(id: ActionCategory): boolean {
   return id !== "website";
 }
 
-const TEMPLATE_CARD_ICONS: Record<string, typeof Sparkles> = {
-  saas: Sparkles,
-  course: BookOpen,
-  fitness: Activity,
-  cafe: Coffee
-};
-
 type HomeHeroProps = {
   username: string;
   idea: string;
@@ -179,6 +168,12 @@ type HomeHeroProps = {
   onSubmit: () => void;
   /** Сообщить родителю выбранный тип (projectKind для Lemnity AI). */
   onActiveCategoryChange?: (category: HomeHeroActionCategory | null) => void;
+  /** Slug выбранного макета из каталога (подсветка карточки). */
+  selectedBuildTemplateSlug?: string | null;
+  /** Выбор строки каталога `/api/build-templates`. */
+  onSelectBuildTemplate?: (row: BuildTemplateRow | null) => void;
+  /** Клик по макету в каталоге: сразу открыть песочницу (`/playground/build`), без второго нажатия «Отправить». */
+  onCatalogTemplateLaunch?: (row: BuildTemplateRow) => void;
   disabled?: boolean;
 };
 
@@ -190,6 +185,9 @@ export function HomeHero({
   onSelectTemplate,
   onSubmit,
   onActiveCategoryChange,
+  selectedBuildTemplateSlug = null,
+  onSelectBuildTemplate,
+  onCatalogTemplateLaunch,
   disabled
 }: HomeHeroProps) {
   const { t } = useI18n();
@@ -217,17 +215,6 @@ export function HomeHero({
     [t]
   );
 
-  const templates = useMemo(
-    () =>
-      PLAYGROUND_QUICK_TEMPLATES.map((d) => ({
-        id: d.id,
-        title: t(d.titleKey),
-        value: t(d.valueKey),
-        defaultCategory: d.defaultCategory
-      })),
-    [t]
-  );
-
   const canSubmit = useMemo(() => idea.trim().length > 0 && !disabled, [disabled, idea]);
   const [activeCategory, setActiveCategory] = useState<ActionCategory | null>(null);
   const websiteTypesScrollRef = useRef<HTMLDivElement>(null);
@@ -241,8 +228,30 @@ export function HomeHero({
   }
   const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
   const [tab, setTab] = useState<"templates" | "recent">("templates");
+  const [buildCatalogLoading, setBuildCatalogLoading] = useState(false);
+  const [buildCatalogList, setBuildCatalogList] = useState<BuildTemplateRow[]>([]);
   const [refDialogOpen, setRefDialogOpen] = useState(false);
   const [refUrlDraft, setRefUrlDraft] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    setBuildCatalogLoading(true);
+    void fetch("/api/build-templates", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.resolve(null)))
+      .then((d: { templates?: BuildTemplateRow[] } | null) => {
+        if (cancelled || !d?.templates || !Array.isArray(d.templates)) return;
+        setBuildCatalogList(d.templates);
+      })
+      .catch(() => {
+        // ignore
+      })
+      .finally(() => {
+        if (!cancelled) setBuildCatalogLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function openReferenceDialog() {
     setRefUrlDraft(parseExistingReferenceUrl(idea));
@@ -568,47 +577,29 @@ export function HomeHero({
           </TabsList>
 
           <TabsContent value="templates" className="mt-0 focus-visible:outline-none">
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {templates.map((tpl) => {
-                const CardIcon = TEMPLATE_CARD_ICONS[tpl.id] ?? LayoutTemplate;
-                return (
-                  <button
-                    key={tpl.id}
-                    type="button"
-                    onClick={() => {
-                      onSelectTemplate(tpl.value);
-                      setActiveCategory(tpl.defaultCategory);
-                      setTab("templates");
-                    }}
-                    className={cn(
-                      "group relative w-full text-left transition-all duration-200",
-                      "rounded-2xl border border-border/50 bg-gradient-to-b from-background/90 to-muted/15",
-                      "p-3.5 shadow-sm",
-                      "hover:-translate-y-0.5 hover:border-violet-500/25 hover:shadow-md hover:shadow-violet-500/5",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      "dark:from-zinc-900/90 dark:to-zinc-950/50 dark:hover:border-violet-400/30 dark:hover:shadow-violet-900/20"
-                    )}
-                  >
-                    <div className="flex gap-3">
-                      <div
-                        className={cn(
-                          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
-                          "bg-gradient-to-br from-violet-500/15 to-cyan-500/10 text-violet-600 dark:from-violet-500/25 dark:to-fuchsia-500/10 dark:text-violet-300"
-                        )}
-                      >
-                        <CardIcon className="h-5 w-5" strokeWidth={1.75} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-start justify-between gap-2">
-                          <span className="text-pretty text-sm font-semibold text-foreground">{tpl.title}</span>
-                          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50 transition group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
-                        </div>
-                        <p className="mt-1 text-pretty text-xs leading-relaxed text-muted-foreground">{tpl.value}</p>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                {t("playground_templates_catalog_heading")}
+              </h3>
+              <BuildTemplateCatalogGrid
+                t={t}
+                templateListLoading={buildCatalogLoading}
+                templateList={buildCatalogList}
+                selectedSlug={selectedBuildTemplateSlug}
+                gridClassName="grid-cols-1 content-start items-start gap-3 sm:grid-cols-2 sm:gap-3"
+                onPick={(row) => {
+                  if (disabled) return;
+                  if (onCatalogTemplateLaunch) {
+                    onCatalogTemplateLaunch(row);
+                    return;
+                  }
+                  onSelectBuildTemplate?.(row);
+                  const seed = row.defaultUserPrompt?.trim() ? row.defaultUserPrompt.trim() : row.name.trim() || row.slug;
+                  onIdeaChange(seed);
+                  setActiveCategory("website");
+                  setTab("templates");
+                }}
+              />
             </div>
           </TabsContent>
 

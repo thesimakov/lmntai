@@ -34,6 +34,10 @@ const NON_TEXT_TAGS = new Set([
 
 const PICK_SKIP_TAGS = new Set(["HTML", "BODY", "HEAD", "SCRIPT", "STYLE", "META", "LINK", "TITLE", "NOSCRIPT"]);
 
+/** Ссылки и кнопки: отдельный выбор + блокировка навигации в режиме визреда. */
+const ACTIONABLE_SELECTOR =
+  'a[href], button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"], input[type="image"], area[href], [role="link"][href]';
+
 const SVG_NS = "http://www.w3.org/2000/svg";
 
 const TEXT_HOST_TAGS = new Set([
@@ -122,6 +126,35 @@ function viewportPointForVisualPick(ev: PointerEvent | MouseEvent, doc: Document
   return { x: ev.clientX, y: ev.clientY };
 }
 
+function isActionableInteractive(el: Element): boolean {
+  const tag = el.tagName;
+  if (tag === "A") {
+    const href = (el as HTMLAnchorElement).getAttribute("href");
+    return Boolean(
+      href &&
+        href.trim() !== "" &&
+        href !== "#" &&
+        !href.trim().toLowerCase().startsWith("javascript:")
+    );
+  }
+  if (tag === "BUTTON") return true;
+  if (tag === "INPUT") {
+    const type = ((el as HTMLInputElement).type || "text").toLowerCase();
+    return type === "button" || type === "submit" || type === "reset" || type === "image";
+  }
+  if (tag === "AREA") {
+    const href = (el as HTMLAreaElement).getAttribute("href");
+    return Boolean(href && href.trim() !== "");
+  }
+  const role = el.getAttribute("role");
+  if (role === "button") return true;
+  if (role === "link") {
+    const href = el.getAttribute("href");
+    return Boolean(href && href.trim() !== "" && href !== "#");
+  }
+  return false;
+}
+
 function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Element | null {
   let stack: unknown[];
   try {
@@ -139,6 +172,12 @@ function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Elem
   for (const node of stack) {
     if (!isElementNode(node)) continue;
     if (node.namespaceURI === SVG_NS && node.tagName.toLowerCase() === "image") return node as Element;
+  }
+
+  for (const node of stack) {
+    if (!isElementNode(node)) continue;
+    const hit = (node as Element).closest?.(ACTIONABLE_SELECTOR);
+    if (hit && isActionableInteractive(hit)) return hit;
   }
 
   // Иначе meaningful() выберет DIV-обёртку из‑за querySelector("svg") — берём верхний узел внутри svg (path, g…).
@@ -224,6 +263,8 @@ export type VisualPreviewEditorHandle = {
   detach: () => void;
   /** Снять выделение в iframe и обновить overlay/React-состояние через onSelectionChange. */
   clearSelection: () => void;
+  /** Выбрать узел программно (должен принадлежать тому же `document`, что и редактор). */
+  selectElement: (el: Element | null) => void;
 };
 
 export function attachVisualPreviewEditor(
@@ -234,7 +275,8 @@ export function attachVisualPreviewEditor(
   if (!body) {
     return {
       detach: () => {},
-      clearSelection: () => {}
+      clearSelection: () => {},
+      selectElement: () => {}
     };
   }
 
@@ -387,11 +429,26 @@ export function attachVisualPreviewEditor(
     setSingleSelected(pick);
   }
 
+  function onClickCapture(ev: MouseEvent) {
+    const el = eventTargetToElement(ev.target);
+    if (!el) return;
+    const actionable = el.closest(ACTIONABLE_SELECTOR);
+    if (actionable && isActionableInteractive(actionable)) {
+      ev.preventDefault();
+      ev.stopPropagation();
+    }
+  }
+
+  doc.addEventListener("click", onClickCapture, true);
+  doc.addEventListener("auxclick", onClickCapture, true);
+
   doc.addEventListener("pointermove", onPointerMove, true);
   doc.addEventListener("pointerdown", onPointerDown, true);
 
   function detachImpl() {
     cancelAnimationFrame(rafHover);
+    doc.removeEventListener("click", onClickCapture, true);
+    doc.removeEventListener("auxclick", onClickCapture, true);
     doc.removeEventListener("pointermove", onPointerMove, true);
     doc.removeEventListener("pointerdown", onPointerDown, true);
     overlay.destroy();
@@ -407,7 +464,23 @@ export function attachVisualPreviewEditor(
 
   return {
     detach: detachImpl,
-    clearSelection: clearSelected
+    clearSelection: clearSelected,
+    selectElement(el: Element | null) {
+      if (el == null) {
+        clearSelected();
+        return;
+      }
+      if (el.ownerDocument !== doc || !body.contains(el)) {
+        clearSelected();
+        return;
+      }
+      const normalized = normalizePickTarget(doc, el);
+      if (!normalized) {
+        clearSelected();
+        return;
+      }
+      setSingleSelected(normalized);
+    }
   };
 }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Copy, ExternalLink, Link as LinkIcon, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Copy, ExternalLink, Link as LinkIcon, Lock, Server } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -85,6 +85,7 @@ export function BuildPublishDialog({
 }: BuildPublishDialogProps) {
   const [subdomain, setSubdomain] = useState("");
   const [customDomainOpen, setCustomDomainOpen] = useState(false);
+  const [ownServerProxyOpen, setOwnServerProxyOpen] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
   const [bindingPending, setBindingPending] = useState(false);
   const [verificationInfo, setVerificationInfo] = useState<VerificationInfo | null>(null);
@@ -189,157 +190,235 @@ export function BuildPublishDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl rounded-3xl p-0 sm:max-w-xl" showCloseButton={false}>
-        <DialogHeader className="gap-1 border-b px-6 py-5 text-left">
-          <DialogTitle className="text-3xl font-semibold">Публикация</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground">
-            Настройте адрес, опубликуйте превью и используйте команды для подключения домена.
+      <DialogContent
+        className="flex max-h-[min(92vh,700px)] w-full max-w-lg flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-lg"
+        showCloseButton={false}
+      >
+        <DialogHeader className="shrink-0 gap-1 border-b border-border/80 px-5 py-4 text-left">
+          <DialogTitle className="text-xl font-semibold leading-tight sm:text-2xl">Публикация</DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
+            Укажите адрес и опубликуйте. Свой домен и Nginx на VPS — по необходимости ниже.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6 px-6 py-5">
-          <section className="space-y-2">
-            <p className="text-sm font-semibold">Адрес сайта</p>
-            <p className="text-sm text-muted-foreground">Введите поддомен для публикации.</p>
-            <div className="flex items-center gap-2 rounded-2xl border bg-muted/20 p-2">
-              <div className="flex min-h-12 flex-1 items-center rounded-xl border bg-background px-3">
-                <span className="shrink-0 text-xl text-muted-foreground">https://</span>
-                <Input
-                  value={cleanSubdomain}
-                  onChange={(e) => setSubdomain(e.target.value)}
-                  className="h-auto border-0 bg-transparent px-1 py-0 text-3xl font-medium shadow-none focus-visible:ring-0"
-                  spellCheck={false}
-                  autoCapitalize="off"
-                  autoCorrect="off"
-                />
-                <span className="shrink-0 text-3xl text-muted-foreground">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-12 w-12 rounded-xl p-0"
-                onClick={() => void copyValue(`https://${defaultHost}`, "Адрес публикации скопирован")}
-                aria-label="Скопировать адрес"
-              >
-                <Copy className="h-5 w-5" />
-              </Button>
-            </div>
-          </section>
-
-          <section className="space-y-2 border-t pt-4">
-            <button
-              type="button"
-              className="flex w-full items-center justify-between rounded-lg px-1 py-1 text-left"
-              onClick={() => setCustomDomainOpen((v) => !v)}
+        <div className="min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain px-5 py-4 [scrollbar-gutter:stable]">
+          {/* Шаг 1 — адрес */}
+          <section className="flex gap-3.5 pb-5">
+            <div
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
+              aria-hidden
             >
-              <span className="inline-flex items-center gap-2 text-2xl font-semibold">
-                <LinkIcon className="h-5 w-5 text-muted-foreground" />
-                Свой домен
-                <Lock className="h-5 w-5 text-muted-foreground" />
-              </span>
-              {customDomainOpen ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-            </button>
-
-            {customDomainOpen ? (
-              hasCustomDomainAccess ? (
-                <div className="rounded-2xl border bg-muted/20 p-4">
-                  <p className="text-sm font-medium">Домен Pro/Team</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    Укажите свой домен (например, `app.your-company.com`). Сейчас настройка выполняется вручную командами ниже.
-                  </p>
-                  <Input
-                    value={customDomain}
-                    onChange={(e) => setCustomDomain(e.target.value)}
-                    placeholder="app.your-company.com"
-                    className="mt-3"
-                  />
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-amber-300/80 bg-amber-50/70 p-4 dark:border-amber-700/50 dark:bg-amber-950/20">
-                  <p className="text-lg font-semibold text-amber-900 dark:text-amber-200">Недоступно в бесплатном тарифе</p>
-                  <p className="mt-1 text-base text-amber-800 dark:text-amber-300">
-                    Подключите свой домен с тарифом Pro или Team.
-                  </p>
-                  <Button
-                    type="button"
-                    className="mt-3 bg-amber-500 text-white hover:bg-amber-600"
-                    onClick={() => {
-                      if (typeof window !== "undefined") window.location.href = "/pricing";
-                    }}
-                  >
-                    Перейти на Pro
-                  </Button>
-                </div>
-              )
-            ) : null}
-          </section>
-
-          <section className="space-y-2 border-t pt-4">
-            <div className="flex items-center justify-between gap-2">
+              1
+            </div>
+            <div className="min-w-0 flex-1 space-y-2.5">
               <div>
-                <p className="text-sm font-semibold">Команды для подключения домена</p>
-                <p className="text-xs text-muted-foreground">Хост: {publishHost}</p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => void copyValue(nginxCommands, "Команды скопированы")}
-              >
-                <Copy className="mr-1.5 h-4 w-4" />
-                Копировать
-              </Button>
-            </div>
-            <pre
-              className={cn(
-                "max-h-56 overflow-auto rounded-xl border bg-muted/20 p-3",
-                "text-xs leading-relaxed text-foreground"
-              )}
-            >
-              {nginxCommands}
-            </pre>
-          </section>
-
-          {verificationInfo?.status === "PENDING" && verificationInfo.recordName && verificationInfo.recordValue ? (
-            <section className="space-y-2 border-t pt-4">
-              <p className="text-sm font-semibold">Подтверждение домена (TXT)</p>
-              <p className="text-xs text-muted-foreground">
-                Добавьте DNS-запись и дождитесь обновления. После этого нажмите «Проверить домен».
-              </p>
-              <div className="rounded-xl border bg-muted/20 p-3 text-xs">
-                <p>
-                  <b>Type:</b> TXT
-                </p>
-                <p>
-                  <b>Name:</b> {verificationInfo.recordName}
-                </p>
-                <p className="break-all">
-                  <b>Value:</b> {verificationInfo.recordValue}
+                <p className="text-base font-medium leading-tight">Адрес сайта</p>
+                <p className="mt-1 text-sm leading-snug text-muted-foreground">
+                  Поддомен на <span className="font-medium text-foreground/80">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span>
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex items-stretch gap-2">
+                <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-lg border border-border bg-muted/30 px-3">
+                  <span className="shrink-0 text-sm text-muted-foreground">https://</span>
+                  <Input
+                    value={cleanSubdomain}
+                    onChange={(e) => setSubdomain(e.target.value)}
+                    className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-base font-semibold shadow-none focus-visible:ring-0"
+                    spellCheck={false}
+                    autoCapitalize="off"
+                    autoCorrect="off"
+                    aria-label="Поддомен"
+                  />
+                  <span className="shrink-0 truncate text-sm text-muted-foreground">
+                    .{PUBLISH_BUILTIN_BASE_DOMAIN}
+                  </span>
+                </div>
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => void copyValue(verificationInfo.recordValue!, "TXT-значение скопировано")}
+                  size="icon"
+                  className="h-11 w-11 shrink-0"
+                  onClick={() => void copyValue(`https://${defaultHost}`, "Адрес публикации скопирован")}
+                  aria-label="Скопировать адрес"
                 >
-                  Скопировать value
-                </Button>
-                <Button type="button" onClick={() => void verifyDomainNow()} disabled={bindingPending}>
-                  Проверить домен
+                  <Copy className="h-4 w-4" />
                 </Button>
               </div>
-            </section>
+            </div>
+          </section>
+
+          <div className="border-t border-border/60" />
+
+          {/* Шаг 2 — свой домен (опционально) */}
+          <section className="py-4">
+            <div className="flex gap-3.5">
+              <div
+                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground"
+                aria-hidden
+              >
+                2
+              </div>
+              <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pr-1 text-left transition-colors hover:bg-muted/40"
+                  onClick={() => setCustomDomainOpen((v) => !v)}
+                >
+                  <span className="inline-flex min-w-0 items-center gap-2 text-base font-medium">
+                    <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="truncate">Свой домен</span>
+                    <Lock className="h-4 w-4 shrink-0 text-muted-foreground opacity-70" />
+                  </span>
+                  {customDomainOpen ? (
+                    <ChevronUp className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  )}
+                </button>
+
+                {customDomainOpen ? (
+                  <div className="mt-3 space-y-2">
+                    {hasCustomDomainAccess ? (
+                      <div className="rounded-lg border border-border/80 bg-muted/20 px-3.5 py-3">
+                        <p className="text-sm leading-relaxed text-muted-foreground">
+                          Pro/Team: укажите хост (например{" "}
+                          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">app.example.com</code>
+                          ). Ниже — команды для этого хоста.
+                        </p>
+                        <Input
+                          value={customDomain}
+                          onChange={(e) => setCustomDomain(e.target.value)}
+                          placeholder="app.your-company.com"
+                          className="mt-3 h-10 text-sm"
+                        />
+                      </div>
+                    ) : (
+                      <div className="rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3.5 py-3 dark:border-amber-500/25 dark:bg-amber-500/10">
+                        <p className="text-sm font-medium text-amber-950 dark:text-amber-100">Только Pro / Team</p>
+                        <p className="mt-1.5 text-sm leading-snug text-amber-900/85 dark:text-amber-200/90">
+                          Свой домен недоступен на бесплатном тарифе.
+                        </p>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="mt-3 h-9 bg-amber-600 text-white hover:bg-amber-500"
+                          onClick={() => {
+                            if (typeof window !== "undefined") window.location.href = "/pricing";
+                          }}
+                        >
+                          Тарифы
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
+          <div className="border-t border-border/60" />
+
+          {/* Свой VPS + Nginx — для большинства пользователей не нужно */}
+          <section className="py-3 pb-2">
+            <button
+              type="button"
+              className="flex w-full items-start justify-between gap-2 rounded-lg py-2 pr-1 text-left transition-colors hover:bg-muted/40"
+              onClick={() => setOwnServerProxyOpen((v) => !v)}
+            >
+              <div className="min-w-0">
+                <span className="inline-flex items-center gap-2 text-base font-medium">
+                  <Server className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  Свой сервер (Nginx)
+                </span>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  Не нужно для адреса на <span className="whitespace-nowrap">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span> — только
+                  если проксируете домен на свой VPS.
+                </p>
+              </div>
+              {ownServerProxyOpen ? (
+                <ChevronUp className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" />
+              )}
+            </button>
+
+            {ownServerProxyOpen ? (
+              <div className="mt-3 space-y-2 border-l-2 border-border/80 pl-3.5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Пример конфигурации</p>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">{publishHost}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 shrink-0 gap-1.5 text-sm"
+                    onClick={() => void copyValue(nginxCommands, "Команды скопированы")}
+                  >
+                    <Copy className="h-4 w-4" />
+                    Копировать
+                  </Button>
+                </div>
+                <pre
+                  className={cn(
+                    "max-h-[min(28vh,220px)] overflow-auto rounded-lg border border-border/80 bg-muted/25 p-3",
+                    "text-xs leading-relaxed text-foreground"
+                  )}
+                >
+                  {nginxCommands}
+                </pre>
+              </div>
+            ) : null}
+          </section>
+
+          {verificationInfo?.status === "PENDING" && verificationInfo.recordName && verificationInfo.recordValue ? (
+            <>
+              <div className="border-t border-border/60" />
+              <section className="space-y-2.5 pt-4">
+                <p className="text-sm font-semibold">TXT для подтверждения домена</p>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Добавьте запись в DNS, подождите распространение, затем «Проверить домен».
+                </p>
+                <div className="grid gap-2 rounded-lg border border-border/80 bg-muted/20 p-3 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Type</span> <span className="font-medium">TXT</span>
+                  </p>
+                  <p className="break-all">
+                    <span className="text-muted-foreground">Name</span>{" "}
+                    <span className="font-mono">{verificationInfo.recordName}</span>
+                  </p>
+                  <p className="break-all">
+                    <span className="text-muted-foreground">Value</span>{" "}
+                    <span className="font-mono">{verificationInfo.recordValue}</span>
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 text-sm"
+                    onClick={() => void copyValue(verificationInfo.recordValue!, "TXT-значение скопировано")}
+                  >
+                    Скопировать value
+                  </Button>
+                  <Button type="button" size="sm" className="h-9 text-sm" onClick={() => void verifyDomainNow()} disabled={bindingPending}>
+                    Проверить домен
+                  </Button>
+                </div>
+              </section>
+            </>
           ) : null}
         </div>
 
-        <DialogFooter className="border-t px-6 py-4 sm:justify-between">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="shrink-0 flex-col-reverse gap-2 border-t border-border/80 px-5 py-4 sm:flex-row sm:justify-between sm:gap-3">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>
             Отмена
           </Button>
           <Button
             type="button"
-            className="gap-1.5"
+            className="w-full gap-2 sm:w-auto"
             disabled={publishPending || bindingPending}
             onClick={async () => {
               const result = await bindPublishHostBeforeOpen();

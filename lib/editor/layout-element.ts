@@ -18,6 +18,12 @@ export type LayoutElementSnapshot = {
   initialFields: Record<string, string>;
 };
 
+/** У клона убираем стабильные id, чтобы не дублировать идентификаторы агента. */
+export function stripLmntElementIdsFromSubtree(root: Element): void {
+  root.removeAttribute(LMNT_ATTR_ELEMENT_ID);
+  root.querySelectorAll(`[${LMNT_ATTR_ELEMENT_ID}]`).forEach((n) => n.removeAttribute(LMNT_ATTR_ELEMENT_ID));
+}
+
 const TEXT_LIKE = new Set([
   "P",
   "H1",
@@ -40,6 +46,17 @@ const TEXT_LIKE = new Set([
 ]);
 
 const SVG_NS = "http://www.w3.org/2000/svg";
+
+const VE_INLINE_ICON_SEL = "[data-ve-icon]";
+
+/** URL иконки: `data-icon` или устаревший `img[data-ve-icon]`. */
+function readDataIconFromElement(el: Element): string {
+  const fromAttr = el.getAttribute("data-icon")?.trim() ?? "";
+  if (fromAttr) return fromAttr;
+  const ve = el.querySelector(VE_INLINE_ICON_SEL);
+  if (ve?.tagName === "IMG") return (ve as HTMLImageElement).getAttribute("src")?.trim() ?? "";
+  return "";
+}
 
 /** Растровый `<image>` внутри SVG (не HTML `<img>`). */
 export function resolveSvgRasterImage(el: Element): SVGImageElement | null {
@@ -126,6 +143,16 @@ export function computeLayoutPath(el: Element, root: Element | Document): string
   return `Page / ${joined}`;
 }
 
+function inferShadcnButtonVariantFromClasses(className: string): string {
+  const c = className.toLowerCase();
+  if (c.includes("destructive")) return "destructive";
+  if (c.includes("secondary")) return "secondary";
+  if (c.includes("outline")) return "outline";
+  if (c.includes("ghost")) return "ghost";
+  if (/\blink\b/.test(c) || (c.includes("underline") && c.includes("text-primary"))) return "link";
+  return "default";
+}
+
 function inferKind(el: Element): LayoutElementKind {
   const fromAttr = el.getAttribute(LMNT_ATTR_ELEMENT_TYPE)?.trim().toLowerCase();
   if (
@@ -141,7 +168,12 @@ function inferKind(el: Element): LayoutElementKind {
   if (resolveSvgRasterImage(el)) return "image";
   if (resolveRasterHtmlImg(el)) return "image";
   const tag = el.tagName.toUpperCase();
+  if (el.getAttribute("role") === "button") return "button";
   if (tag === "BUTTON") return "button";
+  if (tag === "INPUT") {
+    const type = ((el as HTMLInputElement).type || "text").toLowerCase();
+    if (type === "button" || type === "submit" || type === "reset" || type === "image") return "button";
+  }
   if (tag === "A") return "link";
   if (tag === "SVG" || el.closest("svg")) return "icon";
   if (TEXT_LIKE.has(tag)) return "text";
@@ -247,17 +279,22 @@ export function buildLayoutSnapshot(el: Element): LayoutElementSnapshot | null {
     const a = el as HTMLAnchorElement;
     initialFields.text = el.textContent?.trim().replace(/\s+/g, " ") ?? "";
     initialFields.href = a.href || el.getAttribute("href") || "";
-    initialFields.icon = el.getAttribute("data-icon")?.trim() ?? "";
+    initialFields.icon = readDataIconFromElement(el);
+    initialFields.iconColor = el.getAttribute("data-icon-color")?.trim() ?? "";
     propsPreview.href = initialFields.href;
     propsPreview.text = initialFields.text.slice(0, 120);
   } else if (el.tagName === "BUTTON" || elementType === "button") {
-    initialFields.text = el.textContent?.trim().replace(/\s+/g, " ") ?? "";
-    initialFields.icon = el.getAttribute("data-icon")?.trim() ?? "";
+    const input = el.tagName === "INPUT" ? (el as HTMLInputElement) : null;
+    initialFields.text = input
+      ? (input.value || input.getAttribute("value") || "").trim()
+      : (el.textContent?.trim().replace(/\s+/g, " ") ?? "");
+    initialFields.icon = readDataIconFromElement(el);
+    initialFields.iconColor = el.getAttribute("data-icon-color")?.trim() ?? "";
     const cs = el.ownerDocument.defaultView?.getComputedStyle(el);
     initialFields.color = cs?.color ?? "";
     initialFields.variant =
       el.getAttribute("data-variant")?.trim() ||
-      (el.className.includes("outline") ? "outline" : el.className.includes("ghost") ? "ghost" : "default");
+      inferShadcnButtonVariantFromClasses(typeof el.className === "string" ? el.className : "");
     propsPreview.text = initialFields.text.slice(0, 120);
     propsPreview.icon = initialFields.icon;
   } else if (elementType === "icon") {

@@ -21,6 +21,83 @@ function normalizeBackgroundImageInput(val: string): string {
   return (m ? m[1] : v).trim();
 }
 
+const VISUAL_EDITOR_ICON_ATTR = "data-ve-icon";
+
+function isInputButtonLike(el: Element): boolean {
+  if (el.tagName !== "INPUT") return false;
+  const t = ((el as HTMLInputElement).type || "text").toLowerCase();
+  return t === "button" || t === "submit" || t === "reset";
+}
+
+/** `<button>`, `<a>` или элемент с `role="button"` (холст для leading-icon), не `<input>`. */
+function canHostInlineButtonIcon(el: Element): boolean {
+  const tag = el.tagName.toUpperCase();
+  if (tag === "INPUT") return false;
+  return tag === "BUTTON" || tag === "A" || el.getAttribute("role") === "button";
+}
+
+function removeVisualEditorIconNodes(el: Element): void {
+  el.querySelectorAll(`[${VISUAL_EDITOR_ICON_ATTR}]`).forEach((n) => n.remove());
+}
+
+/** Экранирование для `url("...")` в mask-image (iframe-safe абсолютный URL). */
+function maskUrlForCss(doc: Document, src: string): string {
+  let href = src.trim();
+  try {
+    href = new URL(src, doc.baseURI || doc.documentURI || "http://localhost").href;
+  } catch {
+    /* оставляем как есть */
+  }
+  return href.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
+function leadIconTintFromEl(el: Element): string {
+  return el.getAttribute("data-icon-color")?.trim() || "currentColor";
+}
+
+/**
+ * Ведущая иконка: mask по SVG + background-color (tint). Отступ до текста — 8px.
+ */
+function upsertVisualEditorIconNode(el: Element, src: string): void {
+  if (!canHostInlineButtonIcon(el)) return;
+  const doc = el.ownerDocument;
+  removeVisualEditorIconNodes(el);
+  const url = maskUrlForCss(doc, src);
+  const span = doc.createElement("span");
+  span.setAttribute(VISUAL_EDITOR_ICON_ATTR, "");
+  span.setAttribute("aria-hidden", "true");
+  span.style.display = "inline-block";
+  span.style.width = "1rem";
+  span.style.height = "1rem";
+  span.style.flexShrink = "0";
+  span.style.verticalAlign = "middle";
+  span.style.marginInlineEnd = "8px";
+  span.style.backgroundColor = leadIconTintFromEl(el);
+  span.style.setProperty("mask-image", `url("${url}")`);
+  span.style.setProperty("mask-size", "contain");
+  span.style.setProperty("mask-position", "center");
+  span.style.setProperty("mask-repeat", "no-repeat");
+  span.style.setProperty("-webkit-mask-image", `url("${url}")`);
+  span.style.setProperty("-webkit-mask-size", "contain");
+  span.style.setProperty("-webkit-mask-position", "center");
+  span.style.setProperty("-webkit-mask-repeat", "no-repeat");
+  span.style.pointerEvents = "none";
+  span.style.userSelect = "none";
+  el.insertBefore(span, el.firstChild);
+}
+
+/** Заменить подпись кнопки/ссылки, не трогая узел `data-ve-icon`. */
+function setTextPreservingVisualIcon(el: Element, val: string): void {
+  const icon = el.querySelector(`[${VISUAL_EDITOR_ICON_ATTR}]`);
+  const frag = el.ownerDocument.createDocumentFragment();
+  if (icon) frag.appendChild(icon);
+  if (val) frag.appendChild(el.ownerDocument.createTextNode(val));
+  el.textContent = "";
+  while (frag.firstChild) {
+    el.appendChild(frag.firstChild);
+  }
+}
+
 /** Узел картинки в превью (HTML `<img>` или обёртки с одним разрешённым img). */
 export function rasterImageTarget(el: Element): HTMLImageElement | null {
   return resolveRasterHtmlImg(el);
@@ -43,7 +120,13 @@ export function applyVisualUpdatesToElement(
     const val = u.new_value;
     switch (u.field) {
       case "text":
-        el.textContent = val;
+        if (isInputButtonLike(el)) {
+          (el as HTMLInputElement).value = val;
+        } else if (canHostInlineButtonIcon(el)) {
+          setTextPreservingVisualIcon(el, val);
+        } else {
+          el.textContent = val;
+        }
         break;
       case "color":
         html.style.color = val;
@@ -59,9 +142,21 @@ export function applyVisualUpdatesToElement(
           (el as HTMLAnchorElement).href = val;
         }
         break;
-      case "icon":
-        if (val.trim()) el.setAttribute("data-icon", val.trim());
-        else el.removeAttribute("data-icon");
+      case "icon": {
+        const trimmed = val.trim();
+        if (trimmed) {
+          el.setAttribute("data-icon", trimmed);
+          upsertVisualEditorIconNode(el, trimmed);
+        } else {
+          el.removeAttribute("data-icon");
+          el.removeAttribute("data-icon-color");
+          removeVisualEditorIconNodes(el);
+        }
+        break;
+      }
+      case "iconColor":
+        if (val.trim()) el.setAttribute("data-icon-color", val.trim());
+        else el.removeAttribute("data-icon-color");
         break;
       case "variant":
         if (val.trim()) el.setAttribute("data-variant", val.trim());
@@ -122,6 +217,14 @@ export function applyVisualUpdatesToElement(
       }
       default:
         break;
+    }
+  }
+
+  if (canHostInlineButtonIcon(el) && el.getAttribute("data-icon")?.trim()) {
+    const node = el.querySelector(`[${VISUAL_EDITOR_ICON_ATTR}]`) as HTMLElement | null;
+    if (node) {
+      const c = el.getAttribute("data-icon-color")?.trim();
+      node.style.backgroundColor = c || "currentColor";
     }
   }
 }

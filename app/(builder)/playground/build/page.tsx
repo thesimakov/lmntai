@@ -1209,7 +1209,8 @@ export default function PromptBuildPage() {
     if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
     if (requestedSessionId) return;
     const handoff = readBuilderHandoff();
-    const fromStorage = handoff?.idea?.trim();
+    if (!handoff) return;
+    const fromStorage = handoff.idea?.trim();
     if (!fromStorage) return;
 
     const navToken = sessionStorage.getItem(BUILDER_NAV_TOKEN_KEY);
@@ -1224,7 +1225,28 @@ export default function PromptBuildPage() {
       sessionStorage.setItem(onceKey, fromStorage);
     }
 
+    if (handoff.templateDirectPreview && handoff.buildTemplate?.slug) {
+      if (handoff.projectKind) setProjectKind(handoff.projectKind);
+      setBuildTemplate(handoff.buildTemplate);
+      setIdea(handoff.buildTemplate.name?.trim() || handoff.buildTemplate.slug);
+      setFinalPrompt("");
+      setStage("ready");
+      setCoachAwaitingConfirm(false);
+      setPendingTechnicalPrompt(null);
+      setPromptCoachLoading(false);
+      setPromptCoachDebugLine(null);
+      setPromptBuilderDebugLine(null);
+      setMessages([]);
+      void runBuildTemplatePreview(handoff.buildTemplate.slug);
+      return;
+    }
+
     if (handoff?.projectKind) setProjectKind(handoff.projectKind);
+    if (handoff?.buildTemplate) {
+      setBuildTemplate(handoff.buildTemplate);
+    } else {
+      setBuildTemplate(null);
+    }
     setIdea(fromStorage);
     setStage("questions");
     setCoachAwaitingConfirm(false);
@@ -1294,25 +1316,42 @@ export default function PromptBuildPage() {
   useEffect(() => {
     if (!lemnityAiBridgeReady || shouldUseLemnityAiBridge) return;
     const handoff = readBuilderHandoff();
-    const fromStorage = handoff?.idea;
-    if (fromStorage) {
-      const navToken = sessionStorage.getItem(BUILDER_NAV_TOKEN_KEY);
-      const processed = sessionStorage.getItem(BUILDER_LAST_PROCESSED_NAV_KEY);
-      if (navToken) {
-        if (processed === navToken) return;
-        sessionStorage.setItem(BUILDER_LAST_PROCESSED_NAV_KEY, navToken);
-      } else {
-        const onceKey = "lemnity.builder.legacyHandoffOnce";
-        const once = sessionStorage.getItem(onceKey);
-        if (once === fromStorage) return;
-        sessionStorage.setItem(onceKey, fromStorage);
-      }
-      if (handoff?.projectKind) setProjectKind(handoff.projectKind);
-      setIdea(fromStorage);
-      setStage("questions");
-      push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
-      void handleCreateQuestions(fromStorage, handoff?.projectKind);
+    if (!handoff) return;
+    const fromStorage = handoff.idea;
+    if (!fromStorage) return;
+    const navToken = sessionStorage.getItem(BUILDER_NAV_TOKEN_KEY);
+    const processed = sessionStorage.getItem(BUILDER_LAST_PROCESSED_NAV_KEY);
+    if (navToken) {
+      if (processed === navToken) return;
+      sessionStorage.setItem(BUILDER_LAST_PROCESSED_NAV_KEY, navToken);
+    } else {
+      const onceKey = "lemnity.builder.legacyHandoffOnce";
+      const once = sessionStorage.getItem(onceKey);
+      if (once === fromStorage) return;
+      sessionStorage.setItem(onceKey, fromStorage);
     }
+    if (handoff.templateDirectPreview && handoff.buildTemplate?.slug) {
+      if (handoff?.projectKind) setProjectKind(handoff.projectKind);
+      setBuildTemplate(handoff.buildTemplate);
+      setIdea(handoff.buildTemplate.name?.trim() || handoff.buildTemplate.slug);
+      setFinalPrompt("");
+      setStage("ready");
+      setCoachAwaitingConfirm(false);
+      setPendingTechnicalPrompt(null);
+      setMessages([]);
+      void runBuildTemplatePreview(handoff.buildTemplate.slug);
+      return;
+    }
+    if (handoff?.projectKind) setProjectKind(handoff.projectKind);
+    if (handoff?.buildTemplate) {
+      setBuildTemplate(handoff.buildTemplate);
+    } else {
+      setBuildTemplate(null);
+    }
+    setIdea(fromStorage);
+    setStage("questions");
+    push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
+    void handleCreateQuestions(fromStorage, handoff?.projectKind);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge]);
 
