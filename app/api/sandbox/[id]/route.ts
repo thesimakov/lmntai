@@ -7,7 +7,8 @@ import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
 
-const MAX_VISUAL_EDIT_HTML_CHARS = 2_000_000;
+/** Сериализованный документ (outerHTML + частые base64/inline SVG) быстро перерастает 2M; держим запас под тяжёлые шаблоны. При прокси (nginx) нужен client_max_body_size не меньше ~12m. */
+const MAX_VISUAL_EDIT_HTML_CHARS = 8_000_000;
 
 async function respondWithHtml(sandboxId: string) {
   const previewUrl = await sandboxManager.getPreviewUrl(sandboxId);

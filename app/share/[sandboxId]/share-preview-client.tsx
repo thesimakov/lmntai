@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
-import { useI18n } from "@/components/i18n-provider";
-import { SITE_URL } from "@/lib/site";
+import { LemnityStudioBadge } from "@/components/playground/lemnity-studio-badge";
 
 type SharePreviewClientProps = {
   sandboxId: string;
@@ -11,9 +8,8 @@ type SharePreviewClientProps = {
   showLemnityBranding: boolean;
 };
 
-/** Публичная оболочка превью: iframe на /api/sandbox. */
+/** Публичная оболочка превью: iframe на /api/sandbox + тот же шильдик, что в студии. */
 export function SharePreviewClient({ sandboxId, showLemnityBranding }: SharePreviewClientProps) {
-  const { t } = useI18n();
   const src = `/api/sandbox/${encodeURIComponent(sandboxId)}`;
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col bg-background">
@@ -22,19 +18,19 @@ export function SharePreviewClient({ sandboxId, showLemnityBranding }: SharePrev
           Публичное превью
         </span>
       </header>
-      <iframe title="Превью" className="min-h-0 w-full flex-1 border-0" src={src} sandbox="allow-scripts allow-same-origin" />
-      {showLemnityBranding ? (
-        <footer className="flex shrink-0 items-center justify-center border-t border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4">
-          <Link
-            href={SITE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-foreground hover:underline"
-          >
-            {t("build_preview_footer_made_on")}
-          </Link>
-        </footer>
-      ) : null}
+      <div className="relative min-h-0 flex-1">
+        <iframe
+          title="Превью"
+          className="absolute inset-0 h-full w-full border-0"
+          src={src}
+          sandbox="allow-scripts allow-same-origin"
+        />
+        {showLemnityBranding ? (
+          <div className="pointer-events-none absolute bottom-3 right-3 z-20 sm:bottom-4 sm:right-4">
+            <LemnityStudioBadge className="pointer-events-auto shadow-black/40" />
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
