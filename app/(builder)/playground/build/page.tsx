@@ -1352,11 +1352,11 @@ export default function PromptBuildPage() {
     if (!sessionNeedsResync) return;
     if (!lemnityAiSessionId) return;
     let cancelled = false;
-    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
+    let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
 
     const schedule = () => {
       if (cancelled) return;
-      timeoutId = window.setTimeout(async () => {
+      timeoutId = globalThis.setTimeout(async () => {
         if (cancelled) return;
         if (streamActiveRef.current) {
           schedule();
@@ -1370,7 +1370,7 @@ export default function PromptBuildPage() {
     schedule();
     return () => {
       cancelled = true;
-      if (timeoutId != null) window.clearTimeout(timeoutId);
+      if (timeoutId != null) globalThis.clearTimeout(timeoutId);
     };
   }, [
     lemnityAiBridgeReady,
