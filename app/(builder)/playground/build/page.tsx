@@ -57,6 +57,7 @@ type LemnityAiBridgeEnvelope<T> = {
 type LemnityAiSessionPayload = {
   session_id: string;
   title?: string | null;
+  status?: string | null;
   events?: Array<{
     event?: string;
     data?: {
@@ -163,6 +164,7 @@ export default function PromptBuildPage() {
   const requestAbortRef = useRef<AbortController | null>(null);
   const streamRequestSeqRef = useRef(0);
   const sessionLoadSeqRef = useRef(0);
+  const streamActiveRef = useRef(false);
   /** id песочницы из live SSE `preview` — защищает от перезаписи устаревшим GET /sessions после стрима */
   const lastSsePreviewSandboxIdRef = useRef<string | null>(null);
   /** Песочница, созданная только для мгновенного превью стартового шаблона (до ответа агента). */
@@ -225,6 +227,7 @@ export default function PromptBuildPage() {
   const [coachDetailOpen, setCoachDetailOpen] = useState(false);
   const [coachSlowHint, setCoachSlowHint] = useState(false);
   const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
+  const [sessionNeedsResync, setSessionNeedsResync] = useState(false);
   const leftWidthBeforeCollapseRef = useRef(400);
   const dragStateRef = useRef<{
     pointerId: number;
@@ -556,11 +559,21 @@ export default function PromptBuildPage() {
         const payload = envelope?.data;
         if (!payload) return;
         if (!mountedRef.current || sessionLoadSeqRef.current !== loadSeq) return;
+        const events = Array.isArray(payload.events) ? payload.events : [];
+        const status = typeof payload.status === "string" ? payload.status.toLowerCase() : "";
+        const statusIsRunning =
+          status === "running" ||
+          status === "pending" ||
+          status === "queued" ||
+          status === "in_progress" ||
+          status === "in-progress" ||
+          status === "active" ||
+          status === "working";
         if (payload.title?.trim()) {
           setIdea((prev) => (prev.trim() ? prev : payload.title?.trim() || prev));
         }
         const evs =
-          payload.events?.filter(
+          events.filter(
             (event) => event?.event === "message" && typeof event.data?.content === "string"
           ) ?? [];
         const nextMessages: ChatMessage[] = evs.map((event, i) => {
@@ -580,7 +593,15 @@ export default function PromptBuildPage() {
           setMessages(nextMessages);
           setStage("ready");
         }
-        const lastPreview = [...(payload.events ?? [])]
+        const lastUserMessageIndex = (() => {
+          for (let i = events.length - 1; i >= 0; i -= 1) {
+            const event = events[i];
+            if (event?.event === "message" && event.data?.role === "user") return i;
+          }
+          return -1;
+        })();
+        const relevantEvents = events.slice(Math.max(0, lastUserMessageIndex));
+        const lastPreview = [...relevantEvents]
           .reverse()
           .find((event) => event?.event === "preview" && typeof event.data?.previewUrl === "string")?.data;
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
@@ -604,9 +625,24 @@ export default function PromptBuildPage() {
             }
             setMode("preview");
             setProgress(100);
+            setIsGenerating(false);
+            setSessionNeedsResync(false);
+          }
+        } else if (!streamActiveRef.current) {
+          if (statusIsRunning) {
+            setIsGenerating(true);
+            setMode("generating");
+            setStage("generating");
+            setSessionNeedsResync(true);
+          } else {
+            setIsGenerating(false);
+            setMode((prev) => (prev === "generating" ? "idle" : prev));
+            setStage((prev) => (prev === "generating" ? "ready" : prev));
+            setSessionNeedsResync(false);
           }
         }
-        for (const event of payload.events ?? []) {
+        resetStreamLog();
+        for (const event of events) {
           if (event?.event === "plan") {
             for (const step of event.data?.steps ?? []) {
               if (!step.id && !step.description) continue;
@@ -642,7 +678,7 @@ export default function PromptBuildPage() {
         // ignore
       }
     },
-    [applyStreamLog, t]
+    [applyStreamLog, resetStreamLog, t]
   );
 
   const ensureLemnityAiSession = useCallback(async (): Promise<
@@ -693,6 +729,7 @@ export default function PromptBuildPage() {
         opts?.buildTemplateSlug !== undefined ? opts.buildTemplateSlug : (buildTemplate?.slug ?? null);
 
       beginInterfaceBuildTiming();
+      streamActiveRef.current = true;
       setIsGenerating(true);
       setMode("generating");
       setStage("generating");
@@ -958,6 +995,7 @@ export default function PromptBuildPage() {
           interfaceBuildStartedAtRef.current = null;
           interfaceBuildGotPreviewRef.current = false;
         }
+        streamActiveRef.current = false;
       }
     },
     [
@@ -1310,6 +1348,39 @@ export default function PromptBuildPage() {
   }, [loadLemnityAiSession, requestedSessionId, shouldUseLemnityAiBridge, lemnityAiBridgeReady]);
 
   useEffect(() => {
+    if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
+    if (!sessionNeedsResync) return;
+    if (!lemnityAiSessionId) return;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const schedule = () => {
+      if (cancelled) return;
+      timeoutId = window.setTimeout(async () => {
+        if (cancelled) return;
+        if (streamActiveRef.current) {
+          schedule();
+          return;
+        }
+        await loadLemnityAiSession(lemnityAiSessionId);
+        schedule();
+      }, 2500);
+    };
+
+    schedule();
+    return () => {
+      cancelled = true;
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
+  }, [
+    lemnityAiBridgeReady,
+    shouldUseLemnityAiBridge,
+    sessionNeedsResync,
+    lemnityAiSessionId,
+    loadLemnityAiSession
+  ]);
+
+  useEffect(() => {
     rememberBuildSessionForPuckReturn(lemnityAiSessionId);
   }, [lemnityAiSessionId]);
 
@@ -1523,6 +1594,7 @@ export default function PromptBuildPage() {
     pushRecent(idea.trim() || prompt.slice(0, 120));
     resetStreamLog();
     beginInterfaceBuildTiming();
+    streamActiveRef.current = true;
     setIsGenerating(true);
     setMode("generating");
     setStage("generating");
@@ -1645,6 +1717,7 @@ export default function PromptBuildPage() {
         interfaceBuildStartedAtRef.current = null;
         interfaceBuildGotPreviewRef.current = false;
       }
+      streamActiveRef.current = false;
     }
   }
 

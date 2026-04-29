@@ -17,6 +17,9 @@ import {
 import { ARTIFACT_MIME_HTML } from "./types.js";
 import { normalizeAppUiLanguage, plannerStepLabel, presentationStepLabel } from "./ui-labels.js";
 
+/** Лимит HTML для визуального сохранения артефактов (символы, не байты). */
+const MAX_VISUAL_EDIT_ARTIFACT_HTML_CHARS = 50_000_000;
+
 function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
@@ -164,7 +167,7 @@ export async function main() {
         json(res, 400, { code: 400, msg: "bad_request", data: null });
         return;
       }
-      if (html.length > 2_000_000) {
+      if (html.length > MAX_VISUAL_EDIT_ARTIFACT_HTML_CHARS) {
         json(res, 413, { code: 413, msg: "payload_too_large", data: null });
         return;
       }
