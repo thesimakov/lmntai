@@ -1352,7 +1352,7 @@ export default function PromptBuildPage() {
     if (!sessionNeedsResync) return;
     if (!lemnityAiSessionId) return;
     let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let timeoutId: ReturnType<typeof window.setTimeout> | null = null;
 
     const schedule = () => {
       if (cancelled) return;
