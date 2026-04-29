@@ -541,6 +541,9 @@ export const messages = {
     playground_chat_user_built_prompt_note:
       'Полный техпромпт ушёл в запрос; ниже — краткое подтверждение, а не ввод вручную.',
     playground_chat_input_placeholder_studio: 'Сообщение для Lemnity AI…',
+    playground_chat_placeholder_template_focus:
+      'Чат выключен — редактируйте превью справа или отключите шаблон («Без шаблона» в каталоге).',
+    playground_build_chat_header_template_focus: 'Шаблон · {name}',
     playground_chat_visual_editor_title: 'Визуальный редактор: клики по элементам в превью, правка текста и картинок',
     playground_chat_visual_editor_aria: 'Визуальный редактор макета в превью',
     build_template_aria: 'Каталог шаблонов сборки',
@@ -721,7 +724,7 @@ export const messages = {
     build_visual_image_type_error: 'Выберите файл изображения (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML слишком большой для сохранения.',
     build_visual_html_too_large_hint:
-      'Тело PATCH теперь уходит как text/html (не JSON — меньше размер). Если 413 всё ещё приходит на сервер, поднимите лимит reverse proxy и перезапустите lemnity-builder (pm2). Уберите огромные data:image или тяжёлые блоки.',
+      'Либо упрощайте страницу (уберите огромные встроенные картинки и тяжёлый HTML), либо на сервере поднимите лимит загрузки (nginx/Caddy) и перезапустите lemnity-builder в PM2.',
 
 
     build_visual_quick_styles: 'Быстрые стили выбранного элемента',
@@ -1504,6 +1507,9 @@ export const messages = {
     playground_chat_user_built_prompt_note:
       "The full technical prompt was sent in the request; this bubble is a short confirmation, not something you typed line by line.",
     playground_chat_input_placeholder_studio: 'Message to Lemnity AI…',
+    playground_chat_placeholder_template_focus:
+      'Chat disabled — edit the preview on the right or pick “No template”.',
+    playground_build_chat_header_template_focus: 'Template · {name}',
     playground_chat_visual_editor_title:
       'Visual editor: click elements in the preview to edit text and images',
     playground_chat_visual_editor_aria: 'Visual layout editor in preview',
@@ -1683,7 +1689,7 @@ export const messages = {
     build_visual_image_type_error: 'Pick an image file (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML is too large to save.',
     build_visual_html_too_large_hint:
-      'The save request now sends raw HTML (text/html), not JSON, so payloads are smaller. If 413 persists, raise reverse-proxy limits and restart lemnity-builder (PM2). Remove huge data: URLs or bulky fragments.',
+      'Make the page smaller (fewer huge inlined images / heavy markup), or ask your admin to raise the reverse-proxy upload limit and restart lemnity-builder in PM2.',
 
     build_visual_quick_styles: 'Quick styles for selected element',
     build_visual_multi_select_hint: 'Ctrl/Cmd + click for multi-select',
@@ -2465,6 +2471,9 @@ export const messages = {
       "Ҷамъсозиро ба промпти тасдиқшуда оғоз мекунам (ба Lemnity AI).",
     playground_chat_user_built_prompt_note: "Матни пурра дар дархост рафт; ин — тасдиқи кӯтоҳ.",
     playground_chat_input_placeholder_studio: 'Паём барои Lemnity AI…',
+    playground_chat_placeholder_template_focus:
+      'Чат хомӯш — пешнамоишро аз рост тағйир диҳед ё «Бе шаблон»-ро интихоб кунед.',
+    playground_build_chat_header_template_focus: 'Шаблон · {name}',
     playground_chat_visual_editor_title: 'Муҳаррири визуалӣ: клик ба элементҳо дар пешнамоиш',
     playground_chat_visual_editor_aria: 'Муҳаррири макет дар пешнамоиш',
     build_template_aria: 'Каталоги намунаҳои ҷамъоварӣ',
@@ -2644,7 +2653,7 @@ export const messages = {
     build_visual_image_type_error: 'Файли акс интихоб кунед (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML барои нигоҳ доштан хеле калон аст.',
     build_visual_html_too_large_hint:
-      'Акнун сохран текст/html мефурӯшанд, на JSON — камтар ҷой. Ва агар 413 бошад, лими парокси (nginx/Caddy) ва pm2 барои lemnity-builder қайд диҳед. Файлҳои data:image/блокҳои сангинро кам кунед.',
+      'Саҳифро сабук кунед (аксҳо ва HTML-ҳои сангинро кам намоён) ё ба администратор бигӯед лимити боргириро боло бирасонад ва lemnity-builder дар PM2 нав кунад.',
 
 
     build_visual_quick_styles: 'Услубҳои зуд барои элементи интихобшуда',

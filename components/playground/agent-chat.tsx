@@ -90,6 +90,8 @@ type AgentChatProps = {
   subtitle?: string;
   placeholder?: string;
   disabled?: boolean;
+  /** Студия: при disabled — различать стрим генерации и блокировку ввода (напр. режим только шаблона). */
+  studioStreamActive?: boolean;
   onSend: (text: string, files?: File[]) => void | Promise<void>;
   /** Раскладка «студии»: шапка и поле ввода в одной капсуле */
   variant?: "default" | "studio";
@@ -132,6 +134,7 @@ export function AgentChat({
   subtitle,
   placeholder: placeholderProp,
   disabled,
+  studioStreamActive = false,
   onSend,
   variant = "default",
   footerSlot,
@@ -836,9 +839,19 @@ export function AgentChat({
                     void submit();
                   }}
                   disabled={!disabled && !value.trim() && attachments.length === 0}
-                  aria-label={disabled ? "Остановить (скоро)" : "Отправить"}
+                  aria-label={
+                    disabled ? (studioStreamActive ? "Остановить генерацию (скоро)" : "Ввод недоступен") : "Отправить"
+                  }
                 >
-                  {disabled ? <Square className="h-4 w-4 fill-current" /> : <ArrowUp className="h-5 w-5 stroke-[2.5]" />}
+                  {disabled ? (
+                    studioStreamActive ? (
+                      <Square className="h-4 w-4 fill-current" />
+                    ) : (
+                      <Lock className="h-4 w-4 shrink-0 opacity-95" aria-hidden />
+                    )
+                  ) : (
+                    <ArrowUp className="h-5 w-5 stroke-[2.5]" />
+                  )}
                 </Button>
               </div>
             </div>

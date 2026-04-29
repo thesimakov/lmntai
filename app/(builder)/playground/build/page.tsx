@@ -206,8 +206,6 @@ export default function PromptBuildPage() {
   } | null>(null);
   /** Символы потока ответа (включая код), чтобы видеть ход генерации при шаблоне */
   const [streamArtifactChars, setStreamArtifactChars] = useState(0);
-  /** Защита от повторного авто-запуска при повторном выборе того же slug в одной сессии */
-  const templateAutoStartSlugRef = useRef<string | null>(null);
   /** `null` — ещё не подгрузили с GET /share; совпадает с футером /share. */
   const [studioSettingsOpenedAt] = useState(() => new Date());
   const [tab, setTab] = useState<"preview" | "document" | "settings" | "code">("preview");
@@ -312,13 +310,26 @@ export default function PromptBuildPage() {
   );
 
   const header = useMemo(() => {
+    if (shouldUseLemnityAiBridge && buildTemplate) {
+      return t("playground_build_chat_header_template_focus").replace(
+        "{name}",
+        buildTemplate.name.trim() || buildTemplate.slug
+      );
+    }
     if (shouldUseLemnityAiBridge && coachAwaitingConfirm) return "Шаг 2/3 — Подтверждение промпта";
     if (stage === "questions")
       return shouldUseLemnityAiBridge ? "Шаг 1/3 — Диалог с ИИ" : "Шаг 1/3 — Уточняющие вопросы";
     if (stage === "ready") return "Шаг 2/3 — Финальный промпт";
     if (stage === "generating") return "Шаг 3/3 — Генерация";
     return "Сборка промпта";
-  }, [stage, shouldUseLemnityAiBridge, coachAwaitingConfirm]);
+  }, [stage, shouldUseLemnityAiBridge, coachAwaitingConfirm, buildTemplate, t]);
+
+  const studioChatPlaceholder = useMemo(() => {
+    if (shouldUseLemnityAiBridge && buildTemplate) {
+      return t("playground_chat_placeholder_template_focus");
+    }
+    return t("playground_chat_input_placeholder_studio");
+  }, [shouldUseLemnityAiBridge, buildTemplate, t]);
 
   const addressPath = useMemo(() => {
     if (!previewUrl) return "/";
@@ -1058,8 +1069,10 @@ export default function PromptBuildPage() {
   const handleBuildTemplateChange = useCallback(
     (next: { slug: string; name: string; defaultUserPrompt: string } | null) => {
       setBuildTemplate(next);
+      if (shouldUseLemnityAiBridge && next) {
+        setMessages([]);
+      }
       if (!next) {
-        templateAutoStartSlugRef.current = null;
         templatePreviewAbortRef.current?.abort();
         if (
           templatePreviewSandboxIdRef.current &&
@@ -1077,7 +1090,7 @@ export default function PromptBuildPage() {
       }
       void runBuildTemplatePreview(next.slug);
       if (shouldUseLemnityAiBridge) {
-        // Не заполняем поле финального промпта длинным defaultUserPrompt — шаблон уже в превью/агенте; в чат уходит короткое opening.
+        // Превью шаблона без авто-сборки через чат: пользователь правит только превью.
         setFinalPrompt("");
         setIdea(next.name.trim() || next.slug);
         setStage("ready");
@@ -1095,24 +1108,8 @@ export default function PromptBuildPage() {
           setPromptCoachLoading(false);
         }
       }
-      if (shouldUseLemnityAiBridge && lemnityAiBridgeReady && next.slug && templateAutoStartSlugRef.current !== next.slug) {
-        templateAutoStartSlugRef.current = next.slug;
-        const opening = t("build_template_agent_opening").replace("{name}", next.name);
-        queueMicrotask(() => {
-          push("user", opening);
-          void sendLemnityAiChat(opening, { buildTemplateSlug: next.slug });
-        });
-      }
     },
-    [
-      lemnityAiBridgeReady,
-      runBuildTemplatePreview,
-      sandboxId,
-      shouldUseLemnityAiBridge,
-      push,
-      sendLemnityAiChat,
-      t
-    ]
+    [runBuildTemplatePreview, sandboxId, shouldUseLemnityAiBridge, t]
   );
 
   const runPromptCoach = useCallback(
@@ -1727,6 +1724,9 @@ export default function PromptBuildPage() {
       return;
     }
     if (shouldUseLemnityAiBridge) {
+      if (buildTemplate) {
+        return;
+      }
       const trimmed = text.trim();
       const hasFiles = (files?.length ?? 0) > 0;
       if (!trimmed && !hasFiles) return;
@@ -1891,9 +1891,15 @@ export default function PromptBuildPage() {
               variant="studio"
               title={header}
               messages={messages}
-              disabled={isGenerating || promptCoachLoading || !lemnityAiBridgeReady}
+              disabled={
+                isGenerating ||
+                promptCoachLoading ||
+                !lemnityAiBridgeReady ||
+                Boolean(shouldUseLemnityAiBridge && buildTemplate)
+              }
+              studioStreamActive={isGenerating}
               onSend={onSend}
-              placeholder={t("playground_chat_input_placeholder_studio")}
+              placeholder={studioChatPlaceholder}
               plan={session?.user?.plan ?? null}
               projectKind={projectKind}
               agentTask={shouldUseLemnityAiBridge ? "prompt-coach" : "generate-stream"}
