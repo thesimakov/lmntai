@@ -106,12 +106,18 @@ async function patchSandbox(
     return new Response("Payload too large", { status: 413 });
   }
 
+  let updatedAt: number;
   try {
-    await sandboxManager.updateIndexHtml(sandboxId, htmlRaw);
+    updatedAt = await sandboxManager.updateIndexHtml(sandboxId, htmlRaw);
   } catch (e) {
     return new Response((e as Error).message ?? "Error", { status: 500 });
   }
-  return new Response(null, { status: 204 });
+  return new Response(null, {
+    status: 204,
+    headers: {
+      "x-sandbox-updated-at": String(updatedAt)
+    }
+  });
 }
 
 export const GET = withApiLogging("/api/sandbox/[id]", getSandbox);

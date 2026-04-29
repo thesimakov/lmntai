@@ -494,8 +494,8 @@ export const sandboxManager = {
     return { previewUrl: `/api/sandbox/${sandboxId}` };
   },
 
-  /** Полная замена index.html (визуальный редактор превью). */
-  async updateIndexHtml(sandboxId: string, html: string) {
+  /** Полная замена index.html (визуальный редактор превью). Возвращает `updatedAt` для клиента (синхрон превью / кэш-баст). */
+  async updateIndexHtml(sandboxId: string, html: string): Promise<number> {
     const trimmed = html.trim();
     if (!trimmed) {
       throw new Error("Пустой HTML.");
@@ -511,7 +511,7 @@ export const sandboxManager = {
       const writeRes = await lemnityBuilderFileWrite(base, indexPath, trimmed, { append: false });
       assertBuilderSandboxSuccess(writeRes, "file/write index.html");
       rec.updatedAt = Date.now();
-      return;
+      return rec.updatedAt;
     }
     const previous = memoryStore.get(sandboxId);
     if (!previous) {
@@ -527,6 +527,7 @@ export const sandboxManager = {
       }
     };
     memoryStore.set(sandboxId, next);
+    return next.updatedAt;
   },
 
   /**

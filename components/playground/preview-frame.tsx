@@ -50,7 +50,9 @@ function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): s
       return `${nextU.pathname}${nextU.search}${nextU.hash}`;
     }
     const prevHasReloadBust =
-      prevU.searchParams.has("_edit") || prevU.searchParams.has("_recover");
+      prevU.searchParams.has("_edit") ||
+      prevU.searchParams.has("_recover") ||
+      prevU.searchParams.has("_sb");
     if (prevHasReloadBust) {
       return previousSrc;
     }
@@ -120,6 +122,8 @@ export function PreviewFrame({
   const visualEditorHandleRef = useRef<VisualPreviewEditorHandle | null>(null);
   const visualSelectedPrimaryRef = useRef<Element | null>(null);
   const visualSaveRevisionRef = useRef(0);
+  /** `updatedAt` с сервера после PATCH sandbox — один и тот же ?_sb во iframe и у «Просмотр». */
+  const sandboxSyncAtRef = useRef<number | null>(null);
 
   const isPptx = isPptxArtifact(mimeType);
   const exportBusy = exportTask !== null;
@@ -357,9 +361,19 @@ export function PreviewFrame({
     setIframeSrc(`${u.pathname}${u.search}${u.hash}`);
   }
 
+  /** После успешного PATCH: перезагрузка iframe с тем же кэш-бастом (?_sb=), что и у открываемого превью. */
+  function applyIframeSrcSyncAt(ts: number) {
+    sandboxSyncAtRef.current = ts;
+    const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
+    u.searchParams.delete("_edit");
+    u.searchParams.delete("_recover");
+    u.searchParams.set("_sb", String(ts));
+    setIframeSrc(`${u.pathname}${u.search}${u.hash}`);
+  }
+
   /**
-   * Превью в новой вкладке: всегда тот же URL, что превью песочницы (`_open`, при необходимости `_saved`),
-   * без blob: — нормальный адрес для копирования / шаринга. Синхронный window.open сохраняет user gesture (блокировщики реже режут вкладку).
+   * Превью в новой вкладке — URL песочницы с теми же параметрами, что и после сохранения (`_sb`).
+   * Сначала window.open; при блокировке — программный <a target=_blank>.
    */
   function openPreviewInNewTab() {
     const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
@@ -368,9 +382,37 @@ export function PreviewFrame({
     if (rev > 0) {
       u.searchParams.set("_saved", String(rev));
     }
+    const sync = sandboxSyncAtRef.current;
+    if (sync != null) {
+      u.searchParams.set("_sb", String(sync));
+    }
     const href = `${u.pathname}${u.search}${u.hash}`;
-    const w = window.open(href, "_blank");
-    if (!w) {
+
+    let opened: Window | null = null;
+    try {
+      opened = window.open(href, "_blank", "noopener,noreferrer");
+    } catch {
+      opened = null;
+    }
+    if (opened) {
+      try {
+        opened.opener = null;
+      } catch {
+        /* noop — cross-origin или политики */
+      }
+      return;
+    }
+
+    try {
+      const a = document.createElement("a");
+      a.href = href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch {
       toast.error(t("build_preview_popup_blocked"));
     }
   }
@@ -418,6 +460,17 @@ export function PreviewFrame({
         throw new Error(msg);
       }
       visualSaveRevisionRef.current += 1;
+      if (!isBridgeArtifact) {
+        const raw = res.headers.get("x-sandbox-updated-at");
+        const at = raw != null && raw !== "" ? Number(raw) : Number.NaN;
+        if (Number.isFinite(at)) {
+          applyIframeSrcSyncAt(at);
+        } else {
+          applyIframeSrcSyncAt(Date.now());
+        }
+      } else {
+        applyIframeSrcSyncAt(Date.now());
+      }
       toast.success(t("build_visual_saved"));
       if (replacedHeavyInlineAssets) {
         toast.message(t("build_visual_save_shrunk_inline"), {
@@ -425,7 +478,7 @@ export function PreviewFrame({
           duration: 10_000
         });
       }
-      // Не перезагружаем iframe после успешного PATCH: DOM уже совпадает с отправленным HTML; повторный GET может вернуть кэш/чужой shard и «сбросить» превью.
+      // После PATCH iframe перезагружается с ?_sb=<updatedAt>: тот же кэш-баст, что и у «Просмотр во вкладке».
     } catch (e) {
       toast.error(t("build_visual_save_failed"), {
         description: unknownToErrorMessage(e)
