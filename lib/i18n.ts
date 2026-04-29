@@ -721,7 +721,8 @@ export const messages = {
     build_visual_image_type_error: 'Выберите файл изображения (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML слишком большой для сохранения.',
     build_visual_html_too_large_hint:
-      'Часто ограничивает reverse proxy (nginx: client_max_body_size 64m; или Caddy — лимит тела запроса) или служба lemnity-builder без обновления. После изменения конфига — reload прокси и pm2 restart lemnity-builder. Уменьшите встроенные data:image или тяжёлые блоки.',
+      'Тело PATCH теперь уходит как text/html (не JSON — меньше размер). Если 413 всё ещё приходит на сервер, поднимите лимит reverse proxy и перезапустите lemnity-builder (pm2). Уберите огромные data:image или тяжёлые блоки.',
+
 
     build_visual_quick_styles: 'Быстрые стили выбранного элемента',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик — мультивыбор',
@@ -1682,7 +1683,7 @@ export const messages = {
     build_visual_image_type_error: 'Pick an image file (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML is too large to save.',
     build_visual_html_too_large_hint:
-      'Usually blocked by reverse proxy body size (nginx: client_max_body_size 64m; or Caddy request limits) or an outdated lemnity-builder. Reload the proxy after config change and restart lemnity-builder via PM2. Reduce embedded data: images / heavy snippets.',
+      'The save request now sends raw HTML (text/html), not JSON, so payloads are smaller. If 413 persists, raise reverse-proxy limits and restart lemnity-builder (PM2). Remove huge data: URLs or bulky fragments.',
 
     build_visual_quick_styles: 'Quick styles for selected element',
     build_visual_multi_select_hint: 'Ctrl/Cmd + click for multi-select',
@@ -2643,7 +2644,8 @@ export const messages = {
     build_visual_image_type_error: 'Файли акс интихоб кунед (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML барои нигоҳ доштан хеле калон аст.',
     build_visual_html_too_large_hint:
-      'Аксар пароксӣ (nginx: client_max_body_size), Caddy ё lemnity builder кӯҳна. Баъд аз конфиг — nginx/caddy reload, pm2 restart lemnity-builder. Аксунамояҳои data:image/ HTML-ҳои сангинро кам кунед.',
+      'Акнун сохран текст/html мефурӯшанд, на JSON — камтар ҷой. Ва агар 413 бошад, лими парокси (nginx/Caddy) ва pm2 барои lemnity-builder қайд диҳед. Файлҳои data:image/блокҳои сангинро кам кунед.',
+
 
     build_visual_quick_styles: 'Услубҳои зуд барои элементи интихобшуда',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик барои интихоби якчанд',

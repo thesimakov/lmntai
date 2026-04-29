@@ -43,18 +43,28 @@ function authOk(req: IncomingMessage): boolean {
   return readBearer(req) === need;
 }
 
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+async function readUtf8Body(req: IncomingMessage): Promise<string> {
   const chunks: Buffer[] = [];
   for await (const ch of req) {
     chunks.push(ch as Buffer);
   }
-  const raw = Buffer.concat(chunks).toString("utf8");
+  return Buffer.concat(chunks).toString("utf8");
+}
+
+async function readJsonBody(req: IncomingMessage): Promise<unknown> {
+  const raw = await readUtf8Body(req);
   if (!raw.trim()) return null;
   try {
     return JSON.parse(raw) as unknown;
   } catch {
     return null;
   }
+}
+
+function isTextHtmlContentType(req: IncomingMessage): boolean {
+  const raw = req.headers["content-type"];
+  const ct = typeof raw === "string" ? raw.toLowerCase() : "";
+  return ct.includes("text/html");
 }
 
 function parsePath(pathname: string): string[] {
@@ -161,8 +171,14 @@ export async function main() {
 
     if (method === "PATCH" && parts.length === 2 && parts[0] === "artifacts") {
       const artifactId = parts[1];
-      const body = (await readJsonBody(req)) as { html?: string } | null;
-      const html = typeof body?.html === "string" ? body.html : null;
+      let html: string | null = null;
+      if (isTextHtmlContentType(req)) {
+        const raw = await readUtf8Body(req);
+        html = raw.length > 0 ? raw : null;
+      } else {
+        const body = (await readJsonBody(req)) as { html?: string } | null;
+        html = typeof body?.html === "string" ? body.html : null;
+      }
       if (html == null) {
         json(res, 400, { code: 400, msg: "bad_request", data: null });
         return;

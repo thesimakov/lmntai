@@ -80,16 +80,22 @@ async function patchSandbox(
     return new Response("Not found", { status: 404 });
   }
 
-  let body: unknown;
+  const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
+  let htmlRaw: string | null = null;
   try {
-    body = await req.json();
+    const raw = await req.text();
+    if (contentType.includes("text/html")) {
+      htmlRaw = raw.length > 0 ? raw : null;
+    } else {
+      const body = JSON.parse(raw || "null") as unknown;
+      htmlRaw =
+        body && typeof body === "object" && typeof (body as { html?: unknown }).html === "string"
+          ? (body as { html: string }).html
+          : null;
+    }
   } catch {
     return new Response("Bad request", { status: 400 });
   }
-  const htmlRaw =
-    body && typeof body === "object" && typeof (body as { html?: unknown }).html === "string"
-      ? (body as { html: string }).html
-      : null;
   if (htmlRaw == null) {
     return new Response("Bad request", { status: 400 });
   }

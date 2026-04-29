@@ -349,15 +349,15 @@ export function PreviewFrame({
       const res = isBridgeArtifact
         ? await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/html; charset=utf-8" },
             credentials: "include",
-            body: JSON.stringify({ html })
+            body: html
           })
         : await fetch(`/api/sandbox/${sandboxId}`, {
             method: "PATCH",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "text/html; charset=utf-8" },
             credentials: "include",
-            body: JSON.stringify({ html })
+            body: html
           });
       if (!res.ok) {
         if (res.status === 413) {
