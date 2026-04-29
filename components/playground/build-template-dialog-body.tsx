@@ -16,7 +16,9 @@ export type BuildTemplateRow = {
 
 /** Статические превью в `public/build-templates/` (по slug шаблона). */
 const PREVIEW_SRC_BY_SLUG: Partial<Record<string, string>> = {
-  "it-startup": "/build-templates/it-startup.jpg"
+  massage: "/build-templates/massage.png",
+  "it-startup": "/build-templates/it-startup.jpg",
+  "lead-pr-sales": "/build-templates/lead-pr-sales.png"
 };
 
 /** Стабильные HSL-углы из slug для демо-превью (без картинок в БД). */

@@ -17,16 +17,27 @@ import {
   IT_STARTUP_TEMPLATE_RULES,
   IT_STARTUP_TEMPLATE_SLUG
 } from "@/lib/build-template-presets/it-startup-preset";
+import {
+  PR_LEAD_DEFAULT_USER_PROMPT,
+  PR_LEAD_PUCK_JSON,
+  PR_LEAD_PRESET_FILES,
+  PR_LEAD_TEMPLATE_DESCRIPTION,
+  PR_LEAD_TEMPLATE_NAME,
+  PR_LEAD_TEMPLATE_RULES,
+  PR_LEAD_TEMPLATE_SLUG
+} from "@/lib/build-template-presets/lead-pr-preset";
 
 const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
-  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT
+  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT,
+  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_DEFAULT_USER_PROMPT
 };
 
 /** Встроенный макет Puck по slug (если в БД нет puck.json — подмешиваем). */
 const PRESET_PUCK_JSON_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_PUCK_JSON,
-  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON
+  [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON,
+  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_PUCK_JSON
 };
 
 function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): Record<string, string> {
@@ -62,6 +73,14 @@ const BUILTIN_PRESET_SPECS: Array<{
     rules: IT_STARTUP_TEMPLATE_RULES,
     files: IT_STARTUP_PRESET_FILES,
     defaultUserPrompt: IT_STARTUP_DEFAULT_USER_PROMPT
+  },
+  {
+    slug: PR_LEAD_TEMPLATE_SLUG,
+    name: PR_LEAD_TEMPLATE_NAME,
+    description: PR_LEAD_TEMPLATE_DESCRIPTION,
+    rules: PR_LEAD_TEMPLATE_RULES,
+    files: PR_LEAD_PRESET_FILES,
+    defaultUserPrompt: PR_LEAD_DEFAULT_USER_PROMPT
   }
 ];
 
@@ -145,6 +164,13 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
         name: IT_STARTUP_TEMPLATE_NAME,
         description: IT_STARTUP_TEMPLATE_DESCRIPTION,
         defaultUserPrompt: IT_STARTUP_DEFAULT_USER_PROMPT
+      },
+      {
+        id: "preset-lead-pr-sales",
+        slug: PR_LEAD_TEMPLATE_SLUG,
+        name: PR_LEAD_TEMPLATE_NAME,
+        description: PR_LEAD_TEMPLATE_DESCRIPTION,
+        defaultUserPrompt: PR_LEAD_DEFAULT_USER_PROMPT
       }
     ];
   }
@@ -189,6 +215,16 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
         description: IT_STARTUP_TEMPLATE_DESCRIPTION,
         rules: IT_STARTUP_TEMPLATE_RULES,
         files: mergePresetPuckIntoFiles(IT_STARTUP_TEMPLATE_SLUG, IT_STARTUP_PRESET_FILES)
+      };
+    }
+    if (s === PR_LEAD_TEMPLATE_SLUG) {
+      return {
+        id: "preset-lead-pr-sales",
+        slug: PR_LEAD_TEMPLATE_SLUG,
+        name: PR_LEAD_TEMPLATE_NAME,
+        description: PR_LEAD_TEMPLATE_DESCRIPTION,
+        rules: PR_LEAD_TEMPLATE_RULES,
+        files: mergePresetPuckIntoFiles(PR_LEAD_TEMPLATE_SLUG, PR_LEAD_PRESET_FILES)
       };
     }
     return null;
