@@ -343,7 +343,7 @@ export function PreviewFrame({
 
     setSavePending(true);
     try {
-      const html = serializeIframeDocument(doc);
+      const { html, replacedHeavyInlineAssets } = serializeIframeDocument(doc);
       const isBridgeArtifact =
         sandboxId.startsWith("artifact_") || previewUrl.includes("/api/lemnity-ai/artifacts/");
       const res = isBridgeArtifact
@@ -372,6 +372,12 @@ export function PreviewFrame({
         throw new Error(msg);
       }
       toast.success(t("build_visual_saved"));
+      if (replacedHeavyInlineAssets) {
+        toast.message(t("build_visual_save_shrunk_inline"), {
+          description: t("build_visual_save_shrunk_inline_desc"),
+          duration: 10_000
+        });
+      }
       bumpIframeCache("edit");
     } catch (e) {
       toast.error(t("build_visual_save_failed"), {

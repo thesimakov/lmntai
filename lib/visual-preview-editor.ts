@@ -6,6 +6,7 @@ import { buildLayoutSnapshot, formatOverlayLabel } from "@/lib/editor/layout-ele
 import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
 import { createOverlayController, removeOverlayRoot } from "@/lib/editor/canvas-overlay";
 import { compactHtmlDocumentForPatch } from "@/lib/compact-html-for-save";
+import { shrinkHeavyInlineAssetsInDocument } from "@/lib/visual-html-shrink";
 
 export const LEMNITY_VISUAL_EDIT_STYLE_ID = "lemnity-visual-edit-style";
 
@@ -485,7 +486,13 @@ export function attachVisualPreviewEditor(
   };
 }
 
-export function serializeIframeDocument(doc: Document): string {
+export type SerializeIframeVisualResult = {
+  html: string;
+  /** Подставили лёгкий placeholder вместо слишком длинных inline data:image для прохождения лимита тела PATCH. */
+  replacedHeavyInlineAssets: boolean;
+};
+
+export function serializeIframeDocument(doc: Document): SerializeIframeVisualResult {
   /** Парсим клон дерева: не трогаем живой документ iframe (иначе при сохранении исчезает overlay и стили режима — кажется «сбросом»). */
   const parsed = new DOMParser().parseFromString(doc.documentElement.outerHTML, "text/html");
   parsed.querySelectorAll("[data-lemnity-pick-hover]").forEach((el) => el.removeAttribute("data-lemnity-pick-hover"));
@@ -494,7 +501,8 @@ export function serializeIframeDocument(doc: Document): string {
   parsed.getElementById("lemnity-visual-overlay-root")?.remove();
   parsed.getElementById("lemnity-visual-overlay-style")?.remove();
   parsed.body?.classList.remove("lemnity-visual-edit-mode");
+  const replacedHeavyInlineAssets = shrinkHeavyInlineAssetsInDocument(parsed);
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : "<!DOCTYPE html>";
   const raw = `${doctype}\n${parsed.documentElement.outerHTML}`;
-  return compactHtmlDocumentForPatch(raw);
+  return { html: compactHtmlDocumentForPatch(raw), replacedHeavyInlineAssets };
 }

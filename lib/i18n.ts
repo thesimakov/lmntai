@@ -717,6 +717,9 @@ export const messages = {
     build_visual_save: 'Сохранить макет',
     build_visual_saving: 'Сохранение…',
     build_visual_saved: 'Макет сохранён',
+    build_visual_save_shrunk_inline: 'Облегчены тяжёлые изображения',
+    build_visual_save_shrunk_inline_desc:
+      'Часть слишком больших inline data:image было заменена на лёгкий placeholder — иначе размер страницы не проходит через лимит загрузки. Лучше вставляйте изображения по https-ссылке или через файл на хостинге.',
     build_visual_save_failed: 'Не удалось сохранить',
     build_visual_apply_failed: 'Не удалось применить — выберите элемент в превью снова.',
     build_visual_no_iframe_access: 'Редактор недоступен: превью с другого домена.',
@@ -1682,6 +1685,10 @@ export const messages = {
     build_visual_save: 'Save layout',
     build_visual_saving: 'Saving…',
     build_visual_saved: 'Layout saved',
+    build_visual_save_shrunk_inline: 'Heavy images were shrunk for upload',
+    build_visual_save_shrunk_inline_desc:
+      'Some oversized inline data:image blobs were swapped for a lightweight placeholder — the page exceeded the HTTP body limit. Prefer https image URLs or hosted files.',
+
     build_visual_save_failed: 'Could not save',
     build_visual_apply_failed: 'Could not apply — select an element in the preview again.',
     build_visual_no_iframe_access: 'Editor unavailable: cross-origin preview.',
@@ -2646,7 +2653,9 @@ export const messages = {
     build_visual_save: 'Нигоҳ доштани макет',
     build_visual_saving: 'Нигоҳ дошта мешавад…',
     build_visual_saved: 'Макет нигоҳ дошта шуд',
-    build_visual_save_failed: 'Нигоҳ доштан муяссар нашуд',
+    build_visual_save_shrunk_inline: 'Акси сангин сабук шуд барои нигоҳдоштан',
+    build_visual_save_shrunk_inline_desc:
+      'Баъзе data:image-ҳои хеле калон ба placeholder ҷойгузин шуд — андоза пароканда мешавад. Ҳамчора URL-ҳои https истифода баред.',
     build_visual_apply_failed: 'Татбиқ нашуд — элементро аз нав дар пешнамоиш интихоб кунед.',
     build_visual_no_iframe_access: 'Муҳаррир дастнорас: пешнамоиш аз домени дигар.',
     build_visual_replace_image: 'Ивази акс',

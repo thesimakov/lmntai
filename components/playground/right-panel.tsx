@@ -44,7 +44,7 @@ type RightPanelProps = {
   presentationExportsPaid?: boolean;
   /** Режим отдельного редактора документа (вкладка «Документ») */
   previewVariant?: "default" | "document";
-  /** Плавающий шильдик «Сделано на Лемнити» (тариф Стандарт / пока не снят брендинг) */
+  /** Плавающий шильдик «Сделано на Лемнити» (тариф Стандарт / пока не снят брендинг); в режиме визуального редактора iframe не показывается */
   studioBrandingBadge?: boolean | null;
 };
 
@@ -249,7 +249,7 @@ export function RightPanel({
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {previewFrame}
-        {studioBrandingBadge === true ? (
+        {studioBrandingBadge === true && !visualEditMode ? (
           <div className="pointer-events-none absolute bottom-3 right-3 z-20 sm:bottom-4 sm:right-4">
             <LemnityStudioBadge className="pointer-events-auto shadow-black/40" />
           </div>
