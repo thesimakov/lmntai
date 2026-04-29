@@ -29,14 +29,24 @@ type DeviceMode = "desktop" | "tablet" | "mobile";
 
 /**
  * Родитель может повторно передать тот же документ с другим синтаксисом URL (HTTPS vs путь), опрос session.
- * Не затираем src iframe, если уже есть ?_edit/_recover после сохранения — иначе превью откатывается.
+ * Не затираем src iframe, если уже есть ?_edit/_recover после принудительной перезагрузки — иначе превью откатывается.
+ * Pathname сравниваем в каноническом виде (без лишнего / в конце).
  */
+function canonicalPreviewPathname(u: URL): string {
+  const p = u.pathname;
+  if (p.length > 1 && p.endsWith("/")) return p.slice(0, -1);
+  return p;
+}
+
 function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): string {
   const base = typeof window !== "undefined" ? window.location.href : "http://localhost/";
   try {
     const nextU = new URL(nextPreviewProp, base);
     const prevU = new URL(previousSrc, base);
-    if (nextU.pathname !== prevU.pathname || nextU.hash !== prevU.hash) {
+    if (
+      canonicalPreviewPathname(nextU) !== canonicalPreviewPathname(prevU) ||
+      nextU.hash !== prevU.hash
+    ) {
       return `${nextU.pathname}${nextU.search}${nextU.hash}`;
     }
     const prevHasReloadBust =
@@ -136,7 +146,7 @@ export function PreviewFrame({
     setIframeSrc((prev) => mergedPreviewIframeSrc(prev, previewUrl));
   }, [previewUrl]);
 
-  /** Визуальный редактор: слушатель `load` привязан к одному узлу iframe; `key={iframeSrc}` пересоздавал iframe без нового эффекта. После сохранения — снова bumpIframeCache + стабильный `key={sandboxId}`. */
+  /** Визуальный редактор: слушатель `load` привязан к одному узлу iframe; стабильный `key={sandboxId}`. */
   useEffect(() => {
     if (!visualEditMode || isPptx) {
       visualEditorHandleRef.current?.detach();
@@ -403,7 +413,7 @@ export function PreviewFrame({
           duration: 10_000
         });
       }
-      bumpIframeCache("edit");
+      // Не перезагружаем iframe после успешного PATCH: DOM уже совпадает с отправленным HTML; повторный GET может вернуть кэш/чужой shard и «сбросить» превью.
     } catch (e) {
       toast.error(t("build_visual_save_failed"), {
         description: unknownToErrorMessage(e)
