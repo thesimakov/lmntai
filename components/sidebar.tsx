@@ -72,7 +72,7 @@ const ACCOUNT_MENU_ROWS: AccountMenuRow[] = [
   { type: "logout" }
 ];
 
-function SidebarBody() {
+function SidebarBody({ className }: { className?: string }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t, lang } = useI18n();
@@ -99,7 +99,12 @@ function SidebarBody() {
   }, [session?.user?.email, session?.user?.name]);
 
   return (
-    <aside className="relative z-20 flex h-full w-full flex-col border-0 bg-transparent p-0 shadow-none outline-none">
+    <aside
+      className={cn(
+        "relative z-20 flex h-full min-h-0 w-full flex-col border-0 bg-transparent p-0 shadow-none outline-none",
+        className
+      )}
+    >
       <div className="mb-6 rounded-2xl border bg-card/70 p-3 shadow-sm">
         <div className="flex items-center justify-center rounded-2xl bg-background/60 px-4 py-3">
           <Image
@@ -299,10 +304,10 @@ export function Sidebar() {
               initial={{ x: -24, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -24, opacity: 0 }}
-              className="h-full max-w-xs"
+              className="flex h-full max-w-xs overflow-hidden"
               onClick={(event) => event.stopPropagation()}
             >
-              <SidebarBody />
+              <SidebarBody className="overflow-y-auto rounded-2xl border border-border bg-card p-4 shadow-xl" />
             </motion.div>
           </motion.div>
         ) : null}

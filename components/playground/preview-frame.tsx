@@ -60,21 +60,6 @@ function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): s
   }
 }
 
-/** Для превью из blob:, чтобы абсолютные ссылки были как при открытии с origin. */
-function injectBaseForOpenedPreview(html: string, origin: string): string {
-  if (/<base\s[^>]*\bhref=/i.test(html)) {
-    return html;
-  }
-  const baseTag = `<base href="${origin}/">`;
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
-  }
-  if (/<html[^>]*>/i.test(html)) {
-    return html.replace(/<html[^>]*>/i, (h) => `${h}<head><meta charset="utf-8"/>${baseTag}</head>`);
-  }
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>${baseTag}</head><body>${html}</body></html>`;
-}
-
 const modeStyles: Record<DeviceMode, string> = {
   desktop: "h-full min-h-0 w-full",
   tablet: "mx-auto h-full min-h-0 w-[768px] max-w-full",
@@ -373,49 +358,10 @@ export function PreviewFrame({
   }
 
   /**
-   * Визрежим: после PATCH iframe не перезагружаем (см. handleSaveVisual) — GET /api/sandbox может
-   * вернуть кэш или другой инстанс. Просмотр = тот же HTML, что в iframe (serialize + blob), синхронно с кликом.
-   * Иначе — прямой переход по URL (без about:blank + fetch, чтобы блокировщики не резали окно).
+   * Превью в новой вкладке: всегда тот же URL, что превью песочницы (`_open`, при необходимости `_saved`),
+   * без blob: — нормальный адрес для копирования / шаринга. Синхронный window.open сохраняет user gesture (блокировщики реже режут вкладку).
    */
   function openPreviewInNewTab() {
-    const iframe = iframeRef.current;
-    const doc = iframe?.contentDocument;
-    if (
-      visualEditMode &&
-      !isPptx &&
-      !iframeBlocked &&
-      doc?.documentElement
-    ) {
-      try {
-        const { html } = serializeIframeDocument(doc);
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
-        const patched = injectBaseForOpenedPreview(html, origin);
-        const blob = new Blob([patched], { type: "text/html;charset=utf-8" });
-        const blobUrl = URL.createObjectURL(blob);
-        const w = window.open(blobUrl, "_blank");
-        if (!w) {
-          URL.revokeObjectURL(blobUrl);
-          toast.error(t("build_preview_popup_blocked"));
-          return;
-        }
-        const revoke = (): void => {
-          queueMicrotask(() => URL.revokeObjectURL(blobUrl));
-        };
-        try {
-          w.addEventListener("load", revoke, { once: true });
-        } catch {
-          revoke();
-        }
-        return;
-      } catch {
-        /* см. переход по API ниже */
-      }
-    }
-
-    openPreviewNavigateByUrl();
-  }
-
-  function openPreviewNavigateByUrl() {
     const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
     u.searchParams.set("_open", String(Date.now()));
     const rev = visualSaveRevisionRef.current;
