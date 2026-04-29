@@ -37,7 +37,7 @@ import {
   normalizePublishSubdomainLabel,
   suggestPublishSubdomain
 } from "@/lib/publish-host";
-import { copyTextToClipboard } from "@/lib/preview-share";
+import { copyTextToClipboard, buildCanonicalSharePageHref } from "@/lib/preview-share";
 import { SHARE_BRANDING_REMOVAL_PRICE_RUB } from "@/lib/share-branding";
 import { cn } from "@/lib/utils";
 
@@ -121,6 +121,11 @@ export function BuildSettings({
     [cleanPublishSubdomain]
   );
 
+  const canonicalShareFallbackHref = useMemo(
+    () => (sandboxId ? buildCanonicalSharePageHref(sandboxId) : ""),
+    [sandboxId]
+  );
+
   const openPublishDialog = useCallback(() => {
     onOpenPublishDialog?.();
   }, [onOpenPublishDialog]);
@@ -133,6 +138,16 @@ export function BuildSettings({
       toast.error(t("playground_toast_copy_failed"));
     }
   }, [builtinPublishUrl, t]);
+
+  const copyCanonicalShareFallback = useCallback(async () => {
+    if (!canonicalShareFallbackHref) return;
+    const ok = await copyTextToClipboard(canonicalShareFallbackHref);
+    if (ok) {
+      toast.success(t("build_settings_domains_fallback_copy_toast"));
+    } else {
+      toast.error(t("playground_toast_copy_failed"));
+    }
+  }, [canonicalShareFallbackHref, t]);
 
   const priceLabel = String(SHARE_BRANDING_REMOVAL_PRICE_RUB);
   const withPrice = useCallback((s: string) => s.replaceAll("{price}", priceLabel), [priceLabel]);
@@ -308,6 +323,31 @@ export function BuildSettings({
             <Globe className="h-4 w-4" aria-hidden />
             {t("build_settings_domains_publish_cta")}
           </Button>
+          {sandboxId && canonicalShareFallbackHref ? (
+            <div className="space-y-2 rounded-xl border border-dashed border-border/80 bg-muted/15 px-3 py-3">
+              <p className="text-[11px] leading-snug text-muted-foreground">
+                {t("build_settings_domains_fallback_hint").replace(
+                  "{domain}",
+                  PUBLISH_BUILTIN_BASE_DOMAIN
+                )}
+              </p>
+              <div className="flex gap-2">
+                <div className="min-w-0 flex-1 truncate rounded-lg border border-border/60 bg-background/80 px-2 py-1.5 font-mono text-[11px] text-muted-foreground">
+                  {canonicalShareFallbackHref}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-lg"
+                  aria-label={t("build_settings_domains_fallback_copy_aria")}
+                  onClick={() => void copyCanonicalShareFallback()}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

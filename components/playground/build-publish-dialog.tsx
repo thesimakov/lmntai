@@ -145,7 +145,20 @@ export function BuildPublishDialog({
       const verification = data?.verification ?? null;
       setVerificationInfo(verification);
       if (verification?.status === "PENDING") {
-        toast.message("Добавьте TXT-запись и нажмите «Проверить домен»");
+        if (verification.recordValue?.trim()) {
+          const copied = await copyTextToClipboard(verification.recordValue.trim());
+          if (copied) {
+            toast.success("Строка для TXT уже в буфере обмена", {
+              description:
+                "Вставьте её в поле Value у регистратора DNS. Имя записи (Host / Name) — в поле блоком выше, рядом кнопка копирования.",
+              duration: 12_000
+            });
+          } else {
+            toast.message("Скопируйте значение TXT вручную — поля ниже", {
+              duration: 10_000
+            });
+          }
+        }
         return { ok: true, verified: false };
       }
       return { ok: true, verified: true };
@@ -378,31 +391,58 @@ export function BuildPublishDialog({
               <section className="space-y-2.5 pt-4">
                 <p className="text-sm font-semibold">TXT для подтверждения домена</p>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Добавьте запись в DNS, подождите распространение, затем «Проверить домен».
+                  Добавьте запись в DNS, подождите распространение, затем «Проверить домен». После успешной привязки домена
+                  строку для поля Value мы копируем в буфер автоматически; при необходимости поля ниже можно выделить
+                  и скопировать вручную.
                 </p>
-                <div className="grid gap-2 rounded-lg border border-border/80 bg-muted/20 p-3 text-sm">
-                  <p>
-                    <span className="text-muted-foreground">Type</span> <span className="font-medium">TXT</span>
+                <div className="space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3">
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Type:</span> <span className="font-medium">TXT</span>
                   </p>
-                  <p className="break-all">
-                    <span className="text-muted-foreground">Name</span>{" "}
-                    <span className="font-mono">{verificationInfo.recordName}</span>
-                  </p>
-                  <p className="break-all">
-                    <span className="text-muted-foreground">Value</span>{" "}
-                    <span className="font-mono">{verificationInfo.recordValue}</span>
-                  </p>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Имя записи (Name / Host)</p>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={verificationInfo.recordName}
+                        className="h-10 min-h-0 font-mono text-xs"
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 shrink-0"
+                        aria-label="Скопировать имя записи"
+                        onClick={() => void copyValue(verificationInfo.recordName!, "Имя записи скопировано")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-medium text-muted-foreground">Значение (Value)</p>
+                    <div className="flex gap-2">
+                      <Input
+                        readOnly
+                        value={verificationInfo.recordValue}
+                        className="h-10 min-h-0 font-mono text-xs"
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="h-10 shrink-0"
+                        aria-label="Скопировать значение TXT"
+                        onClick={() => void copyValue(verificationInfo.recordValue!, "Значение TXT скопировано")}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 text-sm"
-                    onClick={() => void copyValue(verificationInfo.recordValue!, "TXT-значение скопировано")}
-                  >
-                    Скопировать value
-                  </Button>
                   <Button type="button" size="sm" className="h-9 text-sm" onClick={() => void verifyDomainNow()} disabled={bindingPending}>
                     Проверить домен
                   </Button>

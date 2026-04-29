@@ -3,6 +3,13 @@
  * При появлении отдельного публичного deploy-URL из бэкенда — подставляйте его здесь.
  */
 
+import { SITE_URL } from "@/lib/site";
+
+/** Публичная страница на основном домене (NEXT_PUBLIC_SITE_URL) — работает там, где поддомен публикации не резолвится. */
+export function buildCanonicalSharePageHref(sandboxId: string): string {
+  return new URL(`/share/${encodeURIComponent(sandboxId)}`, `${SITE_URL}/`).href;
+}
+
 export function resolveShareablePreviewUrl(previewUrl: string | null, origin: string): string | null {
   if (!previewUrl?.trim()) return null;
   const raw = previewUrl.trim();

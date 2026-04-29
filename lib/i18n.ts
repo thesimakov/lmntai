@@ -843,6 +843,10 @@ export const messages = {
     build_settings_domains_custom_publish_cta: 'Опубликовать на своём домене',
     build_settings_domains_copy_aria: 'Скопировать адрес',
     build_settings_domains_copy_toast: 'Адрес скопирован',
+    build_settings_domains_fallback_hint:
+      'Если страница по адресу .{domain} не загружается (DNS без wildcard *, корпоративная сеть или встроенный браузер IDE), используйте публичную ссылку на основном домене.',
+    build_settings_domains_fallback_copy_aria: 'Скопировать ссылку на основном домене',
+    build_settings_domains_fallback_copy_toast: 'Публичная ссылка скопирована',
     build_settings_metrica_title: 'Яндекс Метрика',
     build_settings_metrica_subtitle: 'Аналитика посещаемости вашего сайта',
     build_settings_metrica_callout:
@@ -1813,6 +1817,10 @@ export const messages = {
     build_settings_domains_custom_publish_cta: 'Publish on your own domain',
     build_settings_domains_copy_aria: 'Copy address',
     build_settings_domains_copy_toast: 'Address copied',
+    build_settings_domains_fallback_hint:
+      'If the .{domain} subdomain does not load (DNS without wildcard, corporate firewall, IDE preview browser), use the share link on the main site domain.',
+    build_settings_domains_fallback_copy_aria: 'Copy main-site share link',
+    build_settings_domains_fallback_copy_toast: 'Share link copied',
     build_settings_metrica_title: 'Yandex Metrica',
     build_settings_metrica_subtitle: 'Traffic analytics for your site',
     build_settings_metrica_callout:
@@ -2782,6 +2790,10 @@ export const messages = {
     build_settings_domains_custom_publish_cta: 'Нашр дар домени худ',
     build_settings_domains_copy_aria: 'Нусхаи суроға',
     build_settings_domains_copy_toast: 'Суроға нусха шуд',
+    build_settings_domains_fallback_hint:
+      'Агар зердомени .{domain} кушода нашавад (DNS, шабака ё браузери дарунӣ), аз пайванди сайти асосӣ истифода баред.',
+    build_settings_domains_fallback_copy_aria: 'Нусхаи пайванд аз домени асосӣ',
+    build_settings_domains_fallback_copy_toast: 'Нусхаи пайванди оммавӣ нигоҳ дошта шуд',
     build_settings_metrica_title: 'Яндекс Метрика',
     build_settings_metrica_subtitle: 'Таҳлили бинандагии сомона',
     build_settings_metrica_callout:

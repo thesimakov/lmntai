@@ -3,8 +3,21 @@ import { NextResponse } from "next/server";
 
 import { isReservedAppHost, normalizeHost } from "@/lib/publish-domain";
 
+/** Запрос в resolve API через канонический origin (NEXT_PUBLIC_SITE_URL), чтобы не упираться в поддомен публикации. */
+function publishResolveFetchOrigin(req: NextRequest): string {
+  const raw = typeof process.env.NEXT_PUBLIC_SITE_URL === "string" ? process.env.NEXT_PUBLIC_SITE_URL.trim() : "";
+  if (raw.length > 0) {
+    try {
+      return new URL(raw.endsWith("/") ? raw.slice(0, -1) : raw).origin;
+    } catch {
+      /* fallthrough */
+    }
+  }
+  return new URL(req.url).origin;
+}
+
 async function resolveSandboxIdForHost(req: NextRequest, host: string) {
-  const url = new URL("/api/publish/resolve", req.url);
+  const url = new URL("/api/publish/resolve", `${publishResolveFetchOrigin(req)}/`);
   url.searchParams.set("host", host);
   try {
     const res = await fetch(url.toString(), {
