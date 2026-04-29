@@ -5,6 +5,7 @@
 import { buildLayoutSnapshot, formatOverlayLabel } from "@/lib/editor/layout-element";
 import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
 import { createOverlayController, removeOverlayRoot } from "@/lib/editor/canvas-overlay";
+import { compactHtmlDocumentForPatch } from "@/lib/compact-html-for-save";
 
 export const LEMNITY_VISUAL_EDIT_STYLE_ID = "lemnity-visual-edit-style";
 
@@ -494,5 +495,6 @@ export function serializeIframeDocument(doc: Document): string {
   parsed.getElementById("lemnity-visual-overlay-style")?.remove();
   parsed.body?.classList.remove("lemnity-visual-edit-mode");
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : "<!DOCTYPE html>";
-  return `${doctype}\n${parsed.documentElement.outerHTML}`;
+  const raw = `${doctype}\n${parsed.documentElement.outerHTML}`;
+  return compactHtmlDocumentForPatch(raw);
 }

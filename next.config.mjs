@@ -16,7 +16,8 @@ const nextConfig = {
     // после обновления Next / после проверки на staging.
     // instrumentationHook: true,
     serverActions: {
-      bodySizeLimit: "2mb"
+      // Визред / большие PATCH в API — не упираться в дефолт 2 МБ там, где включены Server Actions.
+      bodySizeLimit: "64mb"
     }
   },
   images: {

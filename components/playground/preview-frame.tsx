@@ -360,10 +360,15 @@ export function PreviewFrame({
             body: JSON.stringify({ html })
           });
       if (!res.ok) {
-        const msg =
-          res.status === 413
-            ? t("build_visual_html_too_large")
-            : (await res.text().catch(() => "")) || res.statusText;
+        if (res.status === 413) {
+          toast.error(t("build_visual_html_too_large"), {
+            description: t("build_visual_html_too_large_hint"),
+            duration: 12_000
+          });
+          bumpIframeCache("recover");
+          return;
+        }
+        const msg = (await res.text().catch(() => "")) || res.statusText;
         throw new Error(msg);
       }
       toast.success(t("build_visual_saved"));

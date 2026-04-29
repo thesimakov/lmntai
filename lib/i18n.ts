@@ -720,6 +720,9 @@ export const messages = {
     build_visual_replace_image: 'Заменить изображение',
     build_visual_image_type_error: 'Выберите файл изображения (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML слишком большой для сохранения.',
+    build_visual_html_too_large_hint:
+      'Часто ограничивает reverse proxy (nginx: client_max_body_size 64m; или Caddy — лимит тела запроса) или служба lemnity-builder без обновления. После изменения конфига — reload прокси и pm2 restart lemnity-builder. Уменьшите встроенные data:image или тяжёлые блоки.',
+
     build_visual_quick_styles: 'Быстрые стили выбранного элемента',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик — мультивыбор',
     build_visual_selected_count: 'Выбрано: {count}',
@@ -1678,6 +1681,9 @@ export const messages = {
     build_visual_replace_image: 'Replace image',
     build_visual_image_type_error: 'Pick an image file (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML is too large to save.',
+    build_visual_html_too_large_hint:
+      'Usually blocked by reverse proxy body size (nginx: client_max_body_size 64m; or Caddy request limits) or an outdated lemnity-builder. Reload the proxy after config change and restart lemnity-builder via PM2. Reduce embedded data: images / heavy snippets.',
+
     build_visual_quick_styles: 'Quick styles for selected element',
     build_visual_multi_select_hint: 'Ctrl/Cmd + click for multi-select',
     build_visual_selected_count: 'Selected: {count}',
@@ -2636,6 +2642,9 @@ export const messages = {
     build_visual_replace_image: 'Ивази акс',
     build_visual_image_type_error: 'Файли акс интихоб кунед (JPEG, PNG, WebP, GIF…).',
     build_visual_html_too_large: 'HTML барои нигоҳ доштан хеле калон аст.',
+    build_visual_html_too_large_hint:
+      'Аксар пароксӣ (nginx: client_max_body_size), Caddy ё lemnity builder кӯҳна. Баъд аз конфиг — nginx/caddy reload, pm2 restart lemnity-builder. Аксунамояҳои data:image/ HTML-ҳои сангинро кам кунед.',
+
     build_visual_quick_styles: 'Услубҳои зуд барои элементи интихобшуда',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик барои интихоби якчанд',
     build_visual_selected_count: 'Интихобшуда: {count}',
