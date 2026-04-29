@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireDbUser } from "@/lib/auth-guards";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
+import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -83,7 +84,9 @@ async function patchSandbox(
   const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
   let htmlRaw: string | null = null;
   try {
-    const raw = await req.text();
+    const rawBuf = Buffer.from(await req.arrayBuffer());
+    const decoded = decodeVisualSavePatchBuffer(rawBuf, req.headers.get("content-encoding"));
+    const raw = decoded.toString("utf8");
     if (contentType.includes("text/html")) {
       htmlRaw = raw.length > 0 ? raw : null;
     } else {

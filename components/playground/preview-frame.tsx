@@ -22,6 +22,7 @@ import {
   serializeIframeDocument,
   type VisualPreviewEditorHandle
 } from "@/lib/visual-preview-editor";
+import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
 import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -346,19 +347,79 @@ export function PreviewFrame({
       const { html, replacedHeavyInlineAssets } = serializeIframeDocument(doc);
       const isBridgeArtifact =
         sandboxId.startsWith("artifact_") || previewUrl.includes("/api/lemnity-ai/artifacts/");
+      const { body: patchBody, headers: patchHeaders, wireBytes } = await buildVisualSavePatchBody(html);
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+        body: JSON.stringify({
+          sessionId: "0211ce",
+          location: "preview-frame.tsx:handleSaveVisual:preflight",
+          message: "visual save request preflight",
+          data: {
+            hypothesisId: "H0-start",
+            htmlChars: html.length,
+            wireBytes,
+            endpoint: isBridgeArtifact ? "artifact" : "sandbox",
+            replacedHeavyInlineAssets,
+            sandboxIdPrefix: String(sandboxId).slice(0, 28)
+          },
+          timestamp: Date.now(),
+          runId: "post-fix-gzip"
+        })
+      }).catch(() => {});
+      // #endregion
       const res = isBridgeArtifact
         ? await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`, {
             method: "PATCH",
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: patchHeaders,
             credentials: "include",
-            body: html
+            body: patchBody
           })
         : await fetch(`/api/sandbox/${sandboxId}`, {
             method: "PATCH",
-            headers: { "Content-Type": "text/html; charset=utf-8" },
+            headers: patchHeaders,
             credentials: "include",
-            body: html
+            body: patchBody
           });
+      // #region agent log
+      {
+        const st = res.status;
+        const hid =
+          st === 413
+            ? "H1-413"
+            : st === 401 || st === 403
+              ? "H2-auth"
+              : st === 404
+                ? "H2-notfound"
+                : st >= 500
+                  ? "H3-upstream5xx"
+                  : st >= 400
+                    ? "H4-client4xx"
+                    : "H5-ok";
+        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+          body: JSON.stringify({
+            sessionId: "0211ce",
+            location: "preview-frame.tsx:handleSaveVisual:response",
+            message: "visual save PATCH response",
+            data: {
+              hypothesisId: hid,
+              status: st,
+              ok: res.ok,
+              endpoint: isBridgeArtifact ? "artifact" : "sandbox",
+              htmlChars: html.length,
+              wireBytes,
+              replacedHeavyInlineAssets,
+              sandboxIdPrefix: String(sandboxId).slice(0, 28)
+            },
+            timestamp: Date.now(),
+            runId: "post-fix-gzip"
+          })
+        }).catch(() => {});
+      }
+      // #endregion
       if (!res.ok) {
         if (res.status === 413) {
           toast.error(t("build_visual_html_too_large"), {
@@ -369,6 +430,24 @@ export function PreviewFrame({
           return;
         }
         const msg = (await res.text().catch(() => "")) || res.statusText;
+        // #region agent log
+        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+          body: JSON.stringify({
+            sessionId: "0211ce",
+            location: "preview-frame.tsx:handleSaveVisual:notOkBody",
+            message: "visual save error body peek",
+            data: {
+              hypothesisId: "H-nonOk-detail",
+              status: res.status,
+              bodyPeek: typeof msg === "string" ? msg.slice(0, 400) : ""
+            },
+            timestamp: Date.now(),
+            runId: "save-debug"
+          })
+        }).catch(() => {});
+        // #endregion
         throw new Error(msg);
       }
       toast.success(t("build_visual_saved"));
@@ -380,6 +459,23 @@ export function PreviewFrame({
       }
       bumpIframeCache("edit");
     } catch (e) {
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+        body: JSON.stringify({
+          sessionId: "0211ce",
+          location: "preview-frame.tsx:handleSaveVisual:catch",
+          message: "visual save catch",
+          data: {
+            hypothesisId: "H4-throw-or-network",
+            err: unknownToErrorMessage(e).slice(0, 400)
+          },
+          timestamp: Date.now(),
+          runId: "save-debug"
+        })
+      }).catch(() => {});
+      // #endregion
       toast.error(t("build_visual_save_failed"), {
         description: unknownToErrorMessage(e)
       });

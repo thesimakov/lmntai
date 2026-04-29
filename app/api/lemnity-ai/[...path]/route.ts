@@ -19,6 +19,7 @@ import {
 } from "@/lib/lemnity-ai-session-links";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { mergeBuildTemplateIntoUserMessage } from "@/lib/build-templates";
+import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
 import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
@@ -354,14 +355,16 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     }
     let bodyText: string;
     try {
-      bodyText = await req.text();
+      const rawBuf = Buffer.from(await req.arrayBuffer());
+      const decoded = decodeVisualSavePatchBuffer(rawBuf, req.headers.get("content-encoding"));
+      bodyText = decoded.toString("utf8");
     } catch {
       return new Response("Bad request", { status: 400 });
     }
     const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
       method: "PATCH",
       headers: withLemnityAiUpstreamAuthHeaders({
-        "Content-Type": req.headers.get("content-type") || "application/json"
+        "Content-Type": "text/html; charset=utf-8"
       }),
       body: bodyText
     });
