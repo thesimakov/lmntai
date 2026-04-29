@@ -60,6 +60,21 @@ function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): s
   }
 }
 
+/** Один <base> для HTML, вставленного через document.write, чтобы root-relative ссылки резолвились к origin. */
+function injectBaseForOpenedPreview(html: string, origin: string): string {
+  if (/<base\s[^>]*\bhref=/i.test(html)) {
+    return html;
+  }
+  const baseTag = `<base href="${origin}/">`;
+  if (/<head[^>]*>/i.test(html)) {
+    return html.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
+  }
+  if (/<html[^>]*>/i.test(html)) {
+    return html.replace(/<html[^>]*>/i, (h) => `${h}<head><meta charset="utf-8"/>${baseTag}</head>`);
+  }
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>${baseTag}</head><body>${html}</body></html>`;
+}
+
 const modeStyles: Record<DeviceMode, string> = {
   desktop: "h-full min-h-0 w-full",
   tablet: "mx-auto h-full min-h-0 w-[768px] max-w-full",
@@ -119,6 +134,7 @@ export function PreviewFrame({
   const visualEditorPanelRef = useRef<ElementEditorPanelHandle | null>(null);
   const visualEditorHandleRef = useRef<VisualPreviewEditorHandle | null>(null);
   const visualSelectedPrimaryRef = useRef<Element | null>(null);
+  const visualSaveRevisionRef = useRef(0);
 
   const isPptx = isPptxArtifact(mimeType);
   const exportBusy = exportTask !== null;
@@ -356,12 +372,52 @@ export function PreviewFrame({
     setIframeSrc(`${u.pathname}${u.search}${u.hash}`);
   }
 
-  /** Превью в новой вкладке: `_open` ломает HTTP-кэш, иначе возможен старый HTML после PATCH. */
-  function openPreviewInNewTab() {
+  /** Превью во вкладке: fetch с cache: no-store, затем document.write — без устаревшего ответа из кэша навигации/CDN. */
+  async function openPreviewInNewTab() {
     const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
     u.searchParams.set("_open", String(Date.now()));
-    const href = `${u.pathname}${u.search}${u.hash}`;
-    window.open(href, "_blank", "noopener,noreferrer");
+    const rev = visualSaveRevisionRef.current;
+    if (rev > 0) {
+      u.searchParams.set("_saved", String(rev));
+    }
+    const fetchUrl = `${u.pathname}${u.search}${u.hash}`;
+
+    const w = window.open("about:blank", "_blank");
+    if (!w) {
+      toast.error(t("build_preview_popup_blocked"));
+      return;
+    }
+
+    try {
+      const res = await fetch(fetchUrl, {
+        credentials: "include",
+        cache: "no-store"
+      });
+      if (!res.ok) {
+        w.close();
+        toast.error(t("build_preview_fetch_failed"));
+        return;
+      }
+      const ct = res.headers.get("content-type") ?? "";
+      if (ct.includes("application/json")) {
+        w.close();
+        toast.error(t("build_preview_fetch_failed"));
+        return;
+      }
+      const html = await res.text();
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const patched = injectBaseForOpenedPreview(html, origin);
+      w.document.open();
+      w.document.write(patched);
+      w.document.close();
+    } catch (e) {
+      try {
+        w.close();
+      } catch {
+        /* noop */
+      }
+      toast.error(t("build_preview_fetch_failed"), { description: unknownToErrorMessage(e) });
+    }
   }
 
   function handleDismissVisualEditor() {
@@ -406,6 +462,7 @@ export function PreviewFrame({
         const msg = (await res.text().catch(() => "")) || res.statusText;
         throw new Error(msg);
       }
+      visualSaveRevisionRef.current += 1;
       toast.success(t("build_visual_saved"));
       if (replacedHeavyInlineAssets) {
         toast.message(t("build_visual_save_shrunk_inline"), {
@@ -648,7 +705,7 @@ export function PreviewFrame({
             </Button>
           ) : null}
           {!isPptx ? (
-            <Button size="sm" variant="outline" className="h-8" type="button" onClick={openPreviewInNewTab}>
+            <Button size="sm" variant="outline" className="h-8" type="button" onClick={() => void openPreviewInNewTab()}>
               <ExternalLink className="h-4 w-4" />
               {t("build_preview_open_tab")}
             </Button>

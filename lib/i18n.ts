@@ -885,6 +885,8 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Оплата ещё не зафиксирована. Подождите немного и попробуйте снова.',
     build_preview_open_tab: 'Просмотр',
+    build_preview_popup_blocked: 'Разрешите всплывающие окна для этого сайта, чтобы открыть просмотр.',
+    build_preview_fetch_failed: 'Не удалось загрузить превью с сервера. Сохраните макет и попробуйте снова.',
     build_studio_badge_prefix: 'Сделано на',
     build_studio_badge_brand: 'Лемнити',
     build_studio_badge_aria: 'Сделано на Лемнити — сайт Lemnity',
@@ -1853,6 +1855,8 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Payment not recorded yet. Wait a moment and try again.',
     build_preview_open_tab: 'Preview',
+    build_preview_popup_blocked: 'Allow pop-ups for this site to open preview.',
+    build_preview_fetch_failed: 'Could not load preview from the server. Save the layout and try again.',
     build_studio_badge_prefix: 'Made on',
     build_studio_badge_brand: 'Lemnity',
     build_studio_badge_aria: 'Made on Lemnity — open website',
@@ -2821,6 +2825,8 @@ export const messages = {
     build_settings_watermark_toast_still_unpaid:
       'Пардохт ҳанӯз сабт нашудааст. Кӯтоҳ интизор шавед ва такрор кунед.',
     build_preview_open_tab: 'Дидан',
+    build_preview_popup_blocked: 'Барои намоиши пешнамоиш рухсат диҳед.',
+    build_preview_fetch_failed: 'Пешнамоиш аз сервер бор нашуд. Макетро нигоҳ дошта, такрор кунед.',
     build_studio_badge_prefix: 'Дар',
     build_studio_badge_brand: 'Лемнити',
     build_studio_badge_aria: 'Дар Лемнити сохта шуд — сайт',
