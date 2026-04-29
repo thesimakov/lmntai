@@ -731,15 +731,20 @@ export default function PromptBuildPage() {
 
   const sendLemnityAiChat = useCallback(
     async (messagePayload: string, opts?: { buildTemplateSlug?: string | null }) => {
-      pushRecent(messagePayload.slice(0, 120));
+      const effectiveBuildTemplateSlug =
+        opts?.buildTemplateSlug !== undefined ? opts.buildTemplateSlug : (buildTemplate?.slug ?? null);
+      pushRecent(
+        messagePayload.slice(0, 120),
+        effectiveBuildTemplateSlug?.trim()
+          ? { templateSlug: effectiveBuildTemplateSlug.trim() }
+          : undefined
+      );
       const ensured = await ensureLemnityAiSession();
       if (ensured.ok === false) {
         push("assistant", `❌ ${ensured.message}`);
         return;
       }
       const sid = ensured.sessionId;
-      const effectiveBuildTemplateSlug =
-        opts?.buildTemplateSlug !== undefined ? opts.buildTemplateSlug : (buildTemplate?.slug ?? null);
 
       beginInterfaceBuildTiming();
       streamActiveRef.current = true;
@@ -1447,11 +1452,24 @@ export default function PromptBuildPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge]);
 
-  function pushRecent(item: string) {
+  function pushRecent(item: string, opts?: { templateSlug?: string }) {
     try {
       const key = "lemnity.recent";
-      const current = JSON.parse(localStorage.getItem(key) ?? "[]") as Array<{ t: number; text: string }>;
-      const next = [{ t: Date.now(), text: item }, ...current.filter((x) => x.text !== item)].slice(0, 8);
+      const current = JSON.parse(localStorage.getItem(key) ?? "[]") as Array<{
+        t: number;
+        text: string;
+        templateSlug?: string;
+      }>;
+      const slugTrim = opts?.templateSlug?.trim();
+      const nextItem: { t: number; text: string; templateSlug?: string } = {
+        t: Date.now(),
+        text: item
+      };
+      if (slugTrim) nextItem.templateSlug = slugTrim;
+      const next = [
+        nextItem,
+        ...current.filter((x) => x.text !== item)
+      ].slice(0, 8);
       localStorage.setItem(key, JSON.stringify(next));
       window.dispatchEvent(new Event("lemnity:recent-updated"));
     } catch {
@@ -1468,7 +1486,10 @@ export default function PromptBuildPage() {
     const controller = new AbortController();
     requestAbortRef.current = controller;
 
-    pushRecent(currentIdea);
+    pushRecent(
+      currentIdea,
+      buildTemplate?.slug?.trim() ? { templateSlug: buildTemplate.slug.trim() } : undefined
+    );
     setStage("questions");
     setPromptBuilderDebugLine(null);
 
@@ -1612,7 +1633,10 @@ export default function PromptBuildPage() {
     const prompt = (promptOverride ?? finalPrompt).trim();
     if (!prompt) return;
 
-    pushRecent(idea.trim() || prompt.slice(0, 120));
+    pushRecent(
+      idea.trim() || prompt.slice(0, 120),
+      buildTemplate?.slug?.trim() ? { templateSlug: buildTemplate.slug.trim() } : undefined
+    );
     resetStreamLog();
     beginInterfaceBuildTiming();
     streamActiveRef.current = true;

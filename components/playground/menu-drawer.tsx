@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n-provider";
+import { BuildTemplateThumbnail } from "@/components/playground/build-template-thumbnail";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
@@ -59,7 +60,7 @@ export function MenuDrawer({
   const useLemnityAiBridge = lemnityAiBridgeReady && shouldUseLemnityAiBridge;
   const [open, setOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
+  const [recent, setRecent] = useState<Array<{ t: number; text: string; templateSlug?: string }>>([]);
   const [lemnityAiHistory, setLemnityAiHistory] = useState<LemnityAiSessionListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState<string>("");
@@ -139,7 +140,11 @@ export function MenuDrawer({
 
   const refreshHistoryPanel = useCallback(() => {
     try {
-      const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{ t: number; text: string }>;
+      const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{
+        t: number;
+        text: string;
+        templateSlug?: string;
+      }>;
       setRecent(data.slice(0, 6));
     } catch {
       setRecent([]);
@@ -170,7 +175,11 @@ export function MenuDrawer({
   useEffect(() => {
     function readRecent() {
       try {
-        const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{ t: number; text: string }>;
+        const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{
+          t: number;
+          text: string;
+          templateSlug?: string;
+        }>;
         setRecent(data.slice(0, 6));
       } catch {
         setRecent([]);
@@ -470,11 +479,19 @@ export function MenuDrawer({
                     <button
                       key={r.t}
                       type="button"
-                      className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                      className="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-50"
                       aria-label={t("playground_menu_history_continue_aria")}
                       onClick={() => continueWithIdea(r.text)}
                     >
-                      {r.text}
+                      <div className="relative h-10 w-[72px] shrink-0 overflow-hidden rounded-lg border border-zinc-100">
+                        <BuildTemplateThumbnail
+                          slug={r.templateSlug}
+                          fallbackSeed={r.text}
+                          density="compact"
+                          className="absolute inset-0 h-full min-h-0 w-full rounded-none border-0"
+                        />
+                      </div>
+                      <span className="min-w-0 flex-1 truncate">{r.text}</span>
                     </button>
                   ))
                 ) : (
@@ -485,11 +502,19 @@ export function MenuDrawer({
                   <button
                     key={r.t}
                     type="button"
-                    className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                    className="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-50"
                     aria-label={t("playground_menu_history_continue_aria")}
                     onClick={() => continueWithIdea(r.text)}
                   >
-                    {r.text}
+                    <div className="relative h-10 w-[72px] shrink-0 overflow-hidden rounded-lg border border-zinc-100">
+                      <BuildTemplateThumbnail
+                        slug={r.templateSlug}
+                        fallbackSeed={r.text}
+                        density="compact"
+                        className="absolute inset-0 h-full min-h-0 w-full rounded-none border-0"
+                      />
+                    </div>
+                    <span className="min-w-0 flex-1 truncate">{r.text}</span>
                   </button>
                 ))
               ) : (

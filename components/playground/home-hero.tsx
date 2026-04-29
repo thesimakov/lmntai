@@ -5,7 +5,6 @@ import {
   ArrowUp,
   Building2,
   ChevronRight,
-  Clock,
   Code2,
   FileText,
   Globe,
@@ -37,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { BuildTemplateCatalogGrid, type BuildTemplateRow } from "@/components/playground/build-template-dialog-body";
+import { BuildTemplateThumbnail } from "@/components/playground/build-template-thumbnail";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -226,7 +226,9 @@ export function HomeHero({
   function openTemplatesUi() {
     onOpenTemplates();
   }
-  const [recent, setRecent] = useState<Array<{ t: number; text: string }>>([]);
+  const [recent, setRecent] = useState<
+    Array<{ t: number; text: string; templateSlug?: string }>
+  >([]);
   const [tab, setTab] = useState<"templates" | "recent">("templates");
   const [buildCatalogLoading, setBuildCatalogLoading] = useState(false);
   const [buildCatalogList, setBuildCatalogList] = useState<BuildTemplateRow[]>([]);
@@ -276,7 +278,11 @@ export function HomeHero({
     function readRecent() {
       try {
         const key = "lemnity.recent";
-        const data = JSON.parse(localStorage.getItem(key) ?? "[]") as Array<{ t: number; text: string }>;
+        const data = JSON.parse(localStorage.getItem(key) ?? "[]") as Array<{
+          t: number;
+          text: string;
+          templateSlug?: string;
+        }>;
         setRecent(data.slice(0, 4));
       } catch {
         setRecent([]);
@@ -605,23 +611,31 @@ export function HomeHero({
 
           <TabsContent value="recent" className="mt-0 focus-visible:outline-none">
             {recent.length ? (
-              <div className="flex flex-col gap-2.5">
+              <div className="grid grid-cols-1 content-start gap-3 sm:grid-cols-2 sm:gap-3">
                 {recent.map((r) => (
                   <button
                     key={r.t}
                     type="button"
                     onClick={() => onIdeaChange(r.text)}
                     className={cn(
-                      "group flex w-full gap-3 rounded-2xl border border-border/50 bg-background/50 px-3.5 py-3 text-left",
-                      "transition-all hover:border-violet-500/20 hover:bg-accent/50 dark:hover:bg-zinc-900/50",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      "group flex min-w-0 flex-col overflow-hidden rounded-2xl border text-left transition-all duration-200",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-500",
+                      "border-border bg-card hover:border-sky-200/80 hover:bg-muted/50 dark:hover:border-slate-600"
                     )}
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/80 text-muted-foreground dark:bg-zinc-800">
-                      <Clock className="h-4 w-4" />
+                    <div className="relative p-1.5 sm:p-2">
+                      <BuildTemplateThumbnail
+                        slug={r.templateSlug}
+                        fallbackSeed={r.text}
+                        density="card"
+                      />
                     </div>
-                    <span className="min-w-0 flex-1 text-pretty break-words text-sm text-foreground/90">{r.text}</span>
-                    <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-60" />
+                    <div className="flex min-w-0 items-start gap-2 px-3 pb-3.5 pt-0 sm:px-3.5 sm:pb-4">
+                      <span className="line-clamp-4 min-w-0 flex-1 text-pretty break-words text-sm text-foreground/90">
+                        {r.text}
+                      </span>
+                      <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-60" />
+                    </div>
                   </button>
                 ))}
               </div>

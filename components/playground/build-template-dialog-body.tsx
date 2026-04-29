@@ -1,8 +1,9 @@
 "use client";
 
-import { Check, LayoutTemplate, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 
 import { DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { BuildTemplateThumbnail } from "@/components/playground/build-template-thumbnail";
 import type { MessageKey } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 
@@ -13,24 +14,6 @@ export type BuildTemplateRow = {
   description: string;
   defaultUserPrompt: string;
 };
-
-/** Статические превью в `public/build-templates/` (по slug шаблона). */
-const PREVIEW_SRC_BY_SLUG: Partial<Record<string, string>> = {
-  massage: "/build-templates/massage.png",
-  "it-startup": "/build-templates/it-startup.jpg",
-  "lead-pr-sales": "/build-templates/lead-pr-sales.png"
-};
-
-/** Стабильные HSL-углы из slug для демо-превью (без картинок в БД). */
-function previewGradientFromSlug(slug: string): string {
-  let h = 0;
-  for (let i = 0; i < slug.length; i++) h = Math.imul(31, h) + slug.charCodeAt(i);
-  const u = h >>> 0;
-  const h1 = u % 360;
-  const h2 = (u * 7 + 140) % 360;
-  const h3 = (u * 13 + 260) % 360;
-  return `linear-gradient(135deg, hsl(${h1} 42% 24%) 0%, hsl(${h2} 48% 18%) 45%, hsl(${h3} 36% 12%) 100%)`;
-}
 
 /** Короткая строка «категория» по описанию (до «:» или усечение). */
 function categoryFromDescription(description: string): string {
@@ -43,52 +26,7 @@ function categoryFromDescription(description: string): string {
 }
 
 function TemplateCardPreview({ slug }: { slug: string }) {
-  const previewSrc = PREVIEW_SRC_BY_SLUG[slug];
-  return (
-    <div
-      className="relative aspect-[16/10] w-full overflow-hidden rounded-xl border border-border bg-muted/30 shadow-inner"
-      style={previewSrc ? undefined : { background: previewGradientFromSlug(slug) }}
-      aria-hidden
-    >
-      {previewSrc ? (
-        <img
-          src={previewSrc}
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-top"
-          loading="lazy"
-          decoding="async"
-        />
-      ) : (
-        <div
-          className="pointer-events-none absolute inset-0 opacity-[0.2]"
-          aria-hidden
-          style={{
-            backgroundImage: `repeating-linear-gradient(
-            -12deg,
-            transparent,
-            transparent 2px,
-            rgba(0,0,0,0.04) 2px,
-            rgba(0,0,0,0.04) 3px
-          )`
-          }}
-        />
-      )}
-      <div
-        className={cn(
-          "pointer-events-none absolute inset-0",
-          previewSrc
-            ? "bg-gradient-to-t from-black/30 via-black/5 to-transparent"
-            : "bg-gradient-to-t from-black/20 via-transparent to-white/30"
-        )}
-      />
-      <div className="absolute right-2 top-2 rounded-lg border border-border/50 bg-background/90 p-1.5 shadow-sm backdrop-blur-sm dark:bg-zinc-900/80">
-        <LayoutTemplate
-          className="h-3.5 w-3.5 text-sky-600 sm:h-4 sm:w-4"
-          aria-hidden
-        />
-      </div>
-    </div>
-  );
+  return <BuildTemplateThumbnail slug={slug} />;
 }
 
 export type BuildTemplateCatalogGridProps = {
