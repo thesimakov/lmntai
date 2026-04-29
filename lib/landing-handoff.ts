@@ -61,6 +61,18 @@ export function readBuilderHandoff(): BuilderHandoff | null {
   }
 }
 
+/**
+ * Режим «только превью шаблона» на /playground/build: явный флаг или старый handoff без флага,
+ * где idea совпадает с названием шаблона (выбор только на странице сборки).
+ */
+export function isHandoffTemplateDirectPreview(h: BuilderHandoff): boolean {
+  if (h.templateDirectPreview) return true;
+  if (!h.buildTemplate?.slug) return false;
+  const label = h.buildTemplate.name?.trim() || h.buildTemplate.slug;
+  const idea = h.idea?.trim();
+  return Boolean(idea && idea === label);
+}
+
 export function saveBuilderHandoff(
   idea: string,
   projectKind?: ProjectKind,

@@ -26,7 +26,9 @@ import { consumeDataSseBuffer } from "@/lib/client-sse";
 import {
   BUILDER_LAST_PROCESSED_NAV_KEY,
   BUILDER_NAV_TOKEN_KEY,
-  readBuilderHandoff
+  isHandoffTemplateDirectPreview,
+  readBuilderHandoff,
+  saveBuilderHandoff
 } from "@/lib/landing-handoff";
 import { rememberBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
@@ -1086,6 +1088,13 @@ export default function PromptBuildPage() {
           setPresentationPdfExport(null);
           setMode("idle");
         }
+        if (idea.trim()) {
+          try {
+            saveBuilderHandoff(idea.trim(), projectKind ?? undefined, null);
+          } catch {
+            /* ignore */
+          }
+        }
         return;
       }
       void runBuildTemplatePreview(next.slug);
@@ -1097,6 +1106,16 @@ export default function PromptBuildPage() {
         setCoachAwaitingConfirm(false);
         setPendingTechnicalPrompt(null);
         setPromptCoachLoading(false);
+        try {
+          saveBuilderHandoff(
+            next.name.trim() || next.slug,
+            projectKind ?? undefined,
+            next,
+            { templateDirectPreview: true }
+          );
+        } catch {
+          /* ignore */
+        }
       } else {
         const text = next.defaultUserPrompt?.trim() ?? "";
         if (text) {
@@ -1106,10 +1125,15 @@ export default function PromptBuildPage() {
           setCoachAwaitingConfirm(false);
           setPendingTechnicalPrompt(null);
           setPromptCoachLoading(false);
+          try {
+            saveBuilderHandoff(text, projectKind ?? undefined, next);
+          } catch {
+            /* ignore */
+          }
         }
       }
     },
-    [runBuildTemplatePreview, sandboxId, shouldUseLemnityAiBridge, t]
+    [idea, projectKind, runBuildTemplatePreview, sandboxId, shouldUseLemnityAiBridge, t]
   );
 
   const runPromptCoach = useCallback(
@@ -1260,7 +1284,7 @@ export default function PromptBuildPage() {
       sessionStorage.setItem(onceKey, fromStorage);
     }
 
-    if (handoff.templateDirectPreview && handoff.buildTemplate?.slug) {
+    if (isHandoffTemplateDirectPreview(handoff) && handoff.buildTemplate?.slug) {
       if (handoff.projectKind) setProjectKind(handoff.projectKind);
       setBuildTemplate(handoff.buildTemplate);
       setIdea(handoff.buildTemplate.name?.trim() || handoff.buildTemplate.slug);
@@ -1398,7 +1422,7 @@ export default function PromptBuildPage() {
       if (once === fromStorage) return;
       sessionStorage.setItem(onceKey, fromStorage);
     }
-    if (handoff.templateDirectPreview && handoff.buildTemplate?.slug) {
+    if (isHandoffTemplateDirectPreview(handoff) && handoff.buildTemplate?.slug) {
       if (handoff?.projectKind) setProjectKind(handoff.projectKind);
       setBuildTemplate(handoff.buildTemplate);
       setIdea(handoff.buildTemplate.name?.trim() || handoff.buildTemplate.slug);

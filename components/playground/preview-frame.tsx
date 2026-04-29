@@ -60,21 +60,6 @@ function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): s
   }
 }
 
-/** Один <base> для HTML, вставленного через document.write, чтобы root-relative ссылки резолвились к origin. */
-function injectBaseForOpenedPreview(html: string, origin: string): string {
-  if (/<base\s[^>]*\bhref=/i.test(html)) {
-    return html;
-  }
-  const baseTag = `<base href="${origin}/">`;
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/<head[^>]*>/i, (head) => `${head}${baseTag}`);
-  }
-  if (/<html[^>]*>/i.test(html)) {
-    return html.replace(/<html[^>]*>/i, (h) => `${h}<head><meta charset="utf-8"/>${baseTag}</head>`);
-  }
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"/>${baseTag}</head><body>${html}</body></html>`;
-}
-
 const modeStyles: Record<DeviceMode, string> = {
   desktop: "h-full min-h-0 w-full",
   tablet: "mx-auto h-full min-h-0 w-[768px] max-w-full",
@@ -372,51 +357,18 @@ export function PreviewFrame({
     setIframeSrc(`${u.pathname}${u.search}${u.hash}`);
   }
 
-  /** Превью во вкладке: fetch с cache: no-store, затем document.write — без устаревшего ответа из кэша навигации/CDN. */
-  async function openPreviewInNewTab() {
+  /** Превью в новой вкладке: прямой переход по URL (`_open` / `_saved`), без about:blank + fetch — иначе блокировщики часто режут окно. */
+  function openPreviewInNewTab() {
     const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
     u.searchParams.set("_open", String(Date.now()));
     const rev = visualSaveRevisionRef.current;
     if (rev > 0) {
       u.searchParams.set("_saved", String(rev));
     }
-    const fetchUrl = `${u.pathname}${u.search}${u.hash}`;
-
-    const w = window.open("about:blank", "_blank");
+    const href = `${u.pathname}${u.search}${u.hash}`;
+    const w = window.open(href, "_blank");
     if (!w) {
       toast.error(t("build_preview_popup_blocked"));
-      return;
-    }
-
-    try {
-      const res = await fetch(fetchUrl, {
-        credentials: "include",
-        cache: "no-store"
-      });
-      if (!res.ok) {
-        w.close();
-        toast.error(t("build_preview_fetch_failed"));
-        return;
-      }
-      const ct = res.headers.get("content-type") ?? "";
-      if (ct.includes("application/json")) {
-        w.close();
-        toast.error(t("build_preview_fetch_failed"));
-        return;
-      }
-      const html = await res.text();
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
-      const patched = injectBaseForOpenedPreview(html, origin);
-      w.document.open();
-      w.document.write(patched);
-      w.document.close();
-    } catch (e) {
-      try {
-        w.close();
-      } catch {
-        /* noop */
-      }
-      toast.error(t("build_preview_fetch_failed"), { description: unknownToErrorMessage(e) });
     }
   }
 
@@ -705,7 +657,7 @@ export function PreviewFrame({
             </Button>
           ) : null}
           {!isPptx ? (
-            <Button size="sm" variant="outline" className="h-8" type="button" onClick={() => void openPreviewInNewTab()}>
+            <Button size="sm" variant="outline" className="h-8" type="button" onClick={openPreviewInNewTab}>
               <ExternalLink className="h-4 w-4" />
               {t("build_preview_open_tab")}
             </Button>
