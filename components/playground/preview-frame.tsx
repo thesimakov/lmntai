@@ -27,6 +27,29 @@ import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
 
+/**
+ * Родитель может повторно передать тот же документ с другим синтаксисом URL (HTTPS vs путь), опрос session.
+ * Не затираем src iframe, если уже есть ?_edit/_recover после сохранения — иначе превью откатывается.
+ */
+function mergedPreviewIframeSrc(previousSrc: string, nextPreviewProp: string): string {
+  const base = typeof window !== "undefined" ? window.location.href : "http://localhost/";
+  try {
+    const nextU = new URL(nextPreviewProp, base);
+    const prevU = new URL(previousSrc, base);
+    if (nextU.pathname !== prevU.pathname || nextU.hash !== prevU.hash) {
+      return `${nextU.pathname}${nextU.search}${nextU.hash}`;
+    }
+    const prevHasReloadBust =
+      prevU.searchParams.has("_edit") || prevU.searchParams.has("_recover");
+    if (prevHasReloadBust) {
+      return previousSrc;
+    }
+    return `${nextU.pathname}${nextU.search}${nextU.hash}`;
+  } catch {
+    return nextPreviewProp;
+  }
+}
+
 const modeStyles: Record<DeviceMode, string> = {
   desktop: "h-full min-h-0 w-full",
   tablet: "mx-auto h-full min-h-0 w-[768px] max-w-full",
@@ -110,7 +133,7 @@ export function PreviewFrame({
   }
 
   useEffect(() => {
-    setIframeSrc(previewUrl);
+    setIframeSrc((prev) => mergedPreviewIframeSrc(prev, previewUrl));
   }, [previewUrl]);
 
   /** Визуальный редактор: слушатель `load` привязан к одному узлу iframe; `key={iframeSrc}` пересоздавал iframe без нового эффекта. После сохранения — снова bumpIframeCache + стабильный `key={sandboxId}`. */
@@ -347,28 +370,7 @@ export function PreviewFrame({
       const { html, replacedHeavyInlineAssets } = serializeIframeDocument(doc);
       const isBridgeArtifact =
         sandboxId.startsWith("artifact_") || previewUrl.includes("/api/lemnity-ai/artifacts/");
-      const { body: patchBody, headers: patchHeaders, wireBytes } = await buildVisualSavePatchBody(html);
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-        body: JSON.stringify({
-          sessionId: "0211ce",
-          location: "preview-frame.tsx:handleSaveVisual:preflight",
-          message: "visual save request preflight",
-          data: {
-            hypothesisId: "H0-start",
-            htmlChars: html.length,
-            wireBytes,
-            endpoint: isBridgeArtifact ? "artifact" : "sandbox",
-            replacedHeavyInlineAssets,
-            sandboxIdPrefix: String(sandboxId).slice(0, 28)
-          },
-          timestamp: Date.now(),
-          runId: "post-fix-gzip"
-        })
-      }).catch(() => {});
-      // #endregion
+      const { body: patchBody, headers: patchHeaders } = await buildVisualSavePatchBody(html);
       const res = isBridgeArtifact
         ? await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`, {
             method: "PATCH",
@@ -382,44 +384,6 @@ export function PreviewFrame({
             credentials: "include",
             body: patchBody
           });
-      // #region agent log
-      {
-        const st = res.status;
-        const hid =
-          st === 413
-            ? "H1-413"
-            : st === 401 || st === 403
-              ? "H2-auth"
-              : st === 404
-                ? "H2-notfound"
-                : st >= 500
-                  ? "H3-upstream5xx"
-                  : st >= 400
-                    ? "H4-client4xx"
-                    : "H5-ok";
-        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-          body: JSON.stringify({
-            sessionId: "0211ce",
-            location: "preview-frame.tsx:handleSaveVisual:response",
-            message: "visual save PATCH response",
-            data: {
-              hypothesisId: hid,
-              status: st,
-              ok: res.ok,
-              endpoint: isBridgeArtifact ? "artifact" : "sandbox",
-              htmlChars: html.length,
-              wireBytes,
-              replacedHeavyInlineAssets,
-              sandboxIdPrefix: String(sandboxId).slice(0, 28)
-            },
-            timestamp: Date.now(),
-            runId: "post-fix-gzip"
-          })
-        }).catch(() => {});
-      }
-      // #endregion
       if (!res.ok) {
         if (res.status === 413) {
           toast.error(t("build_visual_html_too_large"), {
@@ -430,24 +394,6 @@ export function PreviewFrame({
           return;
         }
         const msg = (await res.text().catch(() => "")) || res.statusText;
-        // #region agent log
-        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-          body: JSON.stringify({
-            sessionId: "0211ce",
-            location: "preview-frame.tsx:handleSaveVisual:notOkBody",
-            message: "visual save error body peek",
-            data: {
-              hypothesisId: "H-nonOk-detail",
-              status: res.status,
-              bodyPeek: typeof msg === "string" ? msg.slice(0, 400) : ""
-            },
-            timestamp: Date.now(),
-            runId: "save-debug"
-          })
-        }).catch(() => {});
-        // #endregion
         throw new Error(msg);
       }
       toast.success(t("build_visual_saved"));
@@ -459,23 +405,6 @@ export function PreviewFrame({
       }
       bumpIframeCache("edit");
     } catch (e) {
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-        body: JSON.stringify({
-          sessionId: "0211ce",
-          location: "preview-frame.tsx:handleSaveVisual:catch",
-          message: "visual save catch",
-          data: {
-            hypothesisId: "H4-throw-or-network",
-            err: unknownToErrorMessage(e).slice(0, 400)
-          },
-          timestamp: Date.now(),
-          runId: "save-debug"
-        })
-      }).catch(() => {});
-      // #endregion
       toast.error(t("build_visual_save_failed"), {
         description: unknownToErrorMessage(e)
       });
