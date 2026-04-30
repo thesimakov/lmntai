@@ -329,7 +329,7 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
     }
   }
 
-  for (const rel of ["index.html", "generated.txt"]) {
+  for (const rel of ["index.html", "generated.txt", "puck.json"]) {
     await readOne(`${wd}/${rel}`, rel);
   }
 
@@ -441,27 +441,6 @@ export const sandboxManager = {
   ) {
     const preExport = await this.exportFiles(sandboxId).catch(() => ({} as Record<string, string>));
     const prevPuck = preExport["puck.json"];
-    const incomingPuck = parsed["puck.json"];
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        hypothesisId: "H2",
-        location: "sandbox-manager.ts:applyLovableFromProjectFiles:pre",
-        message: "before merge/write",
-        data: {
-          sandboxTail: sandboxId.slice(-8),
-          prevPuckLen: typeof prevPuck === "string" ? prevPuck.length : 0,
-          incomingPuckLen: typeof incomingPuck === "string" ? incomingPuck.length : 0,
-          parsedHasPuck: Object.prototype.hasOwnProperty.call(parsed, "puck.json"),
-          docker: isLemnityAiSandboxDockerEnabled()
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
 
     let projectFiles = withLovableProjectScaffold(parsed);
     const ownerId = getSandboxOwnerId(sandboxId);
@@ -495,25 +474,6 @@ export const sandboxManager = {
       const wd = workdirInContainer();
       const w0 = await lemnityBuilderFileWrite(base, `${wd}/index.html`, html, { append: false });
       assertBuilderSandboxSuccess(w0, "file/write index.html (lovable)");
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-        body: JSON.stringify({
-          sessionId: "0211ce",
-          hypothesisId: "H2",
-          location: "sandbox-manager.ts:applyLovable:dockerWrites",
-          message: "will write projectFiles incl puck",
-          data: {
-            sandboxTail: sandboxId.slice(-8),
-            projectHasPuck: Object.prototype.hasOwnProperty.call(projectFiles, "puck.json"),
-            projectPuckLen:
-              typeof projectFiles["puck.json"] === "string" ? projectFiles["puck.json"].length : 0
-          },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
       for (const [rel, content] of Object.entries(projectFiles)) {
         if (rel === "index.html") continue;
         const p = path.posix.join(wd.replace(/\/$/, ""), rel);
@@ -535,29 +495,6 @@ export const sandboxManager = {
       "index.html": html,
       "generated.txt": generatedTxt
     });
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        hypothesisId: "H4",
-        location: "sandbox-manager.ts:applyLovableFromProjectFiles:memoryMerged",
-        message: "after mergeFilesPreservingUserPuck",
-        data: {
-          sandboxTail: sandboxId.slice(-8),
-          mergedPuckLen:
-            typeof files["puck.json"] === "string" ? files["puck.json"].length : 0,
-          prevPuckLen:
-            typeof previous.files["puck.json"] === "string"
-              ? previous.files["puck.json"].length
-              : 0,
-          sameAsPrev: files["puck.json"] === previous.files?.["puck.json"]
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
     const next: MemoryState = {
       ...previous,
       updatedAt: Date.now(),

@@ -23,25 +23,6 @@ async function getPuck(
   }
   const files = await sandboxManager.exportFiles(sandboxId);
   const raw = files["puck.json"];
-  // #region agent log
-  fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-    body: JSON.stringify({
-      sessionId: "0211ce",
-      hypothesisId: "H1",
-      location: "puck/route.ts:getPuck",
-      message: "exportFiles snapshot",
-      data: {
-        sandboxTail: sandboxId.slice(-8),
-        fileKeyCount: Object.keys(files).length,
-        puckPresent: Boolean(raw?.trim()),
-        puckLen: raw?.length ?? 0
-      },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
   if (!raw || !raw.trim()) {
     return Response.json({ data: null });
   }
@@ -86,20 +67,6 @@ async function putPuck(
   }
   try {
     await sandboxManager.updatePuckJson(sandboxId, json);
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        hypothesisId: "H5",
-        location: "puck/route.ts:putPuck",
-        message: "puck PUT stored",
-        data: { sandboxTail: sandboxId.slice(-8), jsonLen: json.length },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";
     return new Response(message, { status: 400 });
