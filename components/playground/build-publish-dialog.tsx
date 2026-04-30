@@ -4,7 +4,7 @@ import { ChevronDown, ChevronUp, Copy, ExternalLink, Link as LinkIcon, Lock, Ser
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -22,6 +22,7 @@ import {
 } from "@/lib/publish-host";
 import { buildBuiltinPublishBrowseUrl, copyTextToClipboard } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
+import NextLink from "next/link";
 
 type BuildPublishDialogProps = {
   open: boolean;
@@ -84,7 +85,8 @@ export function BuildPublishDialog({
   hasCustomDomainAccess
 }: BuildPublishDialogProps) {
   const [subdomain, setSubdomain] = useState("");
-  const [customDomainOpen, setCustomDomainOpen] = useState(false);
+  /** Активный вариант при нажатии «Опубликовать»: поддомен *.lemnity.com или свой домен. */
+  const [publishHostMode, setPublishHostMode] = useState<"subdomain" | "custom">("subdomain");
   const [ownServerProxyOpen, setOwnServerProxyOpen] = useState(false);
   const [customDomain, setCustomDomain] = useState("");
   const [bindingPending, setBindingPending] = useState(false);
@@ -94,24 +96,7 @@ export function BuildPublishDialog({
     if (!open) return;
     setSubdomain((prev) => prev || suggestPublishSubdomain(seedText, sandboxId));
     setVerificationInfo(null);
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        runId: "post-fix",
-        hypothesisId: "H2",
-        location: "build-publish-dialog.tsx:openEffect",
-        message: "dialog opened",
-        data: {
-          sandboxIdTail: sandboxId ? sandboxId.slice(-8) : null,
-          seedHasText: Boolean(seedText?.trim())
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
+    setPublishHostMode("subdomain");
   }, [open, seedText, sandboxId]);
 
   const cleanSubdomain = useMemo(() => {
@@ -122,41 +107,29 @@ export function BuildPublishDialog({
   const defaultHost = `${cleanSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
   const manualHost = normalizePublishCustomHost(customDomain);
   const publishHost =
-    hasCustomDomainAccess && customDomainOpen && manualHost ? manualHost : defaultHost;
+    publishHostMode === "custom" && hasCustomDomainAccess && manualHost ? manualHost : defaultHost;
+
+  const customPublishBlocked =
+    publishHostMode === "custom" && (!hasCustomDomainAccess || !normalizePublishCustomHost(customDomain.trim()));
   const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
 
+  const resolveBuiltinSubdomainBrowseUrl = useCallback((): string => {
+    const host = defaultHost;
+    if (typeof window === "undefined") {
+      return `https://${host}`;
+    }
+    return buildBuiltinPublishBrowseUrl(window.location.origin, sandboxId, host);
+  }, [defaultHost, sandboxId]);
+
   const resolvePublishBrowseUrl = useCallback((): string => {
-    if (hasCustomDomainAccess && customDomainOpen && manualHost) {
+    if (publishHostMode === "custom" && hasCustomDomainAccess && manualHost) {
       return `https://${manualHost}`;
     }
     if (typeof window === "undefined") {
       return `https://${publishHost}`;
     }
     return buildBuiltinPublishBrowseUrl(window.location.origin, sandboxId, publishHost);
-  }, [hasCustomDomainAccess, customDomainOpen, manualHost, publishHost, sandboxId]);
-
-  useEffect(() => {
-    if (!open) return;
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        runId: "post-fix",
-        hypothesisId: "H2",
-        location: "build-publish-dialog.tsx:subdomainDerived",
-        message: "subdomain display state",
-        data: {
-          subdomainLen: subdomain.length,
-          cleanLen: cleanSubdomain.length,
-          publishHostLen: publishHost.length
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
-  }, [open, subdomain, cleanSubdomain, publishHost]);
+  }, [publishHostMode, hasCustomDomainAccess, manualHost, publishHost, sandboxId]);
 
   async function copyValue(value: string, successText: string) {
     const ok = await copyTextToClipboard(value);
@@ -261,121 +234,138 @@ export function BuildPublishDialog({
         <DialogHeader className="shrink-0 gap-1 border-b border-border/80 px-5 py-4 text-left">
           <DialogTitle className="text-xl font-semibold leading-tight sm:text-2xl">Публикация</DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-            Укажите адрес и опубликуйте. Свой домен и Nginx на VPS — по необходимости ниже.
+            Выберите вариант адреса — при публикации используется только он. Свой VPS / Nginx — ниже при необходимости.
           </DialogDescription>
         </DialogHeader>
 
         <div className="min-h-0 flex-1 space-y-0 overflow-y-auto overscroll-contain px-5 py-4 [scrollbar-gutter:stable]">
-          {/* Шаг 1 — адрес */}
-          <section className="flex gap-3.5 pb-5">
+          {/* Выбор типа адреса (влияет только на активный publishHost при «Опубликовать»). */}
+          <section className="space-y-3 pb-5" role="radiogroup" aria-label="Способ адреса публикации">
+            <p className="text-base font-medium leading-tight">Адрес сайта</p>
+
             <div
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/12 text-xs font-bold text-primary"
-              aria-hidden
+              role="presentation"
+              className={cn(
+                "flex cursor-pointer gap-3 rounded-xl border px-3.5 py-3 transition-colors",
+                publishHostMode === "subdomain"
+                  ? "border-primary/50 bg-primary/[0.06] ring-1 ring-primary/25"
+                  : "border-border/80 hover:bg-muted/35"
+              )}
+              onClick={() => setPublishHostMode("subdomain")}
             >
-              1
-            </div>
-            <div className="min-w-0 flex-1 space-y-2.5">
-              <div>
-                <p className="text-base font-medium leading-tight">Адрес сайта</p>
-                <p className="mt-1 text-sm leading-snug text-muted-foreground">
-                  Поддомен на <span className="font-medium text-foreground/80">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span>
-                </p>
-              </div>
-              <div className="flex items-stretch gap-2">
-                <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-lg border border-border bg-muted/30 px-3">
-                  <span className="shrink-0 text-sm text-muted-foreground">https://</span>
-                  <Input
-                    value={cleanSubdomain}
-                    onChange={(e) => setSubdomain(e.target.value)}
-                    className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-base font-semibold shadow-none focus-visible:ring-0"
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoCorrect="off"
-                    aria-label="Поддомен"
-                  />
-                  <span className="shrink-0 truncate text-sm text-muted-foreground">
-                    .{PUBLISH_BUILTIN_BASE_DOMAIN}
-                  </span>
+              <input
+                type="radio"
+                name="publish-host-mode"
+                className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                checked={publishHostMode === "subdomain"}
+                onChange={() => setPublishHostMode("subdomain")}
+              />
+              <div className="min-w-0 flex-1 space-y-2.5">
+                <div>
+                  <p className="text-sm font-semibold leading-tight">
+                    Поддомен на <span className="text-primary">.{PUBLISH_BUILTIN_BASE_DOMAIN}</span>
+                  </p>
+                  <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
+                    Стандартный адрес без своего DNS и сертификата.
+                  </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-11 w-11 shrink-0"
-                  onClick={() => void copyValue(resolvePublishBrowseUrl(), "Адрес публикации скопирован")}
-                  aria-label="Скопировать адрес"
-                >
-                  <Copy className="h-4 w-4" />
-                </Button>
+                <div className="flex items-stretch gap-2">
+                  <div className="flex min-h-11 min-w-0 flex-1 items-center rounded-lg border border-border bg-muted/30 px-3">
+                    <span className="shrink-0 text-sm text-muted-foreground">https://</span>
+                    <Input
+                      value={cleanSubdomain}
+                      onChange={(e) => setSubdomain(e.target.value)}
+                      onFocus={() => setPublishHostMode("subdomain")}
+                      className="h-10 min-w-0 flex-1 border-0 bg-transparent px-1 text-base font-semibold shadow-none focus-visible:ring-0"
+                      spellCheck={false}
+                      autoCapitalize="off"
+                      autoCorrect="off"
+                      aria-label="Поддомен"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                    <span className="shrink-0 truncate text-sm text-muted-foreground">
+                      .{PUBLISH_BUILTIN_BASE_DOMAIN}
+                    </span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="h-11 w-11 shrink-0"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void copyValue(resolveBuiltinSubdomainBrowseUrl(), "Адрес поддомена скопирован");
+                    }}
+                    aria-label="Скопировать адрес поддомена"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </section>
 
-          <div className="border-t border-border/60" />
+            <div
+              role="presentation"
+              className={cn(
+                "flex cursor-pointer gap-3 rounded-xl border px-3.5 py-3 transition-colors",
+                publishHostMode === "custom"
+                  ? "border-primary/50 bg-primary/[0.06] ring-1 ring-primary/25"
+                  : "border-border/80 hover:bg-muted/35"
+              )}
+              onClick={() => setPublishHostMode("custom")}
+            >
+              <input
+                type="radio"
+                name="publish-host-mode"
+                className="mt-1 h-4 w-4 shrink-0 accent-primary"
+                checked={publishHostMode === "custom"}
+                onChange={() => setPublishHostMode("custom")}
+              />
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <p className="text-sm font-semibold leading-tight">Свой домен</p>
+                  <Lock className="h-4 w-4 shrink-0 text-muted-foreground opacity-70" aria-hidden />
+                </div>
 
-          {/* Шаг 2 — свой домен (опционально) */}
-          <section className="py-4">
-            <div className="flex gap-3.5">
-              <div
-                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground"
-                aria-hidden
-              >
-                2
-              </div>
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  className="flex w-full items-center justify-between gap-2 rounded-lg py-1.5 pr-1 text-left transition-colors hover:bg-muted/40"
-                  onClick={() => setCustomDomainOpen((v) => !v)}
-                >
-                  <span className="inline-flex min-w-0 items-center gap-2 text-base font-medium">
-                    <LinkIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="truncate">Свой домен</span>
-                    <Lock className="h-4 w-4 shrink-0 text-muted-foreground opacity-70" />
-                  </span>
-                  {customDomainOpen ? (
-                    <ChevronUp className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ChevronDown className="h-5 w-5 shrink-0 text-muted-foreground" />
-                  )}
-                </button>
-
-                {customDomainOpen ? (
-                  <div className="mt-3 space-y-2">
-                    {hasCustomDomainAccess ? (
-                      <div className="rounded-lg border border-border/80 bg-muted/20 px-3.5 py-3">
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          Pro/Team: укажите хост (например{" "}
-                          <code className="rounded bg-muted px-1.5 py-0.5 text-xs">app.example.com</code>
-                          ). Ниже — команды для этого хоста.
-                        </p>
-                        <Input
-                          value={customDomain}
-                          onChange={(e) => setCustomDomain(e.target.value)}
-                          placeholder="app.your-company.com"
-                          className="mt-3 h-10 text-sm"
-                        />
-                      </div>
-                    ) : (
-                      <div className="rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3.5 py-3 dark:border-amber-500/25 dark:bg-amber-500/10">
-                        <p className="text-sm font-medium text-amber-950 dark:text-amber-100">Только Pro / Team</p>
-                        <p className="mt-1.5 text-sm leading-snug text-amber-900/85 dark:text-amber-200/90">
-                          Свой домен недоступен на бесплатном тарифе.
-                        </p>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="mt-3 h-9 bg-amber-600 text-white hover:bg-amber-500"
-                          onClick={() => {
-                            if (typeof window !== "undefined") window.location.href = "/pricing";
-                          }}
-                        >
-                          Тарифы
-                        </Button>
-                      </div>
-                    )}
+                {!hasCustomDomainAccess ? (
+                  <div
+                    className="rounded-lg border border-amber-500/35 bg-amber-500/[0.08] px-3 py-2.5 dark:border-amber-500/25 dark:bg-amber-500/10"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <p className="text-sm font-medium text-amber-950 dark:text-amber-100">Только Pro / Team</p>
+                    <p className="mt-1 text-xs leading-snug text-amber-900/85 dark:text-amber-200/90">
+                      Свой домен недоступен на бесплатном тарифе — выберите поддомен выше или оформите тариф.
+                    </p>
+                    <NextLink
+                      href="/pricing"
+                      className={cn(
+                        buttonVariants({ size: "sm" }),
+                        "mt-2 inline-flex h-9 bg-amber-600 text-white hover:bg-amber-500"
+                      )}
+                    >
+                      Тарифы
+                    </NextLink>
                   </div>
-                ) : null}
+                ) : (
+                  <div
+                    className="rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      Pro/Team: укажите хост (например{" "}
+                      <code className="rounded bg-muted px-1 py-0.5 text-[11px]">app.example.com</code>). Ниже — Nginx под
+                      этот хост.
+                    </p>
+                    <Input
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      onFocus={() => setPublishHostMode("custom")}
+                      placeholder="app.your-company.com"
+                      className="mt-2 h-10 text-sm"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </section>
@@ -510,31 +500,14 @@ export function BuildPublishDialog({
           <Button
             type="button"
             className="w-full gap-2 sm:w-auto"
-            disabled={publishPending || bindingPending}
+            disabled={publishPending || bindingPending || customPublishBlocked}
             onClick={async () => {
+              if (customPublishBlocked && publishHostMode === "custom") {
+                toast.error(hasCustomDomainAccess ? "Укажите свой домен" : "Свой домен доступен на тарифах Pro/Team.");
+                return;
+              }
               const result = await bindPublishHostBeforeOpen();
               const openUrl = resolvePublishBrowseUrl();
-              // #region agent log
-              fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-                body: JSON.stringify({
-                  sessionId: "0211ce",
-                  runId: "post-fix",
-                  hypothesisId: "H4",
-                  location: "build-publish-dialog.tsx:publishClick",
-                  message: "after bind before onPublish",
-                  data: {
-                    publishHostTail: publishHost.slice(-28),
-                    openUrlTail: openUrl.slice(-56),
-                    cleanLen: cleanSubdomain.length,
-                    bindOk: result.ok,
-                    bindVerified: result.verified
-                  },
-                  timestamp: Date.now()
-                })
-              }).catch(() => {});
-              // #endregion
               if (!result.ok) return;
               if (!result.verified) return;
               await onPublish({ openUrl });

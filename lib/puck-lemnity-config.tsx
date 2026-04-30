@@ -1,10 +1,10 @@
 "use client";
 
-import type { Config } from "@measured/puck";
+import type { Config, CustomField } from "@measured/puck";
 import type { ReactNode } from "react";
 
-type HeadingProps = { text: string; level: "1" | "2" | "3" | "4" };
-type TextBlockProps = { text: string; size: "sm" | "md" | "lg" };
+type HeadingProps = { text: string; level: "1" | "2" | "3" | "4"; linkEnabled: boolean; href: string };
+type TextBlockProps = { text: string; size: "sm" | "md" | "lg"; linkEnabled: boolean; href: string };
 type ImageBlockProps = { src: string; alt: string; width: "full" | "narrow" };
 type ButtonBlockProps = { label: string; href: string; variant: "solid" | "ghost" };
 type SpacerProps = { height: number };
@@ -23,59 +23,151 @@ const textSize: Record<TextBlockProps["size"], string> = {
   lg: "1.2rem"
 };
 
+const puckLinkCheckbox: CustomField<boolean> = {
+  type: "custom",
+  label: "Ссылка",
+  render: ({ value, onChange }) => (
+    <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+      <input
+        type="checkbox"
+        className="size-4 rounded border-input accent-foreground"
+        checked={Boolean(value)}
+        onChange={(e) => {
+          onChange(e.target.checked);
+        }}
+      />
+      <span>Это ссылка</span>
+    </label>
+  )
+};
+
+function puckHrefField(visible: boolean) {
+  return {
+    type: "text",
+    label: "Адрес (URL)",
+    placeholder: "https://… или /path",
+    visible
+  } as const;
+}
+
+function readLinkFields(props: object): { linkOn: boolean; hrefRaw: string } {
+  const p = props as Record<string, unknown>;
+  return {
+    linkOn: Boolean(p.linkEnabled),
+    hrefRaw: typeof p.href === "string" ? p.href.trim() : ""
+  };
+}
+
+function isProbablyRemoteHref(href: string) {
+  return /^https?:\/\//i.test(href.trim());
+}
+
 export const lemnityPuckConfig: Config = {
   components: {
     Heading: {
       label: "Заголовок",
-      fields: {
-        text: { type: "text", label: "Текст" },
-        level: {
-          type: "select",
-          label: "Уровень",
-          options: [
-            { label: "H1", value: "1" },
-            { label: "H2", value: "2" },
-            { label: "H3", value: "3" },
-            { label: "H4", value: "4" }
-          ]
-        }
+      resolveFields: (data) => {
+        const linkOn = readLinkFields(data.props ?? {}).linkOn;
+        return {
+          text: { type: "text", label: "Текст" },
+          linkEnabled: puckLinkCheckbox,
+          href: puckHrefField(linkOn),
+          level: {
+            type: "select",
+            label: "Уровень",
+            options: [
+              { label: "H1", value: "1" },
+              { label: "H2", value: "2" },
+              { label: "H3", value: "3" },
+              { label: "H4", value: "4" }
+            ]
+          }
+        };
       },
-      defaultProps: { text: "Заголовок", level: "1" } satisfies Partial<HeadingProps>,
+      defaultProps: {
+        text: "Заголовок",
+        level: "1",
+        linkEnabled: false,
+        href: ""
+      } satisfies Partial<HeadingProps>,
       render: (props) => {
         const text = typeof props.text === "string" ? props.text : "Заголовок";
         const level = (props.level as HeadingProps["level"] | undefined) ?? "1";
         const safe = level in levelToTag ? level : "1";
         const L = levelToTag[safe];
-        return <L className="m-0 font-semibold leading-tight text-foreground">{text}</L>;
+        const { linkOn, hrefRaw } = readLinkFields(props);
+        const inner =
+          linkOn && hrefRaw ? (
+            <a
+              href={hrefRaw}
+              className="text-inherit underline decoration-muted-foreground/60 underline-offset-2 hover:decoration-foreground"
+              {...(isProbablyRemoteHref(hrefRaw)
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
+            >
+              {text}
+            </a>
+          ) : (
+            text
+          );
+        return <L className="m-0 font-semibold leading-tight text-foreground">{inner}</L>;
       }
     },
     TextBlock: {
       label: "Текст",
-      fields: {
-        text: { type: "textarea", label: "Абзац" },
-        size: {
-          type: "select",
-          label: "Размер",
-          options: [
-            { label: "Мелкий", value: "sm" },
-            { label: "Обычный", value: "md" },
-            { label: "Крупный", value: "lg" }
-          ]
-        }
+      resolveFields: (data) => {
+        const linkOn = readLinkFields(data.props ?? {}).linkOn;
+        return {
+          text: { type: "textarea", label: "Абзац" },
+          linkEnabled: puckLinkCheckbox,
+          href: puckHrefField(linkOn),
+          size: {
+            type: "select",
+            label: "Размер",
+            options: [
+              { label: "Мелкий", value: "sm" },
+              { label: "Обычный", value: "md" },
+              { label: "Крупный", value: "lg" }
+            ]
+          }
+        };
       },
-      defaultProps: { text: "Текст абзаца…", size: "md" } satisfies Partial<TextBlockProps>,
+      defaultProps: {
+        text: "Текст абзаца…",
+        size: "md",
+        linkEnabled: false,
+        href: ""
+      } satisfies Partial<TextBlockProps>,
       render: (props) => {
         const text = typeof props.text === "string" ? props.text : "";
         const size = (props.size as TextBlockProps["size"] | undefined) ?? "md";
+        const { linkOn, hrefRaw } = readLinkFields(props);
+        const fontSize = size in textSize ? textSize[size] : "1.05rem";
+        const body =
+          linkOn && hrefRaw ? (
+            <a
+              href={hrefRaw}
+              className="text-inherit text-primary underline underline-offset-2 hover:opacity-90"
+              style={{ fontSize, lineHeight: 1.55 }}
+              {...(isProbablyRemoteHref(hrefRaw)
+                ? { target: "_blank", rel: "noopener noreferrer" }
+                : {})}
+            >
+              {text}
+            </a>
+          ) : (
+            text
+          );
+
         return (
           <p
             className="m-0 max-w-prose text-foreground/90"
             style={{
-              fontSize: size in textSize ? textSize[size] : "1.05rem",
+              fontSize,
               lineHeight: 1.55
             }}
           >
-            {text}
+            {body}
           </p>
         );
       }

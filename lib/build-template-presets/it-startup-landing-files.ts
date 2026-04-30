@@ -1,6 +1,7 @@
 /**
- * Файлы лендинга IT-шаблона (адаптация проекта it с Desktop):
- * много .tsx в src/components/landing/* — без единого HTML, только react + lucide-react.
+ * Снимок лендинга из проекта `work/лемнити/ai/it` (Next + shadcn на рабочем столе).
+ * В превью сборщика: Vite + React + Tailwind (CDN), только `react`/`lucide-react` — без `next/*` и UI-kit.
+ * При правке исходника на Desktop переносите секции сюда теми же именами файлов `Header.tsx` … `Footer.tsx`.
  */
 export const IT_STARTUP_LANDING_FILES: Record<string, string> = {
   "src/components/landing/Header.tsx": `import { useState } from "react";
@@ -510,7 +511,8 @@ const footerLinks = {
     links: [
       { label: "Возможности", href: "#features" },
       { label: "Тарифы", href: "#pricing" },
-      { label: "Интеграции", href: "#" }
+      { label: "Интеграции", href: "#" },
+      { label: "Обновления", href: "#" }
     ]
   },
   company: {

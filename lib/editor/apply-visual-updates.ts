@@ -1,6 +1,13 @@
 import {
+  LMNT_EDITOR_LINK_WRAP_ATTR,
+  LMNT_TEXT_LINK_ATTR,
+  VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS,
+  VISUAL_EDITOR_NO_OUTER_WRAP_TAGS,
+  computeVisualEditorLinkFromDom,
+  findVisualEditorInlineTextLinkAnchor,
   resolveRasterHtmlImg,
   resolveSvgRasterImage,
+  visualEditorDeferredLinkUpdates,
   type LayoutElementKind
 } from "@/lib/editor/layout-element";
 
@@ -103,31 +110,159 @@ export function rasterImageTarget(el: Element): HTMLImageElement | null {
   return resolveRasterHtmlImg(el);
 }
 
-/**
- * Применяет поля из визуального редактора к узлу превью (iframe).
+function safeHrefForVisualEditor(raw: string): string {
+  const v = raw.trim();
+  if (!v || /^javascript:/i.test(v) || /^vbscript:/i.test(v)) return "";
+  return v;
+}
+
+function unwrapInlineTextLink(host: HTMLElement) {
+  const a = findVisualEditorInlineTextLinkAnchor(host);
+  if (!a) return;
+  const parent = a.parentElement;
+  if (!(parent instanceof HTMLElement)) return;
+  while (a.firstChild) parent.insertBefore(a.firstChild, a);
+  parent.removeChild(a);
+}
+
+function wrapInlineTextLink(host: HTMLElement, hrefSafe: string) {
+  unwrapInlineTextLink(host);
+  const doc = host.ownerDocument;
+  const t = host.textContent?.replace(/\s+/g, " ") ?? "";
+  const a = doc.createElement("a");
+  a.setAttribute(LMNT_TEXT_LINK_ATTR, "");
+  a.setAttribute("href", hrefSafe);
+  a.textContent = t;
+  host.textContent = "";
+  host.appendChild(a);
+}
+
+function syncInlineTextLinkHost(host: HTMLElement, wantLink: boolean, hrefRaw: string): void {
+  if (!VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS.has(host.tagName)) return;
+  const safe = safeHrefForVisualEditor(hrefRaw);
+  const cur = findVisualEditorInlineTextLinkAnchor(host);
+
+  if (!wantLink || !safe) {
+    unwrapInlineTextLink(host);
+    return;
+  }
+
+  if (!cur) {
+    wrapInlineTextLink(host, safe);
+    return;
+  }
+
+  if (!cur.getAttribute(LMNT_TEXT_LINK_ATTR)) cur.setAttribute(LMNT_TEXT_LINK_ATTR, "");
+  cur.setAttribute("href", safe);
+}
+
+function syncOuterAnchorLink(target: Element, wantLink: boolean, hrefRaw: string): void {
+  const safe = safeHrefForVisualEditor(hrefRaw);
+  const pa = target.parentElement;
+  const wrapped =
+    pa?.tagName === "A" && pa.childElementCount === 1 && pa.firstElementChild === target;
+
+  if (!wantLink || !safe) {
+    if (wrapped && pa) {
+      const gp = pa.parentElement;
+      if (!gp) return;
+      gp.insertBefore(target, pa);
+      gp.removeChild(pa);
+    }
+    return;
+  }
+
+  const aExisting = wrapped && pa instanceof HTMLAnchorElement ? pa : null;
+  if (aExisting) {
+    aExisting.setAttribute("href", safe);
+    aExisting.setAttribute(LMNT_EDITOR_LINK_WRAP_ATTR, "");
+    return;
+  }
+
+  const parent = target.parentElement;
+  const doc = target.ownerDocument;
+  if (!parent || !doc) return;
+
+  const fresh = doc.createElement("a");
+  fresh.setAttribute(LMNT_EDITOR_LINK_WRAP_ATTR, "");
+  fresh.setAttribute("href", safe);
+  parent.insertBefore(fresh, target);
+  fresh.appendChild(target);
+}
+
+function syncVisualEditorLink(el: Element, kind: LayoutElementKind, wantLink: boolean, hrefRaw: string): void {
+  if (kind === "link") return;
+
+  if (kind === "image") {
+    const r = resolveRasterHtmlImg(el);
+    if (r) {
+      syncOuterAnchorLink(r, wantLink, hrefRaw);
+      return;
+    }
+    const svgRaster = resolveSvgRasterImage(el);
+    if (svgRaster) syncOuterAnchorLink(svgRaster, wantLink, hrefRaw);
+    return;
+  }
+
+  if (kind === "button" || kind === "icon") {
+    syncOuterAnchorLink(el, wantLink, hrefRaw);
+    return;
+  }
+
+  const html = el as HTMLElement;
+
+  if (kind !== "text" && kind !== "container") return;
+
+  if (VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS.has(html.tagName)) {
+    syncInlineTextLinkHost(html, wantLink, hrefRaw);
+    return;
+  }
+  if (VISUAL_EDITOR_NO_OUTER_WRAP_TAGS.has(html.tagName)) return;
+  syncOuterAnchorLink(el, wantLink, hrefRaw);
+}
+
+/** Применяет поля из визуального редактора к узлу превью (iframe).
  * Не использует `instanceof`, чтобы работать с элементами из другого realm.
  */
 export function applyVisualUpdatesToElement(
   el: Element,
-  _elementType: LayoutElementKind | string,
+  elementTypeForLink: LayoutElementKind | string,
   updates: { field: string; new_value: string }[]
 ): void {
   const html = el as HTMLElement;
   const htmlImg = resolveRasterHtmlImg(el);
   const svgImg = resolveSvgRasterImage(el);
 
+  const kind = elementTypeForLink as LayoutElementKind;
+
+  const deferLinkEffective = visualEditorDeferredLinkUpdates(kind, el);
+
+  const baseLink = deferLinkEffective ? computeVisualEditorLinkFromDom(el, kind) : { enabled: false, href: "" };
+  let linkWant = baseLink.enabled;
+  let linkHref = baseLink.href;
+
   for (const u of updates) {
+    if (deferLinkEffective && (u.field === "linkEnabled" || u.field === "href")) {
+      if (u.field === "linkEnabled") linkWant = u.new_value.trim() === "1";
+      if (u.field === "href") linkHref = u.new_value;
+      continue;
+    }
     const val = u.new_value;
     switch (u.field) {
-      case "text":
+      case "text": {
         if (isInputButtonLike(el)) {
           (el as HTMLInputElement).value = val;
         } else if (canHostInlineButtonIcon(el)) {
           setTextPreservingVisualIcon(el, val);
         } else {
-          el.textContent = val;
+          const anchor = VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS.has(html.tagName)
+            ? findVisualEditorInlineTextLinkAnchor(html)
+            : null;
+          if (anchor) anchor.textContent = val;
+          else el.textContent = val;
         }
         break;
+      }
       case "color":
         html.style.color = val;
         break;
@@ -219,6 +354,8 @@ export function applyVisualUpdatesToElement(
         break;
     }
   }
+
+  if (deferLinkEffective) syncVisualEditorLink(el, kind, linkWant, linkHref);
 
   if (canHostInlineButtonIcon(el) && el.getAttribute("data-icon")?.trim()) {
     const node = el.querySelector(`[${VISUAL_EDITOR_ICON_ATTR}]`) as HTMLElement | null;

@@ -638,6 +638,7 @@ export function PreviewFrame({
         size: t("build_visual_field_size"),
         alignment: t("build_visual_field_alignment"),
         href: t("build_visual_field_href"),
+        linkToggle: t("build_visual_field_link_toggle"),
         icon: t("build_visual_field_icon"),
         iconColor: t("build_visual_field_icon_color"),
         variant: t("build_visual_field_variant"),

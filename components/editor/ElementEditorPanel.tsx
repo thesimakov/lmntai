@@ -23,7 +23,10 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "r
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
+import {
+  visualEditorPanelShowsLinkCheckbox,
+  type LayoutElementSnapshot
+} from "@/lib/editor/layout-element";
 import { buildVisualEditorPayload } from "@/lib/editor/AICommandBuilder";
 import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
 import { ImageUploader } from "@/components/editor/ImageUploader";
@@ -42,6 +45,8 @@ type ElementEditorPanelLabels = {
     size: string;
     alignment: string;
     href: string;
+    /** Подпись чекбокса «ссылка внутри текстового блока» (визуальный редактор превью) */
+    linkToggle: string;
     icon: string;
     iconColor: string;
     variant: string;
@@ -159,10 +164,10 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
       [snapshot, disabled, updates, onSubmitPayload]
     );
 
-  const Icon = snapshot ? iconForType(snapshot.elementType) : Boxes;
+    const Icon = snapshot ? iconForType(snapshot.elementType) : Boxes;
 
-  if (!snapshot) {
-    return (
+    if (!snapshot) {
+      return (
       <div className="flex max-h-[min(36vh,12rem)] flex-col overflow-hidden rounded-xl border border-dashed border-border/70 bg-background/95 shadow-lg ring-1 ring-black/[0.04] backdrop-blur-sm dark:bg-zinc-950/95 dark:ring-white/[0.06]">
         <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
           <span className="size-2.5 shrink-0 rounded-full bg-[hsl(0_62%_54%)]/85" aria-hidden />
@@ -184,10 +189,10 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
         </div>
         <div className="px-3 py-3 text-xs text-muted-foreground">{labels.empty}</div>
       </div>
-    );
-  }
+      );
+    }
 
-  function field(name: keyof ElementEditorPanelLabels["fields"]) {
+    function field(name: keyof ElementEditorPanelLabels["fields"]) {
     return labels.fields[name];
   }
 
@@ -200,6 +205,34 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
   const showBlockBackground =
     snapshot.elementType === "container" ||
     (snapshot.elementType === "text" && "backgroundImage" in snapshot.initialFields);
+
+  const showVisualLinkCheckbox = visualEditorPanelShowsLinkCheckbox(snapshot);
+
+  const linkCheckboxBlock = (
+    <>
+      <div className="space-y-1">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            className="size-4 shrink-0 rounded border-input accent-foreground disabled:opacity-50"
+            disabled={disabled}
+            checked={(fields.linkEnabled ?? "") === "1"}
+            onChange={(e) =>
+              setFields((p) => ({
+                ...p,
+                linkEnabled: e.target.checked ? "1" : "",
+                ...(e.target.checked ? {} : { href: "" })
+              }))
+            }
+          />
+          <span>{labels.fields.linkToggle}</span>
+        </label>
+      </div>
+      {(fields.linkEnabled ?? "") === "1" ? (
+        <Field label={field("href")} value={fields.href ?? ""} onChange={set("href")} />
+      ) : null}
+    </>
+  );
 
   return (
     <div
@@ -291,6 +324,8 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-3 py-3">
+        {showVisualLinkCheckbox ? linkCheckboxBlock : null}
+
         {(snapshot.elementType === "text" || snapshot.elementType === "container") && (
           <>
             <Field label={field("text")} value={fields.text ?? ""} onChange={set("text")} />

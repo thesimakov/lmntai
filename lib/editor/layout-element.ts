@@ -7,6 +7,172 @@ export const LMNT_ATTR_ELEMENT_ID = "data-lmnt-element-id";
 export const LMNT_ATTR_ELEMENT_TYPE = "data-lmnt-element-type";
 export const LMNT_ATTR_LAYOUT_PATH = "data-lmnt-layout-path";
 
+/** Якорь, который редактор сам вложил в текстовый блок (`<p><a data-lmnt-text-link>…`).
+ * Нужно, чтобы не путать с произвольными ссылками внутри сложной вёрстки. */
+export const LMNT_TEXT_LINK_ATTR = "data-lmnt-text-link";
+
+/** Родитель-обёртка `<a>`, созданная редактором вокруг блока / картинки / кнопки / иконки. */
+export const LMNT_EDITOR_LINK_WRAP_ATTR = "data-lmnt-editor-link-wrap";
+
+/** Фразовый контент: одна текстовая ссылка как единственный прямой дочерний `<a>` внутри узла. */
+export const VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS = new Set([
+  "P",
+  "H1",
+  "H2",
+  "H3",
+  "H4",
+  "H5",
+  "H6",
+  "LI",
+  "SPAN",
+  "LABEL",
+  "STRONG",
+  "EM",
+  "B",
+  "I",
+  "SMALL",
+  "CODE",
+  "TIME",
+  "MARK"
+]);
+
+/** @deprecated используйте VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS */
+export const VISUAL_EDITOR_INLINE_LINK_PARENT_TAGS = VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS;
+
+/** Оборачивать целиком в `<a>` нельзя (ломает таблицы и корень документа). */
+export const VISUAL_EDITOR_NO_OUTER_WRAP_TAGS = new Set([
+  "HTML",
+  "BODY",
+  "TABLE",
+  "THEAD",
+  "TBODY",
+  "TFOOT",
+  "TR",
+  "COLGROUP",
+  "COL",
+  "CAPTION",
+  "TEMPLATE",
+  "SCRIPT",
+  "STYLE",
+  "HEAD",
+  "META",
+  "LINK",
+  "OBJECT",
+  "VIDEO",
+  "AUDIO",
+  "CANVAS",
+  "IFRAME",
+  "MAP",
+  "AREA"
+]);
+
+export function isWrappedBySingleParentAnchor(el: Element): HTMLAnchorElement | null {
+  const pa = el.parentElement;
+  if (!pa || pa.tagName !== "A") return null;
+  if (pa.childElementCount !== 1 || pa.firstElementChild !== el) return null;
+  return pa instanceof HTMLAnchorElement ? pa : null;
+}
+
+/** Показать чекбокс «Ссылка» + URL во встроенном визуальном редакторе. */
+export function visualEditorPanelShowsLinkCheckbox(snap: {
+  elementType: LayoutElementKind;
+  tagName: string;
+}): boolean {
+  if (snap.elementType === "link") return false;
+  if (snap.elementType === "image" || snap.elementType === "button" || snap.elementType === "icon") return true;
+  if (snap.elementType === "text" || snap.elementType === "container") {
+    return !VISUAL_EDITOR_NO_OUTER_WRAP_TAGS.has(snap.tagName.toUpperCase());
+  }
+  return false;
+}
+
+export function visualEditorDeferredLinkUpdates(kind: LayoutElementKind, el: Element): boolean {
+  if (kind === "link") return false;
+  if (kind === "image" || kind === "button" || kind === "icon") return true;
+  return visualEditorPanelShowsLinkCheckbox({
+    elementType: kind,
+    tagName: el.tagName.toLowerCase()
+  });
+}
+
+/** Текущая ссылка, назначенная через редактор (внутренний узел или внешняя обёртка). */
+export function computeVisualEditorLinkFromDom(
+  el: Element,
+  kind: LayoutElementKind
+): { enabled: boolean; href: string } {
+  if (kind === "link") return { enabled: false, href: "" };
+
+  if (kind === "image") {
+    const raster = resolveRasterHtmlImg(el);
+    if (raster?.parentElement) {
+      const wrap = isWrappedBySingleParentAnchor(raster);
+      return wrap?.getAttribute("href")?.trim()
+        ? { enabled: true, href: wrap.getAttribute("href")?.trim() ?? "" }
+        : { enabled: false, href: "" };
+    }
+    const svgRaster = resolveSvgRasterImage(el);
+    if (svgRaster?.parentElement) {
+      const wrap = isWrappedBySingleParentAnchor(svgRaster);
+      return wrap?.getAttribute("href")?.trim()
+        ? { enabled: true, href: wrap.getAttribute("href")?.trim() ?? "" }
+        : { enabled: false, href: "" };
+    }
+    return { enabled: false, href: "" };
+  }
+
+  if (kind === "button") {
+    const wrap = isWrappedBySingleParentAnchor(el);
+    const tag = el.tagName;
+    let isBtn = tag === "BUTTON" || el.getAttribute("role") === "button";
+    if (tag === "INPUT") {
+      const t = (((el as HTMLInputElement).type || "text") as string).toLowerCase();
+      isBtn = t === "button" || t === "submit" || t === "reset" || t === "image";
+    }
+    if (!wrap || !isBtn) return { enabled: false, href: "" };
+    return wrap.getAttribute("href")?.trim()
+      ? { enabled: true, href: wrap.getAttribute("href")?.trim() ?? "" }
+      : { enabled: false, href: "" };
+  }
+
+  if (kind === "icon") {
+    const wrap = isWrappedBySingleParentAnchor(el);
+    return wrap?.getAttribute("href")?.trim()
+      ? { enabled: true, href: wrap.getAttribute("href")?.trim() ?? "" }
+      : { enabled: false, href: "" };
+  }
+
+  if (kind === "text" || kind === "container") {
+    if (VISUAL_EDITOR_INNER_LINK_PHRASING_TAGS.has(el.tagName)) {
+      const inner = findVisualEditorInlineTextLinkAnchor(el);
+      if (inner?.getAttribute("href")?.trim()) {
+        return { enabled: true, href: inner.getAttribute("href")?.trim() ?? "" };
+      }
+    }
+    if (VISUAL_EDITOR_NO_OUTER_WRAP_TAGS.has(el.tagName)) {
+      return { enabled: false, href: "" };
+    }
+    const outer = isWrappedBySingleParentAnchor(el);
+    return outer?.getAttribute("href")?.trim()
+      ? { enabled: true, href: outer.getAttribute("href")?.trim() ?? "" }
+      : { enabled: false, href: "" };
+  }
+
+  return { enabled: false, href: "" };
+}
+
+export function findVisualEditorInlineTextLinkAnchor(el: Element): HTMLAnchorElement | null {
+  const scoped = el.querySelector(`:scope > a[${LMNT_TEXT_LINK_ATTR}]`);
+  if (scoped instanceof HTMLAnchorElement) return scoped;
+  if (
+    el.children.length === 1 &&
+    el.firstElementChild instanceof HTMLAnchorElement &&
+    !(el.firstElementChild as HTMLAnchorElement).closest(`a a`)
+  ) {
+    return el.firstElementChild;
+  }
+  return null;
+}
+
 export type LayoutElementKind = "text" | "image" | "button" | "link" | "icon" | "container";
 
 export type LayoutElementSnapshot = {
@@ -322,6 +488,12 @@ export function buildLayoutSnapshot(el: Element): LayoutElementSnapshot | null {
     initialFields.backgroundImage = readBackgroundImageUrl(el);
     propsPreview.note = "container";
     propsPreview.backgroundImage = initialFields.backgroundImage.slice(0, 80);
+  }
+
+  if (visualEditorPanelShowsLinkCheckbox({ elementType, tagName })) {
+    const link = computeVisualEditorLinkFromDom(el, elementType);
+    initialFields.linkEnabled = link.enabled ? "1" : "";
+    initialFields.href = link.href;
   }
 
   return {

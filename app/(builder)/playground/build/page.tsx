@@ -409,24 +409,6 @@ export default function PromptBuildPage() {
         detail?.openUrl && /^https?:\/\//i.test(detail.openUrl.trim())
           ? detail.openUrl.trim()
           : buildPublicSharePageUrl(origin, sandboxId);
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-        body: JSON.stringify({
-          sessionId: "0211ce",
-          runId: "post-fix",
-          hypothesisId: "H1",
-          location: "build/page.tsx:handlePublishConfirm",
-          message: "opening url",
-          data: {
-            publicUrlTail: publicUrl.slice(-56),
-            fromDialog: Boolean(detail?.openUrl)
-          },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
       window.open(publicUrl, "_blank", "noopener,noreferrer");
       setPublishDialogOpen(false);
       setMessages((prev) => [

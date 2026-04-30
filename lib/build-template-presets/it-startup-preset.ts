@@ -11,7 +11,7 @@ export const IT_STARTUP_TEMPLATE_SLUG = "it-startup";
 export const IT_STARTUP_TEMPLATE_NAME = "Стартап IT продукт";
 
 export const IT_STARTUP_TEMPLATE_DESCRIPTION =
-  "SaaS / IT-продукт: многосекционный лендинг (Header, Hero, логи доверия, фичи, тарифы, отзывы, FAQ, CTA, Footer) в отдельных TSX. Поменяйте бренд, цены и копирайт.";
+  "SaaS / IT-продукт: лендинг FlowSync как в источнике `work/лемнити/ai/it` (секции в отдельных TSX). В студии — Vite-снимок без Next/shadcn. Поменяйте бренд, цены и тексты.";
 
 export const IT_STARTUP_DEFAULT_USER_PROMPT = `Лендинг IT/SaaS на базе шаблона FlowSync. Стиль: светлая сетка, акцентный синий, воздух.
 

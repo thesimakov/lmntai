@@ -26,18 +26,29 @@ import {
   PR_LEAD_TEMPLATE_RULES,
   PR_LEAD_TEMPLATE_SLUG
 } from "@/lib/build-template-presets/lead-pr-preset";
+import {
+  WEB_STUDIO_DEFAULT_USER_PROMPT,
+  WEB_STUDIO_PUCK_JSON,
+  WEB_STUDIO_PRESET_FILES,
+  WEB_STUDIO_TEMPLATE_DESCRIPTION,
+  WEB_STUDIO_TEMPLATE_NAME,
+  WEB_STUDIO_TEMPLATE_RULES,
+  WEB_STUDIO_TEMPLATE_SLUG
+} from "@/lib/build-template-presets/web-studio-preset";
 
 const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT,
-  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_DEFAULT_USER_PROMPT
+  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_DEFAULT_USER_PROMPT,
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_DEFAULT_USER_PROMPT
 };
 
 /** Встроенный макет Puck по slug (если в БД нет puck.json — подмешиваем). */
 const PRESET_PUCK_JSON_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_PUCK_JSON,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON,
-  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_PUCK_JSON
+  [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_PUCK_JSON,
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_PUCK_JSON
 };
 
 function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): Record<string, string> {
@@ -49,6 +60,24 @@ function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): 
   }
   return out;
 }
+
+export type BuildTemplateListItem = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  /** Текст для поля ввода / сборки */
+  defaultUserPrompt: string;
+};
+
+export type BuildTemplateRecord = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  rules: string;
+  files: Record<string, string>;
+};
 
 const BUILTIN_PRESET_SPECS: Array<{
   slug: string;
@@ -81,8 +110,45 @@ const BUILTIN_PRESET_SPECS: Array<{
     rules: PR_LEAD_TEMPLATE_RULES,
     files: PR_LEAD_PRESET_FILES,
     defaultUserPrompt: PR_LEAD_DEFAULT_USER_PROMPT
+  },
+  {
+    slug: WEB_STUDIO_TEMPLATE_SLUG,
+    name: WEB_STUDIO_TEMPLATE_NAME,
+    description: WEB_STUDIO_TEMPLATE_DESCRIPTION,
+    rules: WEB_STUDIO_TEMPLATE_RULES,
+    files: WEB_STUDIO_PRESET_FILES,
+    defaultUserPrompt: WEB_STUDIO_DEFAULT_USER_PROMPT
   }
 ];
+
+const BUILTIN_SPEC_BY_SLUG: Record<string, (typeof BUILTIN_PRESET_SPECS)[number]> = Object.fromEntries(
+  BUILTIN_PRESET_SPECS.map((p) => [p.slug, p])
+);
+
+function builtinListItemFromSlug(slug: string): BuildTemplateListItem | null {
+  const p = BUILTIN_SPEC_BY_SLUG[slug];
+  if (!p) return null;
+  return {
+    id: `preset-${p.slug}`,
+    slug: p.slug,
+    name: p.name,
+    description: p.description,
+    defaultUserPrompt: p.defaultUserPrompt
+  };
+}
+
+function builtinRecordFromSlug(slug: string): BuildTemplateRecord | null {
+  const p = BUILTIN_SPEC_BY_SLUG[slug];
+  if (!p) return null;
+  return {
+    id: `preset-${p.slug}`,
+    slug: p.slug,
+    name: p.name,
+    description: p.description,
+    rules: p.rules,
+    files: mergePresetPuckIntoFiles(p.slug, { ...p.files })
+  };
+}
 
 function resolveDefaultUserPrompt(slug: string, stored: string | null | undefined): string {
   const trimmed = typeof stored === "string" ? stored.trim() : "";
@@ -90,41 +156,37 @@ function resolveDefaultUserPrompt(slug: string, stored: string | null | undefine
   return PRESET_DEFAULT_USER_PROMPT_BY_SLUG[slug] ?? "";
 }
 
-export type BuildTemplateListItem = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  /** Текст для поля ввода / сборки */
-  defaultUserPrompt: string;
-};
-
-export type BuildTemplateRecord = {
-  id: string;
-  slug: string;
-  name: string;
-  description: string;
-  rules: string;
-  files: Record<string, string>;
-};
-
 /**
  * Вставка пресетов, если таблица пустая (idempotent).
  */
 export async function ensureBuildTemplatesSeeded(): Promise<void> {
   try {
+    const resync = process.env.LEMNITY_RESYNC_BUILTIN_BUILD_TEMPLATES === "1";
     for (const p of BUILTIN_PRESET_SPECS) {
       const existing = await prisma.buildTemplate.findUnique({ where: { slug: p.slug } });
-      if (existing) continue;
-      await prisma.buildTemplate.create({
+      if (!existing) {
+        await prisma.buildTemplate.create({
+          data: {
+            slug: p.slug,
+            name: p.name,
+            description: p.description,
+            rules: p.rules,
+            files: p.files as object,
+            defaultUserPrompt: p.defaultUserPrompt,
+            isActive: true
+          }
+        });
+        continue;
+      }
+      if (!resync) continue;
+      await prisma.buildTemplate.update({
+        where: { slug: p.slug },
         data: {
-          slug: p.slug,
           name: p.name,
           description: p.description,
           rules: p.rules,
           files: p.files as object,
-          defaultUserPrompt: p.defaultUserPrompt,
-          isActive: true
+          defaultUserPrompt: p.defaultUserPrompt
         }
       });
     }
@@ -138,41 +200,49 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
   try {
     const rows = await prisma.buildTemplate.findMany({
       where: { isActive: true },
-      orderBy: { name: "asc" },
       select: { id: true, slug: true, name: true, description: true, defaultUserPrompt: true }
     });
-    return rows.map((r) => ({
-      id: r.id,
-      slug: r.slug,
-      name: r.name,
-      description: r.description,
-      defaultUserPrompt: resolveDefaultUserPrompt(r.slug, r.defaultUserPrompt)
-    }));
+    const bySlug = new Map(rows.map((r) => [r.slug, r]));
+    const merged: BuildTemplateListItem[] = [];
+
+    for (const spec of BUILTIN_PRESET_SPECS) {
+      const row = bySlug.get(spec.slug);
+      if (row) {
+        merged.push({
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          defaultUserPrompt: resolveDefaultUserPrompt(row.slug, row.defaultUserPrompt)
+        });
+      } else {
+        const b = builtinListItemFromSlug(spec.slug);
+        if (b) merged.push(b);
+      }
+    }
+
+    for (const row of rows) {
+      if (BUILTIN_SPEC_BY_SLUG[row.slug]) continue;
+      merged.push({
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        description: row.description,
+        defaultUserPrompt: resolveDefaultUserPrompt(row.slug, row.defaultUserPrompt)
+      });
+    }
+
+    merged.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    return merged;
   } catch (err) {
     console.warn("[build-templates] list failed", err);
-    return [
-      {
-        id: "preset-massage",
-        slug: MASSAGE_TEMPLATE_SLUG,
-        name: MASSAGE_TEMPLATE_NAME,
-        description: MASSAGE_TEMPLATE_DESCRIPTION,
-        defaultUserPrompt: MASSAGE_DEFAULT_USER_PROMPT
-      },
-      {
-        id: "preset-it-startup",
-        slug: IT_STARTUP_TEMPLATE_SLUG,
-        name: IT_STARTUP_TEMPLATE_NAME,
-        description: IT_STARTUP_TEMPLATE_DESCRIPTION,
-        defaultUserPrompt: IT_STARTUP_DEFAULT_USER_PROMPT
-      },
-      {
-        id: "preset-lead-pr-sales",
-        slug: PR_LEAD_TEMPLATE_SLUG,
-        name: PR_LEAD_TEMPLATE_NAME,
-        description: PR_LEAD_TEMPLATE_DESCRIPTION,
-        defaultUserPrompt: PR_LEAD_DEFAULT_USER_PROMPT
-      }
-    ];
+    return BUILTIN_PRESET_SPECS.map((p) => ({
+      id: `preset-${p.slug}`,
+      slug: p.slug,
+      name: p.name,
+      description: p.description,
+      defaultUserPrompt: p.defaultUserPrompt
+    })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
   }
 }
 
@@ -184,50 +254,25 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
     const row = await prisma.buildTemplate.findFirst({
       where: { slug: s, isActive: true }
     });
-    if (!row) return null;
-    const files = row.files;
-    if (!files || typeof files !== "object" || Array.isArray(files)) return null;
-    return {
-      id: row.id,
-      slug: row.slug,
-      name: row.name,
-      description: row.description,
-      rules: row.rules,
-      files: mergePresetPuckIntoFiles(s, files as Record<string, string>)
-    };
+    if (row) {
+      const files = row.files;
+      if (files && typeof files === "object" && !Array.isArray(files)) {
+        return {
+          id: row.id,
+          slug: row.slug,
+          name: row.name,
+          description: row.description,
+          rules: row.rules,
+          files: mergePresetPuckIntoFiles(s, files as Record<string, string>)
+        };
+      }
+    }
+    const fromCode = builtinRecordFromSlug(s);
+    if (fromCode) return fromCode;
+    return null;
   } catch (err) {
     console.warn("[build-templates] getBySlug failed", err);
-    if (s === MASSAGE_TEMPLATE_SLUG) {
-      return {
-        id: "preset-massage",
-        slug: MASSAGE_TEMPLATE_SLUG,
-        name: MASSAGE_TEMPLATE_NAME,
-        description: MASSAGE_TEMPLATE_DESCRIPTION,
-        rules: MASSAGE_TEMPLATE_RULES,
-        files: mergePresetPuckIntoFiles(MASSAGE_TEMPLATE_SLUG, MASSAGE_PRESET_FILES)
-      };
-    }
-    if (s === IT_STARTUP_TEMPLATE_SLUG) {
-      return {
-        id: "preset-it-startup",
-        slug: IT_STARTUP_TEMPLATE_SLUG,
-        name: IT_STARTUP_TEMPLATE_NAME,
-        description: IT_STARTUP_TEMPLATE_DESCRIPTION,
-        rules: IT_STARTUP_TEMPLATE_RULES,
-        files: mergePresetPuckIntoFiles(IT_STARTUP_TEMPLATE_SLUG, IT_STARTUP_PRESET_FILES)
-      };
-    }
-    if (s === PR_LEAD_TEMPLATE_SLUG) {
-      return {
-        id: "preset-lead-pr-sales",
-        slug: PR_LEAD_TEMPLATE_SLUG,
-        name: PR_LEAD_TEMPLATE_NAME,
-        description: PR_LEAD_TEMPLATE_DESCRIPTION,
-        rules: PR_LEAD_TEMPLATE_RULES,
-        files: mergePresetPuckIntoFiles(PR_LEAD_TEMPLATE_SLUG, PR_LEAD_PRESET_FILES)
-      };
-    }
-    return null;
+    return builtinRecordFromSlug(s);
   }
 }
 
