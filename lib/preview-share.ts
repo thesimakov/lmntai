@@ -32,6 +32,27 @@ export function resolveShareablePreviewUrl(previewUrl: string | null, origin: st
   }
 }
 
+/** Восстанавливает sandboxId / artifact_* из pathname превью, если событие моста не передало sandboxId явно */
+export function deriveSandboxIdFromAppPreviewUrl(previewUrl: string | null | undefined): string | null {
+  if (!previewUrl?.trim()) return null;
+  const raw = previewUrl.trim();
+  try {
+    const pathOnly =
+      raw.startsWith("http://") || raw.startsWith("https://")
+        ? new URL(raw).pathname
+        : raw.startsWith("/")
+          ? raw
+          : `/${raw}`;
+    const sandboxMatch = pathOnly.match(/^\/api\/sandbox\/([^/?#]+)/);
+    if (sandboxMatch?.[1]) return decodeURIComponent(sandboxMatch[1]);
+    const artifactMatch = pathOnly.match(/^\/api\/lemnity-ai\/artifacts\/([^/?#]+)/);
+    if (artifactMatch?.[1]) return decodeURIComponent(artifactMatch[1]);
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);

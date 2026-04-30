@@ -961,6 +961,10 @@ export const messages = {
     playground_menu_history_header: 'История',
     playground_menu_history_refresh_aria: 'Обновить список',
     playground_menu_history_continue_aria: 'Продолжить работу над этим запросом',
+    playground_menu_history_open_project_aria: 'Открыть сохранённый проект с превью',
+    playground_menu_history_recent_coach_caption:
+      'Недавние идеи из этого браузера — не то же, что сохранённый макет; откроется диалог с коучем промпта.',
+    playground_menu_history_recent_coach_aria: 'Начать с этой формулировкой (коуч промпта)',
     playground_menu_no_history: 'Пока нет запросов.',
     playground_right_idle_hint:
       'Ожидание запроса. Опишите проект в чате и запустите генерацию.',
@@ -1951,6 +1955,10 @@ export const messages = {
     playground_menu_history_header: 'History',
     playground_menu_history_refresh_aria: 'Refresh list',
     playground_menu_history_continue_aria: 'Continue this request',
+    playground_menu_history_open_project_aria: 'Open saved project with preview',
+    playground_menu_history_recent_coach_caption:
+      'Recent ideas from this browser are not the same as a saved layout; this opens the prompt coach flow.',
+    playground_menu_history_recent_coach_aria: 'Start from this wording (prompt coach)',
     playground_menu_no_history: 'No requests yet.',
     playground_right_idle_hint: 'Waiting for a prompt. Describe your project in chat and start generation.',
     playground_right_generating_line1_website: 'Lemnity AI is building your site. One moment…',
@@ -2941,6 +2949,10 @@ export const messages = {
     playground_menu_history_header: 'Таърих',
     playground_menu_history_refresh_aria: 'Навсозии рӯйхат',
     playground_menu_history_continue_aria: 'Идомаи кор бо ин дархост',
+    playground_menu_history_open_project_aria: 'Кушодани лоиҳаи нигоҳдоӣшуда бо пешнамоиш',
+    playground_menu_history_recent_coach_caption:
+      'Идеяҳои охир аз ин браузар аз макети нигоҳдоӣшуда фарқ мекунанд; муошират бо мураббии промпт мекушояд.',
+    playground_menu_history_recent_coach_aria: 'Оғоз аз ин матн (мураббии промпт)',
     playground_menu_no_history: 'Ҳанӯз дархост нест.',
     playground_right_idle_hint:
       'Интизори дархост. Лоиҳаро дар чат тавсиф кунед ва тавлидро оғоз кунед.',

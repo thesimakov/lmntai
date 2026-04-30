@@ -94,9 +94,49 @@ export function BuildPublishDialog({
 
   useEffect(() => {
     if (!open) return;
-    setSubdomain((prev) => prev || suggestPublishSubdomain(seedText, sandboxId));
+    const suggested = suggestPublishSubdomain(seedText, sandboxId);
+    setSubdomain(suggested);
+    setCustomDomain("");
     setVerificationInfo(null);
     setPublishHostMode("subdomain");
+
+    if (!sandboxId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+          credentials: "include"
+        });
+        if (!res.ok) return;
+        const body = (await res.json().catch(() => null)) as
+          | {
+              domains?: Array<{
+                host?: string | null;
+                verification?: VerificationInfo | null;
+              }>;
+            }
+          | null;
+        const host = body?.domains?.[0]?.host?.trim().toLowerCase() ?? "";
+        if (!host || cancelled) return;
+        const suffix = `.${PUBLISH_BUILTIN_BASE_DOMAIN.toLowerCase()}`;
+        if (host.endsWith(suffix)) {
+          const label = host.slice(0, -suffix.length);
+          if (label) setSubdomain(label);
+          setPublishHostMode("subdomain");
+        } else {
+          setCustomDomain(host);
+          setPublishHostMode("custom");
+        }
+        if (body?.domains?.[0]?.verification) {
+          setVerificationInfo(body.domains[0].verification);
+        }
+      } catch {
+        /* keep local suggestion fallback */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, seedText, sandboxId]);
 
   const cleanSubdomain = useMemo(() => {

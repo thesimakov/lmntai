@@ -21,6 +21,21 @@ model SandboxShare {
   @@index([ownerId])
 }
 
+/// Снимок состояния проекта в песочнице (одна запись на sandboxId).
+model SandboxProjectState {
+  sandboxId String   @id
+  ownerId   String
+  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  title     String
+  html      String   @db.Text
+  /// JSON: { "index.html": "...", "puck.json": "...", ... }
+  files     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ownerId, updatedAt])
+}
+
 /// Привязка хоста публикации к песочнице.
 model PublishDomainBinding {
   id         String   @id @default(cuid())
@@ -84,6 +99,7 @@ model User {
   manusSessions  ManusSessionLink[]
   manusCharges   ManusChatCharge[]
   publishDomains PublishDomainBinding[]
+  sandboxProjects SandboxProjectState[]
   virtualWorkspace UserVirtualWorkspace?
 
   /// Ключи прав для роли MANAGER: users.read, users.write, tariffs, team, settings.

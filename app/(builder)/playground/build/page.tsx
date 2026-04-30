@@ -32,7 +32,11 @@ import {
 } from "@/lib/landing-handoff";
 import { rememberBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
-import { buildPublicSharePageUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
+import {
+  buildPublicSharePageUrl,
+  deriveSandboxIdFromAppPreviewUrl,
+  resolveShareablePreviewUrl
+} from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
 import { isAffirmativeUserReply } from "@/lib/affirmative-reply";
 import {
@@ -170,6 +174,7 @@ export default function PromptBuildPage() {
   const { data: session } = useSession();
   const { ready: lemnityAiBridgeReady, fullParity: shouldUseLemnityAiBridge } = useLemnityAiBridgeFromServer();
   const requestedSessionId = searchParams.get("sessionId");
+  const requestedSandboxId = searchParams.get("sandboxId")?.trim() || null;
   const mountedRef = useRef(true);
   const requestAbortRef = useRef<AbortController | null>(null);
   const streamRequestSeqRef = useRef(0);
@@ -262,6 +267,40 @@ export default function PromptBuildPage() {
     }
     return false;
   }, [sandboxId, previewUrl, previewArtifactMime]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+      body: JSON.stringify({
+        sessionId: "0211ce",
+        runId: "visual-save",
+        hypothesisId: "H3-preview-overwrite",
+        location: "build/page.tsx:previewStateEffect",
+        message: "Preview state changed",
+        data: {
+          sandboxId,
+          previewUrl,
+          mode,
+          isGenerating,
+          sessionId: lemnityAiSessionId,
+          requestedSessionId,
+          requestedSandboxId
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+  }, [
+    sandboxId,
+    previewUrl,
+    mode,
+    isGenerating,
+    lemnityAiSessionId,
+    requestedSessionId,
+    requestedSandboxId
+  ]);
 
   const beginInterfaceBuildTiming = useCallback(() => {
     interfaceBuildStartedAtRef.current = Date.now();
@@ -625,9 +664,56 @@ export default function PromptBuildPage() {
           return -1;
         })();
         const relevantEvents = events.slice(Math.max(0, lastUserMessageIndex));
-        const lastPreview = [...relevantEvents]
+        const lastPreviewFromSlice = [...relevantEvents]
           .reverse()
           .find((event) => event?.event === "preview" && typeof event.data?.previewUrl === "string")?.data;
+        const lastPreviewFromFullSession = [...events]
+          .reverse()
+          .find((event) => event?.event === "preview" && typeof event.data?.previewUrl === "string")?.data;
+        type BridgePreviewPick = typeof lastPreviewFromSlice;
+        const coerceBridgePreview = (raw: BridgePreviewPick): BridgePreviewPick => {
+          if (!raw?.previewUrl) return undefined;
+          const sid =
+            typeof raw.sandboxId === "string" && raw.sandboxId.trim()
+              ? raw.sandboxId.trim()
+              : deriveSandboxIdFromAppPreviewUrl(raw.previewUrl);
+          return sid ? { ...raw, sandboxId: sid } : undefined;
+        };
+        const coercedSlice = coerceBridgePreview(lastPreviewFromSlice);
+        const coercedFull = coerceBridgePreview(lastPreviewFromFullSession);
+        const previewPick =
+          coercedSlice?.previewUrl && coercedSlice.sandboxId
+            ? ({ source: "slice" as const, data: coercedSlice })
+            : coercedFull?.previewUrl && coercedFull.sandboxId
+              ? ({ source: "fullFallback" as const, data: coercedFull })
+              : ({ source: "none" as const, data: undefined as BridgePreviewPick });
+        const lastPreview = previewPick.data;
+
+        // #region agent log
+        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+          body: JSON.stringify({
+            sessionId: "0211ce",
+            runId: "post-fix",
+            hypothesisId: "H1-slice-vs-full-preview",
+            location: "build/page.tsx:loadLemnityAiSession",
+            message: "Session reload preview resolution",
+            data: {
+              sessionKey: sessionId.length > 8 ? sessionId.slice(-10) : sessionId,
+              eventsCount: events.length,
+              lastUserMessageIndex,
+              relevantCount: relevantEvents.length,
+              previewPickSource: previewPick.source,
+              sliceHadPreviewUrl: Boolean(lastPreviewFromSlice?.previewUrl),
+              fullHadPreviewUrl: Boolean(lastPreviewFromFullSession?.previewUrl),
+              restored: Boolean(lastPreview?.previewUrl && lastPreview.sandboxId)
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
+
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
           const loadedSbx = String(lastPreview.sandboxId);
           const liveSse = lastSsePreviewSandboxIdRef.current;
@@ -1057,17 +1143,37 @@ export default function PromptBuildPage() {
         const res = await fetch("/api/build-templates/preview", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
+          credentials: "include",
           body: JSON.stringify({ slug }),
           signal: controller.signal
         });
+
         if (!mountedRef.current || templatePreviewReqSeqRef.current !== seq) return;
         if (!res.ok) {
-          const msg = await res.text().catch(() => "");
-          toast.error(msg.trim() || t("playground_build_template_preview_error"));
+          const raw = await res.text().catch(() => "");
+          let detail = raw.trim();
+          try {
+            const j = JSON.parse(raw) as { error?: unknown };
+            if (typeof j.error === "string" && j.error.trim()) {
+              detail = j.error.trim();
+            }
+          } catch {
+            /* ответ текстом/HTML */
+          }
+          toast.error(detail || t("playground_build_template_preview_error"));
           return;
         }
-        const data = (await res.json()) as { previewUrl?: string; sandboxId?: string };
-        if (!data.previewUrl || !data.sandboxId) return;
+        let data: { previewUrl?: string; sandboxId?: string };
+        try {
+          data = (await res.json()) as { previewUrl?: string; sandboxId?: string };
+        } catch {
+          toast.error(t("playground_build_template_preview_error"));
+          return;
+        }
+        if (!data.previewUrl || !data.sandboxId) {
+          toast.error(t("playground_build_template_preview_error"));
+          return;
+        }
         if (!mountedRef.current || templatePreviewReqSeqRef.current !== seq) return;
         templatePreviewSandboxIdRef.current = String(data.sandboxId);
         setPreviewUrl(data.previewUrl);
@@ -1345,6 +1451,24 @@ export default function PromptBuildPage() {
     };
   }, []);
 
+  /** «Мои проекты» без моста: восстановить превью по ?sandboxId= */
+  useEffect(() => {
+    if (shouldUseLemnityAiBridge) return;
+    if (!requestedSandboxId) return;
+    templatePreviewSandboxIdRef.current = null;
+    setSandboxId(requestedSandboxId);
+    setPreviewUrl(`/api/sandbox/${encodeURIComponent(requestedSandboxId)}`);
+    setPreviewArtifactMime(null);
+    setPreviewDownloadFilename(null);
+    setPresentationPdfExport(null);
+    setMode("preview");
+    setStage("ready");
+    setIsGenerating(false);
+    setProgress(100);
+    setSessionNeedsResync(false);
+    emitSandboxFilesUpdated(requestedSandboxId);
+  }, [shouldUseLemnityAiBridge, requestedSandboxId]);
+
   useEffect(() => {
     lastSsePreviewSandboxIdRef.current = null;
   }, [lemnityAiSessionId]);
@@ -1426,6 +1550,9 @@ export default function PromptBuildPage() {
 
   useEffect(() => {
     if (!lemnityAiBridgeReady || shouldUseLemnityAiBridge) return;
+    /** Явный переход из «Истории» / проектов по sessionId — не перетирать чат landing-handoff */
+    if (requestedSessionId?.trim()) return;
+    if (requestedSandboxId) return;
     const handoff = readBuilderHandoff();
     if (!handoff) return;
     const fromStorage = handoff.idea;
@@ -1464,7 +1591,7 @@ export default function PromptBuildPage() {
     push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
     void handleCreateQuestions(fromStorage, handoff?.projectKind);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge]);
+  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge, requestedSandboxId, requestedSessionId]);
 
   function pushRecent(item: string, opts?: { templateSlug?: string }) {
     try {

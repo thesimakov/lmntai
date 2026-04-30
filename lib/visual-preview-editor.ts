@@ -565,9 +565,21 @@ export type SerializeIframeVisualResult = {
   html: string;
   /** Подставили лёгкий placeholder вместо слишком длинных inline data:image для прохождения лимита тела PATCH. */
   replacedHeavyInlineAssets: boolean;
+  removedExecutableScripts: number;
 };
 
-export function serializeIframeDocument(doc: Document): SerializeIframeVisualResult {
+type SerializeIframeVisualOptions = {
+  /**
+   * Для визуального «Сохранить макет»: убрать клиентский runtime (<script type="module">),
+   * который при повторной загрузке перерисовывает исходный React-код и визуально откатывает ручные DOM-правки.
+   */
+  freezeInteractiveScripts?: boolean;
+};
+
+export function serializeIframeDocument(
+  doc: Document,
+  opts?: SerializeIframeVisualOptions
+): SerializeIframeVisualResult {
   /** Парсим клон дерева: не трогаем живой документ iframe (иначе при сохранении исчезает overlay и стили режима — кажется «сбросом»). */
   const parsed = new DOMParser().parseFromString(doc.documentElement.outerHTML, "text/html");
   parsed.querySelectorAll("[data-lemnity-pick-hover]").forEach((el) => el.removeAttribute("data-lemnity-pick-hover"));
@@ -576,8 +588,36 @@ export function serializeIframeDocument(doc: Document): SerializeIframeVisualRes
   parsed.getElementById("lemnity-visual-overlay-root")?.remove();
   parsed.getElementById("lemnity-visual-overlay-style")?.remove();
   parsed.body?.classList.remove("lemnity-visual-edit-mode");
+  let removedExecutableScripts = 0;
+  if (opts?.freezeInteractiveScripts) {
+    parsed.querySelectorAll("script").forEach((script) => {
+      const type = (script.getAttribute("type") || "").trim().toLowerCase();
+      const src = (script.getAttribute("src") || "").trim().toLowerCase();
+      const content = (script.textContent || "").toLowerCase();
+      const isDataScript =
+        type === "application/ld+json" ||
+        type === "application/json" ||
+        type === "importmap" ||
+        type === "speculationrules";
+      const isExecutableScript =
+        !isDataScript &&
+        (type === "" ||
+          type === "module" ||
+          type === "text/javascript" ||
+          type === "application/javascript" ||
+          src.length > 0 ||
+          content.includes("createroot(") ||
+          content.includes("react-dom/client") ||
+          src.includes("/@vite") ||
+          src.includes("/assets/"));
+      if (isExecutableScript) {
+        removedExecutableScripts += 1;
+        script.remove();
+      }
+    });
+  }
   const replacedHeavyInlineAssets = shrinkHeavyInlineAssetsInDocument(parsed);
   const doctype = doc.doctype ? `<!DOCTYPE ${doc.doctype.name}>` : "<!DOCTYPE html>";
   const raw = `${doctype}\n${parsed.documentElement.outerHTML}`;
-  return { html: compactHtmlDocumentForPatch(raw), replacedHeavyInlineAssets };
+  return { html: compactHtmlDocumentForPatch(raw), replacedHeavyInlineAssets, removedExecutableScripts };
 }

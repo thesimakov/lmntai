@@ -502,10 +502,38 @@ export function PreviewFrame({
 
     setSavePending(true);
     try {
-      const { html, replacedHeavyInlineAssets } = serializeIframeDocument(doc);
+      const { html, replacedHeavyInlineAssets, removedExecutableScripts } = serializeIframeDocument(doc, {
+        freezeInteractiveScripts: true
+      });
       const isBridgeArtifact =
         sandboxId.startsWith("artifact_") || previewUrl.includes("/api/lemnity-ai/artifacts/");
       const { body: patchBody, headers: patchHeaders } = await buildVisualSavePatchBody(html);
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+        body: JSON.stringify({
+          sessionId: "0211ce",
+          runId: "visual-save",
+          hypothesisId: "H1-patch-write",
+          location: "preview-frame.tsx:handleSaveVisual:beforePatch",
+          message: "Visual save request prepared",
+          data: {
+            sandboxId,
+            isBridgeArtifact,
+            previewUrl,
+            iframeSrc,
+            htmlLength: html.length,
+            removedExecutableScripts,
+            scriptTagsCount: (html.match(/<script\b/gi) || []).length,
+            hasReactMountSignature: /createRoot\(|react-dom\/client/.test(html),
+            hasRootContainer: /id=["']root["']/.test(html),
+            hasModuleScript: /<script[^>]*type=["']module["']/.test(html)
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+      // #endregion
       const res = isBridgeArtifact
         ? await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`, {
             method: "PATCH",
@@ -519,6 +547,27 @@ export function PreviewFrame({
             credentials: "include",
             body: patchBody
           });
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+        body: JSON.stringify({
+          sessionId: "0211ce",
+          runId: "visual-save",
+          hypothesisId: "H1-patch-write",
+          location: "preview-frame.tsx:handleSaveVisual:afterPatch",
+          message: "Visual save response received",
+          data: {
+            sandboxId,
+            isBridgeArtifact,
+            status: res.status,
+            ok: res.ok,
+            updatedAtHeader: res.headers.get("x-sandbox-updated-at")
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+      // #endregion
       if (!res.ok) {
         if (res.status === 413) {
           toast.error(t("build_visual_html_too_large"), {

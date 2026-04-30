@@ -47,6 +47,13 @@ type LemnityAiSessionListItem = {
   latest_message_at?: number | null;
 };
 
+/** Сохранённые проекты с сервера (Prisma-сессии моста и/или песочницы) — источник для «Истории» при пустом списке SSE и в режиме без моста */
+type SavedProjectRow = {
+  id: string;
+  name: string;
+  editUrl: string;
+};
+
 export function MenuDrawer({
   onToggleCollapse,
   leftCollapsed,
@@ -63,6 +70,8 @@ export function MenuDrawer({
   const [recent, setRecent] = useState<Array<{ t: number; text: string; templateSlug?: string }>>([]);
   const [lemnityAiHistory, setLemnityAiHistory] = useState<LemnityAiSessionListItem[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [savedProjects, setSavedProjects] = useState<SavedProjectRow[]>([]);
+  const [savedProjectsLoading, setSavedProjectsLoading] = useState(false);
   const [projectTitle, setProjectTitle] = useState<string>("");
   const [tokenSnap, setTokenSnap] = useState<MenuProfileTokens | null>(null);
   const [tokenLoad, setTokenLoad] = useState<"ready" | "loading" | "unauthorized" | "error">("loading");
@@ -138,6 +147,24 @@ export function MenuDrawer({
     }
   }, [useLemnityAiBridge]);
 
+  const loadSavedProjectsForHistory = useCallback(async () => {
+    setSavedProjectsLoading(true);
+    try {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      if (!res.ok) {
+        setSavedProjects([]);
+        return;
+      }
+      const data = (await res.json()) as { projects?: SavedProjectRow[] };
+      const rows = Array.isArray(data.projects) ? data.projects : [];
+      setSavedProjects(rows);
+    } catch {
+      setSavedProjects([]);
+    } finally {
+      setSavedProjectsLoading(false);
+    }
+  }, []);
+
   const refreshHistoryPanel = useCallback(() => {
     try {
       const data = JSON.parse(localStorage.getItem("lemnity.recent") ?? "[]") as Array<{
@@ -149,8 +176,9 @@ export function MenuDrawer({
     } catch {
       setRecent([]);
     }
+    void loadSavedProjectsForHistory();
     if (useLemnityAiBridge) void loadLemnityAiHistory();
-  }, [useLemnityAiBridge, loadLemnityAiHistory]);
+  }, [useLemnityAiBridge, loadLemnityAiHistory, loadSavedProjectsForHistory]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -452,7 +480,12 @@ export function MenuDrawer({
                 aria-label={t("playground_menu_history_refresh_aria")}
                 onClick={() => refreshHistoryPanel()}
               >
-                <RefreshCw className={cn("h-3.5 w-3.5", historyLoading && useLemnityAiBridge && "animate-spin")} />
+                <RefreshCw
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    (savedProjectsLoading || (useLemnityAiBridge && historyLoading)) && "animate-spin"
+                  )}
+                />
               </button>
             </div>
             <div className="mt-2 space-y-1">
@@ -474,13 +507,79 @@ export function MenuDrawer({
                       {session.title?.trim() || session.latest_message?.trim() || session.session_id.slice(0, 12)}
                     </button>
                   ))
+                ) : savedProjectsLoading ? (
+                  <p className="text-xs text-zinc-500">{t("playground_menu_tokens_loading")}</p>
+                ) : savedProjects.length ? (
+                  savedProjects.slice(0, 8).map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                      aria-label={t("playground_menu_history_open_project_aria")}
+                      onClick={() => {
+                        setHistoryOpen(false);
+                        router.push(p.editUrl);
+                      }}
+                    >
+                      {p.name?.trim() || p.id.slice(0, 12)}
+                    </button>
+                  ))
                 ) : recent.length ? (
-                  recent.slice(0, 8).map((r) => (
+                  <>
+                    <p className="text-[11px] leading-snug text-zinc-500">
+                      {t("playground_menu_history_recent_coach_caption")}
+                    </p>
+                    {recent.slice(0, 8).map((r) => (
+                      <button
+                        key={r.t}
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                        aria-label={t("playground_menu_history_recent_coach_aria")}
+                        onClick={() => continueWithIdea(r.text)}
+                      >
+                        <div className="relative h-10 w-[72px] shrink-0 overflow-hidden rounded-lg border border-zinc-100">
+                          <BuildTemplateThumbnail
+                            slug={r.templateSlug}
+                            fallbackSeed={r.text}
+                            density="compact"
+                            className="absolute inset-0 h-full min-h-0 w-full rounded-none border-0"
+                          />
+                        </div>
+                        <span className="min-w-0 flex-1 truncate">{r.text}</span>
+                      </button>
+                    ))}
+                  </>
+                ) : (
+                  <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>
+                )
+              ) : savedProjectsLoading ? (
+                <p className="text-xs text-zinc-500">{t("playground_menu_tokens_loading")}</p>
+              ) : savedProjects.length ? (
+                savedProjects.slice(0, 8).map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="w-full truncate rounded-xl bg-white px-3 py-2 text-left text-xs text-zinc-700 hover:bg-zinc-50"
+                    aria-label={t("playground_menu_history_open_project_aria")}
+                    onClick={() => {
+                      setHistoryOpen(false);
+                      router.push(p.editUrl);
+                    }}
+                  >
+                    {p.name?.trim() || p.id.slice(0, 12)}
+                  </button>
+                ))
+              ) : recent.length ? (
+                <>
+                  <p className="text-[11px] leading-snug text-zinc-500">
+                    {t("playground_menu_history_recent_coach_caption")}
+                  </p>
+                  {recent.slice(0, 8).map((r) => (
                     <button
                       key={r.t}
                       type="button"
                       className="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-50"
-                      aria-label={t("playground_menu_history_continue_aria")}
+                      aria-label={t("playground_menu_history_recent_coach_aria")}
                       onClick={() => continueWithIdea(r.text)}
                     >
                       <div className="relative h-10 w-[72px] shrink-0 overflow-hidden rounded-lg border border-zinc-100">
@@ -493,30 +592,8 @@ export function MenuDrawer({
                       </div>
                       <span className="min-w-0 flex-1 truncate">{r.text}</span>
                     </button>
-                  ))
-                ) : (
-                  <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>
-                )
-              ) : recent.length ? (
-                recent.slice(0, 8).map((r) => (
-                  <button
-                    key={r.t}
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-xl bg-white px-2 py-1.5 text-left text-xs text-zinc-700 hover:bg-zinc-50"
-                    aria-label={t("playground_menu_history_continue_aria")}
-                    onClick={() => continueWithIdea(r.text)}
-                  >
-                    <div className="relative h-10 w-[72px] shrink-0 overflow-hidden rounded-lg border border-zinc-100">
-                      <BuildTemplateThumbnail
-                        slug={r.templateSlug}
-                        fallbackSeed={r.text}
-                        density="compact"
-                        className="absolute inset-0 h-full min-h-0 w-full rounded-none border-0"
-                      />
-                    </div>
-                    <span className="min-w-0 flex-1 truncate">{r.text}</span>
-                  </button>
-                ))
+                  ))}
+                </>
               ) : (
                 <p className="text-xs text-zinc-500">{t("playground_menu_no_history")}</p>
               )}

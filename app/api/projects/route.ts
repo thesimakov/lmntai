@@ -50,7 +50,7 @@ async function getProjects(req: NextRequest) {
     createdAt: new Date(row.createdAt).toISOString(),
     updatedAt: new Date(row.updatedAt).toISOString(),
     embedUrl: `/api/sandbox/${row.sandboxId}`,
-    editUrl: "/playground/build",
+        editUrl: `/playground/build?sandboxId=${encodeURIComponent(row.sandboxId)}`,
     openUrl: `/api/sandbox/${row.sandboxId}`
   }));
 
