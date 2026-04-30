@@ -30,6 +30,7 @@ import {
   parseLovableFencedFiles,
   withLovableProjectScaffold
 } from "@/lib/lovable-bundler";
+import { mergeFilesPreservingUserPuck, mergePuckForApply } from "@/lib/puck-merge-after-model-apply";
 import { clearSandboxImageAssets } from "@/lib/sandbox-image-assets";
 import {
   dockerRegistry,
@@ -40,19 +41,6 @@ import {
 } from "@/lib/sandbox-stores";
 
 type SandboxMode = "memory" | "docker";
-
-/** Не затирать puck.json при очередной выдаче кода, если новый бандл не прислал свой puck.json. */
-function mergeFilesPreservingPuck(
-  previous: MemoryState | undefined,
-  nextFiles: Record<string, string>
-): Record<string, string> {
-  const out = { ...nextFiles };
-  const existing = previous?.files?.["puck.json"];
-  if (typeof existing === "string" && existing.trim() && !("puck.json" in out)) {
-    out["puck.json"] = existing;
-  }
-  return out;
-}
 
 let lemnityDockerClient: any = null;
 
@@ -415,7 +403,7 @@ export const sandboxManager = {
       throw new Error("Песочница не найдена.");
     }
     const html = toHtml(code);
-    const files = mergeFilesPreservingPuck(previous, {
+    const files = mergeFilesPreservingUserPuck(previous, {
       "index.html": html,
       "generated.txt": code
     });
@@ -451,6 +439,30 @@ export const sandboxManager = {
     parsed: Record<string, string>,
     generatedTxt: string
   ) {
+    const preExport = await this.exportFiles(sandboxId).catch(() => ({} as Record<string, string>));
+    const prevPuck = preExport["puck.json"];
+    const incomingPuck = parsed["puck.json"];
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+      body: JSON.stringify({
+        sessionId: "0211ce",
+        hypothesisId: "H2",
+        location: "sandbox-manager.ts:applyLovableFromProjectFiles:pre",
+        message: "before merge/write",
+        data: {
+          sandboxTail: sandboxId.slice(-8),
+          prevPuckLen: typeof prevPuck === "string" ? prevPuck.length : 0,
+          incomingPuckLen: typeof incomingPuck === "string" ? incomingPuck.length : 0,
+          parsedHasPuck: Object.prototype.hasOwnProperty.call(parsed, "puck.json"),
+          docker: isLemnityAiSandboxDockerEnabled()
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+
     let projectFiles = withLovableProjectScaffold(parsed);
     const ownerId = getSandboxOwnerId(sandboxId);
     if (ownerId) {
@@ -460,6 +472,17 @@ export const sandboxManager = {
       });
       projectFiles = files;
     }
+    const puckPick = mergePuckForApply(
+      typeof prevPuck === "string" ? prevPuck : undefined,
+      typeof projectFiles["puck.json"] === "string" ? projectFiles["puck.json"] : undefined
+    );
+    if (puckPick.kind === "value") {
+      projectFiles = { ...projectFiles, "puck.json": puckPick.json };
+    } else {
+      projectFiles = { ...projectFiles };
+      delete projectFiles["puck.json"];
+    }
+
     const bundle = await bundleLovableToPreviewHtml(projectFiles);
     const html = bundle.ok ? bundle.html : lovableBundleErrorHtml(bundle.error);
 
@@ -472,6 +495,25 @@ export const sandboxManager = {
       const wd = workdirInContainer();
       const w0 = await lemnityBuilderFileWrite(base, `${wd}/index.html`, html, { append: false });
       assertBuilderSandboxSuccess(w0, "file/write index.html (lovable)");
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+        body: JSON.stringify({
+          sessionId: "0211ce",
+          hypothesisId: "H2",
+          location: "sandbox-manager.ts:applyLovable:dockerWrites",
+          message: "will write projectFiles incl puck",
+          data: {
+            sandboxTail: sandboxId.slice(-8),
+            projectHasPuck: Object.prototype.hasOwnProperty.call(projectFiles, "puck.json"),
+            projectPuckLen:
+              typeof projectFiles["puck.json"] === "string" ? projectFiles["puck.json"].length : 0
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+      // #endregion
       for (const [rel, content] of Object.entries(projectFiles)) {
         if (rel === "index.html") continue;
         const p = path.posix.join(wd.replace(/\/$/, ""), rel);
@@ -488,11 +530,34 @@ export const sandboxManager = {
     if (!previous) {
       throw new Error("Песочница не найдена.");
     }
-    const files = mergeFilesPreservingPuck(previous, {
+    const files = mergeFilesPreservingUserPuck(previous, {
       ...projectFiles,
       "index.html": html,
       "generated.txt": generatedTxt
     });
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+      body: JSON.stringify({
+        sessionId: "0211ce",
+        hypothesisId: "H4",
+        location: "sandbox-manager.ts:applyLovableFromProjectFiles:memoryMerged",
+        message: "after mergeFilesPreservingUserPuck",
+        data: {
+          sandboxTail: sandboxId.slice(-8),
+          mergedPuckLen:
+            typeof files["puck.json"] === "string" ? files["puck.json"].length : 0,
+          prevPuckLen:
+            typeof previous.files["puck.json"] === "string"
+              ? previous.files["puck.json"].length
+              : 0,
+          sameAsPrev: files["puck.json"] === previous.files?.["puck.json"]
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
     const next: MemoryState = {
       ...previous,
       updatedAt: Date.now(),
