@@ -94,6 +94,24 @@ export function BuildPublishDialog({
     if (!open) return;
     setSubdomain((prev) => prev || suggestPublishSubdomain(seedText, sandboxId));
     setVerificationInfo(null);
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+      body: JSON.stringify({
+        sessionId: "0211ce",
+        runId: "pre-fix",
+        hypothesisId: "H2",
+        location: "build-publish-dialog.tsx:openEffect",
+        message: "dialog opened",
+        data: {
+          sandboxIdTail: sandboxId ? sandboxId.slice(-8) : null,
+          seedHasText: Boolean(seedText?.trim())
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
   }, [open, seedText, sandboxId]);
 
   const cleanSubdomain = useMemo(() => {
@@ -106,6 +124,29 @@ export function BuildPublishDialog({
   const publishHost =
     hasCustomDomainAccess && customDomainOpen && manualHost ? manualHost : defaultHost;
   const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
+
+  useEffect(() => {
+    if (!open) return;
+    // #region agent log
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+      body: JSON.stringify({
+        sessionId: "0211ce",
+        runId: "pre-fix",
+        hypothesisId: "H2",
+        location: "build-publish-dialog.tsx:subdomainDerived",
+        message: "subdomain display state",
+        data: {
+          subdomainLen: subdomain.length,
+          cleanLen: cleanSubdomain.length,
+          publishHostLen: publishHost.length
+        },
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+    // #endregion
+  }, [open, subdomain, cleanSubdomain, publishHost]);
 
   async function copyValue(value: string, successText: string) {
     const ok = await copyTextToClipboard(value);
@@ -462,6 +503,27 @@ export function BuildPublishDialog({
             disabled={publishPending || bindingPending}
             onClick={async () => {
               const result = await bindPublishHostBeforeOpen();
+              // #region agent log
+              fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
+                body: JSON.stringify({
+                  sessionId: "0211ce",
+                  runId: "pre-fix",
+                  hypothesisId: "H1",
+                  location: "build-publish-dialog.tsx:publishClick",
+                  message: "after bind before onPublish",
+                  data: {
+                    publishHostTail: publishHost.slice(-28),
+                    defaultHostTail: `${cleanSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`.slice(-32),
+                    cleanLen: cleanSubdomain.length,
+                    bindOk: result.ok,
+                    bindVerified: result.verified
+                  },
+                  timestamp: Date.now()
+                })
+              }).catch(() => {});
+              // #endregion
               if (!result.ok) return;
               if (!result.verified) return;
               await onPublish();
