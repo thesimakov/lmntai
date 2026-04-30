@@ -268,40 +268,6 @@ export default function PromptBuildPage() {
     return false;
   }, [sandboxId, previewUrl, previewArtifactMime]);
 
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        runId: "visual-save",
-        hypothesisId: "H3-preview-overwrite",
-        location: "build/page.tsx:previewStateEffect",
-        message: "Preview state changed",
-        data: {
-          sandboxId,
-          previewUrl,
-          mode,
-          isGenerating,
-          sessionId: lemnityAiSessionId,
-          requestedSessionId,
-          requestedSandboxId
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
-  }, [
-    sandboxId,
-    previewUrl,
-    mode,
-    isGenerating,
-    lemnityAiSessionId,
-    requestedSessionId,
-    requestedSandboxId
-  ]);
-
   const beginInterfaceBuildTiming = useCallback(() => {
     interfaceBuildStartedAtRef.current = Date.now();
     interfaceBuildGotPreviewRef.current = false;
@@ -688,31 +654,6 @@ export default function PromptBuildPage() {
               ? ({ source: "fullFallback" as const, data: coercedFull })
               : ({ source: "none" as const, data: undefined as BridgePreviewPick });
         const lastPreview = previewPick.data;
-
-        // #region agent log
-        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-          body: JSON.stringify({
-            sessionId: "0211ce",
-            runId: "post-fix",
-            hypothesisId: "H1-slice-vs-full-preview",
-            location: "build/page.tsx:loadLemnityAiSession",
-            message: "Session reload preview resolution",
-            data: {
-              sessionKey: sessionId.length > 8 ? sessionId.slice(-10) : sessionId,
-              eventsCount: events.length,
-              lastUserMessageIndex,
-              relevantCount: relevantEvents.length,
-              previewPickSource: previewPick.source,
-              sliceHadPreviewUrl: Boolean(lastPreviewFromSlice?.previewUrl),
-              fullHadPreviewUrl: Boolean(lastPreviewFromFullSession?.previewUrl),
-              restored: Boolean(lastPreview?.previewUrl && lastPreview.sandboxId)
-            },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
 
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
           const loadedSbx = String(lastPreview.sandboxId);

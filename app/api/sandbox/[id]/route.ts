@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 /** Сериализованный документ (outerHTML, base64, inline SVG). При прокси (nginx) выставите client_max_body_size с большим запасом (например 128m) — 50M символов в UTF-8 могут быть сотни МБ. */
 const MAX_VISUAL_EDIT_HTML_CHARS = 50_000_000;
 
-async function respondWithHtml(sandboxId: string, opts?: { traceSaveView?: boolean }) {
+async function respondWithHtml(sandboxId: string) {
   const previewUrl = await sandboxManager.getPreviewUrl(sandboxId);
   if (!previewUrl) {
     return new Response("Not found", { status: 404 });
@@ -19,32 +19,6 @@ async function respondWithHtml(sandboxId: string, opts?: { traceSaveView?: boole
 
   const files = await sandboxManager.exportFiles(sandboxId);
   const html = files["index.html"] ?? "<html><body>Empty</body></html>";
-  if (opts?.traceSaveView) {
-    // #region agent log
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-      body: JSON.stringify({
-        sessionId: "0211ce",
-        runId: "visual-save",
-        hypothesisId: "H2-served-after-save",
-        location: "api/sandbox/[id]/route.ts:respondWithHtml",
-        message: "Served preview html after save/open query",
-        data: {
-          sandboxId,
-          htmlLength: html.length,
-          hasIndex: typeof files["index.html"] === "string",
-          scriptTagsCount: (html.match(/<script\b/gi) || []).length,
-          hasReactMountSignature: /createRoot\(|react-dom\/client/.test(html),
-          hasRootContainer: /id=["']root["']/.test(html),
-          hasModuleScript: /<script[^>]*type=["']module["']/.test(html)
-        },
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-    // #endregion
-  }
-
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -59,8 +33,6 @@ async function getSandbox(
 ) {
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
-  const traceSaveView =
-    url.searchParams.has("_sb") || url.searchParams.has("_saved") || url.searchParams.has("_open");
   const { id: sandboxId } = await params;
 
   const guard = await requireDbUser();
@@ -71,7 +43,7 @@ async function getSandbox(
         const files = await sandboxManager.exportFiles(sandboxId);
         return Response.json({ files });
       }
-      return respondWithHtml(sandboxId, { traceSaveView });
+      return respondWithHtml(sandboxId);
     }
   }
 
@@ -91,7 +63,7 @@ async function getSandbox(
     return new Response("Not found", { status: 404 });
   }
 
-  return respondWithHtml(sandboxId, { traceSaveView });
+  return respondWithHtml(sandboxId);
 }
 
 async function patchSandbox(
@@ -132,25 +104,6 @@ async function patchSandbox(
   if (htmlRaw.length > MAX_VISUAL_EDIT_HTML_CHARS) {
     return new Response("Payload too large", { status: 413 });
   }
-  // #region agent log
-  fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
-    body: JSON.stringify({
-      sessionId: "0211ce",
-      runId: "visual-save",
-      hypothesisId: "H1-patch-write",
-      location: "api/sandbox/[id]/route.ts:patchSandbox:beforeUpdate",
-      message: "PATCH sandbox visual save accepted",
-      data: {
-        sandboxId,
-        htmlLength: htmlRaw.length,
-        contentType
-      },
-      timestamp: Date.now()
-    })
-  }).catch(() => {});
-  // #endregion
 
   let updatedAt: number;
   try {
