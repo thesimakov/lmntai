@@ -9,7 +9,8 @@ export const runtime = "nodejs";
 
 export const dynamic = "force-dynamic";
 
-async function list(_req: NextRequest) {
+async function list(req: NextRequest) {
+  void req;
   const g = await requireAdminUser();
   if (!g.ok) {
     return new Response(g.message, { status: g.status });

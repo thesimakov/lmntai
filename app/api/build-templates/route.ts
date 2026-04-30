@@ -6,7 +6,8 @@ import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
 
-async function getBuildTemplates(_req: NextRequest) {
+async function getBuildTemplates(req: NextRequest) {
+  void req;
   const guard = await requireDbUser();
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });

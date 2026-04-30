@@ -250,7 +250,7 @@ export function reshapeGrid(grid: GridModel, newColumns: number, newRowsMin: num
   });
   const blocks = entries.map((e) => e.block);
   let rows = Math.max(1, newRowsMin, Math.ceil(blocks.length / Math.max(1, newColumns)));
-  let occ: Record<string, string | undefined> = {};
+  const occ: Record<string, string | undefined> = {};
   const blocksOut: Record<string, BlockInstance> = {};
   let i = 0;
   for (let r = 0; r < rows && i < blocks.length; r++) {

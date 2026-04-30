@@ -1149,7 +1149,7 @@ export default function PromptBuildPage() {
         }
       }
     },
-    [idea, projectKind, runBuildTemplatePreview, sandboxId, shouldUseLemnityAiBridge, t]
+    [idea, projectKind, runBuildTemplatePreview, sandboxId, shouldUseLemnityAiBridge]
   );
 
   const runPromptCoach = useCallback(

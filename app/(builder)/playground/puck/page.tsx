@@ -117,7 +117,7 @@ function PlaygroundPuckPageInner() {
         } catch {
           /* ignore */
         }
-      } catch (e) {
+      } catch {
         toast.error(t("puck_page_save_failed"));
       }
     },
