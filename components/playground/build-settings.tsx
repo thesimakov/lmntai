@@ -37,7 +37,7 @@ import {
   normalizePublishSubdomainLabel,
   suggestPublishSubdomain
 } from "@/lib/publish-host";
-import { copyTextToClipboard, buildCanonicalSharePageHref } from "@/lib/preview-share";
+import { buildBuiltinPublishBrowseUrl, copyTextToClipboard, buildCanonicalSharePageHref } from "@/lib/preview-share";
 import { SHARE_BRANDING_REMOVAL_PRICE_RUB } from "@/lib/share-branding";
 import { cn } from "@/lib/utils";
 
@@ -116,11 +116,6 @@ export function BuildSettings({
     return normalized || suggestPublishSubdomain(publishSeedText, sandboxId);
   }, [publishSeedText, publishSubdomainDraft, sandboxId]);
 
-  const builtinPublishUrl = useMemo(
-    () => `https://${cleanPublishSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`,
-    [cleanPublishSubdomain]
-  );
-
   const canonicalShareFallbackHref = useMemo(
     () => (sandboxId ? buildCanonicalSharePageHref(sandboxId) : ""),
     [sandboxId]
@@ -131,13 +126,18 @@ export function BuildSettings({
   }, [onOpenPublishDialog]);
 
   const copyBuiltinPublishUrl = useCallback(async () => {
-    const ok = await copyTextToClipboard(builtinPublishUrl);
+    const fqdn = `${cleanPublishSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
+    const url =
+      typeof window !== "undefined" && sandboxId
+        ? buildBuiltinPublishBrowseUrl(window.location.origin, sandboxId, fqdn)
+        : `https://${fqdn}`;
+    const ok = await copyTextToClipboard(url);
     if (ok) {
       toast.success(t("build_settings_domains_copy_toast"));
     } else {
       toast.error(t("playground_toast_copy_failed"));
     }
-  }, [builtinPublishUrl, t]);
+  }, [cleanPublishSubdomain, sandboxId, t]);
 
   const copyCanonicalShareFallback = useCallback(async () => {
     if (!canonicalShareFallbackHref) return;

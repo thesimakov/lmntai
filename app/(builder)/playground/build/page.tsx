@@ -386,7 +386,7 @@ export default function PromptBuildPage() {
     setPublishDialogOpen(true);
   }, []);
 
-  const handlePublishConfirm = useCallback(async () => {
+  const handlePublishConfirm = useCallback(async (detail?: { openUrl?: string }) => {
     if (typeof window === "undefined") return;
     const rawOk = resolveShareablePreviewUrl(previewUrl, window.location.origin);
     if (!rawOk || !sandboxId) {
@@ -405,18 +405,24 @@ export default function PromptBuildPage() {
         }
         setShareIsPublic(true);
       }
-      const publicUrl = buildPublicSharePageUrl(origin, sandboxId);
+      const publicUrl =
+        detail?.openUrl && /^https?:\/\//i.test(detail.openUrl.trim())
+          ? detail.openUrl.trim()
+          : buildPublicSharePageUrl(origin, sandboxId);
       // #region agent log
       fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
         body: JSON.stringify({
           sessionId: "0211ce",
-          runId: "pre-fix",
+          runId: "post-fix",
           hypothesisId: "H1",
           location: "build/page.tsx:handlePublishConfirm",
           message: "opening url",
-          data: { publicUrlTail: publicUrl.slice(-48) },
+          data: {
+            publicUrlTail: publicUrl.slice(-56),
+            fromDialog: Boolean(detail?.openUrl)
+          },
           timestamp: Date.now()
         })
       }).catch(() => {});

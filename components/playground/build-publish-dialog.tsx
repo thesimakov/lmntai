@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronDown, ChevronUp, Copy, ExternalLink, Link as LinkIcon, Lock, Server } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -20,13 +20,13 @@ import {
   normalizePublishSubdomainLabel,
   suggestPublishSubdomain
 } from "@/lib/publish-host";
-import { copyTextToClipboard } from "@/lib/preview-share";
+import { buildBuiltinPublishBrowseUrl, copyTextToClipboard } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
 
 type BuildPublishDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPublish: () => Promise<void> | void;
+  onPublish: (detail: { openUrl: string }) => Promise<void> | void;
   publishPending?: boolean;
   sandboxId: string | null;
   seedText?: string;
@@ -100,7 +100,7 @@ export function BuildPublishDialog({
       headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
       body: JSON.stringify({
         sessionId: "0211ce",
-        runId: "pre-fix",
+        runId: "post-fix",
         hypothesisId: "H2",
         location: "build-publish-dialog.tsx:openEffect",
         message: "dialog opened",
@@ -125,6 +125,16 @@ export function BuildPublishDialog({
     hasCustomDomainAccess && customDomainOpen && manualHost ? manualHost : defaultHost;
   const nginxCommands = useMemo(() => buildNginxCommands(publishHost, sandboxId), [publishHost, sandboxId]);
 
+  const resolvePublishBrowseUrl = useCallback((): string => {
+    if (hasCustomDomainAccess && customDomainOpen && manualHost) {
+      return `https://${manualHost}`;
+    }
+    if (typeof window === "undefined") {
+      return `https://${publishHost}`;
+    }
+    return buildBuiltinPublishBrowseUrl(window.location.origin, sandboxId, publishHost);
+  }, [hasCustomDomainAccess, customDomainOpen, manualHost, publishHost, sandboxId]);
+
   useEffect(() => {
     if (!open) return;
     // #region agent log
@@ -133,7 +143,7 @@ export function BuildPublishDialog({
       headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
       body: JSON.stringify({
         sessionId: "0211ce",
-        runId: "pre-fix",
+        runId: "post-fix",
         hypothesisId: "H2",
         location: "build-publish-dialog.tsx:subdomainDerived",
         message: "subdomain display state",
@@ -292,7 +302,7 @@ export function BuildPublishDialog({
                   variant="outline"
                   size="icon"
                   className="h-11 w-11 shrink-0"
-                  onClick={() => void copyValue(`https://${defaultHost}`, "Адрес публикации скопирован")}
+                  onClick={() => void copyValue(resolvePublishBrowseUrl(), "Адрес публикации скопирован")}
                   aria-label="Скопировать адрес"
                 >
                   <Copy className="h-4 w-4" />
@@ -503,19 +513,20 @@ export function BuildPublishDialog({
             disabled={publishPending || bindingPending}
             onClick={async () => {
               const result = await bindPublishHostBeforeOpen();
+              const openUrl = resolvePublishBrowseUrl();
               // #region agent log
               fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "0211ce" },
                 body: JSON.stringify({
                   sessionId: "0211ce",
-                  runId: "pre-fix",
-                  hypothesisId: "H1",
+                  runId: "post-fix",
+                  hypothesisId: "H4",
                   location: "build-publish-dialog.tsx:publishClick",
                   message: "after bind before onPublish",
                   data: {
                     publishHostTail: publishHost.slice(-28),
-                    defaultHostTail: `${cleanSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`.slice(-32),
+                    openUrlTail: openUrl.slice(-56),
                     cleanLen: cleanSubdomain.length,
                     bindOk: result.ok,
                     bindVerified: result.verified
@@ -526,7 +537,7 @@ export function BuildPublishDialog({
               // #endregion
               if (!result.ok) return;
               if (!result.verified) return;
-              await onPublish();
+              await onPublish({ openUrl });
             }}
           >
             <ExternalLink className="h-4 w-4" />
