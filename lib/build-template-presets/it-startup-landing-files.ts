@@ -17,7 +17,7 @@ export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
+    <header data-lmnt-layer="nav" className="fixed top-0 left-0 right-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <a href="#" className="flex items-center gap-2">
@@ -603,9 +603,9 @@ import { Footer } from "./components/landing/Footer";
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-white text-slate-900">
+    <div data-lmnt-layout-root className="min-h-screen bg-white text-slate-900">
       <Header />
-      <main className="min-h-screen">
+      <main data-lmnt-layer="base" className="min-h-screen">
         <Hero />
         <Logos />
         <Features />

@@ -3,6 +3,8 @@
  * Адаптирован под превью Lemnity: Vite+React+TSX, lucide-react, Tailwind CDN (стандартные классы).
  */
 
+import { LMNT_LAYER_RULES_BLOCK_RU } from "@/lib/lmnt-layer-spec";
+
 export const PR_LEAD_TEMPLATE_SLUG = "lead-pr-sales";
 
 export const PR_LEAD_TEMPLATE_NAME = "Лиды и рост продаж (PR)";
@@ -24,7 +26,7 @@ export const PR_LEAD_TEMPLATE_RULES = `ИНСТРУКЦИЯ ПО ШАБЛОНУ 
 - Разрешены: react, react-dom, lucide-react.
 - Запрещены: Next.js, next/link, импорты с префиксом @ — только относительные пути (например ./App).
 - Ответ модели: полные файлы в блоках кода вида три бэктика tsx и путь, только для изменённых файлов.
-- puck.json — визуальный макет Puck; синхронизируй блоки со секциями лендинга при правках.`;
+- puck.json — визуальный макет Puck; синхронизируй блоки со секциями лендинга при правках.${LMNT_LAYER_RULES_BLOCK_RU}`;
 
 const MAIN = `import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -179,8 +181,8 @@ export default function App() {
   const endMs = Date.now() + 24 * 60 * 60 * 1000;
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-blue-50/80 via-white to-slate-50 text-slate-900">
-      <section className="relative flex min-h-screen items-center overflow-hidden">
+    <main data-lmnt-layout-root className="min-h-screen bg-gradient-to-b from-blue-50/80 via-white to-slate-50 text-slate-900">
+      <section data-lmnt-layer="base" className="relative flex min-h-screen items-center overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(59,130,246,0.12),transparent_55%)]" />
         <div className="container relative z-10 mx-auto grid items-center gap-12 px-4 py-12 lg:grid-cols-2 lg:gap-16 lg:py-20">
           <div className="flex flex-col gap-6">
@@ -240,7 +242,7 @@ export default function App() {
       </section>
 
       {/* Problems */}
-      <section className="bg-white py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center md:mb-16">
             <span className="text-sm font-medium uppercase tracking-wider text-blue-600">Знакомо?</span>
@@ -271,7 +273,7 @@ export default function App() {
       </section>
 
       {/* Solution */}
-      <section className="bg-slate-100/80 py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-slate-100/80 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             <div className="relative">
@@ -325,7 +327,7 @@ export default function App() {
       </section>
 
       {/* Benefits */}
-      <section className="bg-white py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center md:mb-16">
             <span className="text-sm font-medium uppercase tracking-wider text-blue-600">Преимущества</span>
@@ -356,7 +358,7 @@ export default function App() {
       </section>
 
       {/* Steps */}
-      <section className="bg-slate-100/80 py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-slate-100/80 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center md:mb-16">
             <span className="text-sm font-medium uppercase tracking-wider text-blue-600">Как это работает</span>
@@ -386,7 +388,7 @@ export default function App() {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-white py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-white py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mb-12 text-center md:mb-16">
             <span className="text-sm font-medium uppercase tracking-wider text-blue-600">Отзывы</span>
@@ -422,7 +424,7 @@ export default function App() {
       </section>
 
       {/* CTA */}
-      <section className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-16 md:py-24">
+      <section data-lmnt-layer="base" className="bg-gradient-to-br from-blue-50 via-white to-cyan-50 py-16 md:py-24">
         <div className="container mx-auto px-4">
           <div className="mx-auto max-w-3xl overflow-hidden rounded-2xl border-2 border-blue-200 bg-white shadow-2xl">
             <div className="p-8 md:p-12">

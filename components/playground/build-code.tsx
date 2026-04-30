@@ -1,9 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FileCode2, FolderOpen } from "lucide-react";
+import { FileCode2, FolderOpen, ImageIcon } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
+import {
+  PROJECT_IMAGE_GALLERY_DIR,
+  PROJECT_IMAGE_GALLERY_MEDIA_PATH,
+  PROJECT_IMAGE_GALLERY_README_PATH,
+  parseGalleryMediaJson
+} from "@/lib/project-image-gallery";
 import { cn } from "@/lib/utils";
 
 type BuildCodeProps = {
@@ -19,11 +25,18 @@ function isPptxMime(m: string | null | undefined): boolean {
 }
 
 function sortFileKeys(keys: string[]): string[] {
+  const galleryOrder = (p: string): number => {
+    if (p === PROJECT_IMAGE_GALLERY_MEDIA_PATH) return 0;
+    if (p === PROJECT_IMAGE_GALLERY_README_PATH) return 1;
+    if (p.startsWith(`${PROJECT_IMAGE_GALLERY_DIR}/`)) return 2;
+    if (p === "generated.txt") return 998;
+    if (p === "puck.json") return 999;
+    return 100;
+  };
   return [...keys].sort((a, b) => {
-    if (a === "generated.txt") return 1;
-    if (b === "generated.txt") return -1;
-    if (a === "puck.json") return 1;
-    if (b === "puck.json") return -1;
+    const ga = galleryOrder(a);
+    const gb = galleryOrder(b);
+    if (ga !== gb) return ga - gb;
     return a.localeCompare(b, "en", { sensitivity: "base" });
   });
 }
@@ -35,16 +48,16 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPptxArtifact, setIsPptxArtifact] = useState(false);
+  const [filesRefreshNonce, setFilesRefreshNonce] = useState(0);
 
   const sortedKeys = useMemo(() => sortFileKeys(Object.keys(files)), [files]);
 
-  useEffect(() => {
-    if (sortedKeys.length && (selectedPath == null || !files[selectedPath])) {
-      setSelectedPath(sortedKeys[0] ?? null);
-    }
-  }, [sortedKeys, files, selectedPath]);
+  const gallery = useMemo(
+    () => parseGalleryMediaJson(files[PROJECT_IMAGE_GALLERY_MEDIA_PATH]),
+    [files]
+  );
 
-  useEffect(() => {
+  const loadSandboxFiles = useCallback(async () => {
     if (!sandboxId) {
       setFiles({});
       setError(null);
@@ -62,54 +75,60 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
       return;
     }
 
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
-      setIsPptxArtifact(false);
-      try {
-        if (sandboxId.startsWith("artifact_")) {
-          const res = await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`);
-          if (!res.ok) {
-            const msg = await res.text();
-            throw new Error(msg || res.statusText);
-          }
-          const ct = res.headers.get("content-type") || "";
-          if (ct.includes("presentationml") || ct.includes("ms-powerpoint")) {
-            if (!cancelled) {
-              setIsPptxArtifact(true);
-              setFiles({});
-            }
-            return;
-          }
-          const text = await res.text();
-          if (!cancelled) {
-            setFiles({ "index.html": text });
-            setSelectedPath("index.html");
-          }
-          return;
-        }
-        const res = await fetch(`/api/sandbox/${sandboxId}?format=json`);
+    setLoading(true);
+    setError(null);
+    setIsPptxArtifact(false);
+    try {
+      if (sandboxId.startsWith("artifact_")) {
+        const res = await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`);
         if (!res.ok) {
           const msg = await res.text();
           throw new Error(msg || res.statusText);
         }
-        const data = (await res.json()) as { files?: Record<string, string> };
-        const f = data.files ?? {};
-        if (!cancelled) {
-          setFiles(f);
+        const ct = res.headers.get("content-type") || "";
+        if (ct.includes("presentationml") || ct.includes("ms-powerpoint")) {
+          setIsPptxArtifact(true);
+          setFiles({});
+          return;
         }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Ошибка загрузки");
-      } finally {
-        if (!cancelled) setLoading(false);
+        const text = await res.text();
+        setFiles({ "index.html": text });
+        setSelectedPath("index.html");
+        return;
       }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+      const res = await fetch(`/api/sandbox/${sandboxId}?format=json`);
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || res.statusText);
+      }
+      const data = (await res.json()) as { files?: Record<string, string> };
+      setFiles(data.files ?? {});
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Ошибка загрузки");
+    } finally {
+      setLoading(false);
+    }
   }, [sandboxId, artifactMimeType]);
+
+  useEffect(() => {
+    void loadSandboxFiles();
+  }, [loadSandboxFiles, filesRefreshNonce]);
+
+  useEffect(() => {
+    function onFilesUpdated(ev: Event) {
+      const d = (ev as CustomEvent<{ sandboxId?: string }>).detail?.sandboxId;
+      if (!d || !sandboxId || String(d) !== String(sandboxId)) return;
+      setFilesRefreshNonce((n) => n + 1);
+    }
+    window.addEventListener("lemnity:sandbox-files-updated", onFilesUpdated as EventListener);
+    return () => window.removeEventListener("lemnity:sandbox-files-updated", onFilesUpdated as EventListener);
+  }, [sandboxId]);
+
+  useEffect(() => {
+    if (sortedKeys.length && (selectedPath == null || !files[selectedPath])) {
+      setSelectedPath(sortedKeys[0] ?? null);
+    }
+  }, [sortedKeys, files, selectedPath]);
 
   const activeBody = selectedPath && files[selectedPath] != null ? files[selectedPath]! : "";
   const onPickFile = useCallback((path: string) => {
@@ -171,11 +190,39 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
           <FolderOpen className="h-3.5 w-3.5" aria-hidden />
           {t("playground_build_code_files")}
         </div>
+        {gallery && gallery.items.length > 0 ? (
+          <div className="border-b border-border/40 bg-muted/15 px-2 py-2">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {t("playground_build_code_gallery")}
+            </p>
+            <p className="mb-2 text-[10px] leading-snug text-muted-foreground/90">{t("playground_build_code_gallery_hint")}</p>
+            <div className="flex max-h-[min(28vh,180px)] flex-wrap gap-1.5 overflow-y-auto">
+              {gallery.items.map((it, idx) => (
+                <button
+                  key={`${it.path}-${idx}`}
+                  type="button"
+                  title={it.sourceUrl ?? it.path}
+                  onClick={() => {
+                    setSelectedPath(PROJECT_IMAGE_GALLERY_MEDIA_PATH);
+                  }}
+                  className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-background ring-offset-background transition hover:ring-2 hover:ring-sky-500/40"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element -- same-origin API, динамические пути */}
+                  <img src={it.path} alt="" className="h-full w-full object-cover" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="h-[min(32vh,200px)] overflow-y-auto sm:h-full sm:min-h-0 sm:flex-1 sm:overflow-y-auto">
           <nav className="flex flex-col p-1" aria-label={t("playground_build_code_files")}>
             {sortedKeys.map((path) => {
               const isGen = path === "generated.txt";
               const isSecondary = isGen || path === "puck.json";
+              const inGallery =
+                path === PROJECT_IMAGE_GALLERY_MEDIA_PATH ||
+                path === PROJECT_IMAGE_GALLERY_README_PATH ||
+                path.startsWith(`${PROJECT_IMAGE_GALLERY_DIR}/`);
               return (
                 <button
                   key={path}
@@ -190,7 +237,11 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
                   )}
                   title={path}
                 >
-                  <FileCode2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  {inGallery ? (
+                    <ImageIcon className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                  ) : (
+                    <FileCode2 className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                  )}
                   <span className="min-w-0 flex-1 truncate font-mono leading-snug">
                     {isGen ? t("playground_build_code_generated") : path}
                   </span>

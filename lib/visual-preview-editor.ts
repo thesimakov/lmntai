@@ -4,7 +4,12 @@
 
 import { buildLayoutSnapshot, formatOverlayLabel } from "@/lib/editor/layout-element";
 import type { LayoutElementSnapshot } from "@/lib/editor/layout-element";
-import { createOverlayController, removeOverlayRoot } from "@/lib/editor/canvas-overlay";
+import {
+  createOverlayController,
+  LEMNITY_OVERLAY_ROOT_ID,
+  removeOverlayRoot,
+  type MoveToolbarDirection
+} from "@/lib/editor/canvas-overlay";
 import { compactHtmlDocumentForPatch } from "@/lib/compact-html-for-save";
 import { shrinkHeavyInlineAssetsInDocument } from "@/lib/visual-html-shrink";
 
@@ -128,6 +133,94 @@ function viewportPointForVisualPick(ev: PointerEvent | MouseEvent, doc: Document
   return { x: ev.clientX, y: ev.clientY };
 }
 
+/** Не использовать overlay-полосы (родитель `#lemnity-visual-overlay-root` с pointer-events:none), кроме тулбара — он обрабатывается отдельно. */
+function isVisualPickStackEntry(el: Element): boolean {
+  const rootId = `#${LEMNITY_OVERLAY_ROOT_ID}`;
+  if (!el.closest(rootId)) return true;
+  return Boolean(el.closest("[data-lmnt-move-toolbar]"));
+}
+
+function meaningfulVisualPickTarget(el: Element): boolean {
+  if (el.tagName === "IMG") return true;
+  if (NON_TEXT_TAGS.has(el.tagName) && el.tagName !== "IMG") return false;
+  if (el.tagName === "BODY" || el.tagName === "HTML") return false;
+  if (TEXT_HOST_TAGS.has(el.tagName)) {
+    if (el.textContent?.trim()) return true;
+    if (el.querySelector("img,svg,video,canvas,picture")) return true;
+    const html = el as HTMLElement;
+    try {
+      const r = html.getBoundingClientRect();
+      if (r.width >= 8 && r.height >= 8) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+function pickInteractiveTargetFromFilteredStack(stack: Element[], doc: Document): Element | null {
+  for (const node of stack) {
+    if (node.tagName === "IMG") return node;
+  }
+
+  for (const node of stack) {
+    if (node.namespaceURI === SVG_NS && node.tagName.toLowerCase() === "image") return node;
+  }
+
+  for (const node of stack) {
+    const hit = node.closest?.(ACTIONABLE_SELECTOR);
+    if (hit && isActionableInteractive(hit)) return hit;
+  }
+
+  // Иначе meaningful() выберет DIV-обёртку из‑за querySelector("svg") — берём верхний узел внутри svg (path, g…).
+  for (const node of stack) {
+    const svgRoot = node.closest?.("svg");
+    if (!svgRoot) continue;
+    if (node === svgRoot) continue;
+    const tag = node.tagName.toUpperCase();
+    if (PICK_SKIP_TAGS.has(tag)) continue;
+    const normalized = normalizePickTarget(doc, node);
+    if (normalized) return normalized;
+  }
+
+  for (const node of stack) {
+    if (node.tagName === "SVG") return node;
+  }
+
+  for (const node of stack) {
+    const normalized = normalizePickTarget(doc, node);
+    if (!normalized) continue;
+    if (meaningfulVisualPickTarget(normalized)) return normalized;
+  }
+
+  for (const node of stack) {
+    const normalized = normalizePickTarget(doc, node);
+    if (normalized && !PICK_SKIP_TAGS.has(normalized.tagName)) return normalized;
+  }
+  return null;
+}
+
+/** Несколько вариантов выбора на одной точке (стек браузера): для Alt+клика — прокол следующего слоя без смены координат. */
+export function enumeratePickCandidatesAtWindowPoint(doc: Document, x: number, y: number): Element[] {
+  let raw: Element[] = [];
+  try {
+    raw = [...doc.elementsFromPoint(x, y)].filter(isElementNode) as Element[];
+  } catch {
+    return [];
+  }
+  const stack = raw.filter(isVisualPickStackEntry);
+  const seen = new Set<Element>();
+  const out: Element[] = [];
+  for (let k = 0; k < stack.length; k++) {
+    const cand = pickInteractiveTargetFromFilteredStack(stack.slice(k), doc);
+    if (cand != null && !seen.has(cand)) {
+      seen.add(cand);
+      out.push(cand);
+    }
+  }
+  return out;
+}
+
 function isActionableInteractive(el: Element): boolean {
   const tag = el.tagName;
   if (tag === "A") {
@@ -158,78 +251,8 @@ function isActionableInteractive(el: Element): boolean {
 }
 
 function pickInteractiveTargetAtPoint(doc: Document, x: number, y: number): Element | null {
-  let stack: unknown[];
-  try {
-    stack = [...doc.elementsFromPoint(x, y)];
-  } catch {
-    return null;
-  }
-  if (!stack?.length) return null;
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    if (node.tagName === "IMG") return node;
-  }
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    if (node.namespaceURI === SVG_NS && node.tagName.toLowerCase() === "image") return node as Element;
-  }
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    const hit = (node as Element).closest?.(ACTIONABLE_SELECTOR);
-    if (hit && isActionableInteractive(hit)) return hit;
-  }
-
-  // Иначе meaningful() выберет DIV-обёртку из‑за querySelector("svg") — берём верхний узел внутри svg (path, g…).
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    const svgRoot = node.closest?.("svg");
-    if (!svgRoot) continue;
-    if (node === svgRoot) continue;
-    const tag = node.tagName.toUpperCase();
-    if (PICK_SKIP_TAGS.has(tag)) continue;
-    const normalized = normalizePickTarget(doc, node as Element);
-    if (normalized) return normalized;
-  }
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    if (node.tagName === "SVG") return node as Element;
-  }
-
-  function meaningful(el: Element): boolean {
-    if (el.tagName === "IMG") return true;
-    if (NON_TEXT_TAGS.has(el.tagName) && el.tagName !== "IMG") return false;
-    if (el.tagName === "BODY" || el.tagName === "HTML") return false;
-    if (TEXT_HOST_TAGS.has(el.tagName)) {
-      if (el.textContent?.trim()) return true;
-      if (el.querySelector("img,svg,video,canvas,picture")) return true;
-      const html = el as HTMLElement;
-      try {
-        const r = html.getBoundingClientRect();
-        if (r.width >= 8 && r.height >= 8) return true;
-      } catch {
-        /* ignore */
-      }
-    }
-    return false;
-  }
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    const normalized = normalizePickTarget(doc, node);
-    if (!normalized) continue;
-    if (meaningful(normalized)) return normalized;
-  }
-
-  for (const node of stack) {
-    if (!isElementNode(node)) continue;
-    const normalized = normalizePickTarget(doc, node);
-    if (normalized && !PICK_SKIP_TAGS.has(normalized.tagName)) return normalized;
-  }
-  return null;
+  const list = enumeratePickCandidatesAtWindowPoint(doc, x, y);
+  return list[0] ?? null;
 }
 
 function describePickTarget(el: Element): VisualPickInfo {
@@ -259,6 +282,9 @@ export type VisualPreviewEditorHandlers = {
     element: Element | null,
     elements: Element[]
   ) => void;
+  /** Панель стрелок на оверлее (одиночный выбор: контейнеры и вложенные блоки). */
+  onMoveDirection?: (direction: MoveToolbarDirection) => void;
+  moveToolbarLabels?: { up: string; down: string; left: string; right: string };
 };
 
 export type VisualPreviewEditorHandle = {
@@ -308,12 +334,28 @@ export function attachVisualPreviewEditor(
     doc.head.appendChild(styleEl);
   }
 
-  const overlay = createOverlayController(doc);
+  const overlay = createOverlayController(doc, {
+    onMoveDirection: handlers.onMoveDirection
+      ? (d: MoveToolbarDirection) => handlers.onMoveDirection?.(d)
+      : undefined
+  });
 
   let hoverEl: Element | null = null;
   let selectedEl: Element | null = null;
   const selectedEls = new Set<Element>();
   let rafHover = 0;
+
+  /** Сброс Alt-«прокола» при заметном сдвиге курсора (между кликами на месте счётчик не трогаем). */
+  let pickProbePrev: { x: number; y: number } | null = null;
+  let altPickDrillTier = 0;
+
+  function updatePickProbeAndMaybeResetAltDrill(px: number, py: number) {
+    if (pickProbePrev) {
+      const d = Math.hypot(px - pickProbePrev.x, py - pickProbePrev.y);
+      if (d > 8) altPickDrillTier = 0;
+    }
+    pickProbePrev = { x: px, y: py };
+  }
 
   function legacyFrom(el: Element | null): VisualPickInfo | null {
     return el ? describePickTarget(el) : null;
@@ -325,9 +367,22 @@ export function attachVisualPreviewEditor(
     handlers.onSelectionChange?.(snap, legacyFrom(primary), primary, Array.from(selectedEls));
     if (primary) {
       const lab = formatOverlayLabel(primary);
-      overlay.setSelected(primary, lab.primary, lab.secondary);
+      const tag = primary.tagName.toUpperCase();
+      const movable =
+        tag !== "HTML" &&
+        tag !== "BODY" &&
+        snap?.elementType != null &&
+        selectedEls.size === 1;
+      const showMove = Boolean(handlers.onMoveDirection && movable);
+      overlay.setSelected(
+        primary,
+        lab.primary,
+        lab.secondary,
+        showMove,
+        showMove ? handlers.moveToolbarLabels ?? null : null
+      );
     } else {
-      overlay.setSelected(null, "", "");
+      overlay.setSelected(null, "", "", false, null);
     }
   }
 
@@ -389,6 +444,7 @@ export function attachVisualPreviewEditor(
     rafHover = requestAnimationFrame(() => {
       rafHover = 0;
       const { x, y } = viewportPointForVisualPick(ev, doc);
+      updatePickProbeAndMaybeResetAltDrill(x, y);
       const el = pickInteractiveTargetAtPoint(doc, x, y);
       if ((el != null && el.tagName === "IMG") || (el != null && selectedEls.has(el))) {
         setHover(null);
@@ -399,10 +455,27 @@ export function attachVisualPreviewEditor(
   }
 
   function onPointerDown(ev: PointerEvent) {
+    const pt = eventTargetToElement(ev.target);
+    if (pt?.closest("[data-lmnt-move-toolbar]")) return;
+
     const { x, y } = viewportPointForVisualPick(ev, doc);
-    const pick =
-      pickInteractiveTargetAtPoint(doc, x, y) ?? normalizePickTarget(doc, eventTargetToElement(ev.target));
-    const additiveSelect = ev.metaKey || ev.ctrlKey;
+    updatePickProbeAndMaybeResetAltDrill(x, y);
+
+    const candidates = enumeratePickCandidatesAtWindowPoint(doc, x, y);
+    /** Alt + клик по тому же месту: следующий альтернативный элемент из стека (под огромными обёртками часто нужен второй/третий кандидат). */
+    if (!ev.altKey) {
+      altPickDrillTier = 0;
+    } else if (candidates.length > 0) {
+      altPickDrillTier = Math.min(altPickDrillTier + 1, candidates.length - 1);
+    }
+
+    const additiveSelect = (ev.metaKey || ev.ctrlKey) && !ev.altKey;
+
+    let pick: Element | null =
+      candidates.length > 0
+        ? candidates[Math.min(altPickDrillTier, candidates.length - 1)] ?? null
+        : null;
+    pick = pick ?? normalizePickTarget(doc, eventTargetToElement(ev.target));
 
     if (pick != null && pick.tagName === "IMG") {
       ev.preventDefault();
@@ -434,6 +507,8 @@ export function attachVisualPreviewEditor(
   function onClickCapture(ev: MouseEvent) {
     const el = eventTargetToElement(ev.target);
     if (!el) return;
+    /** Кнопки панели перемещения в оверлее — обычные `<button>`; общий блок навигации не должен гасить им click. */
+    if (el.closest("[data-lmnt-move-toolbar]")) return;
     const actionable = el.closest(ACTIONABLE_SELECTOR);
     if (actionable && isActionableInteractive(actionable)) {
       ev.preventDefault();

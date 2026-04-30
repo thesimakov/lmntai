@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 
+import { Button } from "@/components/ui/button";
+
 import type { BuildTemplateRow } from "@/components/playground/build-template-dialog-body";
+import { useI18n } from "@/components/i18n-provider";
 import { HomeHero, type HomeHeroActionCategory } from "@/components/playground/home-hero";
 import { PageTransition } from "@/components/page-transition";
 import type { BuilderHandoffBuildTemplate } from "@/lib/landing-handoff";
@@ -20,6 +24,7 @@ function buildTemplateFromRow(row: BuildTemplateRow): BuilderHandoffBuildTemplat
 }
 
 export default function PlaygroundPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [idea, setIdea] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -79,6 +84,19 @@ export default function PlaygroundPage() {
   return (
     <PageTransition>
       <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4">
+        <div className="shrink-0 rounded-xl border border-violet-500/20 bg-violet-500/[0.06] px-4 py-3 dark:bg-violet-950/20">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-foreground">{t("playground_grid_editor_banner_title")}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                {t("playground_grid_editor_banner_desc")}
+              </p>
+            </div>
+            <Button asChild variant="secondary" size="sm" className="shrink-0">
+              <Link href="/playground/grid-editor">{t("playground_grid_editor_banner_cta")}</Link>
+            </Button>
+          </div>
+        </div>
         <HomeHero
           username={username}
           idea={idea}

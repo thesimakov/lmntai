@@ -81,18 +81,51 @@ export function saveBuilderHandoff(
 ) {
   const trimmed = idea.trim();
   if (!trimmed) return;
-  const payload: BuilderHandoff = {
-    idea: trimmed,
-    projectKind,
-    ...(options?.templateDirectPreview ? { templateDirectPreview: true } : {})
-  };
-  if (buildTemplate?.slug?.trim()) {
-    payload.buildTemplate = {
+
+  const prev = readBuilderHandoff();
+
+  /** Явный `null` сбрасывает шаблон; опущенный аргумент сливается с предыдущим handoff (не затирает шаблон при смене только idea). */
+  const mergedProjectKind =
+    buildTemplate === null
+      ? projectKind
+      : projectKind !== undefined
+        ? projectKind
+        : prev?.projectKind;
+
+  let mergedBuildTemplate: BuilderHandoffBuildTemplate | undefined;
+  let mergedDirectPreview: boolean | undefined;
+
+  if (buildTemplate === null) {
+    mergedBuildTemplate = undefined;
+    mergedDirectPreview =
+      options?.templateDirectPreview === true ? true : undefined;
+  } else if (buildTemplate !== undefined && buildTemplate.slug?.trim()) {
+    mergedBuildTemplate = {
       slug: buildTemplate.slug.trim(),
       name: (buildTemplate.name || buildTemplate.slug).trim(),
       defaultUserPrompt: buildTemplate.defaultUserPrompt ?? ""
     };
+    mergedDirectPreview =
+      options?.templateDirectPreview === true ? true : undefined;
+  } else if (prev?.buildTemplate) {
+    mergedBuildTemplate = prev.buildTemplate;
+    mergedDirectPreview =
+      options?.templateDirectPreview === true
+        ? true
+        : prev.templateDirectPreview === true
+          ? true
+          : undefined;
+  } else {
+    mergedBuildTemplate = undefined;
+    mergedDirectPreview =
+      options?.templateDirectPreview === true ? true : undefined;
   }
+
+  const payload: BuilderHandoff = { idea: trimmed };
+  if (mergedProjectKind) payload.projectKind = mergedProjectKind;
+  if (mergedBuildTemplate) payload.buildTemplate = mergedBuildTemplate;
+  if (mergedDirectPreview) payload.templateDirectPreview = true;
+
   try {
     localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(payload));
     sessionStorage.setItem("lemnity.landing.prompt", trimmed);

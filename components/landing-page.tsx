@@ -174,7 +174,7 @@ export function LandingPage() {
   const goApp = useCallback(() => {
     const text = prompt.trim();
     if (!text) return;
-    saveBuilderHandoff(text, heroProjectKind ?? undefined);
+    saveBuilderHandoff(text, heroProjectKind ?? undefined, null);
     setPostLoginRedirect("/playground/build");
     router.push(authed ? "/playground/build" : "/login");
   }, [authed, heroProjectKind, prompt, router]);

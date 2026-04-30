@@ -167,7 +167,7 @@ export const lemnityPuckConfig: Config = {
         const title = typeof props.title === "string" ? props.title : "";
         const body = typeof props.body === "string" ? props.body : "";
         return (
-          <div className="rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm">
+          <div data-lmnt-layer="raised" className="rounded-xl border border-border bg-card p-4 text-card-foreground shadow-sm">
             <h3 className="m-0 text-lg font-semibold">{title}</h3>
             <p className="mt-2 m-0 text-sm text-muted-foreground leading-relaxed">{body}</p>
           </div>
@@ -179,6 +179,7 @@ export const lemnityPuckConfig: Config = {
     defaultProps: { title: "Страница" },
     render: ({ children }: { children: ReactNode }) => (
       <div
+        data-lmnt-layout-root
         className="min-h-0 w-full min-w-0 text-foreground"
         style={{ display: "flex", flexDirection: "column", gap: "1.25rem", padding: "1.5rem" }}
       >

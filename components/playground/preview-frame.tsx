@@ -2,7 +2,7 @@
 
 import JSZip from "jszip";
 import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -15,6 +15,13 @@ import { downloadHtmlAsPdf } from "@/lib/export-html-pdf";
 import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
 import { applyVisualUpdatesToElement } from "@/lib/editor/apply-visual-updates";
 import { buildLayoutSnapshot, stripLmntElementIdsFromSubtree, type LayoutElementSnapshot } from "@/lib/editor/layout-element";
+import type { MoveToolbarDirection } from "@/lib/editor/canvas-overlay";
+import {
+  reorderAsideFromParent,
+  reorderElementBeforeParent,
+  reorderSiblingAfterNext,
+  reorderSiblingBeforePrevious
+} from "@/lib/editor/reorder-block";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import {
@@ -22,6 +29,7 @@ import {
   serializeIframeDocument,
   type VisualPreviewEditorHandle
 } from "@/lib/visual-preview-editor";
+import { ensureLmntLayerStylesInDocument } from "@/lib/lmnt-layer-spec";
 import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
 import { cn } from "@/lib/utils";
 
@@ -132,6 +140,45 @@ export function PreviewFrame({
   const showPresentationHtmlPdf = projectKind === "presentation" && !isPptx;
   const isDocumentChrome = previewVariant === "document" && !isPptx;
 
+  const visualMoveToolbarLabels = useMemo(
+    () => ({
+      up: t("build_visual_move_up"),
+      down: t("build_visual_move_down"),
+      left: t("build_visual_move_left"),
+      right: t("build_visual_move_right")
+    }),
+    [t]
+  );
+
+  const handleVisualMoveBlock = useCallback(
+    (direction: MoveToolbarDirection) => {
+      const doc = iframeRef.current?.contentDocument;
+      const el = visualSelectedPrimaryRef.current;
+      if (!doc?.body || !el || el.ownerDocument !== doc) {
+        toast.error(t("build_visual_apply_failed"));
+        return;
+      }
+      const tag = el.tagName.toUpperCase();
+      if (tag === "BODY" || tag === "HTML") {
+        toast.error(t("build_visual_cannot_move_root"));
+        return;
+      }
+      visualEditorPanelRef.current?.flushPendingApply();
+      let ok = false;
+      if (direction === "up") ok = reorderSiblingBeforePrevious(el);
+      else if (direction === "down") ok = reorderSiblingAfterNext(el);
+      else if (direction === "left") ok = reorderElementBeforeParent(el);
+      else ok = reorderAsideFromParent(el);
+      if (!ok) {
+        toast.error(t("build_visual_move_failed"));
+        return;
+      }
+      setVisualSnapshot(buildLayoutSnapshot(el));
+      visualEditorHandleRef.current?.selectElement(el);
+    },
+    [t]
+  );
+
   function guardPresentationExportPaid(): boolean {
     if (presentationExportsPaid) return true;
     toast.error(t("build_export_presentation_pro_required"), {
@@ -150,6 +197,28 @@ export function PreviewFrame({
   useEffect(() => {
     setIframeSrc((prev) => mergedPreviewIframeSrc(prev, previewUrl));
   }, [previewUrl]);
+
+  /** CSS-слои data-lmnt-* во всех iframe-превью (не только в режиме визреда). */
+  useEffect(() => {
+    if (isPptx) return;
+
+    function ensureLayers() {
+      const doc = iframeRef.current?.contentDocument;
+      if (doc?.head) ensureLmntLayerStylesInDocument(doc);
+    }
+
+    function onIframeLoad() {
+      ensureLayers();
+    }
+
+    const el = iframeRef.current;
+    el?.addEventListener("load", onIframeLoad);
+    ensureLayers();
+
+    return () => {
+      el?.removeEventListener("load", onIframeLoad);
+    };
+  }, [isPptx, sandboxId, previewUrl]);
 
   /** Визуальный редактор: слушатель `load` привязан к одному узлу iframe; стабильный `key={sandboxId}`. */
   useEffect(() => {
@@ -171,6 +240,7 @@ export function PreviewFrame({
         setIframeBlocked(true);
         return;
       }
+      ensureLmntLayerStylesInDocument(doc);
       setIframeBlocked(false);
       visualEditorHandleRef.current?.detach();
       visualEditorHandleRef.current = attachVisualPreviewEditor(doc, {
@@ -178,7 +248,9 @@ export function PreviewFrame({
           visualSelectedPrimaryRef.current = element;
           setVisualSnapshot(snapshot);
           setVisualSelectedCount(elements.length);
-        }
+        },
+        onMoveDirection: handleVisualMoveBlock,
+        moveToolbarLabels: visualMoveToolbarLabels
       });
     }
 
@@ -209,7 +281,7 @@ export function PreviewFrame({
       visualEditorHandleRef.current = null;
       visualSelectedPrimaryRef.current = null;
     };
-  }, [visualEditMode, isPptx, sandboxId]);
+  }, [visualEditMode, isPptx, sandboxId, handleVisualMoveBlock, visualMoveToolbarLabels]);
 
   const controlButtons = useMemo(
     () => [
@@ -556,6 +628,10 @@ export function PreviewFrame({
       close: t("build_visual_editor_panel_close"),
       deleteBlock: t("build_visual_delete_block"),
       cloneBlock: t("build_visual_clone_block"),
+      moveBlockUp: t("build_visual_move_up"),
+      moveBlockDown: t("build_visual_move_down"),
+      moveBlockLeft: t("build_visual_move_left"),
+      moveBlockRight: t("build_visual_move_right"),
       fields: {
         text: t("build_visual_field_text"),
         color: t("build_visual_field_color"),
@@ -794,10 +870,12 @@ export function PreviewFrame({
                       onSubmitPayload={handleApplyVisualEdit}
                       onDeleteBlock={handleVisualDeleteBlock}
                       onCloneBlock={handleVisualCloneBlock}
+                      onMoveBlock={handleVisualMoveBlock}
                       onClose={handleDismissVisualEditor}
                     />
                     <p className="rounded-md border border-border/45 bg-background/92 px-2.5 py-1.5 text-center text-[10px] leading-snug text-muted-foreground shadow-md backdrop-blur-sm dark:bg-zinc-950/92">
                       {t("build_visual_agent_hint")}
+                      <span className="mt-1 block opacity-95">{t("build_visual_alt_drill_pick_hint")}</span>
                     </p>
                   </div>
                 </div>

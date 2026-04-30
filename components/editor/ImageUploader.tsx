@@ -39,6 +39,13 @@ export function ImageUploader({ sandboxId, disabled, labels, onUploaded, classNa
         }
         const data = (await res.json()) as { url: string };
         onUploaded(data.url);
+        try {
+          window.dispatchEvent(
+            new CustomEvent("lemnity:sandbox-files-updated", { detail: { sandboxId } })
+          );
+        } catch {
+          /* noop */
+        }
       } catch (e) {
         toast.error(labels.upload, {
           description: e instanceof Error ? e.message : String(e)

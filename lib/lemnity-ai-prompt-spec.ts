@@ -1,5 +1,6 @@
 import { PROMPT_SITE_FOOTER_RULES_EN } from "@/lib/prompt-site-footer";
 import { PROMPT_STOCK_IMAGES_RULES_EN } from "@/lib/prompt-stock-images";
+import { LMNT_LAYER_RULES_LINES_EN } from "@/lib/lmnt-layer-spec";
 
 /**
  * Спецификация промптов Lemnity AI (builder): план, шаги, форматы UI.
@@ -83,7 +84,14 @@ export function buildRouterGenerationPrompt(
     "Baseline quality: mobile-first, explicit loading/empty/error states where relevant, semantic headings/labels, and no secrets/keys in visible code.",
     "Accessibility: logical heading order, button/link labels, sufficient contrast.",
     PROMPT_STOCK_IMAGES_RULES_EN,
-    PROMPT_SITE_FOOTER_RULES_EN
+    PROMPT_SITE_FOOTER_RULES_EN,
+    ...(multifile
+      ? [
+          "",
+          "Movement-friendly layout layering (visual preview editor):",
+          ...LMNT_LAYER_RULES_LINES_EN.map((line) => `- ${line}`)
+        ]
+      : [])
   ];
 
   const formatBlock = (() => {

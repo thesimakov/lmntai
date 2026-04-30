@@ -452,6 +452,10 @@ export const messages = {
     playground_templates_empty_recent: 'Пока нет недавних запросов — введите идею выше.',
     playground_templates_catalog_heading: 'Каталог макетов',
     playground_home_title: 'С чего начнём?',
+    playground_grid_editor_banner_title: 'Редактор шаблонов на сетке (демо)',
+    playground_grid_editor_banner_desc:
+      'Слои поверх/под сеткой, блоки с DnD, правило полного ряда и сохранение шаблонов — отдельная страница.',
+    playground_grid_editor_banner_cta: 'Открыть редактор',
     playground_home_greeting: 'Привет,',
     playground_home_extra_aria: 'Шаблоны и подсказки',
     playground_home_clear_type_aria: 'Сбросить тип проекта',
@@ -590,6 +594,9 @@ export const messages = {
     playground_chat_code_moved_to_code_tab:
       '✨ Код сгенерирован. Откройте вкладку «Код» — там дерево файлов (src, public, components…), как в проекте.',
     playground_build_code_files: 'Файлы проекта',
+    playground_build_code_gallery: 'Галерея',
+    playground_build_code_gallery_hint:
+      'Папка project: public/images/gallery — сюда попадают загруженные в редакторе изображения и картинки, подтянутые с внешних URL при сборке (ссылки же в превью).',
     playground_build_code_generated: 'generated.txt',
     playground_build_code_visual_edit_hint:
       'Визуальное редактирование: вкладки «Превью» или «Документ» и кнопка «Редактор» в шапке. Здесь — файлы, записанные в песочницу (при многофайловой сборке — несколько путей; иначе часто один index.html).',
@@ -732,6 +739,8 @@ export const messages = {
 
     build_visual_quick_styles: 'Быстрые стили выбранного элемента',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик — мультивыбор',
+    build_visual_alt_drill_pick_hint:
+      'Alt + клик — другой элемент «под тем же местом», если браузер сначала выберет большую обёртку.',
     build_visual_selected_count: 'Выбрано: {count}',
     build_visual_style_padding: 'Padding',
     build_visual_style_margin: 'Margin',
@@ -758,6 +767,12 @@ export const messages = {
     build_visual_cannot_delete_root: 'Нельзя удалить страницу целиком.',
     build_visual_cannot_clone_root: 'Нельзя клонировать этот элемент.',
     build_visual_clone_failed: 'Не удалось клонировать — нет родителя в DOM.',
+    build_visual_move_up: 'Выше',
+    build_visual_move_down: 'Ниже',
+    build_visual_move_left: 'Влево — перед обёрткой',
+    build_visual_move_right: 'Вправо — после обёртки',
+    build_visual_move_failed: 'Переместить нельзя (нет места или такой элемент).',
+    build_visual_cannot_move_root: 'Этот элемент нельзя сдвинуть.',
     build_visual_block_deleted: 'Блок удалён',
     build_visual_block_cloned: 'Блок скопирован',
     build_visual_field_text: 'Текст',
@@ -1428,6 +1443,10 @@ export const messages = {
     playground_templates_empty_recent: 'No recent prompts yet — type an idea above.',
     playground_templates_catalog_heading: 'Layout catalog',
     playground_home_title: 'Where do we start?',
+    playground_grid_editor_banner_title: 'Grid template editor (demo)',
+    playground_grid_editor_banner_desc:
+      'Layers, snap-to-grid blocks, DnD, full-row rules, and templates — standalone page.',
+    playground_grid_editor_banner_cta: 'Open editor',
     playground_home_greeting: 'Hey,',
     playground_home_extra_aria: 'Templates and hints',
     playground_home_clear_type_aria: 'Clear project type',
@@ -1565,6 +1584,9 @@ export const messages = {
     playground_chat_code_moved_to_code_tab:
       '✨ Code generated. Open the Code tab — file tree (src, public, components…), like a real project.',
     playground_build_code_files: 'Project files',
+    playground_build_code_gallery: 'Gallery',
+    playground_build_code_gallery_hint:
+      'Project folder public/images/gallery — uploads from the visual editor and images materialized from remote URLs during build.',
     playground_build_code_generated: 'generated.txt',
     playground_build_code_visual_edit_hint:
       'Visual editing: use the Preview or Document tab, then Editor in the header. This tab shows files stored in the sandbox (multi-file builds list several paths; otherwise often a single index.html).',
@@ -1706,6 +1728,8 @@ export const messages = {
 
     build_visual_quick_styles: 'Quick styles for selected element',
     build_visual_multi_select_hint: 'Ctrl/Cmd + click for multi-select',
+    build_visual_alt_drill_pick_hint:
+      'Alt + click selects the next overlapping element here if the first pick was only a wrapper.',
     build_visual_selected_count: 'Selected: {count}',
     build_visual_style_padding: 'Padding',
     build_visual_style_margin: 'Margin',
@@ -1732,6 +1756,12 @@ export const messages = {
     build_visual_cannot_delete_root: "You can't delete the whole page.",
     build_visual_cannot_clone_root: "This element can't be duplicated.",
     build_visual_clone_failed: "Couldn't duplicate — missing parent in the DOM.",
+    build_visual_move_up: 'Up',
+    build_visual_move_down: 'Down',
+    build_visual_move_left: 'Left — before wrapper',
+    build_visual_move_right: 'Right — after wrapper',
+    build_visual_move_failed: 'Cannot move (no room or unsupported).',
+    build_visual_cannot_move_root: "This element can't be moved.",
     build_visual_block_deleted: 'Block removed',
     build_visual_block_cloned: 'Block duplicated',
     build_visual_field_text: 'Text',
@@ -2403,6 +2433,10 @@ export const messages = {
     playground_templates_empty_recent: 'Ҳоло дархостҳои охирин нестанд — идеяро дар боло ворид кунед.',
     playground_templates_catalog_heading: 'Каталоги макетҳо',
     playground_home_title: 'Аз куҷо оғоз мекунем?',
+    playground_grid_editor_banner_title: 'Муҳаррири шаблон дар шабака (демо)',
+    playground_grid_editor_banner_desc:
+      'Қабатҳо, блокҳо бо DnD, қоидаҳои сатрҳои пур ва шаблонҳо — саҳифаи ҷудогона.',
+    playground_grid_editor_banner_cta: 'Кушодани муҳаррир',
     playground_home_greeting: 'Салом,',
     playground_home_extra_aria: 'Шаблонҳо ва маслиҳатҳо',
     playground_home_clear_type_aria: 'Навъи лоиҳаро нест кардан',
@@ -2539,6 +2573,9 @@ export const messages = {
     playground_chat_code_moved_to_code_tab:
       '✨ Код эҷод шуд. Варақаи «Код»-ро кушоед — дарахти файлҳо (src, public, components…).',
     playground_build_code_files: 'Файлҳои лоиҳа',
+    playground_build_code_gallery: 'Галерея',
+    playground_build_code_gallery_hint:
+      'Ҷузвон public/images/gallery — аксҳои боршуда дар муҳаррир ва ҷойгиршавии URL-ҳои беруна дар тавлид.',
     playground_build_code_generated: 'generated.txt',
     playground_build_code_visual_edit_hint:
       'Таҳрири визуалӣ: варақаҳои «Пешнамоиш» ё «Ҳуҷҷат» ва тугмаи «Муҳаррир» дар сарбанд. Ин ҷо — файлҳои песочница.',
@@ -2679,6 +2716,8 @@ export const messages = {
 
     build_visual_quick_styles: 'Услубҳои зуд барои элементи интихобшуда',
     build_visual_multi_select_hint: 'Ctrl/Cmd + клик барои интихоби якчанд',
+    build_visual_alt_drill_pick_hint:
+      'Alt + клик — интихоби дигар дар ҳамон нуқта агар нашшавии аввал танҳо қабат бошад.',
     build_visual_selected_count: 'Интихобшуда: {count}',
     build_visual_style_padding: 'Padding',
     build_visual_style_margin: 'Margin',
@@ -2705,6 +2744,12 @@ export const messages = {
     build_visual_cannot_delete_root: 'Саҳифаро комилан нест кардан намешавад.',
     build_visual_cannot_clone_root: 'Ин элемент нусха бардошта намешавад.',
     build_visual_clone_failed: 'Нусха бардоштан муяссар нашуд.',
+    build_visual_move_up: 'Боло',
+    build_visual_move_down: 'Поён',
+    build_visual_move_left: 'Чап — пеш аз қуттӣ',
+    build_visual_move_right: 'Рост — баъд аз қуттӣ',
+    build_visual_move_failed: 'Гузариш муяссар нашуд.',
+    build_visual_cannot_move_root: 'Ин элементро гузиштан муяссар нест.',
     build_visual_block_deleted: 'Блок нест шуд',
     build_visual_block_cloned: 'Блок нусха бардошта шуд',
     build_visual_field_text: 'Матн',

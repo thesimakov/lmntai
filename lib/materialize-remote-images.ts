@@ -1,5 +1,13 @@
 import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
-import { clearSandboxImageAssets, setSandboxImageAsset } from "@/lib/sandbox-image-assets";
+import {
+  keepUploadGalleryItems,
+  PROJECT_IMAGE_GALLERY_MEDIA_PATH,
+  PROJECT_IMAGE_GALLERY_README_PATH,
+  PROJECT_IMAGE_GALLERY_README_TEXT,
+  stringifyGalleryMedia,
+  type ProjectGalleryItem
+} from "@/lib/project-image-gallery";
+import { clearSandboxMaterializedImageSlots, setSandboxImageAsset } from "@/lib/sandbox-image-assets";
 
 /** Домены, которые сейчас разрешены в промптах (см. lib/prompt-stock-images.ts; Commons — без зарубежного VPN). */
 const HOST_ALLOW = new Set([
@@ -109,7 +117,8 @@ export type MaterializeRemoteImagesResult = {
 
 /**
  * Скачивает внешние stock-URL в память процесса, подменяет в текстах проекта на
- * same-origin `/api/sandbox/:id/image-asset/:key`, добавляет `public/images/manifest.json`.
+ * Замены в текстах проекта на same-origin `/api/sandbox/:id/image-asset/:key`.
+ * Обновляет `public/images/gallery/media.json` (и README в той же папке).
  * Логирует метаданные в UserVirtualEntry (квота — best-effort).
  */
 export async function materializeRemoteImagesInProject(
@@ -118,10 +127,22 @@ export async function materializeRemoteImagesInProject(
 ): Promise<MaterializeRemoteImagesResult> {
   const urls = collectUniqueUrls(projectFiles);
   if (urls.length === 0) {
-    return { files: projectFiles, materializedCount: 0, skipped: 0 };
+    const uploadsKept = keepUploadGalleryItems(projectFiles);
+    if (uploadsKept.length === 0) {
+      return { files: projectFiles, materializedCount: 0, skipped: 0 };
+    }
+    return {
+      files: {
+        ...projectFiles,
+        [PROJECT_IMAGE_GALLERY_README_PATH]: PROJECT_IMAGE_GALLERY_README_TEXT,
+        [PROJECT_IMAGE_GALLERY_MEDIA_PATH]: stringifyGalleryMedia({ version: 1, items: uploadsKept })
+      },
+      materializedCount: 0,
+      skipped: 0
+    };
   }
 
-  clearSandboxImageAssets(ctx.sandboxId);
+  clearSandboxMaterializedImageSlots(ctx.sandboxId);
 
   const replacements = new Map<string, string>();
   const manifestItems: Array<{
@@ -179,17 +200,32 @@ export async function materializeRemoteImagesInProject(
 
   let files = replaceAllUrlsInFiles(projectFiles, replacements);
 
-  if (manifestItems.length > 0) {
-    const manifest = {
-      note: "Картинки подтянуты на сервер Lemnity; в коде — same-origin пути (см. ниже).",
-      generatedAt: new Date().toISOString(),
-      items: manifestItems
+  const uploadsKept = keepUploadGalleryItems(files);
+
+  const materializedItems: ProjectGalleryItem[] = manifestItems.map((row, idx) => {
+    const assetKey = String(idx);
+    const path = row.path.startsWith("/") ? row.path : `/${row.path}`;
+    return {
+      path,
+      mime: row.mime,
+      source: "materialized",
+      assetKey,
+      sourceUrl: row.sourceUrl,
+      bytes: row.bytes
     };
-    files = {
-      ...files,
-      "public/images/manifest.json": `${JSON.stringify(manifest, null, 2)}\n`
-    };
-  }
+  });
+
+  files = {
+    ...files,
+    [PROJECT_IMAGE_GALLERY_README_PATH]: PROJECT_IMAGE_GALLERY_README_TEXT,
+    [PROJECT_IMAGE_GALLERY_MEDIA_PATH]: stringifyGalleryMedia({
+      version: 1,
+      items:
+        uploadsKept.length > 0 || materializedItems.length > 0
+          ? [...uploadsKept, ...materializedItems]
+          : []
+    })
+  };
 
   return {
     files,

@@ -161,7 +161,7 @@ export function MenuDrawer({
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
-      saveBuilderHandoff(trimmed);
+      saveBuilderHandoff(trimmed, undefined, null);
       setHistoryOpen(false);
       if (pathname === "/playground/build") {
         window.location.assign("/playground/build");

@@ -155,6 +155,14 @@ function sseEventName(event: string): string {
   return event.trim().toLowerCase();
 }
 
+/** Клиент: обновить список файлов превью (галерея, вкладка «Файлы проекта»). */
+function emitSandboxFilesUpdated(sandboxId: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  const s = sandboxId != null ? String(sandboxId).trim() : "";
+  if (!s) return;
+  window.dispatchEvent(new CustomEvent("lemnity:sandbox-files-updated", { detail: { sandboxId: s } }));
+}
+
 export default function PromptBuildPage() {
   const { t, lang } = useI18n();
   const router = useRouter();
@@ -626,6 +634,7 @@ export default function PromptBuildPage() {
             templatePreviewSandboxIdRef.current = null;
             setPreviewUrl(lastPreview.previewUrl);
             setSandboxId(lastPreview.sandboxId);
+            emitSandboxFilesUpdated(lastPreview.sandboxId);
             setPreviewArtifactMime(typeof lastPreview.mimeType === "string" ? lastPreview.mimeType : null);
             setPreviewDownloadFilename(
               typeof lastPreview.filename === "string" ? lastPreview.filename : null
@@ -933,6 +942,7 @@ export default function PromptBuildPage() {
                 templatePreviewSandboxIdRef.current = null;
                 setPreviewUrl(data.previewUrl);
                 setSandboxId(data.sandboxId);
+                emitSandboxFilesUpdated(data.sandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
                 setPreviewDownloadFilename(typeof data.filename === "string" ? data.filename : null);
                 const pe = data.pdfExport;
@@ -1059,6 +1069,7 @@ export default function PromptBuildPage() {
         templatePreviewSandboxIdRef.current = String(data.sandboxId);
         setPreviewUrl(data.previewUrl);
         setSandboxId(data.sandboxId);
+        emitSandboxFilesUpdated(data.sandboxId);
         setPreviewArtifactMime(null);
         setPreviewDownloadFilename(null);
         setPresentationPdfExport(null);
@@ -1699,6 +1710,7 @@ export default function PromptBuildPage() {
           templatePreviewSandboxIdRef.current = null;
           setPreviewUrl(eventData.previewUrl);
           setSandboxId(eventData.sandboxId);
+          emitSandboxFilesUpdated(eventData.sandboxId);
           setMode("preview");
           push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
         }
@@ -1882,6 +1894,9 @@ export default function PromptBuildPage() {
     push("assistant", "⌛ Дождись завершения текущего шага и повтори запрос.");
   }
 
+  /** Левая колонка чата («Сборка промпта»): скрываем при сворачивании или при активном каталожном шаблоне сборки */
+  const leftPromptRailHidden = leftCollapsed || Boolean(buildTemplate);
+
   return (
     <PageTransition>
       <div className="flex h-full min-h-0 flex-1 flex-col bg-muted/40">
@@ -1909,7 +1924,7 @@ export default function PromptBuildPage() {
                 compact
                 lemnityAiBridgeReady={lemnityAiBridgeReady}
                 shouldUseLemnityAiBridge={shouldUseLemnityAiBridge}
-                leftCollapsed={leftCollapsed}
+                leftCollapsed={leftPromptRailHidden}
                 onToggleCollapse={() => {
                   setLeftCollapsed((v) => {
                     const next = !v;
@@ -1927,12 +1942,13 @@ export default function PromptBuildPage() {
 
           <div
             className="relative min-h-0 overflow-hidden border-r border-border bg-background transition-[width,opacity] duration-200 ease-out"
+            aria-hidden={leftPromptRailHidden}
             style={{
-              width: leftCollapsed ? 0 : leftWidth,
-              minWidth: leftCollapsed ? 0 : 280,
-              maxWidth: leftCollapsed ? 0 : 560,
-              opacity: leftCollapsed ? 0 : 1,
-              pointerEvents: leftCollapsed ? "none" : "auto"
+              width: leftPromptRailHidden ? 0 : leftWidth,
+              minWidth: leftPromptRailHidden ? 0 : 280,
+              maxWidth: leftPromptRailHidden ? 0 : 560,
+              opacity: leftPromptRailHidden ? 0 : 1,
+              pointerEvents: leftPromptRailHidden ? "none" : "auto"
             }}
           >
             <AgentChat
@@ -2052,7 +2068,7 @@ export default function PromptBuildPage() {
               }
             />
 
-            {!leftCollapsed ? (
+            {!leftPromptRailHidden ? (
               <div
                 role="separator"
                 aria-orientation="vertical"

@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireDbUser } from "@/lib/auth-guards";
 import { randomBytes } from "crypto";
 import { setSandboxImageAsset } from "@/lib/sandbox-image-assets";
+import { sandboxManager } from "@/lib/sandbox-manager";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -57,6 +58,19 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const origin = new URL(req.url).origin;
   const publicUrl = `${origin}/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;
+
+  try {
+    const pathOnly = `/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;
+    await sandboxManager.mergeProjectGalleryAppendUploadItem(sandboxId, {
+      path: pathOnly,
+      mime,
+      source: "upload",
+      assetKey: key,
+      bytes: buf.length
+    });
+  } catch {
+    // не блокируем ответ с URL, если список галереи не сохранился
+  }
 
   return Response.json({ url: publicUrl, key });
 }

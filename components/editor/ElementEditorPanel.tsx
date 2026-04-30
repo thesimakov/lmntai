@@ -5,6 +5,10 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   ImageIcon,
   Link2,
   MousePointerClick,
@@ -24,6 +28,7 @@ import { buildVisualEditorPayload } from "@/lib/editor/AICommandBuilder";
 import type { VisualEditorSubmitPayload } from "@/lib/editor/AICommandBuilder";
 import { ImageUploader } from "@/components/editor/ImageUploader";
 import { LmnyIconPicker } from "@/components/editor/LmnyIconPicker";
+import type { MoveToolbarDirection } from "@/lib/editor/canvas-overlay";
 
 type ElementEditorPanelLabels = {
   title: string;
@@ -58,6 +63,11 @@ type ElementEditorPanelLabels = {
   iconClear: string;
   /** Плейсхолдер поля цвета иконки (пусто = currentColor) */
   iconColorPlaceholder: string;
+  /** Подписи кнопок перемещения контейнера (дублируют оверлей в iframe). */
+  moveBlockUp: string;
+  moveBlockDown: string;
+  moveBlockLeft: string;
+  moveBlockRight: string;
   /** Подписи кнопок структуры блока */
   deleteBlock: string;
   cloneBlock: string;
@@ -76,6 +86,8 @@ type ElementEditorPanelProps = {
   onDeleteBlock?: () => void;
   /** Дублировать выбранный узел сразу после оригинала */
   onCloneBlock?: () => void;
+  /** То же действие направлений, что и стрелки на рамке выделения (↑↓←→ в DOM превью). */
+  onMoveBlock?: (direction: MoveToolbarDirection) => void;
   /** Снять выделение в превью и скрыть поля редактирования */
   onClose?: () => void;
 };
@@ -115,7 +127,7 @@ function pickChanges(initial: Record<string, string>, cur: Record<string, string
 
 export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEditorPanelProps>(
   function ElementEditorPanel(
-    { snapshot, sandboxId, disabled, labels, onSubmitPayload, onDeleteBlock, onCloneBlock, onClose },
+    { snapshot, sandboxId, disabled, labels, onSubmitPayload, onDeleteBlock, onCloneBlock, onMoveBlock, onClose },
     ref
   ) {
     const [fields, setFields] = useState<Record<string, string>>({});
@@ -211,6 +223,58 @@ export const ElementEditorPanel = forwardRef<ElementEditorPanelHandle, ElementEd
               {snapshot.elementType.charAt(0).toUpperCase() + snapshot.elementType.slice(1)} · {snapshot.elementId}
             </p>
           </div>
+          {onMoveBlock ? (
+            <div className="flex shrink-0 flex-wrap justify-end gap-0.5 pr-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 border-border/80"
+                disabled={disabled}
+                aria-label={labels.moveBlockUp}
+                title={labels.moveBlockUp}
+                onClick={() => onMoveBlock("up")}
+              >
+                <ArrowUp className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 border-border/80"
+                disabled={disabled}
+                aria-label={labels.moveBlockDown}
+                title={labels.moveBlockDown}
+                onClick={() => onMoveBlock("down")}
+              >
+                <ArrowDown className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 border-border/80"
+                disabled={disabled}
+                aria-label={labels.moveBlockLeft}
+                title={labels.moveBlockLeft}
+                onClick={() => onMoveBlock("left")}
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-7 w-7 border-border/80"
+                disabled={disabled}
+                aria-label={labels.moveBlockRight}
+                title={labels.moveBlockRight}
+                onClick={() => onMoveBlock("right")}
+              >
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : null}
           {onClose ? (
             <Button
               type="button"

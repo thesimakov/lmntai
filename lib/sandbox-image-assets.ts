@@ -42,3 +42,14 @@ export function getSandboxImageAsset(
 export function clearSandboxImageAssets(sandboxId: string): void {
   bySandbox.delete(sandboxId);
 }
+
+/** Удалить только ключи‑слоты `0`,`1`,`2`,… перед новой порцией материализованных URL. Ключи вида `img_*.webp` сохраняем. */
+export function clearSandboxMaterializedImageSlots(sandboxId: string): void {
+  const m = bySandbox.get(sandboxId);
+  if (!m) return;
+  for (const k of [...m.keys()]) {
+    if (/^\d+$/.test(k)) {
+      m.delete(k);
+    }
+  }
+}

@@ -3,6 +3,8 @@
  * Импорты: только `react`, `react-dom`, `lucide-react`.
  */
 
+import { LMNT_LAYER_RULES_BLOCK_RU } from "@/lib/lmnt-layer-spec";
+
 export const MASSAGE_TEMPLATE_SLUG = "massage";
 
 export const MASSAGE_TEMPLATE_NAME = "Массажист";
@@ -27,7 +29,7 @@ export const MASSAGE_TEMPLATE_RULES = `ИНСТРУКЦИЯ ПО ШАБЛОНУ 
 - Меняйте копирайт, цены, телефон, адрес, название бренда, список услуг; при необходимости выносите повторяющиеся карточки в src/components.
 - Не подключайте Next.js, next/image, shadcn из npm — только то, что уже в превью (react, react-dom, lucide-react при необходимости).
 - Вывод: полные обновлённые файлы в фенсах \`\`\`tsx:путь\` … \`\`\` для КАЖДОГО изменённого файла. Если файл не трогали — не дублируйте.
-- \`puck.json\` — макет для редактора Puck; при правках копирайта/секций синхронизируйте содержимое с изменениями в \`src/App.tsx\` и компонентах.`;
+- \`puck.json\` — макет для редактора Puck; при правках копирайта/секций синхронизируйте содержимое с изменениями в \`src/App.tsx\` и компонентах.${LMNT_LAYER_RULES_BLOCK_RU}`;
 
 const MAIN = `import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
@@ -51,8 +53,8 @@ const APP = `import {
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
-      <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-sm">
+    <div data-lmnt-layout-root className="min-h-screen bg-gradient-to-b from-sky-50 to-white">
+      <header data-lmnt-layer="nav" className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/80 backdrop-blur-sm">
         <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="text-2xl font-bold text-sky-700">Wellness Massage</div>
           <div className="flex items-center gap-6 text-sm">
@@ -69,7 +71,7 @@ export default function App() {
         </nav>
       </header>
 
-      <section className="mx-auto max-w-7xl px-6 py-20 md:py-32">
+      <section data-lmnt-layer="base" className="mx-auto max-w-7xl px-6 py-20 md:py-32">
         <div className="grid items-center gap-12 md:grid-cols-2">
           <div>
             <h1 className="text-4xl font-bold leading-tight text-slate-900 md:text-5xl">
@@ -103,7 +105,7 @@ export default function App() {
         </div>
       </section>
 
-      <section className="bg-white py-20">
+      <section data-lmnt-layer="base" className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-6">
           <h2 className="mb-16 text-center text-3xl font-bold text-slate-900 md:text-4xl">Почему выбирают мои услуги</h2>
           <div className="grid gap-8 md:grid-cols-3">
@@ -137,7 +139,7 @@ export default function App() {
         </div>
       </section>
 
-      <section id="services" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-20">
+      <section data-lmnt-layer="base" id="services" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-20">
         <h2 className="mb-16 text-center text-3xl font-bold text-slate-900 md:text-4xl">Спектр услуг</h2>
         <div className="grid gap-8 md:grid-cols-2">
           {[
@@ -160,7 +162,7 @@ export default function App() {
         </div>
       </section>
 
-      <section id="about" className="scroll-mt-20 bg-white py-20">
+      <section data-lmnt-layer="base" id="about" className="scroll-mt-20 bg-white py-20">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid items-center gap-12 md:grid-cols-2">
             <div className="flex h-96 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-200/50 to-cyan-100/60">
@@ -195,7 +197,7 @@ export default function App() {
         </div>
       </section>
 
-      <section id="contact" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-20">
+      <section data-lmnt-layer="base" id="contact" className="mx-auto max-w-7xl scroll-mt-20 px-6 py-20">
         <h2 className="mb-16 text-center text-3xl font-bold text-slate-900 md:text-4xl">Контакты</h2>
         <div className="grid gap-8 md:grid-cols-3">
           {[

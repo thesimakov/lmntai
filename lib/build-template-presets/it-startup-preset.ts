@@ -3,6 +3,7 @@
  * `src/components/landing/*`, в превью только react + lucide-react.
  */
 
+import { LMNT_LAYER_RULES_BLOCK_RU } from "@/lib/lmnt-layer-spec";
 import { IT_STARTUP_LANDING_FILES } from "./it-startup-landing-files";
 
 export const IT_STARTUP_TEMPLATE_SLUG = "it-startup";
@@ -30,7 +31,7 @@ export const IT_STARTUP_TEMPLATE_RULES = `ИНСТРУКЦИЯ ПО ШАБЛОН
 - Кнопки — <button> или <a>, Tailwind; не подключайте Next.js, next/link, shadcn из npm.
 - Разрешены только: react, react-dom, lucide-react.
 - Ответ: полные файлы \`\`\`tsx:путь\` … \`\`\` для каждого изменённого. Не дублируйте неизменённые.
-- \`puck.json\` — визуальный макет в Puck: блоки по смыслу совпадают с секциями; при правках лендинга держи puck в согласовании.`;
+- \`puck.json\` — визуальный макет в Puck: блоки по смыслу совпадают с секциями; при правках лендинга держи puck в согласовании.${LMNT_LAYER_RULES_BLOCK_RU}`;
 
 const MAIN = `import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
