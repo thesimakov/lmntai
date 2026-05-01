@@ -338,31 +338,34 @@ export function PreviewFrame({
   async function handleExportZip() {
     setExportTask("zip");
     try {
-      const zip = new JSZip();
       if (previewUrl.includes("/api/lemnity-ai/artifacts/") || sandboxId.startsWith("artifact_")) {
+        const zip = new JSZip();
         const response = await fetch(previewUrl, { credentials: "include" });
         if (!response.ok) {
           throw new Error(`Export failed: ${response.status}`);
         }
         zip.file("index.html", await response.text());
+        const blob = await zip.generateAsync({ type: "blob" });
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `lemnity-project-${sandboxId.slice(0, 8)}.zip`;
+        anchor.click();
+        URL.revokeObjectURL(url);
       } else {
-        const response = await fetch(`/api/sandbox/${sandboxId}?format=json`, { credentials: "include" });
+        let response = await fetch("/api/projects/current/export", {
+          credentials: "include"
+        });
+        if (response.status === 404) {
+          response = await fetch(`/api/projects/${encodeURIComponent(sandboxId)}/export`, {
+            credentials: "include"
+          });
+        }
         if (!response.ok) {
           throw new Error(`Export failed: ${response.status}`);
         }
-        const payload = (await response.json()) as { files: Record<string, string> };
-        Object.entries(payload.files ?? {}).forEach(([path, content]) => {
-          zip.file(path, content);
-        });
+        await downloadBlobFromResponse(response, `lemnity-project-${sandboxId.slice(0, 8)}.zip`);
       }
-
-      const blob = await zip.generateAsync({ type: "blob" });
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `lemnity-project-${sandboxId.slice(0, 8)}.zip`;
-      anchor.click();
-      URL.revokeObjectURL(url);
     } catch (e) {
       toast.error(t("build_export_failed"), { description: unknownToErrorMessage(e) });
     } finally {
@@ -373,15 +376,20 @@ export function PreviewFrame({
   async function handleExportDocx() {
     setExportTask("docx");
     try {
-      const htmlRes = await fetch(previewUrl, { credentials: "include" });
-      if (!htmlRes.ok) throw new Error(String(htmlRes.status));
-      const html = await htmlRes.text();
-      const res = await fetch("/api/export/docx", {
+      let res = await fetch("/api/export/docx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ html, filename: "resume.docx" })
+        body: JSON.stringify({ filename: "resume.docx" })
       });
+      if (res.status === 400) {
+        res = await fetch("/api/export/docx", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ projectId: sandboxId, filename: "resume.docx" })
+        });
+      }
       if (!res.ok) {
         const msg = await res.text().catch(() => "");
         throw new Error(msg || res.statusText);
@@ -515,12 +523,23 @@ export function PreviewFrame({
             credentials: "include",
             body: patchBody
           })
-        : await fetch(`/api/sandbox/${sandboxId}`, {
-            method: "PATCH",
-            headers: patchHeaders,
-            credentials: "include",
-            body: patchBody
-          });
+        : await (async () => {
+            let response = await fetch("/api/sandbox", {
+              method: "PATCH",
+              headers: patchHeaders,
+              credentials: "include",
+              body: patchBody
+            });
+            if (response.status === 404) {
+              response = await fetch(`/api/sandbox/${sandboxId}`, {
+                method: "PATCH",
+                headers: patchHeaders,
+                credentials: "include",
+                body: patchBody
+              });
+            }
+            return response;
+          })();
       if (!res.ok) {
         if (res.status === 413) {
           toast.error(t("build_visual_html_too_large"), {

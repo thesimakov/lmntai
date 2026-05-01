@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 
 export async function getSandboxShareState(
-  sandboxId: string
+  projectId: string
 ): Promise<{ isPublic: boolean; hideLemnityHeader: boolean }> {
   const row = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId },
     select: { isPublic: true, hideLemnityHeader: true }
   });
   return {
@@ -17,7 +17,7 @@ export async function getSandboxShareState(
  * Состояние для сессии владельца: эффективный hide (Pro/Team без строки = скрыт по умолчанию) + готовый флаг для футера превью.
  */
 export async function getOwnerShareStateForBuilder(
-  sandboxId: string,
+  projectId: string,
   owner: { id: string; plan: string; shareBrandingRemovalPaidAt: Date | null }
 ): Promise<{
   isPublic: boolean;
@@ -25,7 +25,7 @@ export async function getOwnerShareStateForBuilder(
   showLemnityBranding: boolean;
 }> {
   const row = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId },
     select: { isPublic: true, hideLemnityHeader: true }
   });
   const pro = isProOrTeamPlan(owner.plan);
@@ -42,9 +42,9 @@ export async function getOwnerShareStateForBuilder(
   };
 }
 
-export async function isSandboxLinkPublic(sandboxId: string): Promise<boolean> {
+export async function isSandboxLinkPublic(projectId: string): Promise<boolean> {
   const row = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId },
     select: { isPublic: true }
   });
   return row?.isPublic === true;
@@ -75,9 +75,9 @@ export function computeShowLemnityBranding(input: {
 }
 
 /** Публичный /share — только если есть строка share (иначе страница не открывается). */
-export async function getSandboxShareHeaderBranding(sandboxId: string): Promise<{ showLemnityBranding: boolean }> {
+export async function getSandboxShareHeaderBranding(projectId: string): Promise<{ showLemnityBranding: boolean }> {
   const row = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId },
     select: { ownerId: true, hideLemnityHeader: true }
   });
   if (!row) {
@@ -101,7 +101,7 @@ export async function getSandboxShareHeaderBranding(sandboxId: string): Promise<
  */
 export async function setSandboxSharePublic(sandboxId: string, ownerId: string, isPublic: boolean): Promise<void> {
   const existing = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId: sandboxId },
     select: { ownerId: true }
   });
   if (existing && existing.ownerId !== ownerId) {
@@ -113,8 +113,8 @@ export async function setSandboxSharePublic(sandboxId: string, ownerId: string, 
   });
   const pro = isProOrTeamPlan(owner?.plan ?? "FREE");
   await prisma.sandboxShare.upsert({
-    where: { sandboxId },
-    create: { sandboxId, ownerId, isPublic, hideLemnityHeader: pro ? true : false },
+    where: { projectId: sandboxId },
+    create: { projectId: sandboxId, sandboxId, ownerId, isPublic, hideLemnityHeader: pro ? true : false },
     update: { isPublic }
   });
 }
@@ -132,15 +132,15 @@ export async function assertCanHideShareBranding(userId: string, hide: boolean):
 
 export async function setSandboxShareHideHeader(sandboxId: string, ownerId: string, hide: boolean): Promise<void> {
   const existing = await prisma.sandboxShare.findUnique({
-    where: { sandboxId },
+    where: { projectId: sandboxId },
     select: { ownerId: true }
   });
   if (existing && existing.ownerId !== ownerId) {
     throw new Error("FORBIDDEN");
   }
   await prisma.sandboxShare.upsert({
-    where: { sandboxId },
-    create: { sandboxId, ownerId, isPublic: false, hideLemnityHeader: hide },
+    where: { projectId: sandboxId },
+    create: { projectId: sandboxId, sandboxId, ownerId, isPublic: false, hideLemnityHeader: hide },
     update: { hideLemnityHeader: hide }
   });
 }

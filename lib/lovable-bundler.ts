@@ -40,6 +40,70 @@ function normalizeProjectPath(p: string): string {
   return p.replace(/\\/g, "/").replace(/^\//, "");
 }
 
+const PROJECT_IMPORT_FILE_EXTS = [".tsx", ".ts", ".jsx", ".js", ".mjs", ".cjs", ".json", ".css"];
+const SRC_ROOT_FALLBACK_DIRS = ["components", "hooks", "lib", "styles", "utils"] as const;
+
+function hasProjectModule(files: Record<string, string>, modulePath: string): boolean {
+  const normalized = normalizeProjectPath(modulePath);
+  if (Object.prototype.hasOwnProperty.call(files, normalized)) return true;
+  if (path.posix.extname(normalized)) return false;
+  for (const ext of PROJECT_IMPORT_FILE_EXTS) {
+    if (Object.prototype.hasOwnProperty.call(files, `${normalized}${ext}`)) return true;
+  }
+  for (const ext of PROJECT_IMPORT_FILE_EXTS) {
+    if (Object.prototype.hasOwnProperty.call(files, `${normalized}/index${ext}`)) return true;
+  }
+  return false;
+}
+
+function rewriteSrcRootFallbackSpecifier(
+  files: Record<string, string>,
+  importerRel: string,
+  spec: string
+): string {
+  const importerDir = path.posix.dirname(importerRel);
+  if (importerDir !== "src") return spec;
+  for (const dir of SRC_ROOT_FALLBACK_DIRS) {
+    const prefix = `./${dir}`;
+    if (!(spec === prefix || spec.startsWith(`${prefix}/`))) continue;
+    const directTarget = path.posix.normalize(path.posix.join(importerDir, spec));
+    if (hasProjectModule(files, directTarget)) {
+      return spec;
+    }
+    const suffix = spec.slice(prefix.length);
+    const fallbackSpec = `../${dir}${suffix}`;
+    const fallbackTarget = path.posix.normalize(path.posix.join(importerDir, fallbackSpec));
+    if (hasProjectModule(files, fallbackTarget)) {
+      return fallbackSpec;
+    }
+  }
+  return spec;
+}
+
+function applySrcRootImportFallbacks(files: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = { ...files };
+  for (const [rel, content] of Object.entries(out)) {
+    if (!rel.startsWith("src/")) continue;
+    if (!/\.(tsx|ts|jsx|js|mjs|cjs)$/.test(rel)) continue;
+    const rewrittenStatic = content.replace(
+      /(\b(?:import|export)\s[\s\S]*?\bfrom\s*["'])([^"']+)(["'])/g,
+      (_full, p1: string, spec: string, p3: string) => {
+        const nextSpec = rewriteSrcRootFallbackSpecifier(out, rel, spec);
+        return `${p1}${nextSpec}${p3}`;
+      }
+    );
+    const rewritten = rewrittenStatic.replace(
+      /(\bimport\s*\(\s*["'])([^"']+)(["']\s*\))/g,
+      (_full, p1: string, spec: string, p3: string) => {
+        const nextSpec = rewriteSrcRootFallbackSpecifier(out, rel, spec);
+        return `${p1}${nextSpec}${p3}`;
+      }
+    );
+    out[rel] = rewritten;
+  }
+  return out;
+}
+
 export function findLovableEntry(files: Record<string, string>): string | null {
   if (files["src/main.tsx"]) return "src/main.tsx";
   if (files["src/main.jsx"]) return "src/main.jsx";
@@ -190,7 +254,7 @@ export function withLovableProjectScaffold(input: Record<string, string>): Recor
   if (!files["tsconfig.node.json"]) files["tsconfig.node.json"] = DEFAULT_LOVABLE_TSCONFIG_NODE;
   if (!files["README.md"]) files["README.md"] = DEFAULT_LOVABLE_README;
 
-  return files;
+  return applySrcRootImportFallbacks(files);
 }
 
 const reqFromAppRoot = createRequire(path.join(process.cwd(), "package.json"));

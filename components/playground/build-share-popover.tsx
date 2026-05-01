@@ -45,12 +45,23 @@ export function BuildSharePopover({
 
   const shareMode = shareIsPublic ? "public" : "private" as "private" | "public";
 
+  const fetchShareApi = useCallback(
+    async (init?: RequestInit): Promise<Response> => {
+      let res = await fetch("/api/sandbox/share", init);
+      if (res.status === 404 && sandboxId) {
+        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, init);
+      }
+      return res;
+    },
+    [sandboxId]
+  );
+
   const refreshState = useCallback(async () => {
     if (!sandboxId) {
       onShareIsPublicChange(false);
       return;
     }
-    const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "GET" });
+    const res = await fetchShareApi({ method: "GET" });
     if (res.status === 503) {
       return;
     }
@@ -58,7 +69,7 @@ export function BuildSharePopover({
       const data = (await res.json()) as { isPublic?: boolean };
       onShareIsPublicChange(Boolean(data.isPublic));
     }
-  }, [sandboxId, onShareIsPublicChange]);
+  }, [sandboxId, onShareIsPublicChange, fetchShareApi]);
 
   useEffect(() => {
     void refreshState();
@@ -72,7 +83,7 @@ export function BuildSharePopover({
     }
     try {
       setSharing(true);
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, {
+      const res = await fetchShareApi({
         method: mode === "public" ? "POST" : "DELETE"
       });
       if (!res.ok) {
@@ -94,7 +105,7 @@ export function BuildSharePopover({
     if (!sandboxId) return;
     try {
       setSharing(true);
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
+      const res = await fetchShareApi({ method: "POST" });
       if (!res.ok) {
         const text = await res.text();
         toast.error(text || t("playground_build_share_error_instant"));

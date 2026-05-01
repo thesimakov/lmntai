@@ -41,6 +41,7 @@ export function estimateUsageFromText(prompt: string, completion: string): Token
 
 export async function chargeTokensSafely(input: {
   userId: string;
+  projectId?: string;
   usage: Partial<TokenUsage> | null | undefined;
   model: string;
 }): Promise<ChargeResult> {
@@ -57,6 +58,7 @@ export async function chargeTokensSafely(input: {
     await prisma.tokenUsageLog.create({
       data: {
         userId: input.userId,
+        projectId: input.projectId ?? null,
         promptTokens: usage.prompt_tokens,
         completionTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,
@@ -82,6 +84,7 @@ export async function chargeTokensSafely(input: {
     await tx.tokenUsageLog.create({
       data: {
         userId: input.userId,
+        projectId: input.projectId ?? null,
         promptTokens: usage.prompt_tokens,
         completionTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,

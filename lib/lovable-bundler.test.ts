@@ -61,4 +61,17 @@ describe("withLovableProjectScaffold", () => {
     expect(files["src/main.tsx"]).toBe("custom-main");
     expect(files["package.json"]).toContain('"name":"custom"');
   });
+
+  it("rewrites src root imports to project root fallback when needed", () => {
+    const files = withLovableProjectScaffold({
+      "src/main.tsx": `import App from "./App";`,
+      "src/App.tsx": `import { Header } from "./components/Header";
+import { Hero } from "./components/Hero";
+export default function App(){ return <><Header /><Hero /></>; }`,
+      "components/Header.tsx": `export function Header(){ return <header>H</header>; }`,
+      "components/Hero.tsx": `export function Hero(){ return <section>Hero</section>; }`
+    });
+    expect(files["src/App.tsx"]).toContain(`from "../components/Header"`);
+    expect(files["src/App.tsx"]).toContain(`from "../components/Hero"`);
+  });
 });

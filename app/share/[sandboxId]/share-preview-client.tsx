@@ -3,14 +3,14 @@
 import { LemnityStudioBadge } from "@/components/playground/lemnity-studio-badge";
 
 type SharePreviewClientProps = {
-  sandboxId: string;
+  sandboxId?: string;
   /** Согласно тарифу и настройкам владельца */
   showLemnityBranding: boolean;
 };
 
 /** Публичная оболочка превью: iframe на /api/sandbox + тот же шильдик, что в студии. */
 export function SharePreviewClient({ sandboxId, showLemnityBranding }: SharePreviewClientProps) {
-  const src = `/api/sandbox/${encodeURIComponent(sandboxId)}`;
+  const src = sandboxId ? `/api/sandbox/${encodeURIComponent(sandboxId)}` : "/api/sandbox";
   return (
     <div className="flex h-[100dvh] min-h-0 flex-col bg-background">
       <header className="flex shrink-0 items-center justify-center border-b border-border bg-background/95 px-3 py-2 backdrop-blur sm:px-4">

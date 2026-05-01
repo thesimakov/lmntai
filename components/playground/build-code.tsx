@@ -5,10 +5,10 @@ import { FileCode2, FolderOpen, ImageIcon } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
 import {
-  PROJECT_IMAGE_GALLERY_DIR,
-  PROJECT_IMAGE_GALLERY_MEDIA_PATH,
-  PROJECT_IMAGE_GALLERY_README_PATH,
-  parseGalleryMediaJson
+  parseGalleryMediaJson,
+  projectImageGalleryDir,
+  projectImageGalleryMediaPath,
+  projectImageGalleryReadmePath
 } from "@/lib/project-image-gallery";
 import { cn } from "@/lib/utils";
 
@@ -24,11 +24,16 @@ function isPptxMime(m: string | null | undefined): boolean {
   return m.includes("presentationml") || m.includes("ms-powerpoint");
 }
 
-function sortFileKeys(keys: string[]): string[] {
+function sortFileKeys(
+  keys: string[],
+  galleryDir: string,
+  galleryMediaPath: string,
+  galleryReadmePath: string
+): string[] {
   const galleryOrder = (p: string): number => {
-    if (p === PROJECT_IMAGE_GALLERY_MEDIA_PATH) return 0;
-    if (p === PROJECT_IMAGE_GALLERY_README_PATH) return 1;
-    if (p.startsWith(`${PROJECT_IMAGE_GALLERY_DIR}/`)) return 2;
+    if (p === galleryMediaPath) return 0;
+    if (p === galleryReadmePath) return 1;
+    if (p.startsWith(`${galleryDir}/`)) return 2;
     if (p === "generated.txt") return 998;
     if (p === "puck.json") return 999;
     return 100;
@@ -50,11 +55,18 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
   const [isPptxArtifact, setIsPptxArtifact] = useState(false);
   const [filesRefreshNonce, setFilesRefreshNonce] = useState(0);
 
-  const sortedKeys = useMemo(() => sortFileKeys(Object.keys(files)), [files]);
+  const galleryDir = useMemo(() => projectImageGalleryDir(sandboxId ?? "project"), [sandboxId]);
+  const galleryMediaPath = useMemo(() => projectImageGalleryMediaPath(sandboxId ?? "project"), [sandboxId]);
+  const galleryReadmePath = useMemo(() => projectImageGalleryReadmePath(sandboxId ?? "project"), [sandboxId]);
+
+  const sortedKeys = useMemo(
+    () => sortFileKeys(Object.keys(files), galleryDir, galleryMediaPath, galleryReadmePath),
+    [files, galleryDir, galleryMediaPath, galleryReadmePath]
+  );
 
   const gallery = useMemo(
-    () => parseGalleryMediaJson(files[PROJECT_IMAGE_GALLERY_MEDIA_PATH]),
-    [files]
+    () => parseGalleryMediaJson(files[galleryMediaPath]),
+    [files, galleryMediaPath]
   );
 
   const loadSandboxFiles = useCallback(async () => {
@@ -203,7 +215,7 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
                   type="button"
                   title={it.sourceUrl ?? it.path}
                   onClick={() => {
-                    setSelectedPath(PROJECT_IMAGE_GALLERY_MEDIA_PATH);
+                    setSelectedPath(galleryMediaPath);
                   }}
                   className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-background ring-offset-background transition hover:ring-2 hover:ring-sky-500/40"
                 >
@@ -220,9 +232,9 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
               const isGen = path === "generated.txt";
               const isSecondary = isGen || path === "puck.json";
               const inGallery =
-                path === PROJECT_IMAGE_GALLERY_MEDIA_PATH ||
-                path === PROJECT_IMAGE_GALLERY_README_PATH ||
-                path.startsWith(`${PROJECT_IMAGE_GALLERY_DIR}/`);
+                path === galleryMediaPath ||
+                path === galleryReadmePath ||
+                path.startsWith(`${galleryDir}/`);
               return (
                 <button
                   key={path}

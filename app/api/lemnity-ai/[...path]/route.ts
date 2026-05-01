@@ -25,6 +25,7 @@ import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { estimateUsageFromText } from "@/lib/token-billing";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -288,6 +289,7 @@ async function proxyChatStream(input: {
 
         const usage = estimateUsageFromText(userMessage, assistantText);
         const charge = await chargeLemnityAiChatUsage({
+          projectId: input.upstreamSessionId,
           userId: input.userId,
           upstreamSessionId: input.upstreamSessionId,
           eventId,
@@ -430,6 +432,15 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   }
 
   const upstreamSessionId = path[1];
+  const resolvedProject = await resolveProjectFromRequest(req);
+  const requestProjectId = req.headers.get("x-project-id")?.trim() ?? "";
+  if (resolvedProject) {
+    if (resolvedProject.id !== upstreamSessionId) {
+      return new Response("Not found", { status: 404 });
+    }
+  } else if (!requestProjectId || requestProjectId !== upstreamSessionId) {
+    return new Response("project_id is required and must match session id", { status: 400 });
+  }
   try {
     await ensureLemnityAiSessionOwnership(user.id, upstreamSessionId);
   } catch (error) {

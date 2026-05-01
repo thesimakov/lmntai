@@ -43,7 +43,8 @@ type VerificationInfo = {
 };
 
 function buildNginxCommands(hostname: string, sandboxId: string | null): string {
-  const targetPath = sandboxId ? `/share/${encodeURIComponent(sandboxId)}` : "/share/<sandbox-id>";
+  void sandboxId;
+  const targetPath = "/share";
   return [
     "# 1) Проверьте, что DNS-запись домена указывает на ваш сервер",
     `dig +short ${hostname}`,
@@ -92,6 +93,23 @@ export function BuildPublishDialog({
   const [bindingPending, setBindingPending] = useState(false);
   const [verificationInfo, setVerificationInfo] = useState<VerificationInfo | null>(null);
 
+  const fetchPublishApi = useCallback(
+    async (init?: RequestInit): Promise<Response> => {
+      let res = await fetch("/api/sandbox/publish-domain", {
+        credentials: "include",
+        ...init
+      });
+      if (res.status === 404 && sandboxId) {
+        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+          credentials: "include",
+          ...init
+        });
+      }
+      return res;
+    },
+    [sandboxId]
+  );
+
   useEffect(() => {
     if (!open) return;
     const suggested = suggestPublishSubdomain(seedText, sandboxId);
@@ -104,9 +122,7 @@ export function BuildPublishDialog({
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
-          credentials: "include"
-        });
+        const res = await fetchPublishApi();
         if (!res.ok) return;
         const body = (await res.json().catch(() => null)) as
           | {
@@ -137,7 +153,7 @@ export function BuildPublishDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, seedText, sandboxId]);
+  }, [open, seedText, sandboxId, fetchPublishApi]);
 
   const cleanSubdomain = useMemo(() => {
     const normalized = normalizePublishSubdomainLabel(subdomain);
@@ -184,7 +200,7 @@ export function BuildPublishDialog({
     if (!sandboxId) return { ok: true, verified: true };
     try {
       setBindingPending(true);
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+      const res = await fetchPublishApi({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ host: publishHost })
@@ -238,7 +254,7 @@ export function BuildPublishDialog({
     if (!sandboxId) return;
     try {
       setBindingPending(true);
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+      const res = await fetchPublishApi({
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ host: publishHost })

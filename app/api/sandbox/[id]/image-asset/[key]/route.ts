@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
@@ -10,11 +11,16 @@ import { withApiLogging } from "@/lib/with-api-logging";
 export const runtime = "nodejs";
 
 async function getSandboxImage(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string; key: string }> }
 ) {
-  const { id: sandboxId, key } = await params;
-  const asset = getSandboxImageAsset(sandboxId, key);
+  const { id: routeId, key } = await params;
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject && routeId !== resolvedProject.id) {
+    return new Response("Not found", { status: 404 });
+  }
+  const sandboxId = resolvedProject?.id ?? routeId;
+  const asset = await getSandboxImageAsset(sandboxId, key);
   if (!asset) {
     return new Response("Not found", { status: 404 });
   }
@@ -34,7 +40,7 @@ async function getSandboxImage(
 
   let publicOk = false;
   try {
-    publicOk = (await isSandboxLinkPublic(sandboxId)) && sandboxManager.hasSandbox(sandboxId);
+    publicOk = (await isSandboxLinkPublic(sandboxId)) && (await sandboxManager.hasSandboxPersistent(sandboxId));
   } catch {
     publicOk = false;
   }

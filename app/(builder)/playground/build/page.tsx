@@ -184,6 +184,8 @@ export default function PromptBuildPage() {
   const lastSsePreviewSandboxIdRef = useRef<string | null>(null);
   /** Песочница, созданная только для мгновенного превью стартового шаблона (до ответа агента). */
   const templatePreviewSandboxIdRef = useRef<string | null>(null);
+  const pendingProjectIdRef = useRef<string | null>(requestedSandboxId);
+  const [hostProjectId, setHostProjectId] = useState<string | null>(null);
   const templatePreviewAbortRef = useRef<AbortController | null>(null);
   const templatePreviewReqSeqRef = useRef(0);
   const bridgeAssistantMessageIdRef = useRef<string | null>(null);
@@ -402,7 +404,10 @@ export default function PromptBuildPage() {
     try {
       setPublishPending(true);
       if (!shareIsPublic) {
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
+        let res = await fetch("/api/sandbox/share", { method: "POST" });
+        if (res.status === 404) {
+          res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
+        }
         if (!res.ok) {
           const msg = await res.text();
           toast.error(msg || t("playground_build_share_error_instant"));
@@ -438,7 +443,10 @@ export default function PromptBuildPage() {
       return;
     }
     try {
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
+      let res = await fetch("/api/sandbox/share", { credentials: "include" });
+      if (res.status === 404) {
+        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
+      }
       if (res.status === 503 || !res.ok) {
         setStudioBrandingBadge(null);
         return;
@@ -484,6 +492,50 @@ export default function PromptBuildPage() {
   const createMessageId = useCallback(() => {
     return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/projects/current", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store"
+        });
+        if (!res.ok) return;
+        const payload = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
+        const id = typeof payload?.project?.id === "string" ? payload.project.id.trim() : "";
+        if (!id || cancelled) return;
+        setHostProjectId(id);
+        pendingProjectIdRef.current = id;
+      } catch {
+        // non-project host, keep legacy project id flow
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const reserveProjectId = useCallback(() => {
+    if (hostProjectId?.trim()) {
+      pendingProjectIdRef.current = hostProjectId.trim();
+      return hostProjectId.trim();
+    }
+    if (sandboxId?.trim()) {
+      pendingProjectIdRef.current = sandboxId.trim();
+      return sandboxId.trim();
+    }
+    if (pendingProjectIdRef.current?.trim()) {
+      return pendingProjectIdRef.current.trim();
+    }
+    const next =
+      typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `project-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    pendingProjectIdRef.current = next;
+    return next;
+  }, [hostProjectId, sandboxId]);
 
   const push = useCallback(
     (
@@ -580,7 +632,14 @@ export default function PromptBuildPage() {
         const loadSeq = ++sessionLoadSeqRef.current;
         const res = await fetch(
           `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sessionId)}`,
-          { method: "GET" }
+          {
+            method: "GET",
+            headers: hostProjectId
+              ? undefined
+              : {
+                  "X-Project-Id": sessionId
+                }
+          }
         );
         if (!res.ok) return;
         if (!mountedRef.current || sessionLoadSeqRef.current !== loadSeq) return;
@@ -733,7 +792,7 @@ export default function PromptBuildPage() {
         // ignore
       }
     },
-    [applyStreamLog, resetStreamLog, t]
+    [applyStreamLog, hostProjectId, resetStreamLog, t]
   );
 
   const ensureLemnityAiSession = useCallback(async (): Promise<
@@ -820,7 +879,8 @@ export default function PromptBuildPage() {
           headers: {
             "Content-Type": "application/json",
             Accept: "text/event-stream",
-            "X-LMNT-UI-Lang": lang
+            "X-LMNT-UI-Lang": lang,
+            ...(hostProjectId ? {} : { "X-Project-Id": sid })
           },
           credentials: "include",
           body: JSON.stringify({
@@ -1073,12 +1133,14 @@ export default function PromptBuildPage() {
       push,
       pushBridgeAssistantMessage,
       t,
-      lang
+      lang,
+      hostProjectId
     ]
   );
 
   const runBuildTemplatePreview = useCallback(
     async (slug: string) => {
+      const projectId = reserveProjectId();
       templatePreviewAbortRef.current?.abort();
       const controller = new AbortController();
       templatePreviewAbortRef.current = controller;
@@ -1088,7 +1150,10 @@ export default function PromptBuildPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ slug }),
+          body: JSON.stringify({
+            slug,
+            ...(hostProjectId ? {} : { projectId })
+          }),
           signal: controller.signal
         });
 
@@ -1134,7 +1199,7 @@ export default function PromptBuildPage() {
         if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
       }
     },
-    [t]
+    [hostProjectId, reserveProjectId, t]
   );
 
   const handleBuildTemplateChange = useCallback(
@@ -1414,6 +1479,12 @@ export default function PromptBuildPage() {
   }, [shouldUseLemnityAiBridge, requestedSandboxId]);
 
   useEffect(() => {
+    const normalized = sandboxId?.trim();
+    if (!normalized) return;
+    pendingProjectIdRef.current = normalized;
+  }, [sandboxId]);
+
+  useEffect(() => {
     lastSsePreviewSandboxIdRef.current = null;
   }, [lemnityAiSessionId]);
 
@@ -1426,7 +1497,15 @@ export default function PromptBuildPage() {
       try {
         await fetch(
           `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(lemnityAiSessionId)}`,
-          { method: "GET", credentials: "include" }
+          {
+            method: "GET",
+            credentials: "include",
+            headers: hostProjectId
+              ? undefined
+              : {
+                  "X-Project-Id": lemnityAiSessionId
+                }
+          }
         );
       } catch {
         // ignore
@@ -1436,7 +1515,7 @@ export default function PromptBuildPage() {
     return () => {
       cancelled = true;
     };
-  }, [sandboxId, lemnityAiSessionId, shouldUseLemnityAiBridge]);
+  }, [sandboxId, lemnityAiSessionId, shouldUseLemnityAiBridge, hostProjectId]);
 
   useEffect(() => {
     if (!promptCoachLoading) {
@@ -1717,6 +1796,7 @@ export default function PromptBuildPage() {
     if (lemnityAiBridgeReady && shouldUseLemnityAiBridge) return;
     const prompt = (promptOverride ?? finalPrompt).trim();
     if (!prompt) return;
+    const projectId = reserveProjectId();
 
     pushRecent(
       idea.trim() || prompt.slice(0, 120),
@@ -1733,7 +1813,6 @@ export default function PromptBuildPage() {
     setProgress(8);
     templatePreviewSandboxIdRef.current = null;
     setPreviewUrl(null);
-    setSandboxId(null);
     setPreviewArtifactMime(null);
     setPreviewDownloadFilename(null);
     setPresentationPdfExport(null);
@@ -1754,6 +1833,7 @@ export default function PromptBuildPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
+          ...(hostProjectId ? {} : { projectId }),
           projectKind: projectKind ?? undefined,
           agentHint,
           ...(buildTemplate?.slug ? { buildTemplateSlug: buildTemplate.slug } : {})

@@ -12,6 +12,8 @@ import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-ma
 import { getBuildTemplateBySlug, formatBuildTemplateBlock } from "@/lib/build-templates";
 import { buildRouterGenerationPrompt, isProjectKind, shouldUseLovableBundler } from "@/lib/lemnity-ai-prompt-spec";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
+import { appendProjectMessage } from "@/lib/project-storage";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -45,17 +47,21 @@ async function postGenerateStream(req: NextRequest) {
     return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
   }
 
-  const projectGate = await checkProjectCreationAllowed(user.id, user.plan);
-  if (!projectGate.ok) {
-    return new Response(projectGate.message, { status: projectGate.status });
-  }
-
   const body = (await req.json().catch(() => null)) as
-    | { prompt?: string; projectKind?: string; agentHint?: string; buildTemplateSlug?: string }
+    | { prompt?: string; projectId?: string; projectKind?: string; agentHint?: string; buildTemplateSlug?: string }
     | null;
   const rawPrompt = body?.prompt?.trim();
   if (!rawPrompt) {
     return new Response("Prompt is required", { status: 400 });
+  }
+  const requestedProjectId = typeof body?.projectId === "string" ? body.projectId.trim() : "";
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject && requestedProjectId && requestedProjectId !== resolvedProject.id) {
+    return new Response("Project mismatch for current domain", { status: 404 });
+  }
+  const projectId = resolvedProject?.id ?? requestedProjectId;
+  if (!projectId) {
+    return new Response("project_id is required", { status: 400 });
   }
 
   const pk = isProjectKind(body?.projectKind) ? body.projectKind : undefined;
@@ -76,6 +82,14 @@ async function postGenerateStream(req: NextRequest) {
   });
 
   const sandboxTitle = rawPrompt.slice(0, 120);
+  const alreadyOwned = await sandboxManager.canAccess(projectId, user.id);
+  const shouldDestroyOnFailure = !alreadyOwned;
+  if (!alreadyOwned) {
+    const projectGate = await checkProjectCreationAllowed(user.id, user.plan);
+    if (!projectGate.ok) {
+      return new Response(projectGate.message, { status: projectGate.status });
+    }
+  }
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -91,8 +105,15 @@ async function postGenerateStream(req: NextRequest) {
         sse(controller, { type: "log", content: "🧰 Создаю песочницу…" });
         sse(controller, { type: "progress", value: 10 });
 
-        const created = await sandboxManager.createSandbox(sandboxTitle, user.id);
+        const created = alreadyOwned
+          ? { sandboxId: projectId }
+          : await sandboxManager.createSandbox(sandboxTitle, user.id, projectId);
         sandboxId = created.sandboxId;
+        await appendProjectMessage(sandboxId, {
+          role: "user",
+          content: rawPrompt,
+          metadata: { flow: "generate-stream" }
+        }).catch(() => {});
 
         sse(controller, {
           type: "step",
@@ -112,7 +133,9 @@ async function postGenerateStream(req: NextRequest) {
         });
 
         if (!routerRes.ok || !routerRes.body) {
-          await destroySandbox(sandboxId).catch(() => {});
+          if (sandboxId && shouldDestroyOnFailure) {
+            await destroySandbox(sandboxId).catch(() => {});
+          }
           const errText = await routerRes.text().catch(() => "RouterAI error");
           sse(controller, { type: "error", message: errText });
           controller.close();
@@ -227,9 +250,15 @@ async function postGenerateStream(req: NextRequest) {
         const fallbackUsage = estimateUsageFromText(prompt, assembledText || raw);
         const charge = await chargeTokensSafely({
           userId: user.id,
+          projectId: sandboxId,
           usage: usageFromStream ?? fallbackUsage,
           model: agent.modelId
         });
+        await appendProjectMessage(sandboxId, {
+          role: "assistant",
+          content: assembledText || raw,
+          metadata: { flow: "generate-stream", model: agent.modelId }
+        }).catch(() => {});
         if (!charge.charged && charge.reason === "insufficient_balance") {
           const need = charge.usage.total_tokens;
           const bal = charge.balance;
@@ -241,7 +270,9 @@ async function postGenerateStream(req: NextRequest) {
 
         controller.close();
       } catch (e) {
-        if (sandboxId) await destroySandbox(sandboxId).catch(() => {});
+        if (sandboxId && shouldDestroyOnFailure) {
+          await destroySandbox(sandboxId).catch(() => {});
+        }
         sse(controller, { type: "error", message: e instanceof Error ? e.message : "Ошибка стрима" });
         controller.close();
       }

@@ -1,55 +1,92 @@
 /**
- * In-memory бинарные ассеты превью песочницы: картинки, подтянутые на сервере
- * и отдаваемые с same-origin, чтобы в iframe не зависеть от внешних сетей.
+ * Ассеты изображений превью: файловая изоляция по проекту + индекс в БД.
+ * Больше нет глобального in-memory хранилища.
  */
+
+import { promises as fs } from "node:fs";
+
+import { prisma } from "@/lib/prisma";
+import {
+  clearProjectImageAssets,
+  getProjectStorageImagePath,
+  readProjectImageAsset,
+  writeProjectImageAsset
+} from "@/lib/project-storage";
 
 export type StoredImageAsset = {
   mime: string;
   data: Buffer;
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var lemnitySandboxImageAssets: Map<string, Map<string, StoredImageAsset>> | undefined;
-}
-
-const bySandbox =
-  global.lemnitySandboxImageAssets ?? new Map<string, Map<string, StoredImageAsset>>();
-if (!global.lemnitySandboxImageAssets) {
-  global.lemnitySandboxImageAssets = bySandbox;
-}
-
-export function setSandboxImageAsset(
-  sandboxId: string,
+export async function setSandboxImageAsset(
+  projectId: string,
   key: string,
-  asset: StoredImageAsset
-): void {
-  let m = bySandbox.get(sandboxId);
-  if (!m) {
-    m = new Map();
-    bySandbox.set(sandboxId, m);
-  }
-  m.set(key, asset);
-}
-
-export function getSandboxImageAsset(
-  sandboxId: string,
-  key: string
-): StoredImageAsset | undefined {
-  return bySandbox.get(sandboxId)?.get(key);
-}
-
-export function clearSandboxImageAssets(sandboxId: string): void {
-  bySandbox.delete(sandboxId);
-}
-
-/** Удалить только ключи‑слоты `0`,`1`,`2`,… перед новой порцией материализованных URL. Ключи вида `img_*.webp` сохраняем. */
-export function clearSandboxMaterializedImageSlots(sandboxId: string): void {
-  const m = bySandbox.get(sandboxId);
-  if (!m) return;
-  for (const k of [...m.keys()]) {
-    if (/^\d+$/.test(k)) {
-      m.delete(k);
+  asset: StoredImageAsset,
+  source: "materialized" | "upload" = "upload",
+  sourceUrl?: string
+): Promise<void> {
+  await writeProjectImageAsset({
+    projectId,
+    assetKey: key,
+    mime: asset.mime,
+    data: asset.data
+  });
+  await prisma.projectImageAsset.upsert({
+    where: {
+      projectId_assetKey: {
+        projectId,
+        assetKey: key
+      }
+    },
+    create: {
+      projectId,
+      assetKey: key,
+      mime: asset.mime,
+      bytes: asset.data.length,
+      source,
+      sourceUrl: sourceUrl ?? null
+    },
+    update: {
+      mime: asset.mime,
+      bytes: asset.data.length,
+      source,
+      sourceUrl: sourceUrl ?? null
     }
-  }
+  });
+}
+
+export async function getSandboxImageAsset(
+  projectId: string,
+  key: string
+): Promise<StoredImageAsset | undefined> {
+  const asset = await readProjectImageAsset(projectId, key);
+  return asset ?? undefined;
+}
+
+export async function clearSandboxImageAssets(projectId: string): Promise<void> {
+  await clearProjectImageAssets(projectId);
+  await prisma.projectImageAsset.deleteMany({ where: { projectId } });
+}
+
+/** Удалить только ключи‑слоты `0`,`1`,`2`,… перед новой порцией материализованных URL. */
+export async function clearSandboxMaterializedImageSlots(projectId: string): Promise<void> {
+  const rows = await prisma.projectImageAsset.findMany({
+    where: { projectId },
+    select: { assetKey: true }
+  });
+  const keys = rows.map((row) => row.assetKey).filter((k) => /^\d+$/.test(k));
+  if (!keys.length) return;
+  await Promise.all(
+    keys.map(async (key) => {
+      const imagePath = getProjectStorageImagePath(projectId, key);
+      await fs.rm(imagePath, { force: true });
+      await fs.rm(`${imagePath}.meta.json`, { force: true });
+    })
+  );
+  await prisma.projectImageAsset.deleteMany({
+    where: {
+      projectId,
+      assetKey: { in: keys }
+    }
+  });
 }

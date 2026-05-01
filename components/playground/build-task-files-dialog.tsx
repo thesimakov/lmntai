@@ -28,7 +28,10 @@ export function BuildTaskFilesDialog({ open, onOpenChange, sandboxId }: BuildTas
     setFiles(null);
     setActive(null);
     try {
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}?format=json`, { credentials: "include" });
+      let res = await fetch("/api/sandbox?format=json", { credentials: "include" });
+      if (res.status === 404) {
+        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}?format=json`, { credentials: "include" });
+      }
       if (!res.ok) {
         if (res.status === 404) {
           setError(t("task_files_sandbox_error"));

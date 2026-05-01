@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { upsertProjectCell } from "@/lib/project-context";
 import { normalizeUsage, type TokenUsage } from "@/lib/token-billing";
 
 export type LemnityAiSessionListItem = {
+  project_id: string;
   session_id: string;
   title?: string | null;
   latest_message?: string | null;
@@ -19,6 +21,7 @@ function toDateFromUnix(value: number | null | undefined): Date | null {
 }
 
 export function asLemnityAiListItem(link: {
+  projectId: string;
   manusSessionId: string;
   title: string | null;
   latestMessage: string | null;
@@ -30,6 +33,7 @@ export function asLemnityAiListItem(link: {
   previewArtifactId: string | null;
 }): LemnityAiSessionListItem {
   return {
+    project_id: link.projectId,
     session_id: link.manusSessionId,
     title: link.title ?? null,
     latest_message: link.latestMessage ?? null,
@@ -43,6 +47,18 @@ export function asLemnityAiListItem(link: {
 }
 
 export async function createLemnityAiSessionLink(userId: string, upstreamSessionId: string) {
+  try {
+    await upsertProjectCell({
+      projectId: upstreamSessionId,
+      ownerId: userId,
+      name: "Lemnity AI Session"
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
+      throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
+    }
+    throw error;
+  }
   const existing = await prisma.manusSessionLink.findUnique({
     where: { manusSessionId: upstreamSessionId }
   });
@@ -54,6 +70,7 @@ export async function createLemnityAiSessionLink(userId: string, upstreamSession
   }
   return prisma.manusSessionLink.create({
     data: {
+      projectId: upstreamSessionId,
       userId,
       manusSessionId: upstreamSessionId
     }
@@ -126,9 +143,23 @@ export async function syncLemnityAiSessionSummary(input: {
       ? input.previewArtifactId.trim()
       : undefined;
 
+  try {
+    await upsertProjectCell({
+      projectId: input.upstreamSessionId,
+      ownerId: input.userId,
+      name: input.title?.trim() || "Lemnity AI Session"
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
+      throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
+    }
+    throw error;
+  }
+
   await prisma.manusSessionLink.upsert({
     where: { manusSessionId: input.upstreamSessionId },
     update: {
+      projectId: input.upstreamSessionId,
       userId: input.userId,
       title: input.title ?? undefined,
       latestMessage: input.latestMessage ?? undefined,
@@ -140,6 +171,7 @@ export async function syncLemnityAiSessionSummary(input: {
       ...(previewArtifactId !== undefined ? { previewArtifactId } : {})
     },
     create: {
+      projectId: input.upstreamSessionId,
       userId: input.userId,
       manusSessionId: input.upstreamSessionId,
       title: input.title ?? null,
@@ -155,6 +187,7 @@ export async function syncLemnityAiSessionSummary(input: {
 }
 
 export async function chargeLemnityAiChatUsage(input: {
+  projectId: string;
   userId: string;
   upstreamSessionId: string;
   eventId: string;
@@ -172,8 +205,8 @@ export async function chargeLemnityAiChatUsage(input: {
   const res = await prisma.$transaction(async (tx) => {
     const existing = await tx.manusChatCharge.findUnique({
       where: {
-        manusSessionId_eventId: {
-          manusSessionId: input.upstreamSessionId,
+        projectId_eventId: {
+          projectId: input.projectId,
           eventId: input.eventId
         }
       }
@@ -192,6 +225,7 @@ export async function chargeLemnityAiChatUsage(input: {
 
     await tx.manusChatCharge.create({
       data: {
+        projectId: input.projectId,
         userId: input.userId,
         manusSessionId: input.upstreamSessionId,
         eventId: input.eventId,
@@ -205,6 +239,7 @@ export async function chargeLemnityAiChatUsage(input: {
     await tx.tokenUsageLog.create({
       data: {
         userId: input.userId,
+        projectId: input.projectId,
         promptTokens: usage.prompt_tokens,
         completionTokens: usage.completion_tokens,
         totalTokens: usage.total_tokens,

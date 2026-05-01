@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { persistProjectFilesSnapshot, readProjectFilesSnapshot } from "@/lib/project-storage";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 
 function sanitizeFiles(input: unknown): Record<string, string> {
@@ -13,6 +14,7 @@ function sanitizeFiles(input: unknown): Record<string, string> {
 }
 
 export type SandboxProjectStateRow = {
+  projectId: string;
   sandboxId: string;
   ownerId: string;
   title: string;
@@ -23,6 +25,7 @@ export type SandboxProjectStateRow = {
 };
 
 export async function upsertSandboxProjectState(input: {
+  projectId: string;
   sandboxId: string;
   ownerId: string;
   title: string;
@@ -31,8 +34,9 @@ export async function upsertSandboxProjectState(input: {
 }): Promise<void> {
   try {
     await prisma.sandboxProjectState.upsert({
-      where: { sandboxId: input.sandboxId },
+      where: { projectId: input.projectId },
       create: {
+        projectId: input.projectId,
         sandboxId: input.sandboxId,
         ownerId: input.ownerId,
         title: input.title,
@@ -40,12 +44,14 @@ export async function upsertSandboxProjectState(input: {
         files: input.files
       },
       update: {
+        sandboxId: input.sandboxId,
         ownerId: input.ownerId,
         title: input.title,
         html: input.html,
         files: input.files
       }
     });
+    await persistProjectFilesSnapshot(input.projectId, input.files);
   } catch (err) {
     // Как список шаблонов в getBuildTemplateBySlug: живой превью на одном Node-процессе всё равно в memoryStore；
     // без БД — нельзя восстановить после рестарта / на втором инстансе.
@@ -56,10 +62,11 @@ export async function upsertSandboxProjectState(input: {
   }
 }
 
-export async function getSandboxProjectState(sandboxId: string): Promise<SandboxProjectStateRow | null> {
+export async function getSandboxProjectState(projectId: string): Promise<SandboxProjectStateRow | null> {
   const row = await prisma.sandboxProjectState.findUnique({
-    where: { sandboxId },
+    where: { projectId },
     select: {
+      projectId: true,
       sandboxId: true,
       ownerId: true,
       title: true,
@@ -70,19 +77,22 @@ export async function getSandboxProjectState(sandboxId: string): Promise<Sandbox
     }
   });
   if (!row) return null;
+  const filesFromStorage = await readProjectFilesSnapshot(row.projectId);
+  const files = Object.keys(filesFromStorage).length > 0 ? filesFromStorage : sanitizeFiles(row.files);
   return {
+    projectId: row.projectId,
     sandboxId: row.sandboxId,
     ownerId: row.ownerId,
     title: row.title,
     html: row.html,
-    files: sanitizeFiles(row.files),
+    files,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   };
 }
 
-export async function removeSandboxProjectState(sandboxId: string): Promise<void> {
-  await prisma.sandboxProjectState.deleteMany({ where: { sandboxId } });
+export async function removeSandboxProjectState(projectId: string): Promise<void> {
+  await prisma.sandboxProjectState.deleteMany({ where: { projectId } });
 }
 
 export async function listSandboxProjectStatesByOwner(ownerId: string): Promise<SandboxProjectStateRow[]> {
@@ -90,6 +100,7 @@ export async function listSandboxProjectStatesByOwner(ownerId: string): Promise<
     where: { ownerId },
     orderBy: { updatedAt: "desc" },
     select: {
+      projectId: true,
       sandboxId: true,
       ownerId: true,
       title: true,
@@ -100,6 +111,7 @@ export async function listSandboxProjectStatesByOwner(ownerId: string): Promise<
     }
   });
   return rows.map((row) => ({
+    projectId: row.projectId,
     sandboxId: row.sandboxId,
     ownerId: row.ownerId,
     title: row.title,

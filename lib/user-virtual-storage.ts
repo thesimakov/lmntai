@@ -39,6 +39,7 @@ export async function ensureUserVirtualWorkspace(userId: string) {
  */
 export async function appendUserVirtualEntry(input: {
   userId: string;
+  projectId?: string;
   kind: "request" | "data";
   content: unknown;
 }) {
@@ -70,6 +71,7 @@ export async function appendUserVirtualEntry(input: {
     await tx.userVirtualEntry.create({
       data: {
         workspaceUserId: input.userId,
+        projectId: input.projectId ?? null,
         virtualPath,
         kind: input.kind,
         content: toJsonValue(input.content),

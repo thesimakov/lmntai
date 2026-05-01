@@ -4,10 +4,12 @@ import { resolveTxt } from "node:dns/promises";
 import { prisma } from "@/lib/prisma";
 import {
   canUseCustomDomain,
+  getAppHosts,
   isBuiltInPublishHost,
   isReservedAppHost,
   normalizeHost
 } from "@/lib/publish-domain";
+import { extractSubdomainFromHost } from "@/lib/project-domain-resolution";
 
 export type BindHostResult =
   | {
@@ -68,6 +70,19 @@ export async function bindPublishHost(input: {
   if (!builtIn && !canUseCustomDomain(input.ownerPlan)) {
     return { ok: false, code: "forbidden_plan" };
   }
+  const builtInSubdomain = builtIn ? extractSubdomainFromHost(host) : null;
+  if (builtIn && !builtInSubdomain) {
+    return { ok: false, code: "invalid_host" };
+  }
+  if (builtInSubdomain) {
+    const occupied = await prisma.project.findUnique({
+      where: { subdomain: builtInSubdomain },
+      select: { id: true }
+    });
+    if (occupied && occupied.id !== input.sandboxId) {
+      return { ok: false, code: "forbidden_owner" };
+    }
+  }
 
   const existing = await prisma.publishDomainBinding.findUnique({
     where: { host },
@@ -88,6 +103,7 @@ export async function bindPublishHost(input: {
   const row = await prisma.publishDomainBinding.upsert({
     where: { host },
     create: {
+      projectId: input.sandboxId,
       host,
       sandboxId: input.sandboxId,
       ownerId: input.ownerId,
@@ -98,6 +114,7 @@ export async function bindPublishHost(input: {
       lastVerificationAt: builtIn ? now : null
     },
     update: {
+      projectId: input.sandboxId,
       sandboxId: input.sandboxId,
       ownerId: input.ownerId,
       isActive: true,
@@ -114,6 +131,13 @@ export async function bindPublishHost(input: {
     }
   });
 
+  if (builtInSubdomain) {
+    await prisma.project.updateMany({
+      where: { id: input.sandboxId, ownerId: input.ownerId },
+      data: { subdomain: builtInSubdomain }
+    });
+  }
+
   return {
     ok: true,
     host: row.host,
@@ -124,7 +148,7 @@ export async function bindPublishHost(input: {
 
 export async function listPublishHostsForSandbox(ownerId: string, sandboxId: string) {
   return prisma.publishDomainBinding.findMany({
-    where: { ownerId, sandboxId, isActive: true },
+    where: { ownerId, sandboxId, projectId: sandboxId, isActive: true },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
@@ -162,6 +186,46 @@ export async function resolveSandboxByHost(hostRaw: string) {
     select: { sandboxId: true }
   });
   return row?.sandboxId ?? null;
+}
+
+export async function resolveProjectByHost(hostRaw: string): Promise<{
+  projectId: string;
+  subdomain: string;
+} | null> {
+  const host = normalizeHost(hostRaw);
+  if (!host) return null;
+  const appHosts = getAppHosts();
+  if (appHosts.has(host)) return null;
+
+  const byDomain = await prisma.publishDomainBinding.findFirst({
+    where: { host, isActive: true, verificationStatus: "VERIFIED" },
+    select: {
+      project: {
+        select: {
+          id: true,
+          subdomain: true
+        }
+      }
+    }
+  });
+  if (byDomain?.project) {
+    return {
+      projectId: byDomain.project.id,
+      subdomain: byDomain.project.subdomain
+    };
+  }
+
+  const subdomain = extractSubdomainFromHost(host);
+  if (!subdomain) return null;
+  const project = await prisma.project.findUnique({
+    where: { subdomain },
+    select: { id: true, subdomain: true }
+  });
+  if (!project) return null;
+  return {
+    projectId: project.id,
+    subdomain: project.subdomain
+  };
 }
 
 export async function verifyPublishHost(input: { ownerId: string; hostRaw: string }) {

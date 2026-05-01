@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
@@ -33,7 +34,12 @@ async function getSandbox(
 ) {
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
-  const { id: sandboxId } = await params;
+  const { id: routeId } = await params;
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject && routeId !== resolvedProject.id) {
+    return new Response("Not found", { status: 404 });
+  }
+  const sandboxId = resolvedProject?.id ?? routeId;
 
   const guard = await requireDbUser();
   if (guard.ok) {
@@ -74,7 +80,12 @@ async function patchSandbox(
   if (!guard.ok) {
     return new Response("Unauthorized", { status: 401 });
   }
-  const { id: sandboxId } = await params;
+  const { id: routeId } = await params;
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject && routeId !== resolvedProject.id) {
+    return new Response("Not found", { status: 404 });
+  }
+  const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
   if (!allowed) {
     return new Response("Not found", { status: 404 });

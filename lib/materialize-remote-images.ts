@@ -1,9 +1,9 @@
 import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
 import {
   keepUploadGalleryItems,
-  PROJECT_IMAGE_GALLERY_MEDIA_PATH,
-  PROJECT_IMAGE_GALLERY_README_PATH,
   PROJECT_IMAGE_GALLERY_README_TEXT,
+  projectImageGalleryMediaPath,
+  projectImageGalleryReadmePath,
   stringifyGalleryMedia,
   type ProjectGalleryItem
 } from "@/lib/project-image-gallery";
@@ -123,26 +123,28 @@ export type MaterializeRemoteImagesResult = {
  */
 export async function materializeRemoteImagesInProject(
   projectFiles: Record<string, string>,
-  ctx: { sandboxId: string; userId: string }
+  ctx: { projectId: string; userId: string }
 ): Promise<MaterializeRemoteImagesResult> {
+  const galleryReadmePath = projectImageGalleryReadmePath(ctx.projectId);
+  const galleryMediaPath = projectImageGalleryMediaPath(ctx.projectId);
   const urls = collectUniqueUrls(projectFiles);
   if (urls.length === 0) {
-    const uploadsKept = keepUploadGalleryItems(projectFiles);
+    const uploadsKept = keepUploadGalleryItems(projectFiles, ctx.projectId);
     if (uploadsKept.length === 0) {
       return { files: projectFiles, materializedCount: 0, skipped: 0 };
     }
     return {
       files: {
         ...projectFiles,
-        [PROJECT_IMAGE_GALLERY_README_PATH]: PROJECT_IMAGE_GALLERY_README_TEXT,
-        [PROJECT_IMAGE_GALLERY_MEDIA_PATH]: stringifyGalleryMedia({ version: 1, items: uploadsKept })
+        [galleryReadmePath]: PROJECT_IMAGE_GALLERY_README_TEXT,
+        [galleryMediaPath]: stringifyGalleryMedia({ version: 1, items: uploadsKept })
       },
       materializedCount: 0,
       skipped: 0
     };
   }
 
-  clearSandboxMaterializedImageSlots(ctx.sandboxId);
+  await clearSandboxMaterializedImageSlots(ctx.projectId);
 
   const cappedUrls = urls.slice(0, MAX_IMAGES);
   /** Параллельно — иначе N последовательных таймаутов дают минуты «висящей» сборки превью. */
@@ -172,8 +174,8 @@ export async function materializeRemoteImagesInProject(
     }
     const key = String(keyIdx);
     keyIdx += 1;
-    setSandboxImageAsset(ctx.sandboxId, key, { mime: got.mime, data: got.buf });
-    const path = `/api/sandbox/${ctx.sandboxId}/image-asset/${key}`;
+    await setSandboxImageAsset(ctx.projectId, key, { mime: got.mime, data: got.buf }, "materialized", url);
+    const path = `/api/sandbox/${ctx.projectId}/image-asset/${key}`;
     replacements.set(url, path);
     total += got.buf.length;
     manifestItems.push({
@@ -185,6 +187,7 @@ export async function materializeRemoteImagesInProject(
 
     void appendUserVirtualEntry({
       userId: ctx.userId,
+      projectId: ctx.projectId,
       kind: "data",
       content: {
         type: "project_image_materialized",
@@ -201,7 +204,7 @@ export async function materializeRemoteImagesInProject(
 
   let files = replaceAllUrlsInFiles(projectFiles, replacements);
 
-  const uploadsKept = keepUploadGalleryItems(files);
+  const uploadsKept = keepUploadGalleryItems(files, ctx.projectId);
 
   const materializedItems: ProjectGalleryItem[] = manifestItems.map((row, idx) => {
     const assetKey = String(idx);
@@ -218,8 +221,8 @@ export async function materializeRemoteImagesInProject(
 
   files = {
     ...files,
-    [PROJECT_IMAGE_GALLERY_README_PATH]: PROJECT_IMAGE_GALLERY_README_TEXT,
-    [PROJECT_IMAGE_GALLERY_MEDIA_PATH]: stringifyGalleryMedia({
+    [galleryReadmePath]: PROJECT_IMAGE_GALLERY_README_TEXT,
+    [galleryMediaPath]: stringifyGalleryMedia({
       version: 1,
       items:
         uploadsKept.length > 0 || materializedItems.length > 0

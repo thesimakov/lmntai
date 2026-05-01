@@ -26,22 +26,9 @@ export type DockerRecord = {
   ttlTimer?: ReturnType<typeof setTimeout>;
 };
 
-declare global {
-  // eslint-disable-next-line no-var
-  var lemnitySandboxStore: Map<string, MemoryState> | undefined;
-  // eslint-disable-next-line no-var
-  var lemnityDockerSandboxRegistry: Map<string, DockerRecord> | undefined;
-}
+export const memoryStore = new Map<string, MemoryState>();
 
-export const memoryStore = global.lemnitySandboxStore ?? new Map<string, MemoryState>();
-if (!global.lemnitySandboxStore) {
-  global.lemnitySandboxStore = memoryStore;
-}
-
-export const dockerRegistry = global.lemnityDockerSandboxRegistry ?? new Map<string, DockerRecord>();
-if (!global.lemnityDockerSandboxRegistry) {
-  global.lemnityDockerSandboxRegistry = dockerRegistry;
-}
+export const dockerRegistry = new Map<string, DockerRecord>();
 
 export function isLemnityAiSandboxDockerEnabled(): boolean {
   const v = (process.env.LEMNITY_AI_SANDBOX_ENABLED ?? process.env.MANUS_SANDBOX_ENABLED ?? "").toLowerCase();

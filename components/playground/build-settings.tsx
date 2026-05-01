@@ -125,6 +125,17 @@ export function BuildSettings({
     onOpenPublishDialog?.();
   }, [onOpenPublishDialog]);
 
+  const fetchShareApi = useCallback(
+    async (suffix: "" | "/branding", init?: RequestInit): Promise<Response> => {
+      let res = await fetch(`/api/sandbox/share${suffix}`, init);
+      if (res.status === 404 && sandboxId) {
+        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share${suffix}`, init);
+      }
+      return res;
+    },
+    [sandboxId]
+  );
+
   const copyBuiltinPublishUrl = useCallback(async () => {
     const fqdn = `${cleanPublishSubdomain}.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
     const url =
@@ -166,7 +177,7 @@ export function BuildSettings({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`);
+        const res = await fetchShareApi("");
         if (!res.ok) return;
         const data = (await res.json().catch(() => ({}))) as { hideLemnityHeader?: boolean };
         if (!cancelled) {
@@ -181,14 +192,14 @@ export function BuildSettings({
     return () => {
       cancelled = true;
     };
-  }, [sandboxId]);
+  }, [sandboxId, fetchShareApi]);
 
   const persistHideHeader = useCallback(
     async (hide: boolean) => {
       if (!sandboxId || brandingBusy) return false;
       try {
         setBrandingBusy(true);
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share/branding`, {
+        const res = await fetchShareApi("/branding", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ hideLemnityHeader: hide })
@@ -212,7 +223,7 @@ export function BuildSettings({
         setBrandingBusy(false);
       }
     },
-    [sandboxId, brandingBusy, t, onBrandingPreferenceSaved]
+    [sandboxId, brandingBusy, t, onBrandingPreferenceSaved, fetchShareApi]
   );
 
   const verifyPaymentAndEnable = useCallback(async () => {
@@ -220,7 +231,7 @@ export function BuildSettings({
     try {
       setBrandingBusy(true);
       await updateSession?.();
-      const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share/branding`, {
+      const res = await fetchShareApi("/branding", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hideLemnityHeader: true })
@@ -244,7 +255,7 @@ export function BuildSettings({
     } finally {
       setBrandingBusy(false);
     }
-  }, [sandboxId, updateSession, t, onBrandingPreferenceSaved]);
+  }, [sandboxId, updateSession, t, onBrandingPreferenceSaved, fetchShareApi]);
 
   const setSharePublic = useCallback(
     async (wantPublic: boolean) => {
@@ -252,7 +263,7 @@ export function BuildSettings({
       if (wantPublic === shareIsPublic) return;
       try {
         setVisibilityBusy(true);
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, {
+        const res = await fetchShareApi("", {
           method: wantPublic ? "POST" : "DELETE"
         });
         if (!res.ok) {
@@ -268,7 +279,7 @@ export function BuildSettings({
         setVisibilityBusy(false);
       }
     },
-    [sandboxId, visibilityBusy, shareIsPublic, onShareIsPublicChange, t]
+    [sandboxId, visibilityBusy, shareIsPublic, onShareIsPublicChange, t, fetchShareApi]
   );
 
   const navItems: { id: SettingsSection; labelKey: MessageKey; icon: ReactNode }[] = [

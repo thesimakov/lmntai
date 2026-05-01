@@ -28,11 +28,18 @@ export function ImageUploader({ sandboxId, disabled, labels, onUploaded, classNa
       try {
         const fd = new FormData();
         fd.set("file", file);
-        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/image-upload`, {
+        let res = await fetch("/api/sandbox/image-upload", {
           method: "POST",
           body: fd,
           credentials: "include"
         });
+        if (res.status === 404) {
+          res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/image-upload`, {
+            method: "POST",
+            body: fd,
+            credentials: "include"
+          });
+        }
         if (!res.ok) {
           const j = (await res.json().catch(() => null)) as { error?: string } | null;
           throw new Error(j?.error ?? res.statusText);

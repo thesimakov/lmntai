@@ -18,9 +18,9 @@ import { materializeRemoteImagesInProject } from "@/lib/materialize-remote-image
 import {
   appendGalleryUploadItem,
   parseGalleryMediaJson,
-  PROJECT_IMAGE_GALLERY_MEDIA_PATH,
-  PROJECT_IMAGE_GALLERY_README_PATH,
   PROJECT_IMAGE_GALLERY_README_TEXT,
+  projectImageGalleryMediaPath,
+  projectImageGalleryReadmePath,
   stringifyGalleryMedia,
   type ProjectGalleryItem
 } from "@/lib/project-image-gallery";
@@ -39,12 +39,23 @@ import {
 } from "@/lib/sandbox-project-state-db";
 import { clearSandboxImageAssets } from "@/lib/sandbox-image-assets";
 import {
+  getProjectScopeForOwner,
+  listProjectScopesForOwner,
+  upsertProjectCell
+} from "@/lib/project-context";
+import {
+  appendProjectAction,
+  ensureProjectStorageScaffold,
+  removeProjectStorage
+} from "@/lib/project-storage";
+import {
   dockerRegistry,
   isLemnityAiSandboxDockerEnabled,
   memoryStore,
   type DockerRecord,
   type MemoryState
 } from "@/lib/sandbox-stores";
+import { prisma } from "@/lib/prisma";
 
 type SandboxMode = "memory" | "docker";
 
@@ -212,11 +223,17 @@ async function destroyDockerSandbox(sandboxId: string): Promise<void> {
   }
 }
 
-async function createDockerSandbox(seed: string, ownerId: string): Promise<{ sandboxId: string }> {
+async function createDockerSandbox(
+  seed: string,
+  ownerId: string,
+  forcedProjectId?: string
+): Promise<{ sandboxId: string }> {
   const docker = getDocker();
-  const sandboxId = crypto.randomUUID();
+  const sandboxId = forcedProjectId?.trim() || crypto.randomUUID();
   const now = Date.now();
   const title = normalizeSandboxTitle(seed);
+  await upsertProjectCell({ projectId: sandboxId, ownerId, name: title });
+  await ensureProjectStorageScaffold(sandboxId);
   const short = sandboxId.replace(/-/g, "").slice(0, 12);
   const containerName = `${namePrefix()}-${short}`.toLowerCase();
 
@@ -276,11 +293,16 @@ async function createDockerSandbox(seed: string, ownerId: string): Promise<{ san
   dockerRegistry.set(sandboxId, record);
   scheduleDockerTtl(record);
   await persistDockerSnapshot({
+    projectId: sandboxId,
     sandboxId,
     ownerId,
     title,
     html,
     files: { "index.html": html }
+  });
+  await appendProjectAction(sandboxId, {
+    action: "sandbox.create",
+    payload: { mode: "docker", title }
   });
 
   return { sandboxId };
@@ -295,6 +317,7 @@ async function applyDockerCode(sandboxId: string, code: string): Promise<{ previ
       throw new Error("Песочница не найдена (возможно, истёк TTL).");
     }
     await upsertSandboxProjectState({
+      projectId: sandboxId,
       sandboxId,
       ownerId: prev.ownerId,
       title: prev.title,
@@ -304,6 +327,10 @@ async function applyDockerCode(sandboxId: string, code: string): Promise<{ previ
         "index.html": html,
         "generated.txt": code
       }
+    });
+    await appendProjectAction(sandboxId, {
+      action: "sandbox.apply_code",
+      payload: { mode: "docker", bytes: code.length }
     });
     return { previewUrl: `/api/sandbox/${sandboxId}` };
   }
@@ -324,11 +351,16 @@ async function applyDockerCode(sandboxId: string, code: string): Promise<{ previ
     "generated.txt": code
   };
   await persistDockerSnapshot({
+    projectId: sandboxId,
     sandboxId,
     ownerId: rec.ownerId,
     title: rec.title,
     html,
     files
+  });
+  await appendProjectAction(sandboxId, {
+    action: "sandbox.apply_code",
+    payload: { mode: "docker", bytes: code.length }
   });
 
   return { previewUrl: `/api/sandbox/${sandboxId}` };
@@ -398,14 +430,16 @@ async function exportDockerFiles(sandboxId: string): Promise<Record<string, stri
 
 /** Явное удаление контейнера (например, после сохранения проекта). */
 export async function destroySandbox(sandboxId: string): Promise<void> {
-  clearSandboxImageAssets(sandboxId);
+  await clearSandboxImageAssets(sandboxId);
   if (!isLemnityAiSandboxDockerEnabled()) {
     memoryStore.delete(sandboxId);
     await removeSandboxProjectState(sandboxId);
-    return;
+  } else {
+    await destroyDockerSandbox(sandboxId);
+    await removeSandboxProjectState(sandboxId);
   }
-  await destroyDockerSandbox(sandboxId);
-  await removeSandboxProjectState(sandboxId);
+  await prisma.project.deleteMany({ where: { id: sandboxId } });
+  await removeProjectStorage(sandboxId);
 }
 
 async function getSandboxOwnerId(sandboxId: string): Promise<string | undefined> {
@@ -447,6 +481,7 @@ async function hydrateMemoryStateFromDb(sandboxId: string): Promise<MemoryState 
 
 async function persistMemoryState(state: MemoryState): Promise<void> {
   await upsertSandboxProjectState({
+    projectId: state.id,
     sandboxId: state.id,
     ownerId: state.ownerId,
     title: state.title,
@@ -456,6 +491,7 @@ async function persistMemoryState(state: MemoryState): Promise<void> {
 }
 
 async function persistDockerSnapshot(input: {
+  projectId: string;
   sandboxId: string;
   ownerId: string;
   title: string;
@@ -466,13 +502,15 @@ async function persistDockerSnapshot(input: {
 }
 
 export const sandboxManager = {
-  async createSandbox(seed = "new-project", ownerId: string) {
+  async createSandbox(seed = "new-project", ownerId: string, projectId?: string) {
     if (isLemnityAiSandboxDockerEnabled()) {
-      return createDockerSandbox(seed, ownerId);
+      return createDockerSandbox(seed, ownerId, projectId);
     }
-    const id = crypto.randomUUID();
+    const id = projectId?.trim() || crypto.randomUUID();
     const now = Date.now();
     const title = normalizeSandboxTitle(seed);
+    await upsertProjectCell({ projectId: id, ownerId, name: title });
+    await ensureProjectStorageScaffold(id);
     const state: MemoryState = {
       id,
       ownerId,
@@ -484,6 +522,10 @@ export const sandboxManager = {
     };
     memoryStore.set(id, state);
     await persistMemoryState(state);
+    await appendProjectAction(id, {
+      action: "sandbox.create",
+      payload: { mode: "memory", title }
+    });
     return { sandboxId: id };
   },
 
@@ -511,6 +553,10 @@ export const sandboxManager = {
     };
     memoryStore.set(sandboxId, next);
     await persistMemoryState(next);
+    await appendProjectAction(sandboxId, {
+      action: "sandbox.apply_code",
+      payload: { mode: "memory", bytes: code.length }
+    });
     return { previewUrl: `/api/sandbox/${sandboxId}` };
   },
 
@@ -540,7 +586,7 @@ export const sandboxManager = {
     const ownerId = await getSandboxOwnerId(sandboxId);
     if (ownerId) {
       const { files } = await materializeRemoteImagesInProject(projectFiles, {
-        sandboxId,
+        projectId: sandboxId,
         userId: ownerId
       });
       projectFiles = files;
@@ -567,6 +613,7 @@ export const sandboxManager = {
           throw new Error("Песочница не найдена (возможно, истёк TTL).");
         }
         await upsertSandboxProjectState({
+          projectId: sandboxId,
           sandboxId,
           ownerId: prev.ownerId,
           title: prev.title,
@@ -577,6 +624,10 @@ export const sandboxManager = {
             "index.html": html,
             "generated.txt": generatedTxt
           }
+        });
+        await appendProjectAction(sandboxId, {
+          action: "sandbox.apply_lovable",
+          payload: { mode: "docker", files: Object.keys(projectFiles).length }
         });
         return { previewUrl: `/api/sandbox/${sandboxId}` };
       }
@@ -594,6 +645,7 @@ export const sandboxManager = {
       assertBuilderSandboxSuccess(wGen, "file/write generated.txt");
       rec.updatedAt = Date.now();
       await persistDockerSnapshot({
+        projectId: sandboxId,
         sandboxId,
         ownerId: rec.ownerId,
         title: rec.title,
@@ -603,6 +655,10 @@ export const sandboxManager = {
           "index.html": html,
           "generated.txt": generatedTxt
         }
+      });
+      await appendProjectAction(sandboxId, {
+        action: "sandbox.apply_lovable",
+        payload: { mode: "docker", files: Object.keys(projectFiles).length }
       });
       return { previewUrl: `/api/sandbox/${sandboxId}` };
     }
@@ -624,6 +680,10 @@ export const sandboxManager = {
     };
     memoryStore.set(sandboxId, next);
     await persistMemoryState(next);
+    await appendProjectAction(sandboxId, {
+      action: "sandbox.apply_lovable",
+      payload: { mode: "memory", files: Object.keys(projectFiles).length }
+    });
     return { previewUrl: `/api/sandbox/${sandboxId}` };
   },
 
@@ -641,6 +701,7 @@ export const sandboxManager = {
           throw new Error("Песочница не найдена (возможно, истёк TTL).");
         }
         await upsertSandboxProjectState({
+          projectId: sandboxId,
           sandboxId,
           ownerId: prev.ownerId,
           title: prev.title,
@@ -650,6 +711,7 @@ export const sandboxManager = {
             "index.html": trimmed
           }
         });
+        await appendProjectAction(sandboxId, { action: "sandbox.update_index_html" });
         return Date.now();
       }
       const base = containerBaseUrl(rec.ip);
@@ -660,6 +722,7 @@ export const sandboxManager = {
       rec.updatedAt = Date.now();
       const prev = await getSandboxProjectState(sandboxId);
       await persistDockerSnapshot({
+        projectId: sandboxId,
         sandboxId,
         ownerId: rec.ownerId,
         title: rec.title,
@@ -669,6 +732,7 @@ export const sandboxManager = {
           "index.html": trimmed
         }
       });
+      await appendProjectAction(sandboxId, { action: "sandbox.update_index_html" });
       return rec.updatedAt;
     }
     const previous = memoryStore.get(sandboxId) ?? (await hydrateMemoryStateFromDb(sandboxId));
@@ -686,6 +750,7 @@ export const sandboxManager = {
     };
     memoryStore.set(sandboxId, next);
     await persistMemoryState(next);
+    await appendProjectAction(sandboxId, { action: "sandbox.update_index_html" });
     return next.updatedAt;
   },
 
@@ -704,6 +769,7 @@ export const sandboxManager = {
           throw new Error("Песочница не найдена (возможно, истёк TTL).");
         }
         await upsertSandboxProjectState({
+          projectId: sandboxId,
           sandboxId,
           ownerId: prev.ownerId,
           title: prev.title,
@@ -713,6 +779,7 @@ export const sandboxManager = {
             "puck.json": json
           }
         });
+        await appendProjectAction(sandboxId, { action: "sandbox.update_puck_json" });
         return;
       }
       const base = containerBaseUrl(rec.ip);
@@ -723,6 +790,7 @@ export const sandboxManager = {
       rec.updatedAt = Date.now();
       const prev = await getSandboxProjectState(sandboxId);
       await persistDockerSnapshot({
+        projectId: sandboxId,
         sandboxId,
         ownerId: rec.ownerId,
         title: rec.title,
@@ -732,6 +800,7 @@ export const sandboxManager = {
           "puck.json": json
         }
       });
+      await appendProjectAction(sandboxId, { action: "sandbox.update_puck_json" });
       return;
     }
     const previous = memoryStore.get(sandboxId) ?? (await hydrateMemoryStateFromDb(sandboxId));
@@ -748,6 +817,7 @@ export const sandboxManager = {
     };
     memoryStore.set(sandboxId, next);
     await persistMemoryState(next);
+    await appendProjectAction(sandboxId, { action: "sandbox.update_puck_json" });
   },
 
   async getPreviewUrl(sandboxId: string) {
@@ -775,11 +845,13 @@ export const sandboxManager = {
    */
   async mergeProjectGalleryAppendUploadItem(sandboxId: string, item: ProjectGalleryItem): Promise<void> {
     const files = await this.exportFiles(sandboxId);
-    const prev = parseGalleryMediaJson(files[PROJECT_IMAGE_GALLERY_MEDIA_PATH]);
+    const galleryMediaPath = projectImageGalleryMediaPath(sandboxId);
+    const galleryReadmePath = projectImageGalleryReadmePath(sandboxId);
+    const prev = parseGalleryMediaJson(files[galleryMediaPath]);
     const nextGallery = appendGalleryUploadItem(prev, item);
     const patch: Record<string, string> = {
-      [PROJECT_IMAGE_GALLERY_README_PATH]: PROJECT_IMAGE_GALLERY_README_TEXT,
-      [PROJECT_IMAGE_GALLERY_MEDIA_PATH]: stringifyGalleryMedia(nextGallery)
+      [galleryReadmePath]: PROJECT_IMAGE_GALLERY_README_TEXT,
+      [galleryMediaPath]: stringifyGalleryMedia(nextGallery)
     };
     if (isLemnityAiSandboxDockerEnabled()) {
       const rec = dockerRegistry.get(sandboxId);
@@ -789,6 +861,7 @@ export const sandboxManager = {
           throw new Error("Песочница не найдена (возможно, истёк TTL).");
         }
         await upsertSandboxProjectState({
+          projectId: sandboxId,
           sandboxId,
           ownerId: prevState.ownerId,
           title: prevState.title,
@@ -810,6 +883,7 @@ export const sandboxManager = {
       rec.updatedAt = Date.now();
       const prevState = await getSandboxProjectState(sandboxId);
       await persistDockerSnapshot({
+        projectId: sandboxId,
         sandboxId,
         ownerId: rec.ownerId,
         title: rec.title,
@@ -838,15 +912,8 @@ export const sandboxManager = {
   },
 
   async canAccess(sandboxId: string, ownerId: string) {
-    if (isLemnityAiSandboxDockerEnabled()) {
-      const rec = dockerRegistry.get(sandboxId);
-      if (rec) return rec.ownerId === ownerId;
-      const row = await getSandboxProjectState(sandboxId);
-      return row?.ownerId === ownerId;
-    }
-    const rec = memoryStore.get(sandboxId) ?? (await hydrateMemoryStateFromDb(sandboxId));
-    if (!rec) return false;
-    return rec.ownerId === ownerId;
+    const scope = await getProjectScopeForOwner(sandboxId, ownerId);
+    return Boolean(scope);
   },
 
   async hasSandboxPersistent(sandboxId: string): Promise<boolean> {
@@ -914,53 +981,28 @@ export const sandboxManager = {
   },
 
   async listSandboxesByOwner(ownerId: string) {
-    if (isLemnityAiSandboxDockerEnabled()) {
-      const fromRegistry = Array.from(dockerRegistry.values())
-        .filter((item) => item.ownerId === ownerId)
-        .map((item) => ({
-          sandboxId: item.sandboxId,
-          title: item.title,
-          createdAt: item.createdAt,
-          updatedAt: item.updatedAt,
-          previewUrl: `/api/sandbox/${item.sandboxId}`
-        }))
-        .sort((a, b) => b.updatedAt - a.updatedAt);
-      const fromDb = await listSandboxProjectStatesByOwner(ownerId);
-      const merged = new Map(fromRegistry.map((x) => [x.sandboxId, x]));
-      for (const item of fromDb) {
-        if (merged.has(item.sandboxId)) continue;
-        merged.set(item.sandboxId, {
-          sandboxId: item.sandboxId,
-          title: item.title,
-          createdAt: item.createdAt.getTime(),
-          updatedAt: item.updatedAt.getTime(),
-          previewUrl: `/api/sandbox/${item.sandboxId}`
-        });
-      }
-      return Array.from(merged.values()).sort((a, b) => b.updatedAt - a.updatedAt);
-    }
-    const fromMemory = Array.from(memoryStore.values())
-      .filter((item) => item.ownerId === ownerId)
-      .map((item) => ({
-        sandboxId: item.id,
-        title: item.title,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        previewUrl: `/api/sandbox/${item.id}`
-      }))
+    const [projects, fromDb] = await Promise.all([
+      listProjectScopesForOwner(ownerId),
+      listSandboxProjectStatesByOwner(ownerId)
+    ]);
+    const fromDbMap = new Map(fromDb.map((x) => [x.projectId, x]));
+    return projects
+      .map((project) => {
+        const runtime =
+          isLemnityAiSandboxDockerEnabled() ? dockerRegistry.get(project.projectId) : memoryStore.get(project.projectId);
+        const db = fromDbMap.get(project.projectId);
+        const createdAt = runtime?.createdAt ?? db?.createdAt.getTime() ?? project.createdAt.getTime();
+        const updatedAt = runtime?.updatedAt ?? db?.updatedAt.getTime() ?? project.createdAt.getTime();
+        const title = runtime?.title ?? db?.title ?? project.name;
+        return {
+          sandboxId: project.projectId,
+          subdomain: project.subdomain,
+          title,
+          createdAt,
+          updatedAt,
+          previewUrl: `/api/sandbox/${project.projectId}`
+        };
+      })
       .sort((a, b) => b.updatedAt - a.updatedAt);
-    const fromDb = await listSandboxProjectStatesByOwner(ownerId);
-    const merged = new Map(fromMemory.map((x) => [x.sandboxId, x]));
-    for (const item of fromDb) {
-      if (merged.has(item.sandboxId)) continue;
-      merged.set(item.sandboxId, {
-        sandboxId: item.sandboxId,
-        title: item.title,
-        createdAt: item.createdAt.getTime(),
-        updatedAt: item.updatedAt.getTime(),
-        previewUrl: `/api/sandbox/${item.sandboxId}`
-      });
-    }
-    return Array.from(merged.values()).sort((a, b) => b.updatedAt - a.updatedAt);
   }
 };

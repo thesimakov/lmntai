@@ -1,17 +1,11 @@
-import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { prisma } from "@/lib/prisma";
 import { getMaxActiveProjectsForPlan } from "@/lib/plan-config";
-import { sandboxManager } from "@/lib/sandbox-manager";
 
 /**
  * Сколько проектов уже у пользователя: в режиме моста — привязанные сессии Lemnity AI, иначе песочницы.
  */
 export async function countUserProjects(userId: string): Promise<number> {
-  if (isLemnityAiBridgeEnabledServer()) {
-    return prisma.manusSessionLink.count({ where: { userId } });
-  }
-  const rows = await sandboxManager.listSandboxesByOwner(userId);
-  return rows.length;
+  return prisma.project.count({ where: { ownerId: userId } });
 }
 
 export type ProjectLimitResult =

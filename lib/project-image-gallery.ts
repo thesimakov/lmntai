@@ -1,13 +1,19 @@
 /**
- * Единый каталог сайта для изображений проекта превью: `public/images/gallery/`.
- * Бинарные данные живут в `image-asset`; в файлах — только JSON‑метаданные (для «Файлы проекта» и галереи).
+ * Каталог галереи внутри файлов проекта:
+ * /projects/{project_id}/images/gallery/*
  */
 
-export const PROJECT_IMAGE_GALLERY_DIR = "public/images/gallery";
+export function projectImageGalleryDir(projectId: string): string {
+  return `projects/${encodeURIComponent(projectId)}/images/gallery`;
+}
 
-export const PROJECT_IMAGE_GALLERY_README_PATH = `${PROJECT_IMAGE_GALLERY_DIR}/README.txt`;
+export function projectImageGalleryReadmePath(projectId: string): string {
+  return `${projectImageGalleryDir(projectId)}/README.txt`;
+}
 
-export const PROJECT_IMAGE_GALLERY_MEDIA_PATH = `${PROJECT_IMAGE_GALLERY_DIR}/media.json`;
+export function projectImageGalleryMediaPath(projectId: string): string {
+  return `${projectImageGalleryDir(projectId)}/media.json`;
+}
 
 export const PROJECT_IMAGE_GALLERY_README_TEXT =
   "Эта папка — галерея изображений текущего превью.\n" +
@@ -76,8 +82,11 @@ export function parseGalleryMediaJson(raw: string | undefined): ProjectGalleryMe
 }
 
 /** Восстановить записи только пользовательских загрузок между перегенерациями кода */
-export function keepUploadGalleryItems(previousFiles: Record<string, string>): ProjectGalleryItem[] {
-  const prev = parseGalleryMediaJson(previousFiles[PROJECT_IMAGE_GALLERY_MEDIA_PATH]);
+export function keepUploadGalleryItems(
+  previousFiles: Record<string, string>,
+  projectId: string
+): ProjectGalleryItem[] {
+  const prev = parseGalleryMediaJson(previousFiles[projectImageGalleryMediaPath(projectId)]);
   const items = prev?.items?.filter((i) => i.source === "upload") ?? [];
   const seen = new Set<string>();
   const out: ProjectGalleryItem[] = [];

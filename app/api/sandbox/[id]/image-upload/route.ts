@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { randomBytes } from "crypto";
 import { setSandboxImageAsset } from "@/lib/sandbox-image-assets";
 import { sandboxManager } from "@/lib/sandbox-manager";
@@ -24,7 +25,12 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!guard.ok) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { id: sandboxId } = await params;
+  const { id: routeId } = await params;
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject && routeId !== resolvedProject.id) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+  const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
     return Response.json({ error: "Not found" }, { status: 404 });
@@ -54,7 +60,7 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const buf = Buffer.from(await file.arrayBuffer());
   const key = `img_${randomBytes(10).toString("hex")}.${ext}`;
-  setSandboxImageAsset(sandboxId, key, { mime, data: buf });
+  await setSandboxImageAsset(sandboxId, key, { mime, data: buf }, "upload");
 
   const origin = new URL(req.url).origin;
   const publicUrl = `${origin}/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;

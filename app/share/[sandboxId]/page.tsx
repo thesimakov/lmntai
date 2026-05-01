@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 
 import { SharePreviewClient } from "./share-preview-client";
 import { getSandboxShareHeaderBranding, isSandboxLinkPublic } from "@/lib/sandbox-share-db";
-import { hasSandboxInRegistry } from "@/lib/sandbox-stores";
+import { sandboxManager } from "@/lib/sandbox-manager";
 
 type SharePageProps = {
   params: Promise<{ sandboxId: string }>;
@@ -15,7 +15,7 @@ export default async function PublicSharePage({ params }: SharePageProps) {
   }
   let ok = false;
   try {
-    ok = (await isSandboxLinkPublic(id)) && hasSandboxInRegistry(id);
+    ok = (await isSandboxLinkPublic(id)) && (await sandboxManager.hasSandboxPersistent(id));
   } catch {
     notFound();
   }

@@ -16,7 +16,7 @@ function publishResolveFetchOrigin(req: NextRequest): string {
   return new URL(req.url).origin;
 }
 
-async function resolveSandboxIdForHost(req: NextRequest, host: string) {
+async function resolveProjectForHost(req: NextRequest, host: string) {
   const url = new URL("/api/publish/resolve", `${publishResolveFetchOrigin(req)}/`);
   url.searchParams.set("host", host);
   try {
@@ -25,35 +25,63 @@ async function resolveSandboxIdForHost(req: NextRequest, host: string) {
       headers: { "x-publish-host": host }
     });
     if (!res.ok) return null;
-    const json = (await res.json().catch(() => null)) as { sandboxId?: string | null } | null;
-    const sandboxId = json?.sandboxId;
-    return typeof sandboxId === "string" && sandboxId.length > 0 ? sandboxId : null;
+    const json = (await res.json().catch(() => null)) as
+      | { projectId?: string | null; subdomain?: string | null }
+      | null;
+    const projectId = json?.projectId;
+    if (typeof projectId !== "string" || projectId.length === 0) return null;
+    return {
+      projectId,
+      subdomain: typeof json?.subdomain === "string" && json.subdomain.trim() ? json.subdomain.trim() : null
+    };
   } catch {
     return null;
   }
 }
 
 export async function middleware(req: NextRequest) {
+  if (req.nextUrl.pathname.startsWith("/api/publish/resolve")) {
+    return NextResponse.next();
+  }
   const rawHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const host = normalizeHost(rawHost);
-  if (!host || isReservedAppHost(host)) {
-    return NextResponse.next();
+  if (!host) {
+    return new NextResponse("Project not found", { status: 404 });
   }
-  if (req.nextUrl.pathname.startsWith("/share/")) {
-    return NextResponse.next();
-  }
-  if (req.nextUrl.pathname.startsWith("/.well-known/")) {
+  if (isReservedAppHost(host)) {
     return NextResponse.next();
   }
 
-  const sandboxId = await resolveSandboxIdForHost(req, host);
-  if (!sandboxId) {
-    return NextResponse.next();
+  const project = await resolveProjectForHost(req, host);
+  if (!project) {
+    return new NextResponse("Project not found", { status: 404 });
   }
 
-  const rewriteUrl = req.nextUrl.clone();
-  rewriteUrl.pathname = `/share/${encodeURIComponent(sandboxId)}`;
-  return NextResponse.rewrite(rewriteUrl);
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set("x-project-id", project.projectId);
+  requestHeaders.set("x-project-host", host);
+  if (project.subdomain) {
+    requestHeaders.set("x-project-subdomain", project.subdomain);
+  }
+
+  if (
+    req.nextUrl.pathname === "/" ||
+    req.nextUrl.pathname.startsWith("/share/")
+  ) {
+    const rewriteUrl = req.nextUrl.clone();
+    rewriteUrl.pathname = "/share";
+    return NextResponse.rewrite(rewriteUrl, {
+      request: {
+        headers: requestHeaders
+      }
+    });
+  }
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders
+    }
+  });
 }
 
 /**
@@ -63,5 +91,5 @@ export async function middleware(req: NextRequest) {
  * уходили бы в ветку middleware → ломается загрузка чанков / App Router.
  */
 export const config = {
-  matcher: ["/((?!api|_next/|favicon.ico|robots.txt|sitemap.xml|assets|images|fonts).*)"]
+  matcher: ["/((?!_next/|favicon.ico|robots.txt|sitemap.xml|assets|images|fonts).*)"]
 };
