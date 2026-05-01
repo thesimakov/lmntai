@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
-import { listBuildTemplates } from "@/lib/build-templates";
+import { getBuiltinBuildTemplateCatalogList, listBuildTemplates } from "@/lib/build-templates";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -10,9 +10,11 @@ async function getBuildTemplates(req: NextRequest) {
   void req;
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    // Клиент ожидает JSON; при 401/404/503 список шаблонов «пропадал». Встроенный каталог не секретен.
+    return Response.json({ templates: getBuiltinBuildTemplateCatalogList() });
   }
   const templates = await listBuildTemplates();
+
   return Response.json({ templates });
 }
 

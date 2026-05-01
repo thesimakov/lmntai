@@ -658,7 +658,10 @@ export default function PromptBuildPage() {
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
           const loadedSbx = String(lastPreview.sandboxId);
           const liveSse = lastSsePreviewSandboxIdRef.current;
-          if (liveSse && liveSse !== loadedSbx) {
+          const templateCatalogSbx = templatePreviewSandboxIdRef.current;
+          if (templateCatalogSbx && templateCatalogSbx !== loadedSbx) {
+            // Превью открыто из каталога шаблонов; GET /sessions несёт устаревший last preview другой сборки — не затирать UI.
+          } else if (liveSse && liveSse !== loadedSbx) {
             // Уже пришла более новая песочница по стриму; в GET ещё старый last preview — не откатывать UI.
           } else {
             templatePreviewSandboxIdRef.current = null;

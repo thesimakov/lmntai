@@ -3,6 +3,7 @@
  * Стили: Tailwind через CDN в оболочке (без PostCSS в рантайме).
  */
 import { createRequire } from "node:module";
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -198,7 +199,27 @@ const reqFromAppRoot = createRequire(path.join(process.cwd(), "package.json"));
  * Сборка идёт из временной папки без node_modules: все bare-imports
  * (react, react-router-dom, date-fns, …) подтягиваем из корня lmntai.
  */
-function resolveBareImportsFromAppRootPlugin(): esbuild.Plugin {
+function resolveAliasIntoProjectRoot(projectRoot: string, requestPath: string): string | null {
+  const rel = requestPath.slice(2);
+  if (!rel) return null;
+  const candidate = path.resolve(projectRoot, rel);
+  const hasExt = path.extname(candidate).length > 0;
+  if (hasExt && fsSync.existsSync(candidate)) return candidate;
+  if (fsSync.existsSync(candidate) && fsSync.statSync(candidate).isFile()) return candidate;
+
+  const exts = [".tsx", ".ts", ".jsx", ".js", ".mjs", ".cjs", ".json", ".css"];
+  for (const ext of exts) {
+    const p = `${candidate}${ext}`;
+    if (fsSync.existsSync(p)) return p;
+  }
+  for (const ext of exts) {
+    const p = path.join(candidate, `index${ext}`);
+    if (fsSync.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function resolveBareImportsFromAppRootPlugin(projectRoot: string): esbuild.Plugin {
   return {
     name: "resolve-bare-from-app-root",
     setup(build) {
@@ -216,6 +237,11 @@ function resolveBareImportsFromAppRootPlugin(): esbuild.Plugin {
           if (args.path.replace(/\\/g, "/").includes("node_modules")) {
             return { path: path.normalize(args.path) };
           }
+          return undefined;
+        }
+        if (args.path.startsWith("@/")) {
+          const resolved = resolveAliasIntoProjectRoot(projectRoot, args.path);
+          if (resolved) return { path: resolved };
           return undefined;
         }
         try {
@@ -327,7 +353,7 @@ export async function bundleLovableToPreviewHtml(inputFiles: Record<string, stri
         logLevel: "silent",
         loader: { ".css": "empty" },
         nodePaths: [path.join(process.cwd(), "node_modules")],
-        plugins: [resolveBareImportsFromAppRootPlugin()]
+        plugins: [resolveBareImportsFromAppRootPlugin(tmp)]
       });
     } catch (err) {
       return { ok: false, error: formatEsbuildFailure(err) };

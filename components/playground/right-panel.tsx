@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
@@ -48,8 +48,42 @@ type RightPanelProps = {
   studioBrandingBadge?: boolean | null;
 };
 
-function IdleState() {
+function IdleTypingHint() {
   const { t } = useI18n();
+  const full = t("playground_right_idle_hint");
+  const [visibleCount, setVisibleCount] = useState(0);
+  /** 0 → нет точек; 1…3 — цикл «печатной машинки» */
+  const [dotPhase, setDotPhase] = useState(0);
+
+  useEffect(() => {
+    setVisibleCount(0);
+    setDotPhase(0);
+  }, [full]);
+
+  useEffect(() => {
+    if (visibleCount < full.length) {
+      const id = window.setTimeout(() => setVisibleCount((c) => c + 1), 42);
+      return () => window.clearTimeout(id);
+    }
+    const id = window.setInterval(() => setDotPhase((p) => (p + 1) % 4), 420);
+    return () => window.clearInterval(id);
+  }, [full, visibleCount]);
+
+  const typed = full.slice(0, visibleCount);
+  const dots = visibleCount >= full.length ? ".".repeat(dotPhase) : "";
+
+  return (
+    <p
+      className="relative z-10 max-w-sm shrink-0 px-6 text-center font-mono text-sm tabular-nums tracking-tight text-muted-foreground"
+      aria-live="polite"
+    >
+      <span>{typed}</span>
+      <span className="inline-block min-w-[1.125em] text-left">{dots}</span>
+    </p>
+  );
+}
+
+function IdleState() {
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col items-center justify-between overflow-hidden bg-background py-3">
       <LemnityAiGridBackdrop />
@@ -66,9 +100,7 @@ function IdleState() {
         </motion.div>
         <LemnityAiWireframeBlocks animated className="mt-2" />
       </div>
-      <p className="relative z-10 max-w-sm shrink-0 px-6 text-center text-sm text-muted-foreground">
-        {t("playground_right_idle_hint")}
-      </p>
+      <IdleTypingHint />
     </div>
   );
 }

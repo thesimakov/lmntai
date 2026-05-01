@@ -966,8 +966,7 @@ export const messages = {
       'Недавние идеи из этого браузера — не то же, что сохранённый макет; откроется диалог с коучем промпта.',
     playground_menu_history_recent_coach_aria: 'Начать с этой формулировкой (коуч промпта)',
     playground_menu_no_history: 'Пока нет запросов.',
-    playground_right_idle_hint:
-      'Ожидание запроса. Опишите проект в чате и запустите генерацию.',
+    playground_right_idle_hint: 'Ожидание запроса',
     playground_right_generating_line1_website: 'Lemnity AI собирает сайт. Чуть-чуть подождите…',
     playground_right_generating_line1_presentation:
       'Lemnity AI собирает презентацию. Чуть-чуть подождите…',
@@ -1960,7 +1959,7 @@ export const messages = {
       'Recent ideas from this browser are not the same as a saved layout; this opens the prompt coach flow.',
     playground_menu_history_recent_coach_aria: 'Start from this wording (prompt coach)',
     playground_menu_no_history: 'No requests yet.',
-    playground_right_idle_hint: 'Waiting for a prompt. Describe your project in chat and start generation.',
+    playground_right_idle_hint: 'Waiting for a prompt',
     playground_right_generating_line1_website: 'Lemnity AI is building your site. One moment…',
     playground_right_generating_line1_presentation:
       'Lemnity AI is building your presentation. One moment…',
@@ -2954,8 +2953,7 @@ export const messages = {
       'Идеяҳои охир аз ин браузар аз макети нигоҳдоӣшуда фарқ мекунанд; муошират бо мураббии промпт мекушояд.',
     playground_menu_history_recent_coach_aria: 'Оғоз аз ин матн (мураббии промпт)',
     playground_menu_no_history: 'Ҳанӯз дархост нест.',
-    playground_right_idle_hint:
-      'Интизори дархост. Лоиҳаро дар чат тавсиф кунед ва тавлидро оғоз кунед.',
+    playground_right_idle_hint: 'Интизори дархост',
     playground_right_generating_line1_website: 'Lemnity AI сайт месозад. Сабр кунед…',
     playground_right_generating_line1_presentation:
       'Lemnity AI презентация месозад. Сабр кунед…',

@@ -68,6 +68,7 @@
     "date-fns": "^3.6.0",
     "dockerode": "^4.0.10",
     "embla-carousel-react": "^8.5.0",
+    "encoding": "^0.1.13",
     "esbuild": "^0.25.0",
     "framer-motion": "^11.11.17",
     "html-to-docx": "^1.8.0",

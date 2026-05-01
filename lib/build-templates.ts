@@ -35,12 +35,22 @@ import {
   WEB_STUDIO_TEMPLATE_RULES,
   WEB_STUDIO_TEMPLATE_SLUG
 } from "@/lib/build-template-presets/web-studio-preset";
+import {
+  EVENTS_AI_DEFAULT_USER_PROMPT,
+  EVENTS_AI_PUCK_JSON,
+  EVENTS_AI_PRESET_FILES,
+  EVENTS_AI_TEMPLATE_DESCRIPTION,
+  EVENTS_AI_TEMPLATE_NAME,
+  EVENTS_AI_TEMPLATE_RULES,
+  EVENTS_AI_TEMPLATE_SLUG
+} from "@/lib/build-template-presets/events-ai-preset";
 
 const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT,
   [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_DEFAULT_USER_PROMPT,
-  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_DEFAULT_USER_PROMPT
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_DEFAULT_USER_PROMPT,
+  [EVENTS_AI_TEMPLATE_SLUG]: EVENTS_AI_DEFAULT_USER_PROMPT
 };
 
 /** Встроенный макет Puck по slug (если в БД нет puck.json — подмешиваем). */
@@ -48,7 +58,8 @@ const PRESET_PUCK_JSON_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_PUCK_JSON,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON,
   [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_PUCK_JSON,
-  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_PUCK_JSON
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_PUCK_JSON,
+  [EVENTS_AI_TEMPLATE_SLUG]: EVENTS_AI_PUCK_JSON
 };
 
 function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): Record<string, string> {
@@ -118,12 +129,31 @@ const BUILTIN_PRESET_SPECS: Array<{
     rules: WEB_STUDIO_TEMPLATE_RULES,
     files: WEB_STUDIO_PRESET_FILES,
     defaultUserPrompt: WEB_STUDIO_DEFAULT_USER_PROMPT
+  },
+  {
+    slug: EVENTS_AI_TEMPLATE_SLUG,
+    name: EVENTS_AI_TEMPLATE_NAME,
+    description: EVENTS_AI_TEMPLATE_DESCRIPTION,
+    rules: EVENTS_AI_TEMPLATE_RULES,
+    files: EVENTS_AI_PRESET_FILES,
+    defaultUserPrompt: EVENTS_AI_DEFAULT_USER_PROMPT
   }
 ];
 
 const BUILTIN_SPEC_BY_SLUG: Record<string, (typeof BUILTIN_PRESET_SPECS)[number]> = Object.fromEntries(
   BUILTIN_PRESET_SPECS.map((p) => [p.slug, p])
 );
+
+/** Каталог из кода без Prisma — если сессии нет, пользователя нет в БД или недоступна БД для списка. */
+export function getBuiltinBuildTemplateCatalogList(): BuildTemplateListItem[] {
+  return BUILTIN_PRESET_SPECS.map((p) => ({
+    id: `preset-${p.slug}`,
+    slug: p.slug,
+    name: p.name,
+    description: p.description,
+    defaultUserPrompt: p.defaultUserPrompt
+  })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
 
 function builtinListItemFromSlug(slug: string): BuildTemplateListItem | null {
   const p = BUILTIN_SPEC_BY_SLUG[slug];
@@ -236,13 +266,7 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
     return merged;
   } catch (err) {
     console.warn("[build-templates] list failed", err);
-    return BUILTIN_PRESET_SPECS.map((p) => ({
-      id: `preset-${p.slug}`,
-      slug: p.slug,
-      name: p.name,
-      description: p.description,
-      defaultUserPrompt: p.defaultUserPrompt
-    })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    return getBuiltinBuildTemplateCatalogList();
   }
 }
 

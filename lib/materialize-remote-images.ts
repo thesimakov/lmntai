@@ -55,7 +55,7 @@ async function fetchOne(url: string): Promise<{ buf: Buffer; mime: string } | nu
         "User-Agent":
           "Mozilla/5.0 (compatible; LemnityPreview/1.0; +https://lemnity.com) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       },
-      signal: AbortSignal.timeout(20_000)
+      signal: AbortSignal.timeout(10_000)
     });
     if (!res.ok) return null;
     const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
@@ -144,6 +144,12 @@ export async function materializeRemoteImagesInProject(
 
   clearSandboxMaterializedImageSlots(ctx.sandboxId);
 
+  const cappedUrls = urls.slice(0, MAX_IMAGES);
+  /** Параллельно — иначе N последовательных таймаутов дают минуты «висящей» сборки превью. */
+  const fetchRows = await Promise.all(
+    cappedUrls.map(async (url) => ({ url, got: await fetchOne(url) }))
+  );
+
   const replacements = new Map<string, string>();
   const manifestItems: Array<{
     sourceUrl: string;
@@ -153,14 +159,9 @@ export async function materializeRemoteImagesInProject(
   }> = [];
   let total = 0;
   let keyIdx = 0;
-  let skipped = 0;
+  let skipped = urls.length - cappedUrls.length;
 
-  for (const url of urls) {
-    if (manifestItems.length >= MAX_IMAGES) {
-      skipped += 1;
-      continue;
-    }
-    const got = await fetchOne(url);
+  for (const { url, got } of fetchRows) {
     if (!got) {
       skipped += 1;
       continue;
