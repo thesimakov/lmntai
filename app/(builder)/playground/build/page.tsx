@@ -2085,8 +2085,8 @@ export default function PromptBuildPage() {
 
   return (
     <PageTransition>
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-muted/40">
-        <div className="flex min-h-0 flex-1">
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-muted/40">
+        <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-row items-stretch">
           <aside className="flex w-[52px] shrink-0 flex-col items-center gap-2 border-r border-border bg-background py-3">
             <TooltipProvider delayDuration={400}>
               <Tooltip>
@@ -2298,7 +2298,7 @@ export default function PromptBuildPage() {
             ) : null}
           </div>
 
-          <section className="flex min-h-0 w-full min-w-0 flex-1 flex-col bg-muted/30">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/30">
             <BuildPreviewChrome
               tab={tab}
               documentTabVisible={documentTabVisible}

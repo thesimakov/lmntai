@@ -421,7 +421,7 @@ export function AgentChat({
             >
               {isStudio && m.role === "assistant" ? (
                 <div className="w-full min-w-0 pr-1">
-                  <div className="min-w-0 max-w-[min(88%,32rem)]">
+                  <div className="min-w-0 w-full max-w-full">
                     <p className="mb-0.5 pl-0.5 text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
                       {t("playground_chat_brand")}
                     </p>
@@ -444,7 +444,7 @@ export function AgentChat({
                 </div>
               ) : isStudio && m.role === "user" ? (
                 <div className="flex w-full min-w-0 flex-row items-end justify-end">
-                  <div className="min-w-0 max-w-[min(88%,28rem)]">
+                  <div className="min-w-0 w-fit max-w-full">
                     <p className="mb-0.5 pr-0.5 text-right text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
                       {t("playground_chat_you")}
                     </p>
@@ -600,7 +600,7 @@ export function AgentChat({
             className={cn(
               "shrink-0",
               isStudio
-                ? "mx-0 max-w-[min(100%,36rem)] shrink-0 bg-transparent p-0 text-foreground"
+                ? "mx-0 w-full max-w-full shrink-0 bg-transparent p-0 text-foreground"
                 : "rounded-2xl border border-border/60 bg-background/80 shadow-sm backdrop-blur-sm dark:border-zinc-800 dark:bg-zinc-900/80"
             )}
           >

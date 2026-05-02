@@ -31,7 +31,7 @@ export default async function RootLayout({
 
   return (
     <html lang={initialLang} className={rubik.variable} suppressHydrationWarning>
-      <body className={`${rubik.className} font-sans`}>
+      <body className={`${rubik.className} min-h-screen w-full min-w-0 font-sans`}>
         <Providers initialLang={initialLang} session={session}>
           {children}
         </Providers>
