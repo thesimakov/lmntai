@@ -19,6 +19,8 @@ export function normalizeHost(raw: string | null | undefined): string | null {
   const hostOnly = withoutProtocol.split("/")[0]?.split("?")[0]?.split("#")[0] ?? "";
   const host = hostOnly.replace(/:\d+$/, "");
   if (!host || !/^[a-z0-9.-]+$/.test(host)) return null;
+  /* localhost / loopback — без точки в имени; иначе middleware считает хост невалидным и отдаёт 404 */
+  if (isLocalHost(host)) return host;
   if (!host.includes(".")) return null;
   if (host.startsWith(".") || host.endsWith(".")) return null;
   return host;
