@@ -407,7 +407,16 @@ export function BuildSettings({
     </>
   );
 
-  const integrationsPanel = <Integrations embedded integrationIdsOmit={["yandex-metrika"]} />;
+  const integrationsPanel = (
+    <Integrations
+      embedded
+      integrationIdsOmit={["yandex-metrika"]}
+      showComingSoonFooter={false}
+      showPageIntro={false}
+      showWidgetsBanner={false}
+      studioEmbeddedHero
+    />
+  );
 
   const sectionMobileTitle: Record<SettingsSection, MessageKey> = {
     overview: "build_settings_nav_overview",
@@ -538,10 +547,10 @@ export function BuildSettings({
   );
 
   const hidePref = hideHeaderPref ?? false;
-  /** Вкл. = подпись «Сделано на Lemnity» видна (эффективный hide с сервера). */
-  const switchChecked = hideHeaderPref === null ? false : !hidePref;
+  /** Вкл. = подпись «Сделано на Lemnity» видна (эффективный hide с сервера). На «Старт» всегда включено. */
+  const switchChecked = hideHeaderPref === null ? false : hasProPlan ? !hidePref : true;
   const showWatermarkOnShare = switchChecked;
-  const watermarkSwitchDisabled = !sandboxId || brandingBusy || hideHeaderPref === null;
+  const watermarkSwitchDisabled = !sandboxId || brandingBusy || hideHeaderPref === null || !hasProPlan;
   const checkoutIsAbsolute = /^https?:\/\//i.test(checkoutHref);
 
   const overviewWatermarkCard = (

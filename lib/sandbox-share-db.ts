@@ -78,8 +78,8 @@ function isProOrTeamPlan(plan: string): boolean {
 
 /**
  * Видна ли подпись «Сделано на Lemnity» (превью в студии, /share, экспорт):
- * - Стандарт (FREE) и купившие снятие: по умолчанию включена; снятие — разовая оплата + hide.
- * - Pro/Team: по умолчанию выкл. (`hideLemnityHeader` true), можно включить в настройках.
+ * - Pro/Team — по умолчанию без строки (`hideLemnityHeader` true), включают вручную.
+ * - FREE («Старт») — лейбл всегда на публикации; скрыть нельзя.
  */
 export function computeShowLemnityBranding(input: {
   plan: string;
@@ -88,9 +88,6 @@ export function computeShowLemnityBranding(input: {
 }): boolean {
   if (isProOrTeamPlan(input.plan)) {
     return !input.hideLemnityHeader;
-  }
-  if (input.shareBrandingRemovalPaid && input.hideLemnityHeader) {
-    return false;
   }
   return true;
 }
@@ -153,11 +150,11 @@ export async function assertCanHideShareBranding(userId: string, hide: boolean):
   if (!hide) return true;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, shareBrandingRemovalPaidAt: true }
+    select: { plan: true }
   });
   const plan = user?.plan ?? "FREE";
-  if (isProOrTeamPlan(plan)) return true;
-  return user?.shareBrandingRemovalPaidAt != null;
+  if (!isProOrTeamPlan(plan)) return false;
+  return true;
 }
 
 export async function setSandboxShareHideHeader(sandboxId: string, ownerId: string, hide: boolean): Promise<void> {

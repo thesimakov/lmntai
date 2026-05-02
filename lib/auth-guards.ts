@@ -1,7 +1,18 @@
 import type { Session } from "next-auth";
+import type { Prisma } from "@prisma/client";
 
 import { getSafeServerSession } from "@/lib/auth";
+import { normalizePlanId } from "@/lib/plan-config";
 import { prisma } from "@/lib/prisma";
+import { fetchUserStarterPaidUntilById } from "@/lib/user-starter-paid-until-raw";
+import {
+  ensurePaidPlanCalendarMonthCredits,
+} from "@/lib/token-monthly-rollover";
+import {
+  isStarterCabinetBlocked,
+  STARTER_EXPIRED_LOCK_MESSAGE,
+  syncStarterDailyTokenBudget,
+} from "@/lib/starter-plan";
 import { canAccessStaff, parsePermissionList, type StaffPermission } from "@/lib/staff-permissions";
 
 export type GuardFailure = {
@@ -27,18 +38,59 @@ export type DbUserContext = {
     tokenBalance: number;
     tokenLimit: number;
     adminPermissions: unknown;
+    createdAt: Date;
+    starterPaidUntil: Date | null;
   };
 };
 
-const dbUserSelect = {
+const dbUserCoreSelect = {
   id: true,
   email: true,
   role: true,
   plan: true,
   tokenBalance: true,
   tokenLimit: true,
-  adminPermissions: true
+  adminPermissions: true,
+  createdAt: true,
 } as const;
+
+type DbUserCoreRow = Prisma.UserGetPayload<{ select: typeof dbUserCoreSelect }>;
+
+type DbUserGuardRow = DbUserCoreRow & { starterPaidUntil: Date | null };
+
+async function attachStarterPaidUntil(core: DbUserCoreRow): Promise<DbUserGuardRow> {
+  const starterPaidUntil = await fetchUserStarterPaidUntilById(core.id);
+  return { ...core, starterPaidUntil };
+}
+
+async function maybeSyncStarterTokens(user: DbUserGuardRow, demoOffline: boolean): Promise<DbUserGuardRow> {
+  if (demoOffline) return user;
+  if (normalizePlanId(user.plan) !== "FREE" || user.role === "ADMIN") return user;
+  if (isStarterCabinetBlocked(user)) return user;
+  await syncStarterDailyTokenBudget(user);
+  const refreshed = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { tokenBalance: true, tokenLimit: true },
+  });
+  if (!refreshed) return user;
+  return { ...user, tokenBalance: refreshed.tokenBalance, tokenLimit: refreshed.tokenLimit };
+}
+
+async function maybeApplyPaidPlanMonthlyCredits(
+  user: DbUserGuardRow,
+  demoOffline: boolean
+): Promise<DbUserGuardRow> {
+  if (demoOffline || user.role === "ADMIN") return user;
+  const pid = normalizePlanId(user.plan);
+  if (pid !== "PRO" && pid !== "TEAM") return user;
+  await ensurePaidPlanCalendarMonthCredits(user.id);
+  const refreshed = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { tokenBalance: true, tokenLimit: true },
+  });
+  if (!refreshed) return user;
+  return { ...user, tokenBalance: refreshed.tokenBalance, tokenLimit: refreshed.tokenLimit };
+}
 
 export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
   const session = await getSafeServerSession();
@@ -48,17 +100,18 @@ export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
   }
 
   try {
-    let user = await prisma.user.findUnique({
+    const demoOffline = Boolean(session.user.demoOffline);
+    let core = await prisma.user.findUnique({
       where: { email },
-      select: dbUserSelect
+      select: dbUserCoreSelect
     });
 
-    if (!user && session.user.demoOffline) {
+    if (!core && session.user.demoOffline) {
       if (process.env.NODE_ENV !== "development") {
         return { ok: false, status: 403, message: "Offline demo is read-only for protected operations" };
       }
       try {
-        user = await prisma.user.create({
+        core = await prisma.user.create({
           data: {
             email,
             name: session.user.name ?? "Demo",
@@ -68,22 +121,32 @@ export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
             tokenLimit: 500_000,
             adminPermissions: undefined
           },
-          select: dbUserSelect
+          select: dbUserCoreSelect
         });
       } catch {
-        user = await prisma.user.findUnique({
+        core = await prisma.user.findUnique({
           where: { email },
-          select: dbUserSelect
+          select: dbUserCoreSelect
         });
-        if (!user) {
+        if (!core) {
           return { ok: false, status: 403, message: "Offline demo is read-only for protected operations" };
         }
       }
     }
 
-    if (!user) {
+    if (!core) {
       return { ok: false, status: 404, message: "User not found" };
     }
+
+    let user = await attachStarterPaidUntil(core);
+
+    if (!demoOffline && isStarterCabinetBlocked(user)) {
+      return { ok: false, status: 403, message: STARTER_EXPIRED_LOCK_MESSAGE };
+    }
+
+    user = await maybeSyncStarterTokens(user, demoOffline);
+    user = await maybeApplyPaidPlanMonthlyCredits(user, demoOffline);
+
     return { ok: true, data: { session, user } };
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AppWindow, ArrowUp, FileText, LayoutTemplate, Palette, Plus, Presentation } from "lucide-react";
+import { ArrowUp, ChevronDown, Image as ImageIcon, Paperclip } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -20,7 +20,6 @@ import {
 import { MarketingSiteHeader } from "@/components/marketing/marketing-site-header";
 import { setPostLoginRedirect } from "@/lib/post-login-redirect";
 import { cn } from "@/lib/utils";
-import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import type { MessageKey } from "@/lib/i18n";
 
 const SHOWCASE_FILTER_ORDER: LandingShowcaseCategory[] = ["website", "resume", "presentation", "other"];
@@ -34,37 +33,15 @@ const SHOWCASE_FILTER_LABEL: Record<LandingShowcaseCategory, MessageKey> = {
 
 const SHOWCASE_SECTION_ENABLED = false;
 
-/** Подписи совпадают с типами в Playground; в поле вставляется полноценный стартовый промпт. */
-const LANDING_HERO_CHIPS: Array<{
-  labelKey: MessageKey;
-  promptKey: MessageKey;
-  icon: typeof Presentation;
-  projectKind: ProjectKind;
-}> = [
-  {
-    labelKey: "playground_home_cat_presentation",
-    promptKey: "playground_home_val_presentation",
-    icon: Presentation,
-    projectKind: "presentation"
-  },
-  {
-    labelKey: "landing_simple_quick_website",
-    promptKey: "playground_home_val_website",
-    icon: LayoutTemplate,
-    projectKind: "website"
-  },
-  { labelKey: "playground_home_cat_design", promptKey: "playground_home_val_design", icon: Palette, projectKind: "design" },
-  { labelKey: "playground_home_cat_resume", promptKey: "playground_home_val_resume", icon: FileText, projectKind: "resume" },
-  {
-    labelKey: "playground_home_cat_lovable",
-    promptKey: "playground_home_val_lovable",
-    icon: AppWindow,
-    projectKind: "lovable"
-  }
-];
+const LANDING_DISPLAY_PROJECT_COUNT = (() => {
+  const raw = process.env.NEXT_PUBLIC_LANDING_PROJECTS_COUNT;
+  if (raw == null || String(raw).trim() === "") return 4053;
+  const n = Number.parseInt(String(raw).trim(), 10);
+  return Number.isFinite(n) && n >= 0 ? n : 4053;
+})();
 
 export function LandingPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const { data: session, status } = useSession();
   const authed = status === "authenticated" && Boolean(session);
@@ -72,10 +49,14 @@ export function LandingPage() {
   const [isFocused, setIsFocused] = useState(false);
   const [typed, setTyped] = useState("");
   const [showcaseFilter, setShowcaseFilter] = useState<"all" | LandingShowcaseCategory>("all");
-  const [heroProjectKind, setHeroProjectKind] = useState<ProjectKind | null>(null);
   const [showcaseBySlug, setShowcaseBySlug] = useState<Record<string, ShowcaseImageEntry> | null>(null);
 
-  const placeholderPhrase = useMemo(() => t("landing_simple_placeholder"), [t]);
+  const placeholderPhrase = useMemo(() => t("landing_dark_typewriter"), [t]);
+
+  const landingProjectsFormatted = useMemo(() => {
+    const loc = lang === "ru" ? "ru-RU" : lang === "tg" ? "tg-TJ" : "en-US";
+    return LANDING_DISPLAY_PROJECT_COUNT.toLocaleString(loc);
+  }, [lang]);
 
   const showcaseCategoryCounts = useMemo(() => {
     const m: Record<LandingShowcaseCategory, number> = {
@@ -177,10 +158,10 @@ export function LandingPage() {
   const goApp = useCallback(() => {
     const text = prompt.trim();
     if (!text) return;
-    saveBuilderHandoff(text, heroProjectKind ?? undefined, null);
+    saveBuilderHandoff(text, undefined, null);
     setPostLoginRedirect("/playground/build");
     router.push(authed ? "/playground/build" : "/login");
-  }, [authed, heroProjectKind, prompt, router]);
+  }, [authed, prompt, router]);
 
   return (
     <div className="relative min-h-screen font-sans text-foreground">
@@ -193,7 +174,7 @@ export function LandingPage() {
       <div className="relative z-10">
         <MarketingSiteHeader />
 
-        <main className="mx-auto max-w-6xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">
+        <main className="mx-auto max-w-6xl px-4 pb-28 pt-10 sm:px-6 sm:pb-32 sm:pt-14">
         <div className="flex justify-center">
           <div className="inline-flex items-center gap-3 rounded-full border border-zinc-200/90 bg-white px-4 py-2 text-sm shadow-sm">
             <span className="text-zinc-500">{t("landing_simple_badge_free")}</span>
@@ -210,23 +191,27 @@ export function LandingPage() {
 
         <h1
           id="hero-heading"
-          className="mx-auto mt-12 max-w-3xl text-center font-sans text-[2.35rem] font-normal leading-tight tracking-tight text-zinc-900 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem]"
+          className="mx-auto mt-8 max-w-4xl text-center text-3xl font-semibold leading-[1.12] tracking-tight text-zinc-900 sm:mt-10 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem] md:leading-[1.06]"
         >
           {t("landing_simple_hero_h1")}
         </h1>
 
-        <div id="hero-input" className="mx-auto mt-10 w-full max-w-3xl">
-          <div className="rounded-lg border border-zinc-200/90 bg-white p-3 shadow-[0_8px_30px_rgb(0,0,0,0.06)] sm:p-4">
-            <div className="relative min-h-[72px]">
+        <p className="mx-auto mt-5 max-w-2xl text-center text-sm leading-relaxed text-zinc-600 sm:mt-6 sm:text-base">
+          {t("landing_dark_hero_lead")}
+        </p>
+
+        <div id="hero-input" className="mx-auto mt-9 w-full max-w-3xl sm:mt-11">
+          <div className="rounded-[1.35rem] border border-zinc-200/90 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.03] sm:rounded-3xl sm:p-5">
+            <div className="relative min-h-[100px] sm:min-h-[120px]">
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 placeholder=""
-                rows={3}
+                rows={4}
                 aria-label={t("landing_simple_placeholder")}
-                className="min-h-[72px] w-full resize-none border-0 bg-transparent text-base leading-snug text-zinc-900 focus:outline-none focus:ring-0"
+                className="min-h-[100px] w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:min-h-[120px] sm:text-base"
               />
               <AnimatePresence mode="wait">
                 {!prompt.trim() && !isFocused ? (
@@ -242,12 +227,12 @@ export function LandingPage() {
                       mass: 0.85,
                       opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
                     }}
-                    className="pointer-events-none absolute left-0 top-0 z-10 pr-10 text-base text-zinc-400"
+                    className="pointer-events-none absolute left-0 top-0 z-10 pr-14 text-[15px] leading-relaxed text-zinc-400 sm:text-base"
                   >
                     <span>{typed}</span>
                     <motion.span
                       aria-hidden
-                      className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/65"
+                      className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/70"
                       animate={{ opacity: [0.35, 1, 0.35] }}
                       transition={{
                         duration: 1.65,
@@ -259,49 +244,67 @@ export function LandingPage() {
                 ) : null}
               </AnimatePresence>
             </div>
-            <div className="mt-2 flex items-center justify-between border-t border-zinc-100 pt-2">
-              <button
-                type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
-                aria-label={t("landing_simple_attach")}
-              >
-                <Plus className="h-5 w-5" strokeWidth={1.75} />
-              </button>
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+              <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                <button
+                  type="button"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                  aria-label={t("landing_simple_attach")}
+                >
+                  <Paperclip className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} />
+                </button>
+                <button
+                  type="button"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                  aria-label={t("landing_dark_image_attach_aria")}
+                >
+                  <ImageIcon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} />
+                </button>
+                <button
+                  type="button"
+                  tabIndex={-1}
+                  className="ml-1 inline-flex max-w-[min(100%,14rem)] items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 py-1.5 pl-2 pr-2.5 text-left text-[11px] font-medium text-zinc-800 shadow-sm sm:max-w-none sm:gap-2.5 sm:pl-2.5 sm:pr-3 sm:text-[13px]"
+                  aria-hidden
+                >
+                  <span
+                    className="flex h-[1.375rem] w-[1.375rem] shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-indigo-600 text-[10px] font-bold text-white"
+                    aria-hidden
+                  >
+                    D
+                  </span>
+                  <span className="min-w-0 truncate">{t("landing_model_pill_label")}</span>
+                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={goApp}
                 disabled={!prompt.trim()}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Send"
               >
-                <ArrowUp className="h-5 w-5" strokeWidth={2.25} />
+                <ArrowUp className="h-[1.2rem] w-[1.2rem]" strokeWidth={2.35} />
               </button>
             </div>
           </div>
         </div>
 
-        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap justify-center gap-2">
-          {LANDING_HERO_CHIPS.map(({ labelKey, promptKey, icon: Icon, projectKind: pk }) => (
-            <button
-              key={labelKey}
-              type="button"
-              onClick={() => {
-                setPrompt(t(promptKey));
-                setHeroProjectKind(pk);
-              }}
-              className="inline-flex items-center gap-2 rounded-full border border-zinc-200/90 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 shadow-sm transition hover:border-zinc-300 hover:bg-zinc-50"
-            >
-              <Icon className="h-4 w-4 text-zinc-500" strokeWidth={1.75} />
-              {t(labelKey)}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => router.push(authed ? "/playground" : "/login")}
-            className="rounded-full border border-transparent bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+        <div className="mx-auto mt-7 flex justify-center px-2 sm:mt-8">
+          <div
+            className="inline-flex max-w-[min(100%,36rem)] items-center gap-2.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 py-2.5 text-[13px] leading-snug text-zinc-600 shadow-sm backdrop-blur-sm sm:text-sm sm:leading-snug"
+            role="status"
+            aria-label={`${t("landing_projects_status_before")} ${landingProjectsFormatted} ${t("landing_projects_status_after")}`}
           >
-            {t("landing_simple_quick_more")}
-          </button>
+            <span
+              className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_12px_rgba(52,211,153,0.45)]"
+              aria-hidden
+            />
+            <span className="text-left">
+              {t("landing_projects_status_before")}{" "}
+              <strong className="font-semibold tabular-nums text-zinc-900">{landingProjectsFormatted}</strong>{" "}
+              {t("landing_projects_status_after")}
+            </span>
+          </div>
         </div>
 
         {SHOWCASE_SECTION_ENABLED ? (

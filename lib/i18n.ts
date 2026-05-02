@@ -124,9 +124,14 @@ export const messages = {
     marketing_docs_marketing_body:
       'Оформляя подписку на рассылку или отмечая согласие в форме, вы принимаете получение информационных и рекламных сообщений о продукте Lemnity / Lemnity ИИ и услугах ООО «Лемнити» на указанный адрес электронной почты. Отказ от рассылки возможен в любой момент по ссылке в письме или через обращение в поддержку.',
     marketing_docs_back: 'К списку разделов',
-    landing_simple_badge_free: 'Бесплатный тариф',
+    landing_simple_badge_free: '7 дней бесплатно!',
     landing_simple_badge_trial: 'Попробовать бесплатно',
-    landing_simple_hero_h1: 'Чем могу помочь?',
+    landing_simple_hero_h1: 'Создайте проект с помощью Лемнити ИИ',
+    landing_dark_hero_lead:
+      'Коротко опишите задачу — Лемнити ИИ предложит структуру, тексты и адаптивную вёрстку. Без кода и отдельного дизайнера.',
+    landing_dark_typewriter: 'Лендинг для доставки еды',
+    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_dark_image_attach_aria: 'Прикрепить изображение',
     landing_simple_placeholder: 'Опишите дашборд с метриками, графиками и таблицами…',
     landing_simple_attach: 'Добавить',
     landing_simple_quick_slides: 'Создать слайды',
@@ -134,6 +139,8 @@ export const messages = {
     landing_simple_quick_desktop: 'Десктоп-приложения',
     landing_simple_quick_design: 'Дизайн',
     landing_simple_quick_more: 'Ещё',
+    landing_projects_status_before: 'Уже',
+    landing_projects_status_after: 'проектов создано в Lemnity',
     landing_showcase_title: 'Каталог проектов',
     landing_showcase_subtitle: 'Сайты и интерфейсы, собранные в Lemnity — откройте живую версию в новой вкладке.',
     landing_showcase_view_all: 'Смотреть все',
@@ -250,11 +257,11 @@ export const messages = {
     pricing_plan_starter_price: '99 ₽',
     pricing_plan_starter_period: '/мес',
     pricing_plan_starter_desc:
-      'Попробовать интерфейс при жёстких лимитах — с явным стимулом перейти на Про.',
-    pricing_plan_starter_feat_1: '1 активный проект',
-    pricing_plan_starter_feat_2: '10 000 токенов в месяц',
+      'Первые 7 дней бесплатно: 10 токенов в день, один проект и шаблон, публикация с лейблом только на *.lemnity.com. После — подписка 99 ₽/мес: 50 токенов в день.',
+    pricing_plan_starter_feat_1: '1 активный проект / один шаблон',
+    pricing_plan_starter_feat_2: '10 токенов в день в пробный период; 50 в день после оплаты 99 ₽',
     pricing_plan_starter_feat_3:
-      'Песочница: предпросмотр, водяной знак; GPT-4.1, Kimi K2.6 и Gemini 3 Pro; Claude — в Про. Низкий приоритет, без экспорта',
+      'Публикация с лейблом Lemnity; только поддомен .lemnity.com (без своего домена)',
     pricing_plan_starter_cta: 'Текущий план',
 
     pricing_plan_pro_name: 'Про',
@@ -449,6 +456,17 @@ export const messages = {
     integration_telegram_desc: 'Уведомления и бот-интеграция',
     integration_yam_desc: 'Аналитика: визиты, события, webvisor (через env ID счетчика)',
     integration_yam_name: 'Яндекс Метрика',
+    integrations_studio_connect_title: 'Подключите внешние сервисы',
+    integrations_studio_connect_subtitle: 'Доступно на тарифе Про и выше',
+    integrations_studio_upgrade_pro: 'Перейти на Pro',
+    integrations_studio_row_telegram: 'Телеграм',
+    integrations_studio_connected: 'Подключено',
+    integration_forms_name: 'Формы',
+    integration_forms_desc: 'Сбор заявок и данных',
+    integration_tables_name: 'Таблицы',
+    integration_tables_desc: 'Google Sheets и Excel',
+    integration_crm_name: 'CRM',
+    integration_crm_desc: 'AmoCRM, Битрикс и др.',
     not_found_desc: 'Проверьте адрес в строке браузера или вернитесь на главную.',
     error_desc:
       'Попробуйте снова или вернитесь на главную. Если ошибка повторяется, удалите кэш сборки (`.next`) и перезапустите dev-сервер.',
@@ -908,7 +926,7 @@ export const messages = {
     build_settings_overview_watermark_badge_off: 'Убран',
     build_settings_watermark_switch_label: 'Показывать «Сделано на Lemnity» в футере превью',
     build_settings_watermark_switch_help_standard:
-      'На тарифе Стандарт по умолчанию включено. Чтобы выключить и скрыть подпись — разовая оплата {price} ₽.',
+      'На тарифе «Старт» подпись включена всегда. На Pro и Team ею управляют этим переключателем.',
     build_settings_watermark_switch_help_pro:
       'На Pro и Team по умолчанию выключен; при желании включите переключатель. Это же касается публичной ссылки /share.',
     build_settings_watermark_pay_title: 'Скрыть брендинг на Стандарте',
@@ -1138,9 +1156,14 @@ export const messages = {
     marketing_docs_marketing_body:
       'By opting in to emails or checking the consent box, you agree to receive informational and promotional messages about Lemnity / Lemnity AI and Lemnity LLC services at the email you provide. You can unsubscribe anytime via the link in emails or by contacting support.',
     marketing_docs_back: 'Back to sections',
-    landing_simple_badge_free: 'Free plan',
+    landing_simple_badge_free: '7 days free!',
     landing_simple_badge_trial: 'Start free trial',
-    landing_simple_hero_h1: 'What can I do for you?',
+    landing_simple_hero_h1: 'Create a project with Lemnity AI',
+    landing_dark_hero_lead:
+      'Briefly describe what you need—Lemnity AI suggests structure, copy, and responsive layouts. No code or separate designer required.',
+    landing_dark_typewriter: 'Food delivery landing page',
+    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_dark_image_attach_aria: 'Attach image',
     landing_simple_placeholder: 'Describe a dashboard with metrics, charts, and tables…',
     landing_simple_attach: 'Add',
     landing_simple_quick_slides: 'Create slides',
@@ -1148,6 +1171,8 @@ export const messages = {
     landing_simple_quick_desktop: 'Develop desktop apps',
     landing_simple_quick_design: 'Design',
     landing_simple_quick_more: 'More',
+    landing_projects_status_before: 'Already',
+    landing_projects_status_after: 'projects created on Lemnity',
     landing_showcase_title: 'Project gallery',
     landing_showcase_subtitle: 'Sites and UIs built with Lemnity — open a live preview in a new tab.',
     landing_showcase_view_all: 'View all',
@@ -1264,11 +1289,11 @@ export const messages = {
     pricing_plan_starter_price: '$1.08',
     pricing_plan_starter_period: '/mo',
     pricing_plan_starter_desc:
-      'Try the product with tight limits — enough to learn the UI, with a clear path to Pro.',
-    pricing_plan_starter_feat_1: '1 active project',
-    pricing_plan_starter_feat_2: '10,000 tokens per month',
+      'First 7 days free: 10 tokens/day, one project/template, branded publishing on *.lemnity.com only. After that — 99 ₽/mo subscription: 50 tokens/day.',
+    pricing_plan_starter_feat_1: '1 active project / one template',
+    pricing_plan_starter_feat_2: '10 tokens/day during trial; 50/day after subscribing at 99 ₽',
     pricing_plan_starter_feat_3:
-      'Sandbox: preview + watermark; GPT-4.1, Kimi K2.6, Gemini 3 Pro; Claude is Pro-only. Low priority, no export',
+      'Publishing with Lemnity branding; .lemnity.com subdomains only (no custom domains)',
     pricing_plan_starter_cta: 'Current plan',
 
     pricing_plan_pro_name: 'Pro',
@@ -1461,6 +1486,17 @@ export const messages = {
     integration_telegram_desc: 'Notifications and bot integration',
     integration_yam_desc: 'Analytics: visits, events, webvisor (via env counter ID)',
     integration_yam_name: 'Yandex Metrika',
+    integrations_studio_connect_title: 'Connect external services',
+    integrations_studio_connect_subtitle: 'Available on Pro plans and higher',
+    integrations_studio_upgrade_pro: 'Upgrade to Pro',
+    integrations_studio_row_telegram: 'Telegram',
+    integrations_studio_connected: 'Connected',
+    integration_forms_name: 'Forms',
+    integration_forms_desc: 'Capture leads and submissions',
+    integration_tables_name: 'Spreadsheets',
+    integration_tables_desc: 'Google Sheets and Excel',
+    integration_crm_name: 'CRM',
+    integration_crm_desc: 'AmoCRM, Bitrix24 and more',
     not_found_desc: 'Check the address bar or go back home.',
     error_desc:
       'Try again or go back home. If it keeps happening, delete the build cache (`.next`) and restart the dev server.',
@@ -1918,7 +1954,7 @@ export const messages = {
     build_settings_overview_watermark_badge_off: 'Off',
     build_settings_watermark_switch_label: 'Show “Made on Lemnity” in the preview footer',
     build_settings_watermark_switch_help_standard:
-      'On Standard it’s on by default. To turn it off and hide the label — one-time payment of {price} ₽.',
+      'On the Start plan footer branding is always shown. On Pro and Team use this toggle.',
     build_settings_watermark_switch_help_pro:
       'On Pro and Team, footer branding is off by default; turn it on if you want. The same applies to the public /share page.',
     build_settings_watermark_pay_title: 'Hide branding on Standard',
@@ -2147,9 +2183,14 @@ export const messages = {
     marketing_docs_marketing_body:
       'Бо розӣ шудан ба почтаи электронӣ ё қайди розигӣ, шумо ба гирифтани паёмҳои иттилоотӣ ва таблиғотӣ дар бораи Lemnity / Lemnity ИИ ва хизматрасониҳои ООО «Лемнити» розӣ мешавед. Бекор кардан дар ҳар вақт аз роҳи истинод дар паём ё дастгирӣ имконпазир аст.',
     marketing_docs_back: 'Ба рӯйхати бахшҳо',
-    landing_simple_badge_free: 'Тарифи ройгон',
+    landing_simple_badge_free: '7 рӯз ройгон!',
     landing_simple_badge_trial: 'Озмоиши ройгон',
-    landing_simple_hero_h1: 'Чӣ кӯмак расонам?',
+    landing_simple_hero_h1: 'Лоиҳаро бо ИИ‑и Lemnity эҷод кунед',
+    landing_dark_hero_lead:
+      'Кӯтоҳ тавсиф кунед — ИИ‑и Lemnity сохтор, матн ва версткаи мобилӣ пешниҳод мекунад. Бе код ва дизайнери алоҳида.',
+    landing_dark_typewriter: 'Лендинги доставкии озуқаворӣ',
+    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_dark_image_attach_aria: 'Сурат зам кардан',
     landing_simple_placeholder: 'Дашборд бо метрикаҳо, графикҳо ва ҷадвалҳо тавсиф кунед…',
     landing_simple_attach: 'Илова кардан',
     landing_simple_quick_slides: 'Слайдҳо',
@@ -2157,6 +2198,8 @@ export const messages = {
     landing_simple_quick_desktop: 'Барномаи десктоп',
     landing_simple_quick_design: 'Дизайн',
     landing_simple_quick_more: 'Бештар',
+    landing_projects_status_before: 'Аллакай',
+    landing_projects_status_after: 'лоиҳа дар Lemnity эҷод шудаанд',
     landing_showcase_title: 'Каталоги лоиҳаҳо',
     landing_showcase_subtitle:
       'Сомонаҳо ва интерфейсҳо дар Lemnity — версияи зинда дар вкладкаи нав кушоед.',
@@ -2274,11 +2317,11 @@ export const messages = {
     pricing_plan_starter_price: '12 TJS',
     pricing_plan_starter_period: '/моҳ',
     pricing_plan_starter_desc:
-      'Интерфейсро дар шароити маҳдуд санҷед — роҳи равшан ба Про.',
-    pricing_plan_starter_feat_1: '1 лоиҳаи фаъол',
-    pricing_plan_starter_feat_2: '10 000 токен дар як моҳ',
+      '7 рӯзи нахуст ройгон: 10 токен/рӯз, як лоиҳа ва шаблон, нашр бо лейбл танҳо дар *.lemnity.com. Нигоҳ дории 99 ₽/моҳ: 50 токен/рӯз.',
+    pricing_plan_starter_feat_1: '1 лоиҳаи фаъол / як шаблон',
+    pricing_plan_starter_feat_2: '10 токен/рӯз дар санҷиш; баъд аз пардохти 99 ₽ — 50/рӯз',
     pricing_plan_starter_feat_3:
-      'Песочница: пешнамоиш, watermark; GPT-4.1, Kimi K2.6, Gemini 3 Pro; Claude — танҳо дар Про. Афзалияти поин, бе экспорт',
+      'Нашр бо лейбли Lemnity; танҳо зердомени .lemnity.com (бе домени худ)',
     pricing_plan_starter_cta: 'Нақшаи ҷорӣ',
 
     pricing_plan_pro_name: 'Про',
@@ -2473,6 +2516,17 @@ export const messages = {
     integration_telegram_desc: 'Огоҳиномаҳо ва интегратсияи бот',
     integration_yam_desc: 'Аналитика: боздидҳо, рӯйдодҳо, webvisor (бо env ID ҳисобкунак)',
     integration_yam_name: 'Яндекс Метрика',
+    integrations_studio_connect_title: 'Хидматҳои берунаро пайваст кунед',
+    integrations_studio_connect_subtitle: 'Барои Pro ва болотар дастрас',
+    integrations_studio_upgrade_pro: 'Гузариш ба Pro',
+    integrations_studio_row_telegram: 'Telegram',
+    integrations_studio_connected: 'Пайваш шуд',
+    integration_forms_name: 'Шаклҳо',
+    integration_forms_desc: 'Ҷамъ кардани дархост ва маълумот',
+    integration_tables_name: 'Ҷадвалҳо',
+    integration_tables_desc: 'Google Sheets ва Excel',
+    integration_crm_name: 'CRM',
+    integration_crm_desc: 'AmoCRM, Bitrix ва ғайра.',
     not_found_desc: 'Суроға را санҷед ё ба саҳифаи асосӣ баргардед.',
     error_desc:
       'Аз нав кӯшиш кунед ё ба саҳифаи асосӣ баргардед. Агар хато такрор шавад, кеши build‑ро (`.next`) пок кунед ва dev‑серверро аз нав оғоз намоед.',
@@ -2929,7 +2983,7 @@ export const messages = {
     build_settings_watermark_switch_label:
       '«Дар Lemnity сохта шуда»-ро дар поёни пешнамоиш нишон диҳед',
     build_settings_watermark_switch_help_standard:
-      'Дар тарифи Стандарт пешфарз фаъол аст. Барои хомӯш карду пинҳон кардан — пардохти яккарата {price} ₽.',
+      'Дар тарифи «Оғоз» ҳамеша фаъол аст ва пинҳон кардан мумкин нест. Дар Pro ва болотар аз ин авзор истифода баред.',
     build_settings_watermark_switch_help_pro:
       'Дар Pro ва Team пешфарз хомӯш аст; дар сурати хоҳиш фаъол кунед. Ҳамон ба саҳифаи оммавии /share дахл дорад.',
     build_settings_watermark_pay_title: 'Брендингро дар Стандарт пинҳон кардан',

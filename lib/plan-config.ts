@@ -1,11 +1,15 @@
 /**
- * Единый источник правды по тарифам: квоты токенов/мес и пороги для операций.
- * Числа совпадают с /plans и /pricing (lib/i18n: лимиты в описании тарифов).
+ * Единый источник правды по тарифам: квоты токенов и пороги для операций.
+ * FREE («Старт»): см. `lib/starter-plan.ts` — дневная квота и 7-дневный триал; здесь `MONTHLY_TOKEN_ALLOWANCE.FREE` — стартовый пул / отображаемый базовый лимит (день 1).
  */
 export type PlanId = "FREE" | "PRO" | "TEAM";
 
+/**
+ * Лимит токенов по тарифам. Для FREE («Старт») — дневная квота (синхронизация в `syncStarterDailyTokenBudget`);
+ * стартовое значение баланса при регистрации совпадает с квотой первого дня (пробный период — 10).
+ */
 export const MONTHLY_TOKEN_ALLOWANCE: Record<PlanId, number> = {
-  FREE: 10_000,
+  FREE: 10,
   PRO: 500_000,
   TEAM: 2_000_000
 };
@@ -51,5 +55,5 @@ export function planAllowsTeamSeats(rawPlan: string | null | undefined): boolean
 /** Минимум баланса для запуска prompt-builder (до фактического списания). */
 export const MIN_TOKENS_PROMPT_BUILDER = 400;
 
-/** Минимум баланса для потоковой генерации. */
+/** Минимум баланса для потоковой генерации. Для FREE эффективный порог задаётся в настройках платформы (обычно 1). */
 export const MIN_TOKENS_GENERATE_STREAM = 1_000;

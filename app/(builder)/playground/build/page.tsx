@@ -222,8 +222,6 @@ export default function PromptBuildPage() {
     filename: string;
   } | null>(null);
   const [shareIsPublic, setShareIsPublic] = useState(false);
-  /** `null` — загрузка; `true` — показать шильдик «Сделано на Лемнити» (GET /share, логика как у публичного футера). */
-  const [studioBrandingBadge, setStudioBrandingBadge] = useState<boolean | null>(null);
   /** Стартовый шаблон Vite+TSX из БД — агент правит файлы, а не пишет с нуля */
   const [buildTemplate, setBuildTemplate] = useState<{
     slug: string;
@@ -444,32 +442,20 @@ export default function PromptBuildPage() {
     }
   }, [previewUrl, sandboxId, shareIsPublic, t]);
 
-  const loadShareBranding = useCallback(async () => {
-    if (!sandboxId) {
-      setStudioBrandingBadge(null);
-      return;
+  /** Перед открытием вкладки «Просмотр» — включаем публичный доступ как при публикации, чтобы загрузился /share/{sandboxId}. */
+  const ensurePublicShareForPreviewTab = useCallback(async () => {
+    if (!sandboxId) return false;
+    if (shareIsPublic) return true;
+    let res = await fetch("/api/sandbox/share", { method: "POST" });
+    if (res.status === 404) {
+      res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
     }
-    try {
-      let res = await fetch("/api/sandbox/share", { credentials: "include" });
-      if (res.status === 404) {
-        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { credentials: "include" });
-      }
-      if (res.status === 503 || !res.ok) {
-        setStudioBrandingBadge(null);
-        return;
-      }
-      const data = (await res.json()) as { showLemnityBranding?: boolean };
-      setStudioBrandingBadge(Boolean(data.showLemnityBranding));
-    } catch {
-      setStudioBrandingBadge(null);
-    }
-  }, [sandboxId]);
+    if (!res.ok) return false;
+    setShareIsPublic(true);
+    return true;
+  }, [sandboxId, shareIsPublic]);
 
   const planFromSession = String(session?.user?.plan ?? "");
-
-  useEffect(() => {
-    void loadShareBranding();
-  }, [loadShareBranding, planFromSession, session?.user?.shareBrandingRemovalPaid]);
 
   const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";
 
@@ -2395,7 +2381,7 @@ export default function PromptBuildPage() {
                   presentationPdfExport={presentationPdfExport}
                   presentationExportsPaid={hasCustomDomainAccess}
                   previewVariant={tab === "document" ? "document" : "default"}
-                  studioBrandingBadge={studioBrandingBadge}
+                  ensurePublicShareForPreviewTab={ensurePublicShareForPreviewTab}
                 />
               </div>
 
@@ -2420,9 +2406,6 @@ export default function PromptBuildPage() {
                   shareBrandingRemovalPaid={Boolean(session?.user?.shareBrandingRemovalPaid)}
                   publishSeedText={idea}
                   onOpenPublishDialog={() => setPublishDialogOpen(true)}
-                  onBrandingPreferenceSaved={() => {
-                    void loadShareBranding();
-                  }}
                 />
               </div>
 

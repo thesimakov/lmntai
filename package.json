@@ -28,7 +28,7 @@
     "db:reset": "docker compose down -v && npm run db:setup",
     "deploy:production": "bash scripts/deploy-production.sh",
     "deploy:remote": "bash scripts/deploy-remote.sh",
-    "postinstall": "patch-package",
+    "postinstall": "prisma generate && patch-package",
     "builder:install": "npm ci --prefix services/lemnity-builder",
     "builder:dev": "npm run dev --prefix services/lemnity-builder",
     "builder:build": "npm run build --prefix services/lemnity-builder",

@@ -28,7 +28,7 @@ describe("pricing economics", () => {
     const team = rows.find((x) => x.plan === "TEAM");
     const free = rows.find((x) => x.plan === "FREE");
 
-    expect(free?.projectedMonthlyCogsRub).toBeCloseTo(6.23, 2);
+    expect(free?.projectedMonthlyCogsRub).toBeCloseTo(0.00623, 5);
     expect(pro?.projectedMonthlyCogsRub).toBeCloseTo(317.95, 2);
     expect(team?.projectedMonthlyCogsRub).toBeCloseTo(1271.8, 1);
     expect(pro?.projectedMarginRub).toBeGreaterThan(0);

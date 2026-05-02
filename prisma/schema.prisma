@@ -109,7 +109,12 @@ model User {
   referrals      User[]          @relation("UserReferrals")
   tokenBalance   Int             @default(0)
   tokenLimit     Int             @default(0)
+  /// Последний календарный месяц (YYYY-MM, локальный TZ БД-хоста приложения),
+  /// за который уже обработано помесячное начисление Pro/Team; остаток токенов переносится на следующий месяц.
+  tokensCalendarMonthCredited String?
   plan           String          @default("FREE")
+  /// Оплаченная подписка «Старт» (99 ₽ / мес): доступ, пока текущий момент раньше этого значения.
+  starterPaidUntil DateTime?
   /// Разовая оплата снятия брендинга на публичном превью (тариф FREE / «Стандарт»).
   shareBrandingRemovalPaidAt DateTime?
   role           String          @default("USER")

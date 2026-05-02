@@ -3,7 +3,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   getSafeServerSession: vi.fn(),
   findUnique: vi.fn(),
-  create: vi.fn()
+  create: vi.fn(),
+  fetchUserStarterPaidUntilById: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -19,6 +20,10 @@ vi.mock("@/lib/prisma", () => ({
   }
 }));
 
+vi.mock("@/lib/user-starter-paid-until-raw", () => ({
+  fetchUserStarterPaidUntilById: mocks.fetchUserStarterPaidUntilById
+}));
+
 import { requireDbUser } from "@/lib/auth-guards";
 
 describe("requireDbUser", () => {
@@ -26,6 +31,7 @@ describe("requireDbUser", () => {
     vi.clearAllMocks();
     vi.stubEnv("NODE_ENV", "test");
     vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.fetchUserStarterPaidUntilById.mockResolvedValue(null);
   });
 
   afterAll(() => {
@@ -51,7 +57,8 @@ describe("requireDbUser", () => {
       plan: "FREE",
       tokenBalance: 100_000,
       tokenLimit: 500_000,
-      adminPermissions: null
+      adminPermissions: null,
+      createdAt: new Date(),
     });
 
     const result = await requireDbUser();
@@ -85,7 +92,8 @@ describe("requireDbUser", () => {
       plan: "FREE",
       tokenBalance: 100_000,
       tokenLimit: 500_000,
-      adminPermissions: null
+      adminPermissions: null,
+      createdAt: new Date(),
     });
 
     const result = await requireDbUser();

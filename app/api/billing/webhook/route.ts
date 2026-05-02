@@ -9,6 +9,11 @@ import {
 import { prisma } from "@/lib/prisma";
 import { applyReferralRevenueFromPayment } from "@/lib/referral-revenue";
 import { SHARE_BRANDING_REMOVAL_PLAN_ID } from "@/lib/share-branding";
+import { STARTER_MONTHLY_SUBSCRIPTION_PLAN_ID } from "@/lib/starter-plan";
+import {
+  fetchUserStarterPaidUntilById,
+  setUserStarterPaidUntilById,
+} from "@/lib/user-starter-paid-until-raw";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 async function postBillingWebhook(req: NextRequest) {
@@ -57,6 +62,18 @@ async function postBillingWebhook(req: NextRequest) {
         where: { id: user.id },
         data: { shareBrandingRemovalPaidAt: new Date() }
       });
+    }
+
+    if (planTag === STARTER_MONTHLY_SUBSCRIPTION_PLAN_ID) {
+      const STARTER_PERIOD_MS = 30 * 24 * 60 * 60 * 1000;
+      const now = new Date();
+      const currentEnd = await fetchUserStarterPaidUntilById(user.id);
+      const anchor =
+        currentEnd && currentEnd.getTime() > now.getTime() ? currentEnd : now;
+      await setUserStarterPaidUntilById(
+        user.id,
+        new Date(anchor.getTime() + STARTER_PERIOD_MS),
+      );
     }
 
     const referralResult =

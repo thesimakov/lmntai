@@ -70,10 +70,11 @@ function defaultFeatureMap(plan: PlanId): Record<string, boolean> {
 }
 
 function defaultRow(plan: PlanId): PlanRow {
+  const freeMins = plan === "FREE";
   return {
     monthlyTokens: MONTHLY_TOKEN_ALLOWANCE[plan],
-    minPromptBuilder: MIN_TOKENS_PROMPT_BUILDER,
-    minStream: MIN_TOKENS_GENERATE_STREAM,
+    minPromptBuilder: freeMins ? 1 : MIN_TOKENS_PROMPT_BUILDER,
+    minStream: freeMins ? 1 : MIN_TOKENS_GENERATE_STREAM,
     teamSeats: plan === "TEAM" ? TEAM_SEAT_LIMIT : 0,
     features: defaultFeatureMap(plan),
   };

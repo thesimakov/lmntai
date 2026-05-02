@@ -3,15 +3,23 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { ExternalLink, Settings, Sparkles } from "lucide-react"
+import { ClipboardList, ExternalLink, Settings, Sparkles, Table2, Users, Zap } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import type { MessageKey, UiLanguage } from "@/lib/i18n"
+import {
+  INTEGRATION_SETTINGS_STORAGE_KEY,
+  readStoredIntegrationSettings,
+  readStoredIntegrationConnections,
+  writeStoredIntegrationConnections
+} from "@/lib/studio-integration-storage"
 
 type IntegrationItem =
   | {
@@ -101,6 +109,27 @@ const integrations: IntegrationItem[] = [
     connected: false,
   },
   {
+    id: "web-forms",
+    nameKey: "integration_forms_name",
+    descriptionKey: "integration_forms_desc",
+    icon: <ClipboardList className="h-6 w-6" aria-hidden />,
+    connected: false,
+  },
+  {
+    id: "spreadsheets",
+    nameKey: "integration_tables_name",
+    descriptionKey: "integration_tables_desc",
+    icon: <Table2 className="h-6 w-6" aria-hidden />,
+    connected: false,
+  },
+  {
+    id: "crm",
+    nameKey: "integration_crm_name",
+    descriptionKey: "integration_crm_desc",
+    icon: <Users className="h-6 w-6" aria-hidden />,
+    connected: false,
+  },
+  {
     id: "yandex-metrika",
     nameKey: "integration_yam_name",
     descriptionKey: "integration_yam_desc",
@@ -118,24 +147,22 @@ const integrations: IntegrationItem[] = [
 const TEMP_HIDDEN_INTEGRATION_IDS = new Set(["vercel", "supabase", "stripe"])
 
 const WIDGET_BUILDER_URL = "https://app.lemnity.ru"
-const INTEGRATION_SETTINGS_STORAGE_KEY = "lemnity.integration.settings.v1"
 const DEFAULT_WIDGET_SCRIPT = `<script
   async
   src="https://app.lemnity.ru/widgets/embed.js"
   data-lmnt-widget="YOUR_WIDGET_ID"
 ></script>`
-const PRO_REQUIRED_INTEGRATION_IDS = new Set(["telegram", "yandex-metrika"])
+const PRO_REQUIRED_INTEGRATION_IDS = new Set([
+  "telegram",
+  "yandex-metrika",
+  "web-forms",
+  "spreadsheets",
+  "crm",
+])
 
-function readStoredIntegrationSettings(): Record<string, Record<string, string>> {
-  if (typeof window === "undefined") return {}
-  try {
-    const raw = window.localStorage.getItem(INTEGRATION_SETTINGS_STORAGE_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw) as Record<string, Record<string, string>>
-    return parsed && typeof parsed === "object" ? parsed : {}
-  } catch {
-    return {}
-  }
+function ymEnabledFromEnv(): boolean {
+  const raw = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
+  return !!raw && Number.isFinite(Number(raw))
 }
 
 function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettingsConfig> {
@@ -190,6 +217,65 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
             label: "Chat ID",
             placeholder: "-1001234567890",
             help: "Target group/channel/user chat id for notifications."
+          }
+        ]
+      },
+      "web-forms": {
+        title: "Lead capture webhook",
+        description: "Incoming form POST target (HTTPS); use your API, Zapier, or Make.",
+        docsUrl: "https://zapier.com/apps/webhooks/integrations",
+        fields: [
+          {
+            key: "webhookUrl",
+            label: "Webhook URL",
+            placeholder: "https://hooks.zapier.com/…",
+            help: "JSON body with submitted fields.",
+            inputType: "password"
+          },
+          {
+            key: "formLabel",
+            label: "Form label (optional)",
+            placeholder: "Contact · landing hero",
+            help: "For your dashboards and filters."
+          }
+        ]
+      },
+      spreadsheets: {
+        title: "Spreadsheet connector",
+        description: "Targets for sync or export workflows (e.g. via Zapier/Make).",
+        docsUrl: "https://developers.google.com/sheets/api/guides/concepts",
+        fields: [
+          {
+            key: "spreadsheetUrl",
+            label: "Sheet URL or ID",
+            placeholder: "https://docs.google.com/spreadsheets/d/…",
+            help: "Google Sheets link or workbook identifier."
+          },
+          {
+            key: "sheetTab",
+            label: "Tab name (optional)",
+            placeholder: "Leads",
+            help: "Target sheet tab when appending rows."
+          }
+        ]
+      },
+      crm: {
+        title: "CRM webhook",
+        description: "Inbound URL for amoCRM / Bitrix24-style automations.",
+        docsUrl: "https://www.amocrm.ru/developers/content/oauth/step-by-step",
+        fields: [
+          {
+            key: "webhookInbound",
+            label: "Inbound webhook URL",
+            placeholder: "https://…",
+            help: "URL your CRM or middleware exposes for lead intake.",
+            inputType: "password"
+          },
+          {
+            key: "pipelineHint",
+            label: "Pipeline notes (optional)",
+            placeholder: "Main funnel · new lead",
+            help: "Local reminder only."
           }
         ]
       },
@@ -263,6 +349,65 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
           }
         ]
       },
+      "web-forms": {
+        title: "Webhook барои шаклҳо",
+        description: "POST ба HTTPS; бэкенд, Zapier ё Make.",
+        docsUrl: "https://zapier.com/apps/webhooks/integrations",
+        fields: [
+          {
+            key: "webhookUrl",
+            label: "URL-и webhook",
+            placeholder: "https://hooks.zapier.com/…",
+            help: "ҷисми JSON бо майдонҳо.",
+            inputType: "password"
+          },
+          {
+            key: "formLabel",
+            label: "Номи шакл (ихтиёрӣ)",
+            placeholder: "Хабрасонӣ · hero",
+            help: "Барои филтр дар панел."
+          }
+        ]
+      },
+      spreadsheets: {
+        title: "Ҷадвал",
+        description: "Ҳадаф барои синк ё экспорт (масалан Zapier).",
+        docsUrl: "https://developers.google.com/sheets/api/guides/concepts",
+        fields: [
+          {
+            key: "spreadsheetUrl",
+            label: "Пайванд ё ID",
+            placeholder: "https://docs.google.com/…",
+            help: "Google Sheets ё санҷиши файл."
+          },
+          {
+            key: "sheetTab",
+            label: "Лист",
+            placeholder: "Лидҳо",
+            help: "Номи барга барои навиштан."
+          }
+        ]
+      },
+      crm: {
+        title: "CRM webhook",
+        description: "AmoCRM, Bitrix ё миёнагар.",
+        docsUrl: "https://www.amocrm.ru/developers/content/oauth/step-by-step",
+        fields: [
+          {
+            key: "webhookInbound",
+            label: "Webhook-и даромад",
+            placeholder: "https://…",
+            help: "URL аз ҷониби CRM ё миёнагар.",
+            inputType: "password"
+          },
+          {
+            key: "pipelineHint",
+            label: "Қайдҳо",
+            placeholder: "",
+            help: "Танҳо дар браузер."
+          }
+        ]
+      },
       "yandex-metrika": {
         title: "Танзимоти Yandex Metrika",
         description: "Счётчик барои аналитикаи боздид ва рӯйдодҳо.",
@@ -332,6 +477,65 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
         }
       ]
     },
+    "web-forms": {
+      title: "Формы и заявки",
+      description: "Webhook для приёма данных (HTTPS); ваш бэкенд, Zapier или Make.",
+      docsUrl: "https://zapier.com/apps/webhooks/integrations",
+      fields: [
+        {
+          key: "webhookUrl",
+          label: "URL webhook",
+          placeholder: "https://hooks.zapier.com/hooks/catch/…",
+          help: "POST с JSON-телом полей формы.",
+          inputType: "password"
+        },
+        {
+          key: "formLabel",
+          label: "Имя формы (необязательно)",
+          placeholder: "Заявка с лендинга",
+          help: "Метка для ваших сценариев."
+        }
+      ]
+    },
+    spreadsheets: {
+      title: "Таблицы",
+      description: "Ссылка или ID для синхронизации и экспорта (часто через Zapier/Make).",
+      docsUrl: "https://developers.google.com/sheets/api/guides/concepts",
+      fields: [
+        {
+          key: "spreadsheetUrl",
+          label: "Таблица (ссылка или ID)",
+          placeholder: "https://docs.google.com/spreadsheets/d/…",
+          help: "Google Sheets или идентификатор книги Excel/OneDrive в вашей связке."
+        },
+        {
+          key: "sheetTab",
+          label: "Имя листа",
+          placeholder: "Заявки",
+          help: "Куда добавлять строки."
+        }
+      ]
+    },
+    crm: {
+      title: "CRM",
+      description: "Входящий webhook для amoCRM, Битрикс24 или посредника.",
+      docsUrl: "https://www.amocrm.ru/developers/content/oauth/step-by-step",
+      fields: [
+        {
+          key: "webhookInbound",
+          label: "Входящий webhook",
+          placeholder: "https://…",
+          help: "URL, который генерирует CRM или промежуточный сервис.",
+          inputType: "password"
+        },
+        {
+          key: "pipelineHint",
+          label: "Воронка и заметки",
+          placeholder: "«Продажи», статус Новая заявка",
+          help: "Только локальная памятка в браузере."
+        }
+      ]
+    },
     "yandex-metrika": {
       title: "Настройки Яндекс Метрики",
       description: "Счетчик аналитики визитов, событий и webvisor.",
@@ -361,6 +565,8 @@ export type IntegrationsProps = {
   showComingSoonFooter?: boolean
   /** Заголовок и ссылка в кабинет (для embedded). */
   showPageIntro?: boolean
+  /** Шапка «Подключите внешние сервисы» + CTA Pro (настройки студии). */
+  studioEmbeddedHero?: boolean
 }
 
 export function Integrations({
@@ -369,7 +575,8 @@ export function Integrations({
   integrationIdsOmit,
   showWidgetsBanner: showWidgetsBannerProp,
   showComingSoonFooter: showComingSoonFooterProp,
-  showPageIntro: showPageIntroProp
+  showPageIntro: showPageIntroProp,
+  studioEmbeddedHero = false
 }: IntegrationsProps) {
   const { t, lang } = useI18n()
   const { data: session } = useSession()
@@ -393,18 +600,21 @@ export function Integrations({
     return list
   }, [integrationIdsFilter, integrationIdsOmit])
   const settingsConfig = useMemo(() => buildSettingsConfig(lang), [lang])
-  const hasProAccess = session?.user?.plan === "PRO" || session?.user?.plan === "TEAM"
-  const ymEnabledByEnv = useMemo(() => {
-    const raw = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
-    return !!raw && Number.isFinite(Number(raw))
-  }, [])
+  const rawPlanUpper = String(session?.user?.plan ?? "").toUpperCase()
+  const hasProAccess =
+    rawPlanUpper === "PRO" || rawPlanUpper === "TEAM" || rawPlanUpper === "BUSINESS"
 
-  const [connections, setConnections] = useState<Record<string, boolean>>(() =>
-    integrations.reduce((acc, int) => {
-      const connected = int.id === "yandex-metrika" ? ymEnabledByEnv : int.connected
-      return { ...acc, [int.id]: connected }
-    }, {})
-  )
+  const [connections, setConnections] = useState<Record<string, boolean>>(() => {
+    const stored = readStoredIntegrationConnections()
+    const base = integrations.reduce(
+      (acc, int) => {
+        const connected = int.id === "yandex-metrika" ? ymEnabledFromEnv() : int.connected
+        return { ...acc, [int.id]: connected }
+      },
+      {} as Record<string, boolean>
+    )
+    return { ...base, ...stored }
+  })
   const [activeSettingsId, setActiveSettingsId] = useState<string | null>(null)
   const [integrationSettings, setIntegrationSettings] = useState<Record<string, Record<string, string>>>(() =>
     readStoredIntegrationSettings()
@@ -428,6 +638,11 @@ export function Integrations({
       // ignore
     }
   }, [integrationSettings])
+
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    writeStoredIntegrationConnections(connections)
+  }, [connections])
 
   useEffect(() => {
     const counterId = process.env.NEXT_PUBLIC_YANDEX_METRIKA_ID
@@ -501,6 +716,49 @@ export function Integrations({
     )
   }
 
+  const studioEmbeddedHeroBlock =
+    embedded && studioEmbeddedHero ? (
+      <Card className="mb-4 gap-0 overflow-hidden border-border py-0 shadow-sm">
+        <CardContent className="space-y-0 p-4 sm:p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border pb-4">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">
+                {t("integrations_studio_connect_title")}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {t("integrations_studio_connect_subtitle")}
+              </p>
+            </div>
+            <Button
+              type="button"
+              size="sm"
+              className="shrink-0 gap-2 rounded-full bg-violet-600 px-4 text-white shadow-sm hover:bg-violet-700"
+              onClick={openPricing}
+            >
+              <Zap className="h-4 w-4 shrink-0" aria-hidden />
+              {t("integrations_studio_upgrade_pro")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    ) : null
+
+  const studioEmbeddedFootnote =
+    embedded && studioEmbeddedHero ? (
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-muted-foreground">
+        <span>
+          {lang === "en"
+            ? "Values are stored in this browser (localStorage). Server intake uses your webhook or Zapier/Make."
+            : lang === "tg"
+              ? "Қиматҳо дар ин браузер (localStorage) нигоҳ дошта мешаванд."
+              : "Значения хранятся в этом браузере (localStorage). Приём на сервере — через webhook или Zapier/Make."}
+        </span>
+        <Button variant="link" className="h-auto p-0 text-xs font-medium" asChild>
+          <Link href="/integrations">{t("build_settings_integrations_open_dashboard")}</Link>
+        </Button>
+      </div>
+    ) : null
+
   const pageIntro = embedded ? (
     <div className="mb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -522,6 +780,7 @@ export function Integrations({
 
   const inner = (
     <>
+      {studioEmbeddedHeroBlock}
       {showPageIntro ? pageIntro : null}
 
       {showWidgetsBanner ? (
@@ -724,6 +983,8 @@ export function Integrations({
       </div>
 
       {/* Coming Soon */}
+      {studioEmbeddedFootnote}
+
       {showComingSoonFooter ? (
       <motion.div
         initial={embedded ? false : { opacity: 0, y: 20 }}

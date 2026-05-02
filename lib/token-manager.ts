@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from "@/lib/password-crypto";
 import { prisma } from "@/lib/prisma";
 import { getEffectiveMonthlyAllowance } from "@/lib/platform-plan-settings";
 import { ensureUserVirtualWorkspace } from "@/lib/user-virtual-storage";
+import { calendarMonthKeyFromLocal } from "@/lib/token-monthly-rollover";
 import { MIN_TOKENS_GENERATE_STREAM, MONTHLY_TOKEN_ALLOWANCE, normalizePlanId, type PlanId } from "@/lib/plan-config";
 
 export type Plan = PlanId;
@@ -155,12 +156,15 @@ export function getPlanLimit(plan: string) {
 export async function applyPlan(userId: string, plan: string) {
   const normalized = normalizePlanId(plan);
   const limit = await getEffectiveMonthlyAllowance(normalized);
+  const monthKey =
+    normalized === "PRO" || normalized === "TEAM" ? calendarMonthKeyFromLocal() : null;
   return prisma.user.update({
     where: { id: userId },
     data: {
       plan: normalized,
       tokenLimit: limit,
-      tokenBalance: limit
+      tokenBalance: limit,
+      tokensCalendarMonthCredited: monthKey
     }
   });
 }

@@ -185,3 +185,41 @@
   animation: landing-blob-drift-c 18s ease-in-out infinite;
   animation-delay: -5s;
 }
+
+/* Тёмный герой главной страницы: низ со свечением синий / фиолетовый */
+.landing-backdrop.landing-backdrop--dark {
+  background: radial-gradient(
+      ellipse 110% 50% at 50% 100%,
+      rgba(91, 99, 255, 0.25),
+      rgba(59, 130, 246, 0.12) 38%,
+      transparent 62%
+    ),
+    linear-gradient(180deg, #07070d 0%, #06060c 52%, #040409 100%);
+}
+
+.landing-backdrop.landing-backdrop--dark .landing-backdrop__blob--a {
+  left: 50%;
+  top: auto;
+  right: auto;
+  bottom: -18%;
+  width: min(110vw, 920px);
+  height: min(70vw, 480px);
+  transform: translateX(-50%);
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 0%,
+    rgba(129, 140, 248, 0.4),
+    rgba(59, 130, 246, 0.15) 55%,
+    transparent 72%
+  );
+  animation: landing-blob-drift-a 28s ease-in-out infinite;
+}
+
+.landing-backdrop.landing-backdrop--dark .landing-backdrop__blob--b {
+  opacity: 0.35;
+  filter: blur(80px);
+}
+
+.landing-backdrop.landing-backdrop--dark .landing-backdrop__blob--c {
+  opacity: 0.2;
+  filter: blur(72px);
+}

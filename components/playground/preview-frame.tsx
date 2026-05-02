@@ -31,6 +31,7 @@ import {
 } from "@/lib/visual-preview-editor";
 import { ensureLmntLayerStylesInDocument } from "@/lib/lmnt-layer-spec";
 import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
+import { buildPublicSharePageUrl } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
 
 type DeviceMode = "desktop" | "tablet" | "mobile";
@@ -98,8 +99,10 @@ type PreviewFrameProps = {
   presentationPdfExport?: { url: string; filename: string } | null;
   /** Экспорт презентации в PDF / скачивание .pptx (тарифы Pro и Team) */
   presentationExportsPaid?: boolean;
-  /** Отдельный режим «Редактор документа»: без эмуляции устройств, фокус на печатной области */
+  /** Вкладка «Документ»: без эмуляции устройств, фокус на печатной области */
   previewVariant?: "default" | "document";
+  /** Сделать превью доступным по /share/{id} перед открытием «Просмотр» во вкладке. */
+  ensurePublicShareForPreviewTab?: () => Promise<boolean>;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -114,7 +117,8 @@ export function PreviewFrame({
   projectKind = null,
   presentationPdfExport = null,
   presentationExportsPaid = false,
-  previewVariant = "default"
+  previewVariant = "default",
+  ensurePublicShareForPreviewTab
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
@@ -452,21 +456,35 @@ export function PreviewFrame({
   }
 
   /**
-   * Превью в новой вкладке — URL песочницы с теми же параметрами, что и после сохранения (`_sb`).
-   * Сначала window.open; при блокировке — программный <a target=_blank>.
+   * Превью в новой вкладке — страница `/share/{sandboxId}` (плашка «Публичное превью» и шильдик Lemnity согласно тарифу),
+   * после при необходимости POST включения публичного доступа.
    */
-  function openPreviewInNewTab() {
-    const u = new URL(previewUrl, typeof window !== "undefined" ? window.location.href : "http://localhost");
-    u.searchParams.set("_open", String(Date.now()));
-    const rev = visualSaveRevisionRef.current;
-    if (rev > 0) {
-      u.searchParams.set("_saved", String(rev));
+  async function openPreviewInNewTab() {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    let href: string;
+
+    if (ensurePublicShareForPreviewTab) {
+      const ok = await ensurePublicShareForPreviewTab();
+      if (!ok) {
+        toast.error(t("playground_build_share_error_instant"));
+        return;
+      }
+      const u = new URL(buildPublicSharePageUrl(origin, sandboxId));
+      u.searchParams.set("_open", String(Date.now()));
+      href = `${u.pathname}${u.search}${u.hash}`;
+    } else {
+      const u = new URL(previewUrl, origin || "http://localhost");
+      u.searchParams.set("_open", String(Date.now()));
+      const rev = visualSaveRevisionRef.current;
+      if (rev > 0) {
+        u.searchParams.set("_saved", String(rev));
+      }
+      const sync = sandboxSyncAtRef.current;
+      if (sync != null) {
+        u.searchParams.set("_sb", String(sync));
+      }
+      href = `${u.pathname}${u.search}${u.hash}`;
     }
-    const sync = sandboxSyncAtRef.current;
-    if (sync != null) {
-      u.searchParams.set("_sb", String(sync));
-    }
-    const href = `${u.pathname}${u.search}${u.hash}`;
 
     let opened: Window | null = null;
     try {
@@ -811,7 +829,13 @@ export function PreviewFrame({
             </Button>
           ) : null}
           {!isPptx ? (
-            <Button size="sm" variant="outline" className="h-8" type="button" onClick={openPreviewInNewTab}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              type="button"
+              onClick={() => void openPreviewInNewTab()}
+            >
               <ExternalLink className="h-4 w-4" />
               {t("build_preview_open_tab")}
             </Button>

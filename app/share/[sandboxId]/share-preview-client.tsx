@@ -8,7 +8,7 @@ type SharePreviewClientProps = {
   showLemnityBranding: boolean;
 };
 
-/** Публичная оболочка превью: iframe на /api/sandbox + тот же шильдик, что в студии. */
+/** Публичная оболочка превью: iframe на /api/sandbox + шильдик Lemnity (не в редакторе студии). */
 export function SharePreviewClient({ sandboxId, showLemnityBranding }: SharePreviewClientProps) {
   const src = sandboxId ? `/api/sandbox/${encodeURIComponent(sandboxId)}` : "/api/sandbox";
   return (
