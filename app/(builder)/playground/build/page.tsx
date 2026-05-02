@@ -1335,7 +1335,7 @@ export default function PromptBuildPage() {
         if (!res.ok) {
           const msg = await res.text().catch(() => "");
           if (!mountedRef.current || controller.signal.aborted || isStaleCoachResponse()) return;
-          push("assistant", `❌ ${msg || "Не удалось получить ответ коуча"}`);
+          push("assistant", `❌ ${formatLemnityBridgeErrorBody(msg || "", t)}`);
           setCoachAwaitingConfirm(false);
           setPendingTechnicalPrompt(null);
           setStage("questions");
@@ -1424,7 +1424,7 @@ export default function PromptBuildPage() {
         }
       }
     },
-    [agentHint, idea, projectKind, push]
+    [agentHint, idea, projectKind, push, t]
   );
 
   useEffect(() => {
@@ -1710,7 +1710,7 @@ export default function PromptBuildPage() {
     if (!res.ok) {
       const msg = await res.text();
       if (!mountedRef.current || controller.signal.aborted) return;
-      push("assistant", `❌ ${msg || "Не удалось получить вопросы"}`);
+      push("assistant", `❌ ${formatLemnityBridgeErrorBody(msg || "", t)}`);
       setStage("idea");
       return;
     }
@@ -1776,7 +1776,7 @@ export default function PromptBuildPage() {
     if (!res.ok) {
       const msg = await res.text();
       if (!mountedRef.current || controller.signal.aborted) return;
-      push("assistant", `❌ ${msg || "Не удалось собрать промпт"}`);
+      push("assistant", `❌ ${formatLemnityBridgeErrorBody(msg || "", t)}`);
       return;
     }
 
@@ -1874,7 +1874,7 @@ export default function PromptBuildPage() {
       if (!response.ok || !response.body) {
         const message = await response.text();
         if (!isCurrentRequest()) return;
-        push("assistant", `❌ ${message || "Ошибка генерации"}`);
+        push("assistant", `❌ ${formatLemnityBridgeErrorBody(message || "", t)}`);
         setStage("ready");
         setMode("idle");
         return;
@@ -1898,7 +1898,10 @@ export default function PromptBuildPage() {
           push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
         }
         if (eventData.type === "error") {
-          push("assistant", `❌ ${eventData.message}`);
+          push(
+            "assistant",
+            `❌ ${formatLemnityBridgeErrorBody(eventData.message || "", t)}`
+          );
           setMode("idle");
           setStage("ready");
         }

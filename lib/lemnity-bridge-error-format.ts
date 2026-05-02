@@ -4,15 +4,37 @@ type TFn = (key: MessageKey) => string;
 
 /** nginx/прокси часто отдают HTML-страницу 502/504 вместо JSON/SSE — в чате не показывать сырой HTML. */
 export function looksLikeHtmlGatewayGarbage(text: string): boolean {
-  const s = text;
-  if (!s.trim()) return false;
-  if (/^<\s*!DOCTYPE\s+html/i.test(s.trim())) return true;
-  if (/^<\s*html[\s>]/i.test(s.trim())) return true;
-  if (/<\s*head\s*>/i.test(s) && /<\s*body\s*>/i.test(s)) return true;
-  if (/\b504\s+Gateway\s+Time-?out\b/i.test(s)) return true;
-  if (/\b502\s+Bad\s+Gateway\b/i.test(s)) return true;
-  if (/\b503\s+Service\s+Unavailable\b/i.test(s)) return true;
-  if (/<title>\s*(502|503|504)\b/i.test(s)) return true;
+  if (!text.trim()) return false;
+  const withoutBom = text.replace(/^\uFEFF/, "");
+  const stripped = withoutBom
+    .replace(/^[\s\u200B\u00A0]*❌+[\s\u200B\u00A0]*/gu, "")
+    .trimStart();
+  const head = stripped.slice(0, 16384);
+
+  if (/^<\s*!DOCTYPE\s+html/i.test(stripped)) return true;
+  if (/^<\s*html\b/i.test(stripped)) return true;
+  if (/<\s*html\b/i.test(head) && /<\s*title>\s*(502|503|504)\b/i.test(head)) return true;
+  if (
+    /<\s*html\b/i.test(head) &&
+    /nginx\s*\//i.test(head) &&
+    /\b(502|503|504)\b/.test(head)
+  ) {
+    return true;
+  }
+  if (/<!--\s*a padding to disable MSIE and Chrome friendly error page\s*-->/i.test(text)) {
+    return true;
+  }
+  if (
+    /<\s*head\s*>/i.test(head) &&
+    /<\s*body\s*>/i.test(head) &&
+    (/\b(502|503|504)\b/.test(head) || /nginx\s*\//i.test(head))
+  ) {
+    return true;
+  }
+  if (/\b504\s+Gateway\s+Time-?out\b/i.test(text)) return true;
+  if (/\b502\s+Bad\s+Gateway\b/i.test(text)) return true;
+  if (/\b503\s+Service\s+Unavailable\b/i.test(text)) return true;
+  if (/<title>\s*(502|503|504)\b/i.test(text)) return true;
   return false;
 }
 
@@ -64,6 +86,9 @@ export function formatLemnityBridgeErrorBody(text: string, t: TFn): string {
     }
   } catch {
     // not JSON
+  }
+  if (looksLikeHtmlGatewayGarbage(trimmed)) {
+    return t("playground_lemnity_api_network_error");
   }
   if (trimmed.length <= 300) {
     return trimmed;

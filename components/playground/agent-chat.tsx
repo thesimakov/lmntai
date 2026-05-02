@@ -45,6 +45,7 @@ import {
 import { TypingAssistantContent } from "@/components/playground/typing-assistant-content";
 import { cn } from "@/lib/utils";
 import type { UiLanguage } from "@/lib/i18n";
+import { formatLemnityAssistantStreamText } from "@/lib/lemnity-bridge-error-format";
 
 function formatActionDurationMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "";
@@ -429,7 +430,10 @@ export function AgentChat({
                         "whitespace-pre-wrap rounded-2xl rounded-tl-sm border border-white/50 bg-white/95 px-3.5 py-2.5 text-sm leading-relaxed text-foreground [word-break:break-word] shadow-sm ring-1 ring-stone-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-white/[0.04]"
                       )}
                     >
-                      <TypingAssistantContent text={m.content} messageId={m.id} />
+                      <TypingAssistantContent
+                        text={formatLemnityAssistantStreamText(m.content, t)}
+                        messageId={m.id}
+                      />
                     </div>
                     {m.sentAt != null ? (
                       <p className="mt-0.5 pl-1 text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
@@ -477,7 +481,10 @@ export function AgentChat({
                   )}
                 >
                   {m.role === "assistant" ? (
-                    <TypingAssistantContent text={m.content} messageId={m.id} />
+                    <TypingAssistantContent
+                      text={formatLemnityAssistantStreamText(m.content, t)}
+                      messageId={m.id}
+                    />
                   ) : (
                     m.content
                   )}
