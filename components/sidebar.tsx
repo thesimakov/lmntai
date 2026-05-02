@@ -13,12 +13,10 @@ import {
   CreditCard,
   FolderKanban,
   HelpCircle,
-  Home,
   LogOut,
   Menu,
   Puzzle,
   Settings,
-  SunMoon,
   Users,
   UserCircle2,
   Shield
@@ -62,13 +60,9 @@ type AccountMenuRow =
     };
 
 const ACCOUNT_MENU_ROWS: AccountMenuRow[] = [
-  { type: "link", href: "/profile", icon: UserCircle2, labelKey: "nav_profile" },
-  { type: "link", href: "/settings", icon: Settings, labelKey: "settings_title" },
-  { type: "link", href: "/settings", icon: SunMoon, labelKey: "sidebar_popover_appearance", chevron: true },
   { type: "link", href: "/integrations", icon: HelpCircle, labelKey: "sidebar_popover_support", chevron: true },
   { type: "link", href: "/", icon: BookOpen, labelKey: "sidebar_popover_docs", chevron: true },
   { type: "link", href: "/team", icon: Users, labelKey: "sidebar_popover_community" },
-  { type: "link", href: "/playground", icon: Home, labelKey: "sidebar_popover_home" },
   { type: "logout" }
 ];
 
@@ -199,32 +193,6 @@ function SidebarBody({ className }: { className?: string }) {
             sideOffset={10}
             className="z-[200] w-64 rounded-2xl border bg-popover p-2 shadow-xl"
           >
-            <div className="px-2 pb-2 pt-1">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-sm font-semibold text-white">
-                  {initials}
-                </div>
-                <p className="min-w-0 truncate text-sm font-medium text-foreground">
-                  {session?.user?.email ?? "—"}
-                </p>
-              </div>
-              <p className="mt-2 pl-[42px] text-xs text-muted-foreground">
-                {tokenBalance === null ? (
-                  <>
-                    {t("playground_home_tokens")} {t("playground_home_tokens_none")}
-                  </>
-                ) : (
-                  <>
-                    {t("playground_home_tokens")}{" "}
-                    <span className="font-medium text-foreground">
-                      {tokenBalance.toLocaleString(numberLocale)}
-                    </span>{" "}
-                    {t("playground_home_tokens_suffix")}
-                  </>
-                )}
-              </p>
-            </div>
-            <DropdownMenuSeparator className="my-1 bg-border/80" />
             {ACCOUNT_MENU_ROWS.map((row, idx) => {
               if (row.type === "logout") {
                 return (
