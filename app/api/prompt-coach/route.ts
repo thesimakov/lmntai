@@ -16,6 +16,9 @@ import { hasEnoughTokens } from "@/lib/token-manager";
 import { getProjectKindPromptBuilderContextRu, isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 async function postPromptCoach(req: NextRequest) {
   try {
     const body = (await req.json().catch(() => null)) as

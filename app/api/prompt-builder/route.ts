@@ -17,6 +17,9 @@ import {
 } from "@/lib/lemnity-ai-prompt-spec";
 import { withApiLogging } from "@/lib/with-api-logging";
 
+export const runtime = "nodejs";
+export const maxDuration = 300;
+
 function safeJsonParse<T>(text: string): T | null {
   try {
     return JSON.parse(text) as T;

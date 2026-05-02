@@ -17,6 +17,7 @@ import { appendProjectMessage } from "@/lib/project-storage";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type Usage = {
   prompt_tokens: number;
