@@ -26,13 +26,15 @@ export function LemnityStudioBadge({ className }: LemnityStudioBadgeProps) {
       rel="noopener noreferrer"
       aria-label={t("build_studio_badge_aria")}
       className={cn(
-        "inline-flex max-w-[min(100%,20rem)] items-center gap-2 rounded-full border border-white/10 bg-[#1a1a1a] px-3 py-1.5 text-sm shadow-lg transition-opacity hover:opacity-95",
+        "inline-flex max-w-[min(100%,14rem)] items-center gap-1 rounded-full border border-white/10 bg-[#1a1a1a] px-2 py-1 text-xs shadow-md transition-opacity hover:opacity-95",
         className
       )}
     >
-      <span className="shrink-0 text-[13px] text-zinc-400">{t("build_studio_badge_prefix")}</span>
+      <span className="shrink-0 text-[var(--tw-ring-offset-color)]">
+        {t("build_studio_badge_prefix")}
+      </span>
       <svg
-        className="h-4 w-4 shrink-0"
+        className="h-3 w-3 shrink-0"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"

@@ -1,0 +1,2 @@
+{"ts":"2026-05-02T22:23:57.229Z","action":"sandbox.create","payload":{"mode":"memory","title":"bt-web-studio"}}
+{"ts":"2026-05-02T22:23:58.477Z","action":"sandbox.apply_lovable","payload":{"mode":"memory","files":18}}
