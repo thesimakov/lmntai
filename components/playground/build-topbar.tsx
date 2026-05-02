@@ -2,7 +2,6 @@
 
 import {
   BookOpen,
-  Boxes,
   Code2,
   Database,
   Eye,
@@ -13,7 +12,6 @@ import {
   MoreHorizontal,
   Printer,
   PenLine,
-  RotateCw,
   Settings2,
   Upload
 } from "lucide-react";
@@ -31,6 +29,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 export type BuildWorkspaceTab = "preview" | "document" | "settings" | "code";
@@ -46,14 +45,14 @@ type BuildPreviewChromeProps = {
   sandboxId?: string | null;
   onPublish: () => void;
   publishDisabled?: boolean;
-  addressPath: string;
-  onRefresh?: () => void;
   /** На вкладке «Превью» — визуальный редактор макета в iframe */
   previewEditorToggle?: {
     active: boolean;
     onToggle: () => void;
   };
   onHistoryClick?: () => void;
+  /** Левая колонка чата свернута вручную — показать кнопку раскрытия в шапке превью */
+  expandChatRailSlot?: ReactNode;
 };
 
 export function BuildPreviewChrome({
@@ -64,10 +63,9 @@ export function BuildPreviewChrome({
   sandboxId = null,
   onPublish,
   publishDisabled = false,
-  addressPath,
-  onRefresh,
   previewEditorToggle,
-  onHistoryClick
+  onHistoryClick,
+  expandChatRailSlot = null
 }: BuildPreviewChromeProps) {
   const [taskFilesOpen, setTaskFilesOpen] = useState(false);
   const { t } = useI18n();
@@ -77,6 +75,11 @@ export function BuildPreviewChrome({
     <div className="flex shrink-0 min-w-0 flex-col border-b border-border bg-background">
       <div className="flex w-full min-w-0 flex-col gap-2 px-2 py-1.5 sm:flex-row sm:items-center sm:gap-2">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
+          {expandChatRailSlot ? (
+            <TooltipProvider delayDuration={400}>
+              <span className="mr-0.5 flex shrink-0 items-center">{expandChatRailSlot}</span>
+            </TooltipProvider>
+          ) : null}
           <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
             <Button
               type="button"
@@ -189,15 +192,6 @@ export function BuildPreviewChrome({
               <DropdownMenuItem
                 className="gap-2"
                 onSelect={() => {
-                  router.push("/playground/box");
-                }}
-              >
-                <Boxes className="h-4 w-4" />
-                {t("build_tab_box")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onSelect={() => {
                   router.push("/docs");
                 }}
               >
@@ -232,23 +226,6 @@ export function BuildPreviewChrome({
         </div>
       </div>
 
-      {tab === "preview" || tab === "document" ? (
-        <div className="flex items-center gap-2 border-t border-border/70 px-3 py-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground"
-            aria-label={t("build_aria_refresh_preview")}
-            onClick={onRefresh}
-          >
-            <RotateCw className="h-4 w-4" />
-          </Button>
-          <div className="flex min-h-9 min-w-0 flex-1 items-center gap-2 border border-border bg-muted/30 px-3 py-2">
-            <span className="truncate font-mono text-xs text-muted-foreground">{addressPath}</span>
-          </div>
-        </div>
-      ) : null}
       <BuildTaskFilesDialog open={taskFilesOpen} onOpenChange={setTaskFilesOpen} sandboxId={sandboxId} />
     </div>
   );

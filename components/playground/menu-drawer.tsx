@@ -2,7 +2,6 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Boxes,
   ChevronDown,
   ChevronRight,
   Clock3,
@@ -28,11 +27,59 @@ type MenuDrawerProps = {
   leftCollapsed?: boolean;
   /** Узкая колонка студии: только иконки, меню справа от rail */
   compact?: boolean;
+  /** compact: «stack» — вертикаль у rail; «inline» — ряд в шапке чата */
+  toolbarLayout?: "stack" | "inline";
+  /** Не показывать кнопку сворачивания rail (например, вынесена в `studioToolbarTrailingSlot` у AgentChat) */
+  hideCollapseButton?: boolean;
   /** После bootstrap: не запрашивать API моста до готовности */
   lemnityAiBridgeReady: boolean;
   /** Режим чата через мост Lemnity AI */
   shouldUseLemnityAiBridge: boolean;
 };
+
+export type StudioChatRailCollapseButtonProps = {
+  leftCollapsed: boolean;
+  onToggleCollapse: () => void;
+  compact?: boolean;
+  /** Без обёртки Tooltip (режим шапки без компактных подсказок) */
+  showTooltip?: boolean;
+  tooltipSide?: "top" | "right" | "bottom" | "left";
+};
+
+export function StudioChatRailCollapseButton({
+  leftCollapsed,
+  onToggleCollapse,
+  compact = false,
+  showTooltip = true,
+  tooltipSide = "bottom"
+}: StudioChatRailCollapseButtonProps) {
+  const { t } = useI18n();
+
+  const button = (
+    <Button
+      size="icon"
+      variant="outline"
+      className={cn("rounded-2xl", compact ? "h-9 w-9" : "h-10 w-10")}
+      onClick={onToggleCollapse}
+      aria-label={leftCollapsed ? t("playground_menu_expand_left") : t("playground_menu_collapse_left")}
+    >
+      {leftCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+    </Button>
+  );
+
+  if (!showTooltip) {
+    return button;
+  }
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{button}</TooltipTrigger>
+      <TooltipContent side={tooltipSide} align="center">
+        {leftCollapsed ? t("playground_menu_expand_left") : t("playground_menu_collapse_left")}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
 
 type MenuProfileTokens = {
   tokenBalance: number;
@@ -58,6 +105,8 @@ export function MenuDrawer({
   onToggleCollapse,
   leftCollapsed,
   compact,
+  toolbarLayout = "stack",
+  hideCollapseButton = false,
   lemnityAiBridgeReady,
   shouldUseLemnityAiBridge
 }: MenuDrawerProps) {
@@ -273,70 +322,21 @@ export function MenuDrawer({
     </Button>
   );
 
-  const collapseButton =
-    onToggleCollapse ? (
-      <Button
-        size="icon"
-        variant="outline"
-        className={cn("rounded-2xl", compact ? "h-9 w-9" : "h-10 w-10")}
-        onClick={onToggleCollapse}
-        aria-label={leftCollapsed ? t("playground_menu_expand_left") : t("playground_menu_collapse_left")}
-      >
-        {leftCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-      </Button>
-    ) : null;
+  const toolbarInline = Boolean(compact && toolbarLayout === "inline");
+  const compactTooltipSide = toolbarInline ? ("bottom" as const) : ("right" as const);
+  const mainMenuPositionClass = toolbarInline
+    ? "left-0 top-full mt-1 max-w-[min(340px,calc(100vw-2rem))]"
+    : compact
+      ? "left-full top-0 ml-2"
+      : "left-0 top-[46px]";
+  const historyPanelPositionClass = toolbarInline
+    ? "left-0 top-full mt-1 max-w-[min(320px,calc(100vw-2rem))]"
+    : compact
+      ? "left-full top-[104px] ml-2"
+      : "left-[110px] top-[46px]";
 
-  return (
-    <div
-      className={cn(
-        "relative flex gap-2",
-        compact ? "w-full flex-col items-center gap-2" : "items-center"
-      )}
-    >
-      {compact ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{projectMenuButton}</TooltipTrigger>
-          <TooltipContent side="right" align="center">
-            {t("playground_menu_project_label")} {projectTitleShort}
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        projectMenuButton
-      )}
-
-      {compact ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{historyButton}</TooltipTrigger>
-          <TooltipContent side="right" align="center">
-            {t("playground_menu_history_tooltip")}
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        historyButton
-      )}
-
-      {onToggleCollapse
-        ? compact
-          ? (
-              <Tooltip>
-                <TooltipTrigger asChild>{collapseButton}</TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  {leftCollapsed ? t("playground_menu_expand_left") : t("playground_menu_collapse_left")}
-                </TooltipContent>
-              </Tooltip>
-            )
-          : (
-              collapseButton
-            )
-        : null}
-
-      {open ? (
-        <div
-          className={cn(
-            "absolute z-50 w-[340px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
-            compact ? "left-full top-0 ml-2" : "left-0 top-[46px]"
-          )}
-        >
+  const mainMenuBodyJsx = (
+    <>
           <button
             type="button"
             className="flex w-full items-center gap-2 rounded-2xl bg-white/70 px-2 py-2 text-left hover:bg-white"
@@ -364,21 +364,6 @@ export function MenuDrawer({
               <p className="truncate text-sm font-semibold text-zinc-900">{projectTitle}</p>
               <p className="text-xs text-zinc-500">{t("playground_menu_to_account")}</p>
             </div>
-          </button>
-
-          <button
-            type="button"
-            className="mt-2 flex w-full items-center justify-between gap-2 rounded-2xl border border-black/10 bg-white/70 px-3 py-2.5 text-left text-sm font-medium text-zinc-900 hover:bg-white"
-            onClick={() => {
-              setOpen(false);
-              router.push("/playground/box");
-            }}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <Boxes className="h-4 w-4 shrink-0 text-zinc-600" />
-              <span className="truncate">{t("build_tab_box")}</span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-zinc-500" />
           </button>
 
           <div className="mt-2 rounded-3xl border border-black/10 bg-white/70 p-3">
@@ -461,16 +446,10 @@ export function MenuDrawer({
               <ChevronRight className="h-4 w-4 text-zinc-500" />
             </button>
           </div>
-        </div>
-      ) : null}
+    </>
+  );
 
-      {historyOpen ? (
-        <div
-          className={cn(
-            "absolute z-50 w-[320px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
-            compact ? "left-full top-[104px] ml-2" : "left-[110px] top-[46px]"
-          )}
-        >
+  const historyCardJsx = (
           <div className="rounded-2xl border border-black/10 bg-white/70 p-3">
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs font-semibold text-zinc-700">{t("playground_menu_history_header")}</p>
@@ -599,6 +578,117 @@ export function MenuDrawer({
               )}
             </div>
           </div>
+  );
+
+  if (toolbarInline) {
+    return (
+      <div className="relative flex shrink-0 flex-row items-center gap-0.5">
+        <div className="relative shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>{projectMenuButton}</TooltipTrigger>
+            <TooltipContent side="bottom" align="center">
+              {t("playground_menu_project_label")} {projectTitleShort}
+            </TooltipContent>
+          </Tooltip>
+          {open ? (
+            <div
+              className={cn(
+                "absolute z-[100] w-[340px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
+                "left-0 top-full mt-1 max-w-[min(340px,calc(100vw-2rem))]"
+              )}
+            >
+              {mainMenuBodyJsx}
+            </div>
+          ) : null}
+        </div>
+        <div className="relative shrink-0">
+          <Tooltip>
+            <TooltipTrigger asChild>{historyButton}</TooltipTrigger>
+            <TooltipContent side="bottom" align="center">
+              {t("playground_menu_history_tooltip")}
+            </TooltipContent>
+          </Tooltip>
+          {historyOpen ? (
+            <div
+              className={cn(
+                "absolute z-[100] w-[320px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
+                "left-0 top-full mt-1 max-w-[min(320px,calc(100vw-2rem))]"
+              )}
+            >
+              {historyCardJsx}
+            </div>
+          ) : null}
+        </div>
+        {onToggleCollapse && !hideCollapseButton ? (
+          <StudioChatRailCollapseButton
+            leftCollapsed={Boolean(leftCollapsed)}
+            onToggleCollapse={onToggleCollapse}
+            compact={Boolean(compact)}
+            tooltipSide="bottom"
+          />
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={cn(
+        "relative flex gap-2",
+        compact ? "w-full flex-col items-center gap-2" : "items-center"
+      )}
+    >
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{projectMenuButton}</TooltipTrigger>
+          <TooltipContent side={compactTooltipSide} align="center">
+            {t("playground_menu_project_label")} {projectTitleShort}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        projectMenuButton
+      )}
+
+      {compact ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{historyButton}</TooltipTrigger>
+          <TooltipContent side={compactTooltipSide} align="center">
+            {t("playground_menu_history_tooltip")}
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        historyButton
+      )}
+
+      {onToggleCollapse && !hideCollapseButton ? (
+        <StudioChatRailCollapseButton
+          leftCollapsed={Boolean(leftCollapsed)}
+          onToggleCollapse={onToggleCollapse}
+          compact={Boolean(compact)}
+          showTooltip={Boolean(compact)}
+          tooltipSide={compactTooltipSide}
+        />
+      ) : null}
+
+      {open ? (
+        <div
+          className={cn(
+            "absolute z-[100] w-[340px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
+            mainMenuPositionClass
+          )}
+        >
+          {mainMenuBodyJsx}
+        </div>
+      ) : null}
+
+      {historyOpen ? (
+        <div
+          className={cn(
+            "absolute z-[100] w-[320px] rounded-3xl border border-border bg-popover p-2 text-popover-foreground shadow-xl",
+            historyPanelPositionClass
+          )}
+        >
+          {historyCardJsx}
         </div>
       ) : null}
     </div>

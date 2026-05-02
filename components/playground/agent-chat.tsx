@@ -24,6 +24,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { BuildTemplateDialogBody } from "@/components/playground/build-template-dialog-body";
 import {
   DropdownMenu,
@@ -46,6 +47,9 @@ import { TypingAssistantContent } from "@/components/playground/typing-assistant
 import { cn } from "@/lib/utils";
 import type { UiLanguage } from "@/lib/i18n";
 import { formatLemnityAssistantStreamText } from "@/lib/lemnity-bridge-error-format";
+
+/** Ширина строки тулбара студии (px): меньше — скрываем подпись модели, остаётся иконка. */
+const STUDIO_CHAT_TOOLBAR_COMPACT_MAX_PX = 320;
 
 function formatActionDurationMs(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return "";
@@ -123,6 +127,10 @@ type AgentChatProps = {
     onToggle: () => void;
     disabled?: boolean;
   } | null;
+  /** Слот слева в шапке студии (навигация, меню проекта) */
+  studioToolbarSlot?: React.ReactNode;
+  /** Слот справа в шапке студии (например, сворачивание колонки чата) */
+  studioToolbarTrailingSlot?: React.ReactNode;
   /** Выбранный шаблон сборки (Vite+TSX с БД); null — генерация без базы. */
   buildTemplate?: { slug: string; name: string; defaultUserPrompt?: string } | null;
   onBuildTemplateChange?: (next: { slug: string; name: string; defaultUserPrompt: string } | null) => void;
@@ -149,6 +157,8 @@ export function AgentChat({
   agentTask = "generate-stream",
   onModelHintChange,
   visualEditorInChat = null,
+  studioToolbarSlot,
+  studioToolbarTrailingSlot,
   buildTemplate = null,
   onBuildTemplateChange
 }: AgentChatProps) {
@@ -305,6 +315,31 @@ export function AgentChat({
 
   const isStudio = variant === "studio";
 
+  const studioToolbarRowRef = useRef<HTMLDivElement | null>(null);
+  const [studioToolbarCompact, setStudioToolbarCompact] = useState(false);
+
+  useEffect(() => {
+    if (!isStudio) {
+      setStudioToolbarCompact(false);
+      return;
+    }
+    const el = studioToolbarRowRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+
+    const apply = (width: number) => {
+      setStudioToolbarCompact(width < STUDIO_CHAT_TOOLBAR_COMPACT_MAX_PX);
+    };
+
+    apply(el.getBoundingClientRect().width);
+
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width ?? 0;
+      apply(w);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isStudio]);
+
   return (
     <div
       className={cn(
@@ -382,15 +417,25 @@ export function AgentChat({
       >
         {headerSlot ? <div className={cn(isStudio ? "mb-2" : "mb-3")}>{headerSlot}</div> : null}
         {isStudio ? (
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold tracking-wide text-violet-600/90 dark:text-violet-300/90">
-              {t("playground_chat_brand")}
-            </p>
-            <h2 className="mt-0.5 truncate text-xs font-semibold text-foreground">{title}</h2>
-            {subtitle?.trim() ? (
-              <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
-            ) : null}
-          </div>
+          <TooltipProvider delayDuration={400}>
+            <div className="flex min-w-0 w-full items-start gap-2">
+              {studioToolbarSlot ? (
+                <div className="flex shrink-0 items-center gap-0.5">{studioToolbarSlot}</div>
+              ) : null}
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-semibold tracking-wide text-violet-600/90 dark:text-violet-300/90">
+                  {t("playground_chat_brand")}
+                </p>
+                <h2 className="mt-0.5 truncate text-xs font-semibold text-foreground">{title}</h2>
+                {subtitle?.trim() ? (
+                  <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
+                ) : null}
+              </div>
+              {studioToolbarTrailingSlot ? (
+                <div className="flex shrink-0 items-center self-start pt-0.5">{studioToolbarTrailingSlot}</div>
+              ) : null}
+            </div>
+          </TooltipProvider>
         ) : (
           <>
             <p className="text-xs text-muted-foreground">Начало беседы</p>
@@ -713,65 +758,88 @@ export function AgentChat({
               ) : null}
               </div>
 
-              <div className="flex min-h-10 items-center gap-0.5 border-t border-stone-200/70 px-2 pb-2 pt-1.5 dark:border-zinc-700/80">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-stone-100/90 hover:text-foreground dark:hover:bg-zinc-800/80"
-                  aria-label="Добавить изображение"
-                  onClick={() => fileInputImageRef.current?.click()}
-                >
-                  <ImageIcon className="h-5 w-5 stroke-[1.5]" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                  aria-label="Добавить видео"
-                  onClick={() => fileInputVideoRef.current?.click()}
-                >
-                  <Film className="h-5 w-5 stroke-[1.5]" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                  aria-label="Прикрепить файл"
-                  onClick={() => fileInputAnyRef.current?.click()}
-                >
-                  <Paperclip className="h-5 w-5 stroke-[1.5]" />
-                </Button>
+              <div
+                ref={studioToolbarRowRef}
+                className="flex min-h-10 w-full min-w-0 items-center gap-0.5 border-t border-stone-200/70 px-2 pb-2 pt-1.5 dark:border-zinc-700/80"
+              >
+                <TooltipProvider delayDuration={400}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-stone-100/90 hover:text-foreground dark:hover:bg-zinc-800/80"
+                        aria-label="Добавить изображение"
+                        onClick={() => fileInputImageRef.current?.click()}
+                      >
+                        <ImageIcon className="h-5 w-5 stroke-[1.5]" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_image")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        aria-label="Добавить видео"
+                        onClick={() => fileInputVideoRef.current?.click()}
+                      >
+                        <Film className="h-5 w-5 stroke-[1.5]" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_video")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        aria-label="Прикрепить файл"
+                        onClick={() => fileInputAnyRef.current?.click()}
+                      >
+                        <Paperclip className="h-5 w-5 stroke-[1.5]" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_file")}</TooltipContent>
+                  </Tooltip>
 
-                {onBuildTemplateChange ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className={cn(
-                      "h-9 w-9 shrink-0 rounded-xl",
-                      buildTemplate
-                        ? "text-sky-700 hover:bg-sky-100/80 dark:text-sky-400 dark:hover:bg-sky-950/50"
-                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
-                    )}
-                    aria-label={t("build_template_aria")}
-                    title={
-                      buildTemplate
-                        ? `${t("build_template_active")}: ${buildTemplate.name}`
-                        : t("build_template_aria")
-                    }
-                    onClick={() => {
-                      setModelOpen(false);
-                      setTemplateDialogOpen(true);
-                    }}
-                  >
-                    <LayoutTemplate className="h-5 w-5 stroke-[1.5]" />
-                  </Button>
-                ) : null}
+                  {onBuildTemplateChange ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className={cn(
+                            "h-9 w-9 shrink-0 rounded-xl",
+                            buildTemplate
+                              ? "text-sky-700 hover:bg-sky-100/80 dark:text-sky-400 dark:hover:bg-sky-950/50"
+                              : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                          )}
+                          aria-label={t("build_template_aria")}
+                          onClick={() => {
+                            setModelOpen(false);
+                            setTemplateDialogOpen(true);
+                          }}
+                        >
+                          <LayoutTemplate className="h-5 w-5 stroke-[1.5]" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {buildTemplate
+                          ? `${t("build_template_active")}: ${buildTemplate.name}`
+                          : t("build_template_aria")}
+                      </TooltipContent>
+                    </Tooltip>
+                  ) : null}
 
-                {visualEditorInChat ? (
+                  {visualEditorInChat ? (
                   <>
                     <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
                     <button
@@ -800,8 +868,12 @@ export function AgentChat({
                 <button
                   ref={modelAnchorRef}
                   type="button"
-                  className="inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-xl px-1.5 py-1.5 text-sm font-medium text-foreground hover:bg-muted/50 @min-[360px]:px-2 @min-[360px]:max-w-[min(200px,46%)]"
-                  aria-label={`Выбор модели, сейчас: ${model}`}
+                  className={cn(
+                    "inline-flex min-h-9 w-max max-w-[min(100%,12rem)] shrink-0 items-center rounded-xl py-1.5 text-sm font-medium text-foreground hover:bg-muted/50",
+                    studioToolbarCompact ? "gap-1 px-1.5" : "gap-1.5 px-2"
+                  )}
+                  aria-label={t("playground_chat_model_picker_aria").replace("__MODEL__", model)}
+                  title={model}
                   onClick={() => setModelOpen((v) => !v)}
                 >
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
@@ -829,10 +901,21 @@ export function AgentChat({
                       />
                     </svg>
                   </span>
-                  <span className="hidden min-w-0 max-w-[min(11rem,46%)] truncate @min-[360px]:inline">
+                  <span
+                    className={cn(
+                      "min-w-0 max-w-[10rem] truncate text-left",
+                      studioToolbarCompact && "hidden"
+                    )}
+                  >
                     {model}
                   </span>
-                  <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <ChevronDown
+                    className={cn(
+                      "h-4 w-4 shrink-0 text-muted-foreground",
+                      studioToolbarCompact && "hidden"
+                    )}
+                    aria-hidden
+                  />
                 </button>
 
                 <span className="min-w-2 flex-1" />
@@ -860,6 +943,7 @@ export function AgentChat({
                     <ArrowUp className="h-5 w-5 stroke-[2.5]" />
                   )}
                 </Button>
+                </TooltipProvider>
               </div>
             </div>
           ) : (
@@ -933,52 +1017,70 @@ export function AgentChat({
 
           {!isStudio ? (
             <div className="mt-2 flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Добавить изображение"
-                  onClick={() => fileInputImageRef.current?.click()}
-                >
-                  <ImageIcon className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Добавить видео"
-                  onClick={() => fileInputVideoRef.current?.click()}
-                >
-                  <Film className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  aria-label="Прикрепить файл"
-                  onClick={() => fileInputAnyRef.current?.click()}
-                >
-                  <Paperclip className="h-5 w-5" />
-                </Button>
-              </div>
+              <TooltipProvider delayDuration={400}>
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        aria-label="Добавить изображение"
+                        onClick={() => fileInputImageRef.current?.click()}
+                      >
+                        <ImageIcon className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_image")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        aria-label="Добавить видео"
+                        onClick={() => fileInputVideoRef.current?.click()}
+                      >
+                        <Film className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_video")}</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 rounded-2xl text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                        aria-label="Прикрепить файл"
+                        onClick={() => fileInputAnyRef.current?.click()}
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{t("playground_chat_tooltip_attach_file")}</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
 
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="h-6 w-px bg-border" />
-                <div className="relative">
+              <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+                <div className="h-6 w-px shrink-0 bg-border" />
+                <div className="relative min-w-0 max-w-[min(100%,14rem)] flex-1 sm:max-w-[min(100%,20rem)]">
                   <button
                     ref={modelAnchorRef}
                     type="button"
-                    className="flex min-w-0 items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium text-foreground hover:bg-accent"
-                    aria-label="Выбор модели"
+                    className="flex w-full min-w-0 items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium text-foreground hover:bg-accent"
+                    aria-label={t("playground_chat_model_picker_aria").replace("__MODEL__", model)}
+                    title={model}
                     onClick={() => setModelOpen((v) => !v)}
                   >
-                    <Sparkles className="h-4 w-4" />
-                    <span className="truncate">{model}</span>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate text-left">{model}</span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   </button>
                 </div>
               </div>

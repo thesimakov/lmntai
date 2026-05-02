@@ -11,13 +11,13 @@ import { BuildCode } from "@/components/playground/build-code";
 import { BuildPublishDialog } from "@/components/playground/build-publish-dialog";
 import { BuildPreviewChrome } from "@/components/playground/build-topbar";
 import { BuildSettings } from "@/components/playground/build-settings";
-import { MenuDrawer } from "@/components/playground/menu-drawer";
+import { MenuDrawer, StudioChatRailCollapseButton } from "@/components/playground/menu-drawer";
 import { isPptxArtifact } from "@/components/playground/preview-frame";
 import { RightPanel } from "@/components/playground/right-panel";
 import { PageTransition } from "@/components/page-transition";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { BuildStreamSteps } from "@/components/playground/build-stream-steps";
@@ -248,6 +248,17 @@ export default function PromptBuildPage() {
   const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
   const [sessionNeedsResync, setSessionNeedsResync] = useState(false);
   const leftWidthBeforeCollapseRef = useRef(400);
+  const togglePlaygroundLeftRail = useCallback(() => {
+    setLeftCollapsed((v) => {
+      const next = !v;
+      if (next) {
+        leftWidthBeforeCollapseRef.current = leftWidth;
+      } else {
+        setLeftWidth(leftWidthBeforeCollapseRef.current || 400);
+      }
+      return next;
+    });
+  }, [leftWidth]);
   const dragStateRef = useRef<{
     pointerId: number;
     startX: number;
@@ -351,16 +362,6 @@ export default function PromptBuildPage() {
     }
     return t("playground_chat_input_placeholder_studio");
   }, [shouldUseLemnityAiBridge, buildTemplate, t]);
-
-  const addressPath = useMemo(() => {
-    if (!previewUrl) return "/";
-    try {
-      const u = new URL(previewUrl);
-      return u.pathname && u.pathname !== "" ? u.pathname : "/";
-    } catch {
-      return "/";
-    }
-  }, [previewUrl]);
 
   const handleChatVisualEditorToggle = useCallback(() => {
     if (!previewUrl) return;
@@ -2087,47 +2088,11 @@ export default function PromptBuildPage() {
     <PageTransition>
       <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-muted/40">
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-row items-stretch">
-          <aside className="flex w-[52px] shrink-0 flex-col items-center gap-2 border-r border-border bg-background py-3">
-            <TooltipProvider delayDuration={400}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
-                    aria-label="Назад в Playground"
-                    onClick={() => router.push("/playground")}
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="right" align="center">
-                  Назад в Playground
-                </TooltipContent>
-              </Tooltip>
-              <MenuDrawer
-                compact
-                lemnityAiBridgeReady={lemnityAiBridgeReady}
-                shouldUseLemnityAiBridge={shouldUseLemnityAiBridge}
-                leftCollapsed={leftPromptRailHidden}
-                onToggleCollapse={() => {
-                  setLeftCollapsed((v) => {
-                    const next = !v;
-                    if (next) {
-                      leftWidthBeforeCollapseRef.current = leftWidth;
-                    } else {
-                      setLeftWidth(leftWidthBeforeCollapseRef.current || 400);
-                    }
-                    return next;
-                  });
-                }}
-              />
-            </TooltipProvider>
-          </aside>
-
           <div
-            className="relative min-h-0 overflow-hidden border-r border-border bg-background transition-[width,opacity] duration-200 ease-out"
+            className={cn(
+              "relative z-30 min-h-0 shrink-0 grow-0 overflow-visible border-r border-border bg-background",
+              "transition-[width,min-width,max-width,opacity] duration-300 ease-in-out motion-reduce:transition-none"
+            )}
             aria-hidden={leftPromptRailHidden}
             style={{
               width: leftPromptRailHidden ? 0 : leftWidth,
@@ -2140,6 +2105,42 @@ export default function PromptBuildPage() {
             <AgentChat
               variant="studio"
               title={header}
+              studioToolbarSlot={
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
+                        aria-label={t("nav_home")}
+                        onClick={() => router.push("/playground")}
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" align="center">
+                      {t("nav_home")}
+                    </TooltipContent>
+                  </Tooltip>
+                  <MenuDrawer
+                    compact
+                    toolbarLayout="inline"
+                    hideCollapseButton
+                    lemnityAiBridgeReady={lemnityAiBridgeReady}
+                    shouldUseLemnityAiBridge={shouldUseLemnityAiBridge}
+                  />
+                </>
+              }
+              studioToolbarTrailingSlot={
+                <StudioChatRailCollapseButton
+                  compact
+                  tooltipSide="bottom"
+                  leftCollapsed={leftPromptRailHidden}
+                  onToggleCollapse={togglePlaygroundLeftRail}
+                />
+              }
               messages={messages}
               disabled={
                 isGenerating ||
@@ -2307,6 +2308,16 @@ export default function PromptBuildPage() {
                 if (next !== "preview" && next !== "document") setVisualLayoutEditor(false);
               }}
               sandboxId={sandboxId}
+              expandChatRailSlot={
+                leftCollapsed && !buildTemplate ? (
+                  <StudioChatRailCollapseButton
+                    compact
+                    tooltipSide="bottom"
+                    leftCollapsed
+                    onToggleCollapse={togglePlaygroundLeftRail}
+                  />
+                ) : null
+              }
               shareMenu={
                 <BuildSharePopover
                   sandboxId={sandboxId}
@@ -2319,7 +2330,6 @@ export default function PromptBuildPage() {
               onPublish={handlePublishPreview}
               publishDisabled={!previewUrl || !sandboxId}
               onHistoryClick={() => router.push("/projects")}
-              addressPath={addressPath}
               previewEditorToggle={
                 tab === "preview" || tab === "document"
                   ? {
