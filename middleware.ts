@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { isReservedAppHost, normalizeHost } from "@/lib/publish-domain";
+import { isReservedAppHost, normalizeHost, shouldBypassPublishDomainMiddleware } from "@/lib/publish-domain";
 
 /** Запрос в resolve API через канонический origin (NEXT_PUBLIC_SITE_URL), чтобы не упираться в поддомен публикации. */
 function publishResolveFetchOrigin(req: NextRequest): string {
@@ -51,6 +51,9 @@ export async function middleware(req: NextRequest) {
   const host = normalizeHost(rawHost);
   if (!host) {
     return new NextResponse("Project not found", { status: 404 });
+  }
+  if (shouldBypassPublishDomainMiddleware(host)) {
+    return NextResponse.next();
   }
   if (isReservedAppHost(host)) {
     return NextResponse.next();

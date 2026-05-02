@@ -631,11 +631,16 @@ export const sandboxManager = {
     let projectFiles = withLovableProjectScaffold(parsed);
     const ownerId = await getSandboxOwnerId(sandboxId);
     if (ownerId) {
-      const { files } = await materializeRemoteImagesInProject(projectFiles, {
-        projectId: sandboxId,
-        userId: ownerId
-      });
-      projectFiles = files;
+      try {
+        const { files } = await materializeRemoteImagesInProject(projectFiles, {
+          projectId: sandboxId,
+          userId: ownerId
+        });
+        projectFiles = files;
+      } catch (e) {
+        /* Prisma/storage при materialize (ProjectImageAsset, диск) — не роняем превью шаблона: остаются исходные https URL из allowlist. */
+        console.warn("[sandbox] materializeRemoteImagesInProject failed, using template URLs as-is", e);
+      }
     }
     const puckPick = mergePuckForApply(
       typeof prevPuck === "string" ? prevPuck : undefined,

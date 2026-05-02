@@ -1,12 +1,17 @@
 import type { NextRequest } from "next/server";
 
-import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
+import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 async function getCurrentProject(req: NextRequest) {
-  const project = await requireProjectFromRequest(req).catch(() => null);
+  let project = null as Awaited<ReturnType<typeof resolveProjectFromRequest>>;
+  try {
+    project = await resolveProjectFromRequest(req);
+  } catch {
+    project = null;
+  }
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return Response.json({ project: null });
   }
   return Response.json({
     project: {

@@ -6,9 +6,10 @@ services:
       POSTGRES_USER: lemnity
       POSTGRES_PASSWORD: lemnity
       POSTGRES_DB: lemnity
-    # 5433 на хосте: не пересекаться с локальным Postgres на 5432 (Homebrew и т.д.)
+    # Проброс порта задаётся LMNTAI_PG_HOST_PORT (.env в корне репо для docker compose — не путать с .env.local).
+    # Если другой контейнер уже занял 5433 (docker ps покажет 0.0.0.0:5433->…), здесь нужен другой хост-порт и тот же порт в DATABASE_URL.
     ports:
-      - "5433:5432"
+      - "${LMNTAI_PG_HOST_PORT:-5433}:5432"
     volumes:
       - lemnity_pg:/var/lib/postgresql/data
       - ./docker/postgres/docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d:ro

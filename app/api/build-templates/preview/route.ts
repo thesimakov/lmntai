@@ -11,57 +11,67 @@ import { withApiLogging } from "@/lib/with-api-logging";
 export const runtime = "nodejs";
 
 async function postBuildTemplatePreview(req: NextRequest) {
-  const guard = await requireDbUser();
-  if (!guard.ok) {
-    return Response.json({ error: guard.message }, { status: guard.status });
-  }
-
-  let body: { slug?: string; projectId?: string };
   try {
-    body = (await req.json()) as { slug?: string; projectId?: string };
-  } catch {
-    return Response.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+    const guard = await requireDbUser();
+    if (!guard.ok) {
+      return Response.json({ error: guard.message }, { status: guard.status });
+    }
 
-  const slug = typeof body.slug === "string" ? body.slug.trim() : "";
-  const requestedProjectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
-  const resolvedProject = await resolveProjectFromRequest(req);
+    let body: { slug?: string; projectId?: string };
+    try {
+      body = (await req.json()) as { slug?: string; projectId?: string };
+    } catch {
+      return Response.json({ error: "Invalid JSON" }, { status: 400 });
+    }
 
-  /** На поддомене публикации проект фиксируется Host + middleware; тело запроса может ещё содержать временный UUID до ответа `/api/projects/current` — не отклоняем такой запрос. */
-  const projectId = resolvedProject?.id ?? requestedProjectId;
+    const slug = typeof body.slug === "string" ? body.slug.trim() : "";
+    const requestedProjectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
 
-  if (!slug) {
-    return Response.json({ error: "slug required" }, { status: 400 });
-  }
-  if (!projectId) {
-    return Response.json({ error: "project_id required" }, { status: 400 });
-  }
+    let resolvedProject = null as Awaited<ReturnType<typeof resolveProjectFromRequest>>;
+    try {
+      resolvedProject = await resolveProjectFromRequest(req);
+    } catch {
+      resolvedProject = null;
+    }
 
-  const t = await getBuildTemplateBySlug(slug);
-  if (!t) {
-    return Response.json({ error: "Template not found" }, { status: 404 });
-  }
+    /** На поддомене публикации проект фиксируется Host + middleware; тело запроса может ещё содержать временный UUID до ответа `/api/projects/current` — не отклоняем такой запрос. */
+    const projectId = resolvedProject?.id ?? requestedProjectId;
 
-  try {
-    const alreadyOwned = await sandboxManager.canAccess(projectId, guard.data.user.id);
-    if (!alreadyOwned) {
-      const projectGate = await checkProjectCreationAllowed(guard.data.user.id, guard.data.user.plan);
-      if (!projectGate.ok) {
-        return Response.json({ error: projectGate.message }, { status: projectGate.status });
+    if (!slug) {
+      return Response.json({ error: "slug required" }, { status: 400 });
+    }
+    if (!projectId) {
+      return Response.json({ error: "project_id required" }, { status: 400 });
+    }
+
+    const t = await getBuildTemplateBySlug(slug);
+    if (!t) {
+      return Response.json({ error: "Template not found" }, { status: 404 });
+    }
+
+    try {
+      const alreadyOwned = await sandboxManager.canAccess(projectId, guard.data.user.id);
+      if (!alreadyOwned) {
+        const projectGate = await checkProjectCreationAllowed(guard.data.user.id, guard.data.user.plan);
+        if (!projectGate.ok) {
+          return Response.json({ error: projectGate.message }, { status: projectGate.status });
+        }
       }
+
+      let sandboxId = projectId;
+      if (!alreadyOwned) {
+        ({ sandboxId } = await sandboxManager.createSandbox(`bt-${t.slug}`, guard.data.user.id, projectId));
+      } else {
+        await sandboxManager.ensureSandboxStateForOwnedProject(projectId, guard.data.user.id);
+      }
+
+      const generatedTxt = formatBuildTemplateBlock(t.rules, t.files);
+      const { previewUrl } = await sandboxManager.applyLovableFromProjectFiles(sandboxId, t.files, generatedTxt);
+
+      return Response.json({ previewUrl, sandboxId });
+    } catch (e) {
+      return Response.json({ error: unknownToErrorMessage(e) }, { status: 502 });
     }
-
-    let sandboxId = projectId;
-    if (!alreadyOwned) {
-      ({ sandboxId } = await sandboxManager.createSandbox(`bt-${t.slug}`, guard.data.user.id, projectId));
-    } else {
-      await sandboxManager.ensureSandboxStateForOwnedProject(projectId, guard.data.user.id);
-    }
-
-    const generatedTxt = formatBuildTemplateBlock(t.rules, t.files);
-    const { previewUrl } = await sandboxManager.applyLovableFromProjectFiles(sandboxId, t.files, generatedTxt);
-
-    return Response.json({ previewUrl, sandboxId });
   } catch (e) {
     return Response.json({ error: unknownToErrorMessage(e) }, { status: 502 });
   }

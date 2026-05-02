@@ -592,7 +592,7 @@ export function HomeHero({
                 templateListLoading={buildCatalogLoading}
                 templateList={buildCatalogList}
                 selectedSlug={selectedBuildTemplateSlug}
-                gridClassName="grid-cols-1 content-start items-start gap-3 sm:grid-cols-2 sm:gap-3"
+                gridClassName="grid-cols-1 content-start items-start gap-3 sm:grid-cols-3 sm:gap-3"
                 onPick={(row) => {
                   if (disabled) return;
                   if (onCatalogTemplateLaunch) {

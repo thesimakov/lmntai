@@ -1,6 +1,6 @@
 import { describe, expect, it, afterEach, vi } from "vitest";
 
-import { getAppHosts, normalizeHost } from "@/lib/publish-domain";
+import { getAppHosts, normalizeHost, shouldBypassPublishDomainMiddleware } from "@/lib/publish-domain";
 import { normalizePublishCustomHost } from "@/lib/publish-host";
 
 describe("getAppHosts", () => {
@@ -22,6 +22,27 @@ describe("getAppHosts", () => {
     const hosts = getAppHosts();
     expect(hosts.has("example-app.com")).toBe(true);
     expect(hosts.has("www.example-app.com")).toBe(true);
+  });
+});
+
+describe("shouldBypassPublishDomainMiddleware", () => {
+  it("allows loopback hosts", () => {
+    expect(shouldBypassPublishDomainMiddleware("localhost")).toBe(true);
+    expect(shouldBypassPublishDomainMiddleware("127.0.0.1")).toBe(true);
+    expect(shouldBypassPublishDomainMiddleware("::1")).toBe(true);
+  });
+
+  it("allows RFC1918 IPv4", () => {
+    expect(shouldBypassPublishDomainMiddleware("192.168.1.5")).toBe(true);
+    expect(shouldBypassPublishDomainMiddleware("10.0.0.1")).toBe(true);
+    expect(shouldBypassPublishDomainMiddleware("172.16.0.1")).toBe(true);
+    expect(shouldBypassPublishDomainMiddleware("172.31.255.1")).toBe(true);
+  });
+
+  it("does not bypass public hosts", () => {
+    expect(shouldBypassPublishDomainMiddleware("example.com")).toBe(false);
+    expect(shouldBypassPublishDomainMiddleware("8.8.8.8")).toBe(false);
+    expect(shouldBypassPublishDomainMiddleware("172.32.0.1")).toBe(false);
   });
 });
 

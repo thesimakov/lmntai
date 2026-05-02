@@ -60,6 +60,24 @@ export function isLocalHost(host: string) {
   return LOCALHOSTS.has(host);
 }
 
+/** Loopback и частные IPv4 — не публикация; иначе middleware отдаёт 404 всем путям включая `/api/*`. */
+export function shouldBypassPublishDomainMiddleware(host: string): boolean {
+  if (isLocalHost(host)) return true;
+  return isPrivateIpv4Host(host);
+}
+
+function isPrivateIpv4Host(host: string): boolean {
+  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!m) return false;
+  const oct = m.slice(1, 5).map((x) => Number.parseInt(x, 10));
+  if (oct.some((n) => Number.isNaN(n) || n > 255)) return false;
+  const [a, b] = oct;
+  if (a === 10) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 192 && b === 168) return true;
+  return false;
+}
+
 export function isBuiltInPublishHost(host: string): boolean {
   const base = PUBLISH_BUILTIN_BASE_DOMAIN.toLowerCase();
   return host.endsWith(`.${base}`);

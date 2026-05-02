@@ -244,11 +244,13 @@ export async function ensureBuildTemplatesSeeded(): Promise<void> {
 export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
   await ensureBuildTemplatesSeeded();
   try {
+    const removedSlugs = Array.from(REMOVED_CATALOG_TEMPLATE_SLUGS);
+    const whereClause =
+      removedSlugs.length > 0
+        ? { isActive: true as const, slug: { notIn: removedSlugs } }
+        : { isActive: true as const };
     const rows = await prisma.buildTemplate.findMany({
-      where: {
-        isActive: true,
-        slug: { notIn: Array.from(REMOVED_CATALOG_TEMPLATE_SLUGS) }
-      },
+      where: whereClause,
       select: { id: true, slug: true, name: true, description: true, defaultUserPrompt: true }
     });
     const bySlug = new Map(rows.map((r) => [r.slug, r]));
