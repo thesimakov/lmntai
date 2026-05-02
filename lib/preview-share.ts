@@ -124,3 +124,52 @@ export function resolvePublishOpenUrl(origin: string, sandboxId: string, preferr
   }
   return fallback;
 }
+
+export type PublishDomainListEntry = {
+  host: string;
+  verificationStatus: string;
+};
+
+/**
+ * То же дерево запросов, что у диалога «Опубликовать» — для подстановки домена в буфер.
+ */
+export async function fetchSandboxPublishDomains(
+  sandboxId: string | null
+): Promise<PublishDomainListEntry[]> {
+  if (!sandboxId) return [];
+  let res = await fetch("/api/sandbox/publish-domain", {
+    credentials: "include",
+    headers: { Accept: "application/json" }
+  });
+  if (res.status === 404) {
+    res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/publish-domain`, {
+      credentials: "include",
+      headers: { Accept: "application/json" }
+    });
+  }
+  if (!res.ok) return [];
+  const body = (await res.json().catch(() => null)) as {
+    domains?: Array<{ host?: string | null; verificationStatus?: string | null }>;
+  } | null;
+  const list = body?.domains ?? [];
+  return list
+    .map((d) => ({
+      host: String(d.host ?? "").trim(),
+      verificationStatus: String(d.verificationStatus ?? "")
+    }))
+    .filter((d) => d.host.length > 0);
+}
+
+/**
+ * Ссылка для «Скопировать ссылку»: при верифицированном домине публикации — как после «Опубликовать»
+ * ({@link resolvePublishOpenUrl}); иначе страница превью `/share/{sandboxId}`.
+ */
+export function resolveShareClipboardUrl(
+  origin: string,
+  sandboxId: string,
+  publishDomains: readonly PublishDomainListEntry[]
+): string {
+  const verified = publishDomains.find((d) => d.verificationStatus === "VERIFIED");
+  if (!verified) return buildPublicSharePageUrl(origin, sandboxId);
+  return resolvePublishOpenUrl(origin, sandboxId, `https://${verified.host}`);
+}

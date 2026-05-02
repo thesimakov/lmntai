@@ -14,7 +14,11 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { buildPublicSharePageUrl, copyTextToClipboard } from "@/lib/preview-share";
+import {
+  copyTextToClipboard,
+  fetchSandboxPublishDomains,
+  resolveShareClipboardUrl
+} from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -122,7 +126,8 @@ export function BuildSharePopover({
 
   const handleCopyLink = async () => {
     if (!sandboxId || typeof window === "undefined") return;
-    const url = buildPublicSharePageUrl(window.location.origin, sandboxId);
+    const domains = await fetchSandboxPublishDomains(sandboxId);
+    const url = resolveShareClipboardUrl(window.location.origin, sandboxId, domains);
     const ok = await copyTextToClipboard(url);
     if (ok) {
       setLinkCopied(true);
