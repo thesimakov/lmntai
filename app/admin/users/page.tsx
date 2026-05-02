@@ -4,14 +4,15 @@ import {
   addTokensAction,
   createUserAction,
   deleteUserAction,
-  setPartnerAction,
-  setPlanAction
+  setPartnerAction
 } from "@/app/admin/actions";
+import { AdminUserPlanForm } from "@/components/admin/admin-user-plan-form";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getTokenSpendLast30Days, listAdminUsers } from "@/lib/admin-service";
 import { requireStaffPermission } from "@/lib/auth-guards";
+import { normalizePlanId } from "@/lib/plan-config";
 import { canAccessStaff, parsePermissionList, type StaffPermission } from "@/lib/staff-permissions";
 import { USER_VIRTUAL_STORAGE_LIMIT_BYTES } from "@/lib/user-virtual-storage";
 
@@ -129,9 +130,7 @@ export default async function AdminUsersPage() {
                         </span>
                       ) : null}
                     </td>
-                    <td className="p-2 text-muted-foreground">
-                      {u.plan === "BUSINESS" ? "TEAM" : u.plan}
-                    </td>
+                    <td className="p-2 text-muted-foreground">{normalizePlanId(u.plan)}</td>
                     <td className="p-2 text-muted-foreground">{u.tokenBalance}</td>
                     <td className="p-2 text-muted-foreground">{u.tokenLimit}</td>
                     <td className="p-2 text-muted-foreground">
@@ -155,21 +154,11 @@ export default async function AdminUsersPage() {
                                 +токены
                               </Button>
                             </form>
-                            <form action={setPlanAction} className="flex items-center gap-1">
-                              <input type="hidden" name="userId" value={u.id} />
-                              <select
-                                name="plan"
-                                defaultValue={u.plan === "BUSINESS" ? "TEAM" : u.plan}
-                                className="h-8 max-w-[8rem] rounded border border-input bg-background text-xs"
-                              >
-                                <option value="FREE">FREE</option>
-                                <option value="PRO">PRO</option>
-                                <option value="TEAM">TEAM</option>
-                              </select>
-                              <Button size="sm" type="submit" variant="outline">
-                                план
-                              </Button>
-                            </form>
+                            <AdminUserPlanForm
+                              key={`${u.id}-${normalizePlanId(u.plan)}`}
+                              userId={u.id}
+                              plan={u.plan}
+                            />
                             <form action={setPartnerAction} className="flex items-center gap-1">
                               <input type="hidden" name="userId" value={u.id} />
                               <input type="hidden" name="isPartner" value={u.isPartner ? "false" : "true"} />

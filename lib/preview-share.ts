@@ -91,9 +91,11 @@ export function buildBuiltinPublishBrowseUrl(
 }
 
 /**
- * После «Опубликовать»: не открываем в браузере встроенный поддомен `*.{PUBLISH_BUILTIN_BASE_DOMAIN}`, пока у пользователя
- * может не быть wildcard DNS — открываем стабильную `/share/{sandboxId}` на текущем origin.
- * Свой (верифицированный) домен открываем как есть.
+ * После «Опубликовать»:
+ * - Свой верифицированный домен — открываем как есть.
+ * - Встроенный поддомен `*.{PUBLISH_BUILTIN_BASE_DOMAIN}`: если приложение уже открыто на этом apex/поддомене зоны
+ *   публикации (wildcard DNS предполагается), открываем выбранный `https://slug.base`.
+ * - Иначе (localhost, превью без своей зоны) — стабильная `/share/{sandboxId}` на текущем origin.
  */
 export function resolvePublishOpenUrl(origin: string, sandboxId: string, preferredHttpsUrl: string | undefined): string {
   const fallback = buildPublicSharePageUrl(origin, sandboxId);
@@ -108,8 +110,17 @@ export function resolvePublishOpenUrl(origin: string, sandboxId: string, preferr
     return fallback;
   }
   const base = PUBLISH_BUILTIN_BASE_DOMAIN.toLowerCase();
-  if (hostname === base || hostname.endsWith(`.${base}`)) {
-    return fallback;
+  const isBuiltinHost = hostname === base || hostname.endsWith(`.${base}`);
+  if (!isBuiltinHost) {
+    return raw;
   }
-  return raw;
+  try {
+    const appHost = new URL(origin).hostname.toLowerCase();
+    if (originHostnameServesBuiltinPublishWildcard(appHost)) {
+      return raw;
+    }
+  } catch {
+    /* fallthrough */
+  }
+  return fallback;
 }

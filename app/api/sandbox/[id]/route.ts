@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { lemnityAiUpstreamFetch } from "@/lib/lemnity-ai-upstream-client";
+import { prisma } from "@/lib/prisma";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
@@ -52,6 +53,28 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
   });
 }
 
+/** На опубликованном поддомене middleware передаёт проект; путь `/api/sandbox/artifact_*` должен сопоставляться с previewArtifactId сессии. */
+async function resolveSandboxIdForRequest(req: NextRequest, routeId: string): Promise<Response | { sandboxId: string }> {
+  const resolvedProject = await resolveProjectFromRequest(req);
+  if (resolvedProject) {
+    if (routeId.startsWith("artifact_")) {
+      const row = await prisma.manusSessionLink.findFirst({
+        where: { projectId: resolvedProject.id, previewArtifactId: routeId },
+        select: { id: true }
+      });
+      if (!row) {
+        return new Response("Not found", { status: 404 });
+      }
+      return { sandboxId: routeId };
+    }
+    if (routeId !== resolvedProject.id) {
+      return new Response("Not found", { status: 404 });
+    }
+    return { sandboxId: resolvedProject.id };
+  }
+  return { sandboxId: routeId };
+}
+
 async function getSandbox(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -59,11 +82,11 @@ async function getSandbox(
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
   const { id: routeId } = await params;
-  const resolvedProject = await resolveProjectFromRequest(req);
-  if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+  const resolved = await resolveSandboxIdForRequest(req, routeId);
+  if (resolved instanceof Response) {
+    return resolved;
   }
-  const sandboxId = resolvedProject?.id ?? routeId;
+  const { sandboxId } = resolved;
 
   const guard = await requireDbUser();
   if (guard.ok) {
@@ -112,11 +135,11 @@ async function patchSandbox(
     return new Response("Unauthorized", { status: 401 });
   }
   const { id: routeId } = await params;
-  const resolvedProject = await resolveProjectFromRequest(req);
-  if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+  const resolved = await resolveSandboxIdForRequest(req, routeId);
+  if (resolved instanceof Response) {
+    return resolved;
   }
-  const sandboxId = resolvedProject?.id ?? routeId;
+  const { sandboxId } = resolved;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
     return new Response("Not found", { status: 404 });

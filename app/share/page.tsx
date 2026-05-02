@@ -2,8 +2,9 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { SharePreviewClient } from "./[sandboxId]/share-preview-client";
+import { prisma } from "@/lib/prisma";
 import { resolveProjectFromHeaders } from "@/lib/project-domain-resolution";
-import { getSandboxShareHeaderBranding, isSandboxLinkPublic } from "@/lib/sandbox-share-db";
+import { getSandboxShareHeaderBranding } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 
 export default async function ProjectShareByDomainPage() {
@@ -13,12 +14,22 @@ export default async function ProjectShareByDomainPage() {
     notFound();
   }
 
-  const isPublic = await isSandboxLinkPublic(project.id);
-  const exists = await sandboxManager.hasSandboxPersistent(project.id);
-  if (!isPublic || !exists) {
+  const share = await prisma.sandboxShare.findUnique({
+    where: { projectId: project.id },
+    select: { isPublic: true, sandboxId: true }
+  });
+  if (!share?.isPublic) {
     notFound();
   }
 
-  const { showLemnityBranding } = await getSandboxShareHeaderBranding(project.id);
-  return <SharePreviewClient showLemnityBranding={showLemnityBranding} />;
+  const storageId = share.sandboxId;
+  if (!storageId.startsWith("artifact_")) {
+    const ok = await sandboxManager.hasSandboxPersistent(storageId);
+    if (!ok) {
+      notFound();
+    }
+  }
+
+  const { showLemnityBranding } = await getSandboxShareHeaderBranding(storageId);
+  return <SharePreviewClient sandboxId={storageId} showLemnityBranding={showLemnityBranding} />;
 }

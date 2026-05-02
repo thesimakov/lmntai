@@ -102,7 +102,7 @@ export function buildRouterGenerationPrompt(
           "Structure: header/nav, hero, value props, social proof, feature grid, pricing or CTA block, FAQ, footer — implemented as components/sections, not one giant return.",
           "Use semantic sections with clear `id` or `data-section` for anchor nav.",
           "Apply the global stock-image URL rules (prefer Wikimedia Commons direct URLs + credit; otherwise Picsum seed or Unsplash + credit) for any photos in the layout.",
-          "Apply the global site-footer bar rules (copyright + privacy placeholder left; build date + «Сделано на Lemnity» right)."
+          "Apply the global site-footer bar rules (copyright + privacy placeholder left; «Сделано на Lemnity» right — no «Собрано»/build date in the layout)."
         ];
       case "presentation":
         return [
@@ -141,14 +141,14 @@ export function buildRouterGenerationPrompt(
           "Include resilient states for interactive blocks: loading/empty/error placeholders.",
           "If the request implies tariffs/roles (FREE/PRO/etc.), reflect feature gating in UI copy and section visibility cues.",
           "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
-          "Include the site footer bar (copyright + privacy placeholder; build date + Lemnity link) when the app has a footer."
+          "Include the site footer bar (copyright + privacy placeholder; Lemnity link) when the app has a footer — no «Собрано»/build date in the layout."
         ];
       default:
         return [
           "Deliverable: **Landing or web interface** as a **multi-file** React+TS app (Vite/Lovable style) unless the user asked only for a static one-file HTML.",
           "Prefer: `src/main.tsx` + `src/App.tsx` + `src/components/*`; split sections logically; one primary CTA; responsive layout (mobile-first) via Tailwind `className`.",
           "For data-like UI sections, include loading/empty/error states.",
-          "If you add a page footer, follow the global site-footer rules (Lemnity link, build date, privacy placeholder)."
+          "If you add a page footer, follow the global site-footer rules (Lemnity link, privacy placeholder; no build date in footer)."
         ];
     }
   })();

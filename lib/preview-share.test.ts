@@ -65,6 +65,17 @@ describe("resolvePublishOpenUrl", () => {
     ).toBe("http://localhost:3001/share/sandbox-1");
   });
 
+  it("opens builtin subdomain when app origin is already on publish zone (DNS OK)", () => {
+    const preferred = `https://project-abc.${PUBLISH_BUILTIN_BASE_DOMAIN}`;
+    expect(resolvePublishOpenUrl(`https://${PUBLISH_BUILTIN_BASE_DOMAIN}`, "sandbox-1", preferred)).toBe(preferred);
+    expect(resolvePublishOpenUrl(`https://www.${PUBLISH_BUILTIN_BASE_DOMAIN}`, "sandbox-1", preferred)).toBe(
+      preferred
+    );
+    expect(resolvePublishOpenUrl(`https://studio.${PUBLISH_BUILTIN_BASE_DOMAIN}`, "sandbox-1", preferred)).toBe(
+      preferred
+    );
+  });
+
   it("opens custom host as-is", () => {
     expect(resolvePublishOpenUrl("https://app.example.com", "sb", "https://app.customer.com")).toBe(
       "https://app.customer.com"

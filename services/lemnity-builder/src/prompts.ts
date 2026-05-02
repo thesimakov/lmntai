@@ -11,7 +11,7 @@ const STOCK_IMAGES_GUIDANCE =
 
 /** Keep in sync with `lib/prompt-site-footer.ts` → `PROMPT_SITE_FOOTER_RULES_EN`. */
 const SITE_FOOTER_GUIDANCE =
-  "Marketing site footer: when you include `<footer>`, add `div.footer-bottom` with flex row: left — `© {year} {brand}`, rights text, «Политика конфиденциальности» with `href=\"#\"` (URL TBD comment); right — `Собрано:` + `new Date().toLocaleDateString(...)`, then «Сделано на Lemnity» → `https://lemnity.com` (new tab).";
+  "Marketing site footer: when you include `<footer>`, add `div.footer-bottom` with flex row: left — `© {year} {brand}`, rights text, «Политика конфиденциальности» with `href=\"#\"` (URL TBD comment); right — «Сделано на Lemnity» → `https://lemnity.com` (new tab). Do not add «Собрано:», build dates, or `new Date()` in the footer.";
 
 /** Inspired by lovable.guide: keep prompts as compact, verifiable mini-TZ. */
 const GOLDEN_PROMPT_FORMULA_GUIDANCE =
@@ -239,7 +239,7 @@ function artifactKindExecutionGuidance(kind: ArtifactKind, language: string): st
       "- Build like a real repo: `src/main.tsx` + `src/App.tsx` + `src/components/*` for sections (Hero, Features, CTA, FAQ, Footer).",
       "- Classic conversion layout is OK: hero, value props, social proof, CTA, footer — as components.",
       "- Tailwind: `className` only. Match the user's product/service, not a generic template.",
-      "- Footer row: follow global SITE_FOOTER_GUIDANCE (Lemnity link + build date + privacy placeholder).",
+      "- Footer row: follow global SITE_FOOTER_GUIDANCE (Lemnity link + privacy placeholder; no build date in footer).",
       "- If you use `puck.json` for Lemnity Puck, keep it aligned with the same visible strings as in the TSX whenever copy changes; emit ` ```json:puck.json` in the same response."
     ].join("\n"),
     lovable: [
