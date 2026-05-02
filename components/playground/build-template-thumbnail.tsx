@@ -9,8 +9,7 @@ export const PREVIEW_SRC_BY_SLUG: Partial<Record<string, string>> = {
   massage: "/build-templates/massage.png",
   "it-startup": "/build-templates/it-startup.jpg",
   "lead-pr-sales": "/build-templates/lead-pr-sales.png",
-  "web-studio": "/build-templates/web-studio.png",
-  events: "/build-templates/events.png"
+  "web-studio": "/build-templates/web-studio.png"
 };
 
 /** Детерминированный градиент по строке — для slug без своей картинки или произвольного текста. */

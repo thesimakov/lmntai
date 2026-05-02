@@ -226,13 +226,23 @@ async function destroyDockerSandbox(sandboxId: string): Promise<void> {
 async function createDockerSandbox(
   seed: string,
   ownerId: string,
-  forcedProjectId?: string
+  forcedProjectId?: string,
+  opts?: { reuseExistingProjectRow?: boolean }
 ): Promise<{ sandboxId: string }> {
   const docker = getDocker();
   const sandboxId = forcedProjectId?.trim() || crypto.randomUUID();
   const now = Date.now();
-  const title = normalizeSandboxTitle(seed);
-  await upsertProjectCell({ projectId: sandboxId, ownerId, name: title });
+  let title: string;
+  if (opts?.reuseExistingProjectRow) {
+    const scope = await getProjectScopeForOwner(sandboxId, ownerId);
+    if (!scope) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+    title = normalizeSandboxTitle(scope.name);
+  } else {
+    title = normalizeSandboxTitle(seed);
+    await upsertProjectCell({ projectId: sandboxId, ownerId, name: title });
+  }
   await ensureProjectStorageScaffold(sandboxId);
   const short = sandboxId.replace(/-/g, "").slice(0, 12);
   const containerName = `${namePrefix()}-${short}`.toLowerCase();
@@ -274,7 +284,8 @@ async function createDockerSandbox(
 
   await waitForSandboxReady(base);
 
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${seed}</title></head><body style="font-family:system-ui;padding:24px;background:#0a0a0a;color:#fafafa">Контейнер готов. Генерация…</body></html>`;
+  const htmlTitle = title.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${htmlTitle}</title></head><body style="font-family:system-ui;padding:24px;background:#0a0a0a;color:#fafafa">Контейнер готов. Генерация…</body></html>`;
   const wd = workdirInContainer();
   const indexPath = `${wd}/index.html`;
   const writeRes = await lemnityBuilderFileWrite(base, indexPath, html);
@@ -527,6 +538,41 @@ export const sandboxManager = {
       payload: { mode: "memory", title }
     });
     return { sandboxId: id };
+  },
+
+  /**
+   * Проект в Prisma уже есть (canAccess=true), но в БД/memory ещё нет состояния песочницы —
+   * без этого `applyLovableFromProjectFiles` падает с «Песочница не найдена». Не трогаем название/subdomain строки проекта через upsertProjectCell.
+   */
+  async ensureSandboxStateForOwnedProject(projectId: string, ownerId: string): Promise<boolean> {
+    if (await this.hasSandboxPersistent(projectId)) return false;
+    const scope = await getProjectScopeForOwner(projectId, ownerId);
+    if (!scope) {
+      throw new Error("PROJECT_NOT_FOUND");
+    }
+    if (isLemnityAiSandboxDockerEnabled()) {
+      await createDockerSandbox("template-preview", ownerId, projectId, { reuseExistingProjectRow: true });
+      return true;
+    }
+    const now = Date.now();
+    const title = normalizeSandboxTitle(scope.name);
+    await ensureProjectStorageScaffold(projectId);
+    const state: MemoryState = {
+      id: projectId,
+      ownerId,
+      title,
+      createdAt: now,
+      updatedAt: now,
+      html: `<html><body style="font-family:Rubik,system-ui,sans-serif;background:#0A0A0A;color:white;padding:24px">Проект: ${title.replace(/</g, "")}</body></html>`,
+      files: {}
+    };
+    memoryStore.set(projectId, state);
+    await persistMemoryState(state);
+    await appendProjectAction(projectId, {
+      action: "sandbox.create",
+      payload: { mode: "memory", title, scaffold: "owned-project" }
+    });
+    return true;
   },
 
   async applyCode(sandboxId: string, code: string) {

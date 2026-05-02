@@ -191,6 +191,10 @@ export default function PromptBuildPage() {
   const templatePreviewSandboxIdRef = useRef<string | null>(null);
   const pendingProjectIdRef = useRef<string | null>(requestedSandboxId);
   const [hostProjectId, setHostProjectId] = useState<string | null>(null);
+  /** После первого завершения GET /api/projects/current (или ошибки сети) — чтобы handoff превью шаблона не летел до прихода контекста хост-проекта. */
+  const [projectScopeReady, setProjectScopeReady] = useState(false);
+  const hostProjectIdRef = useRef<string | null>(null);
+  const sandboxIdReserveRef = useRef<string | null>(null);
   const templatePreviewAbortRef = useRef<AbortController | null>(null);
   const templatePreviewReqSeqRef = useRef(0);
   const bridgeAssistantMessageIdRef = useRef<string | null>(null);
@@ -497,37 +501,49 @@ export default function PromptBuildPage() {
   }, []);
 
   useEffect(() => {
+    hostProjectIdRef.current = hostProjectId;
+  }, [hostProjectId]);
+
+  useEffect(() => {
+    sandboxIdReserveRef.current = sandboxId;
+  }, [sandboxId]);
+
+  useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch("/api/projects/current", {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store"
-        });
-        if (!res.ok) return;
+    void fetch("/api/projects/current", {
+      method: "GET",
+      credentials: "include",
+      cache: "no-store"
+    })
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
         const payload = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
         const id = typeof payload?.project?.id === "string" ? payload.project.id.trim() : "";
         if (!id || cancelled) return;
         setHostProjectId(id);
         pendingProjectIdRef.current = id;
-      } catch {
-        // non-project host, keep legacy project id flow
-      }
-    })();
+      })
+      .catch(() => {
+        /* apex / ошибка — остаёмся без hostProjectId */
+      })
+      .finally(() => {
+        if (!cancelled) setProjectScopeReady(true);
+      });
     return () => {
       cancelled = true;
     };
   }, []);
 
   const reserveProjectId = useCallback(() => {
-    if (hostProjectId?.trim()) {
-      pendingProjectIdRef.current = hostProjectId.trim();
-      return hostProjectId.trim();
+    const h = hostProjectIdRef.current?.trim();
+    if (h) {
+      pendingProjectIdRef.current = h;
+      return h;
     }
-    if (sandboxId?.trim()) {
-      pendingProjectIdRef.current = sandboxId.trim();
-      return sandboxId.trim();
+    const sid = sandboxIdReserveRef.current?.trim();
+    if (sid) {
+      pendingProjectIdRef.current = sid;
+      return sid;
     }
     if (pendingProjectIdRef.current?.trim()) {
       return pendingProjectIdRef.current.trim();
@@ -538,7 +554,7 @@ export default function PromptBuildPage() {
         : `project-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     pendingProjectIdRef.current = next;
     return next;
-  }, [hostProjectId, sandboxId]);
+  }, []);
 
   const push = useCallback(
     (
@@ -1429,6 +1445,7 @@ export default function PromptBuildPage() {
   useEffect(() => {
     if (!lemnityAiBridgeReady || !shouldUseLemnityAiBridge) return;
     if (requestedSessionId) return;
+    if (!projectScopeReady) return;
     const handoff = readBuilderHandoff();
     if (!handoff) return;
     const fromStorage = handoff.idea?.trim();
@@ -1477,8 +1494,15 @@ export default function PromptBuildPage() {
     const msg: ChatMessage = { id: createMessageId(), role: "user", content: fromStorage, sentAt: Date.now() };
     setMessages([msg]);
     void runPromptCoach([msg]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge, requestedSessionId, runPromptCoach]);
+  }, [
+    lemnityAiBridgeReady,
+    projectScopeReady,
+    requestedSessionId,
+    runPromptCoach,
+    runBuildTemplatePreview,
+    shouldUseLemnityAiBridge,
+    createMessageId
+  ]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -1601,6 +1625,7 @@ export default function PromptBuildPage() {
 
   useEffect(() => {
     if (!lemnityAiBridgeReady || shouldUseLemnityAiBridge) return;
+    if (!projectScopeReady) return;
     /** Явный переход из «Истории» / проектов по sessionId — не перетирать чат landing-handoff */
     if (requestedSessionId?.trim()) return;
     if (requestedSandboxId) return;
@@ -1641,8 +1666,14 @@ export default function PromptBuildPage() {
     setStage("questions");
     push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
     void handleCreateQuestions(fromStorage, handoff?.projectKind);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lemnityAiBridgeReady, shouldUseLemnityAiBridge, requestedSandboxId, requestedSessionId]);
+  }, [
+    lemnityAiBridgeReady,
+    projectScopeReady,
+    requestedSandboxId,
+    requestedSessionId,
+    runBuildTemplatePreview,
+    shouldUseLemnityAiBridge
+  ]);
 
   function pushRecent(item: string, opts?: { templateSlug?: string }) {
     try {

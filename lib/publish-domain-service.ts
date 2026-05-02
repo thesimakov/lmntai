@@ -207,9 +207,13 @@ export async function resolveProjectByHost(hostRaw: string): Promise<{
   subdomain: string;
 } | null> {
   const host = normalizeHost(hostRaw);
-  if (!host) return null;
+  if (!host) {
+    return null;
+  }
   const appHosts = getAppHosts();
-  if (appHosts.has(host)) return null;
+  if (appHosts.has(host)) {
+    return null;
+  }
 
   const byDomain = await prisma.publishDomainBinding.findFirst({
     where: { host, isActive: true, verificationStatus: "VERIFIED" },
@@ -230,12 +234,16 @@ export async function resolveProjectByHost(hostRaw: string): Promise<{
   }
 
   const subdomain = extractSubdomainFromHost(host);
-  if (!subdomain) return null;
+  if (!subdomain) {
+    return null;
+  }
   const project = await prisma.project.findUnique({
     where: { subdomain },
     select: { id: true, subdomain: true }
   });
-  if (!project) return null;
+  if (!project) {
+    return null;
+  }
   return {
     projectId: project.id,
     subdomain: project.subdomain

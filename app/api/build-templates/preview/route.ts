@@ -18,7 +18,7 @@ async function postBuildTemplatePreview(req: NextRequest) {
 
   let body: { slug?: string; projectId?: string };
   try {
-    body = (await req.json()) as { slug?: string };
+    body = (await req.json()) as { slug?: string; projectId?: string };
   } catch {
     return Response.json({ error: "Invalid JSON" }, { status: 400 });
   }
@@ -26,10 +26,10 @@ async function postBuildTemplatePreview(req: NextRequest) {
   const slug = typeof body.slug === "string" ? body.slug.trim() : "";
   const requestedProjectId = typeof body.projectId === "string" ? body.projectId.trim() : "";
   const resolvedProject = await resolveProjectFromRequest(req);
-  if (resolvedProject && requestedProjectId && requestedProjectId !== resolvedProject.id) {
-    return Response.json({ error: "Project mismatch for current domain" }, { status: 404 });
-  }
+
+  /** На поддомене публикации проект фиксируется Host + middleware; тело запроса может ещё содержать временный UUID до ответа `/api/projects/current` — не отклоняем такой запрос. */
   const projectId = resolvedProject?.id ?? requestedProjectId;
+
   if (!slug) {
     return Response.json({ error: "slug required" }, { status: 400 });
   }
@@ -50,9 +50,14 @@ async function postBuildTemplatePreview(req: NextRequest) {
         return Response.json({ error: projectGate.message }, { status: projectGate.status });
       }
     }
-    const { sandboxId } = alreadyOwned
-      ? { sandboxId: projectId }
-      : await sandboxManager.createSandbox(`bt-${t.slug}`, guard.data.user.id, projectId);
+
+    let sandboxId = projectId;
+    if (!alreadyOwned) {
+      ({ sandboxId } = await sandboxManager.createSandbox(`bt-${t.slug}`, guard.data.user.id, projectId));
+    } else {
+      await sandboxManager.ensureSandboxStateForOwnedProject(projectId, guard.data.user.id);
+    }
+
     const generatedTxt = formatBuildTemplateBlock(t.rules, t.files);
     const { previewUrl } = await sandboxManager.applyLovableFromProjectFiles(sandboxId, t.files, generatedTxt);
 

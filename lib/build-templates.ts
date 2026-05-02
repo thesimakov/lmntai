@@ -35,22 +35,15 @@ import {
   WEB_STUDIO_TEMPLATE_RULES,
   WEB_STUDIO_TEMPLATE_SLUG
 } from "@/lib/build-template-presets/web-studio-preset";
-import {
-  EVENTS_AI_DEFAULT_USER_PROMPT,
-  EVENTS_AI_PUCK_JSON,
-  EVENTS_AI_PRESET_FILES,
-  EVENTS_AI_TEMPLATE_DESCRIPTION,
-  EVENTS_AI_TEMPLATE_NAME,
-  EVENTS_AI_TEMPLATE_RULES,
-  EVENTS_AI_TEMPLATE_SLUG
-} from "@/lib/build-template-presets/events-ai-preset";
+
+/** Выведенные из каталога встроенные slug (строчки в БД могли остаться активными). */
+const REMOVED_CATALOG_TEMPLATE_SLUGS = new Set<string>(["events"]);
 
 const PRESET_DEFAULT_USER_PROMPT_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_DEFAULT_USER_PROMPT,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_DEFAULT_USER_PROMPT,
   [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_DEFAULT_USER_PROMPT,
-  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_DEFAULT_USER_PROMPT,
-  [EVENTS_AI_TEMPLATE_SLUG]: EVENTS_AI_DEFAULT_USER_PROMPT
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_DEFAULT_USER_PROMPT
 };
 
 /** Встроенный макет Puck по slug (если в БД нет puck.json — подмешиваем). */
@@ -58,8 +51,7 @@ const PRESET_PUCK_JSON_BY_SLUG: Record<string, string> = {
   [MASSAGE_TEMPLATE_SLUG]: MASSAGE_PUCK_JSON,
   [IT_STARTUP_TEMPLATE_SLUG]: IT_STARTUP_PUCK_JSON,
   [PR_LEAD_TEMPLATE_SLUG]: PR_LEAD_PUCK_JSON,
-  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_PUCK_JSON,
-  [EVENTS_AI_TEMPLATE_SLUG]: EVENTS_AI_PUCK_JSON
+  [WEB_STUDIO_TEMPLATE_SLUG]: WEB_STUDIO_PUCK_JSON
 };
 
 function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): Record<string, string> {
@@ -153,14 +145,6 @@ const BUILTIN_PRESET_SPECS: Array<{
     rules: WEB_STUDIO_TEMPLATE_RULES,
     files: WEB_STUDIO_PRESET_FILES,
     defaultUserPrompt: WEB_STUDIO_DEFAULT_USER_PROMPT
-  },
-  {
-    slug: EVENTS_AI_TEMPLATE_SLUG,
-    name: EVENTS_AI_TEMPLATE_NAME,
-    description: EVENTS_AI_TEMPLATE_DESCRIPTION,
-    rules: EVENTS_AI_TEMPLATE_RULES,
-    files: EVENTS_AI_PRESET_FILES,
-    defaultUserPrompt: EVENTS_AI_DEFAULT_USER_PROMPT
   }
 ];
 
@@ -170,13 +154,15 @@ const BUILTIN_SPEC_BY_SLUG: Record<string, (typeof BUILTIN_PRESET_SPECS)[number]
 
 /** Каталог из кода без Prisma — если сессии нет, пользователя нет в БД или недоступна БД для списка. */
 export function getBuiltinBuildTemplateCatalogList(): BuildTemplateListItem[] {
-  return BUILTIN_PRESET_SPECS.map((p) => ({
-    id: `preset-${p.slug}`,
-    slug: p.slug,
-    name: stripNulFromText(p.name),
-    description: stripNulFromText(p.description),
-    defaultUserPrompt: stripNulFromText(p.defaultUserPrompt)
-  })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  return BUILTIN_PRESET_SPECS.filter((p) => !REMOVED_CATALOG_TEMPLATE_SLUGS.has(p.slug))
+    .map((p) => ({
+      id: `preset-${p.slug}`,
+      slug: p.slug,
+      name: stripNulFromText(p.name),
+      description: stripNulFromText(p.description),
+      defaultUserPrompt: stripNulFromText(p.defaultUserPrompt)
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
 function builtinListItemFromSlug(slug: string): BuildTemplateListItem | null {
@@ -246,6 +232,10 @@ export async function ensureBuildTemplatesSeeded(): Promise<void> {
         }
       });
     }
+    await prisma.buildTemplate.updateMany({
+      where: { slug: { in: Array.from(REMOVED_CATALOG_TEMPLATE_SLUGS) } },
+      data: { isActive: false }
+    });
   } catch (err) {
     console.warn("[build-templates] seed skipped (db error — e.g. NUL in text or unreachable DB)", err);
   }
@@ -255,7 +245,10 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
   await ensureBuildTemplatesSeeded();
   try {
     const rows = await prisma.buildTemplate.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        slug: { notIn: Array.from(REMOVED_CATALOG_TEMPLATE_SLUGS) }
+      },
       select: { id: true, slug: true, name: true, description: true, defaultUserPrompt: true }
     });
     const bySlug = new Map(rows.map((r) => [r.slug, r]));
@@ -299,6 +292,7 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
 export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplateRecord | null> {
   const s = slug.trim();
   if (!s) return null;
+  if (REMOVED_CATALOG_TEMPLATE_SLUGS.has(s)) return null;
   await ensureBuildTemplatesSeeded();
   try {
     const row = await prisma.buildTemplate.findFirst({

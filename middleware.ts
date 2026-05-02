@@ -43,6 +43,10 @@ export async function middleware(req: NextRequest) {
   if (req.nextUrl.pathname.startsWith("/api/publish/resolve")) {
     return NextResponse.next();
   }
+  /** NextAuth: не прогонять через resolve публикации — иначе при «чужом» Host (LAN, staging) сессия не грузится. */
+  if (req.nextUrl.pathname.startsWith("/api/auth")) {
+    return NextResponse.next();
+  }
   const rawHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const host = normalizeHost(rawHost);
   if (!host) {

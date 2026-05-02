@@ -56,6 +56,8 @@ type AccountMenuRow =
       icon: typeof UserCircle2;
       labelKey: MessageKey;
       chevron?: boolean;
+      /** Внешняя ссылка (например Telegram) — открывается в новой вкладке */
+      external?: boolean;
     }
   | {
       type: "logout";
@@ -64,7 +66,13 @@ type AccountMenuRow =
 const ACCOUNT_MENU_ROWS: AccountMenuRow[] = [
   { type: "link", href: "/integrations", icon: HelpCircle, labelKey: "sidebar_popover_support", chevron: true },
   { type: "link", href: "/", icon: BookOpen, labelKey: "sidebar_popover_docs", chevron: true },
-  { type: "link", href: "/team", icon: Users, labelKey: "sidebar_popover_community" },
+  {
+    type: "link",
+    href: "https://t.me/lemnity",
+    icon: Users,
+    labelKey: "sidebar_popover_community",
+    external: true
+  },
   { type: "logout" }
 ];
 
@@ -239,11 +247,15 @@ function SidebarBody({ className }: { className?: string }) {
                 );
               }
               const Icon = row.icon;
-              const active = pathname === row.href || pathname.startsWith(`${row.href}/`);
+              const active =
+                !row.external && (pathname === row.href || pathname.startsWith(`${row.href}/`));
               return (
                 <DropdownMenuItem key={`${row.href}-${row.labelKey}`} asChild>
                   <Link
                     href={row.href}
+                    {...(row.external
+                      ? { target: "_blank", rel: "noopener noreferrer" }
+                      : {})}
                     className={cn(
                       "flex cursor-pointer items-center gap-2 rounded-xl py-2",
                       active && "bg-accent/60"
