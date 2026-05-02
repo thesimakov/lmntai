@@ -9,8 +9,9 @@ describe("publish host normalization", () => {
     expect(normalizePublishCustomHost("client.example.com")).toBe("client.example.com");
   });
 
-  it("rejects invalid hosts in resolver normalization", () => {
-    expect(normalizeHost("localhost")).toBeNull();
+  it("normalizes resolver hosts: localhost is valid, garbage rejected", () => {
+    expect(normalizeHost("localhost")).toBe("localhost");
+    expect(normalizeHost("127.0.0.1")).toBe("127.0.0.1");
     expect(normalizeHost("bad host")).toBeNull();
     expect(normalizeHost("demo.example.com")).toBe("demo.example.com");
   });

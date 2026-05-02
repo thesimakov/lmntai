@@ -96,6 +96,7 @@ export const messages = {
     landing_footer_login: 'Вход',
     landing_footer_signup: 'Регистрация',
     landing_footer_dashboard: 'Дашборд',
+    landing_footer_copyright: 'Lemnity ИИ / ООО «Лемнити»',
     landing_simple_nav_product: 'Продукт',
     landing_simple_nav_pricing: 'Тарифы',
     landing_simple_nav_docs: 'Документация',
@@ -110,7 +111,19 @@ export const messages = {
     marketing_docs_s3: 'Доступ и API',
     marketing_docs_s3p:
       'После входа в кабинете доступны баланс токенов и API-ключ; детали зависят от выбранного плана.',
-    landing_simple_nav_cta: 'Начать',
+    marketing_docs_tab_about: 'О платформе',
+    marketing_docs_tab_offer: 'Офферта',
+    marketing_docs_tab_privacy: 'Политика конфиденциальности',
+    marketing_docs_tab_marketing: 'Согласие на получение рекламной рассылки',
+    marketing_docs_about_body:
+      'Lemnity — конструктор интерфейсов с ИИ: опишите задачу в своих словах, получите превью и дорабатывайте его в Playground. После входа доступны баланс токенов и API-ключ; тарифы и лимиты — в разделе «Тарифы».',
+    marketing_docs_offer_body:
+      'Договор оказания услуг (оферту) вы получаете при оформлении доступа к сервису. Актуальный текст оферты и реквизиты оператора можно запросить в поддержке.',
+    marketing_docs_privacy_body:
+      'Политика в отношении обработки персональных данных описывает цели и сроки обработки данных, права субъекта и меры защиты. Актуальная редакция предоставляется по запросу в поддержку или в личном кабинете, когда раздел будет размещён там.',
+    marketing_docs_marketing_body:
+      'Оформляя подписку на рассылку или отмечая согласие в форме, вы принимаете получение информационных и рекламных сообщений о продукте Lemnity / Lemnity ИИ и услугах ООО «Лемнити» на указанный адрес электронной почты. Отказ от рассылки возможен в любой момент по ссылке в письме или через обращение в поддержку.',
+    marketing_docs_back: 'К списку разделов',
     landing_simple_badge_free: 'Бесплатный тариф',
     landing_simple_badge_trial: 'Попробовать бесплатно',
     landing_simple_hero_h1: 'Чем могу помочь?',
@@ -1093,6 +1106,7 @@ export const messages = {
     landing_footer_login: 'Sign in',
     landing_footer_signup: 'Sign up',
     landing_footer_dashboard: 'Dashboard',
+    landing_footer_copyright: 'Lemnity AI / Lemnity LLC (Russia)',
     landing_simple_nav_product: 'Product',
     landing_simple_nav_pricing: 'Pricing',
     landing_simple_nav_docs: 'Docs',
@@ -1107,7 +1121,19 @@ export const messages = {
     marketing_docs_s3: 'Access & API',
     marketing_docs_s3p:
       'After sign-in you get token balance and an API key in the dashboard; specifics depend on your plan.',
-    landing_simple_nav_cta: 'Get started',
+    marketing_docs_tab_about: 'About the platform',
+    marketing_docs_tab_offer: 'Offer (terms)',
+    marketing_docs_tab_privacy: 'Privacy policy',
+    marketing_docs_tab_marketing: 'Marketing communications consent',
+    marketing_docs_about_body:
+      'Lemnity is an AI UI builder: describe what you need, get a live preview, and iterate in Playground. After sign-in you get token balance and API access; plans and limits are on the Pricing page.',
+    marketing_docs_offer_body:
+      'The services agreement (offer) is provided when you subscribe or purchase access. Request the current offer text and operator details from support.',
+    marketing_docs_privacy_body:
+      'The privacy policy describes how we process personal data, your rights, and safeguards. Request the current version from support or find it in the account area when published there.',
+    marketing_docs_marketing_body:
+      'By opting in to emails or checking the consent box, you agree to receive informational and promotional messages about Lemnity / Lemnity AI and Lemnity LLC services at the email you provide. You can unsubscribe anytime via the link in emails or by contacting support.',
+    marketing_docs_back: 'Back to sections',
     landing_simple_badge_free: 'Free plan',
     landing_simple_badge_trial: 'Start free trial',
     landing_simple_hero_h1: 'What can I do for you?',
@@ -2085,6 +2111,7 @@ export const messages = {
     landing_footer_login: 'Вуруд',
     landing_footer_signup: 'Сабти ном',
     landing_footer_dashboard: 'Дашборд',
+    landing_footer_copyright: 'Lemnity ИИ / ООО «Лемнити»',
     landing_simple_nav_product: 'Маҳсулот',
     landing_simple_nav_pricing: 'Нархгузорӣ',
     landing_simple_nav_docs: 'Ҳуҷҷатҳо',
@@ -2099,7 +2126,19 @@ export const messages = {
     marketing_docs_s3: 'Дастрасӣ ва API',
     marketing_docs_s3p:
       'Пас аз вуруд токенҳо ва калиди API дар кабинет дастрасанд; тафсилот аз нақша вобаста аст.',
-    landing_simple_nav_cta: 'Оғоз',
+    marketing_docs_tab_about: 'Дар бораи платформа',
+    marketing_docs_tab_offer: 'Оферта',
+    marketing_docs_tab_privacy: 'Сиёсати махфият',
+    marketing_docs_tab_marketing: 'Розигӣ барои расонаи таблиғотӣ',
+    marketing_docs_about_body:
+      'Lemnity сохтори интерфейс бо ИИ аст: вазифаро тавсиф кунед, пешнамоиш гиред ва дар Playground такмил диҳед. Пас аз вукӯд токенҳо ва API дастрасанд; нархҳо дар саҳифаи нархҳо.',
+    marketing_docs_offer_body:
+      'Шартҳои расмии хизматрасонӣ (оферта) ҳангоми обуна ё харид дастрас мешаванд. Матни ҷории офертаро аз дастгирӣ пурсед.',
+    marketing_docs_privacy_body:
+      'Сиёсати корбурди маълумоти шахсӣ ҳадафҳо, муҳлатҳо ва ҳуқуқҳои шуморо муайян мекунад. Варианти ҷориро аз дастгирӣ бипурсед.',
+    marketing_docs_marketing_body:
+      'Бо розӣ шудан ба почтаи электронӣ ё қайди розигӣ, шумо ба гирифтани паёмҳои иттилоотӣ ва таблиғотӣ дар бораи Lemnity / Lemnity ИИ ва хизматрасониҳои ООО «Лемнити» розӣ мешавед. Бекор кардан дар ҳар вақт аз роҳи истинод дар паём ё дастгирӣ имконпазир аст.',
+    marketing_docs_back: 'Ба рӯйхати бахшҳо',
     landing_simple_badge_free: 'Тарифи ройгон',
     landing_simple_badge_trial: 'Озмоиши ройгон',
     landing_simple_hero_h1: 'Чӣ кӯмак расонам?',

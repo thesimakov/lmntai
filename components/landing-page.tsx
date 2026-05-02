@@ -32,6 +32,8 @@ const SHOWCASE_FILTER_LABEL: Record<LandingShowcaseCategory, MessageKey> = {
   other: "landing_showcase_filter_other"
 };
 
+const SHOWCASE_SECTION_ENABLED = false;
+
 /** Подписи совпадают с типами в Playground; в поле вставляется полноценный стартовый промпт. */
 const LANDING_HERO_CHIPS: Array<{
   labelKey: MessageKey;
@@ -111,6 +113,7 @@ export function LandingPage() {
   }, [showShowcaseFilter, showcaseFilter, showcaseCategoryCounts]);
 
   useEffect(() => {
+    if (!SHOWCASE_SECTION_ENABLED) return;
     let cancelled = false;
     fetch("/api/showcase-images")
       .then((r) => (r.ok ? r.json() : Promise.reject()))
@@ -301,6 +304,7 @@ export function LandingPage() {
           </button>
         </div>
 
+        {SHOWCASE_SECTION_ENABLED ? (
         <section id="showcase" className="mx-auto mt-20 w-full scroll-mt-24">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
@@ -422,6 +426,7 @@ export function LandingPage() {
             })}
           </div>
         </section>
+        ) : null}
       </main>
 
       <footer className="border-t border-zinc-200/80 py-8 text-center text-xs text-zinc-500">
@@ -439,7 +444,9 @@ export function LandingPage() {
             {t("landing_footer_dashboard")}
           </Link>
         </div>
-        <p className="mt-4">© {new Date().getFullYear()} Lemnity</p>
+        <p className="mt-4">
+          © {new Date().getFullYear()} {t("landing_footer_copyright")}
+        </p>
       </footer>
       </div>
     </div>
