@@ -72,6 +72,30 @@ function mergePresetPuckIntoFiles(slug: string, files: Record<string, string>): 
   return out;
 }
 
+/** PostgreSQL rejects U+0000 in text / JSON strings (error 22P05). */
+function stripNulBytesDeep(value: unknown): unknown {
+  if (typeof value === "string") {
+    return value.includes("\0") ? value.replace(/\u0000/g, "") : value;
+  }
+  if (value !== null && typeof value === "object") {
+    if (Array.isArray(value)) {
+      return value.map(stripNulBytesDeep);
+    }
+    const obj = value as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const key = k.includes("\0") ? k.replace(/\u0000/g, "") : k;
+      out[key] = stripNulBytesDeep(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+function stripNulFromText(s: string): string {
+  return s.includes("\0") ? s.replace(/\u0000/g, "") : s;
+}
+
 export type BuildTemplateListItem = {
   id: string;
   slug: string;
@@ -149,9 +173,9 @@ export function getBuiltinBuildTemplateCatalogList(): BuildTemplateListItem[] {
   return BUILTIN_PRESET_SPECS.map((p) => ({
     id: `preset-${p.slug}`,
     slug: p.slug,
-    name: p.name,
-    description: p.description,
-    defaultUserPrompt: p.defaultUserPrompt
+    name: stripNulFromText(p.name),
+    description: stripNulFromText(p.description),
+    defaultUserPrompt: stripNulFromText(p.defaultUserPrompt)
   })).sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
 
@@ -161,28 +185,29 @@ function builtinListItemFromSlug(slug: string): BuildTemplateListItem | null {
   return {
     id: `preset-${p.slug}`,
     slug: p.slug,
-    name: p.name,
-    description: p.description,
-    defaultUserPrompt: p.defaultUserPrompt
+    name: stripNulFromText(p.name),
+    description: stripNulFromText(p.description),
+    defaultUserPrompt: stripNulFromText(p.defaultUserPrompt)
   };
 }
 
 function builtinRecordFromSlug(slug: string): BuildTemplateRecord | null {
   const p = BUILTIN_SPEC_BY_SLUG[slug];
   if (!p) return null;
+  const files = stripNulBytesDeep(mergePresetPuckIntoFiles(p.slug, { ...p.files })) as Record<string, string>;
   return {
     id: `preset-${p.slug}`,
     slug: p.slug,
-    name: p.name,
-    description: p.description,
-    rules: p.rules,
-    files: mergePresetPuckIntoFiles(p.slug, { ...p.files })
+    name: stripNulFromText(p.name),
+    description: stripNulFromText(p.description),
+    rules: stripNulFromText(p.rules),
+    files
   };
 }
 
 function resolveDefaultUserPrompt(slug: string, stored: string | null | undefined): string {
-  const trimmed = typeof stored === "string" ? stored.trim() : "";
-  if (trimmed.length > 0) return stored ?? "";
+  const raw = typeof stored === "string" ? stripNulFromText(stored) : "";
+  if (raw.trim().length > 0) return raw;
   return PRESET_DEFAULT_USER_PROMPT_BY_SLUG[slug] ?? "";
 }
 
@@ -193,16 +218,17 @@ export async function ensureBuildTemplatesSeeded(): Promise<void> {
   try {
     const resync = process.env.LEMNITY_RESYNC_BUILTIN_BUILD_TEMPLATES === "1";
     for (const p of BUILTIN_PRESET_SPECS) {
+      const filesJson = stripNulBytesDeep(p.files) as object;
       const existing = await prisma.buildTemplate.findUnique({ where: { slug: p.slug } });
       if (!existing) {
         await prisma.buildTemplate.create({
           data: {
             slug: p.slug,
-            name: p.name,
-            description: p.description,
-            rules: p.rules,
-            files: p.files as object,
-            defaultUserPrompt: p.defaultUserPrompt,
+            name: stripNulFromText(p.name),
+            description: stripNulFromText(p.description),
+            rules: stripNulFromText(p.rules),
+            files: filesJson,
+            defaultUserPrompt: stripNulFromText(p.defaultUserPrompt),
             isActive: true
           }
         });
@@ -212,16 +238,16 @@ export async function ensureBuildTemplatesSeeded(): Promise<void> {
       await prisma.buildTemplate.update({
         where: { slug: p.slug },
         data: {
-          name: p.name,
-          description: p.description,
-          rules: p.rules,
-          files: p.files as object,
-          defaultUserPrompt: p.defaultUserPrompt
+          name: stripNulFromText(p.name),
+          description: stripNulFromText(p.description),
+          rules: stripNulFromText(p.rules),
+          files: filesJson,
+          defaultUserPrompt: stripNulFromText(p.defaultUserPrompt)
         }
       });
     }
   } catch (err) {
-    console.warn("[build-templates] seed skipped (db unavailable?)", err);
+    console.warn("[build-templates] seed skipped (db error — e.g. NUL in text or unreachable DB)", err);
   }
 }
 
@@ -241,8 +267,8 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
         merged.push({
           id: row.id,
           slug: row.slug,
-          name: row.name,
-          description: row.description,
+          name: stripNulFromText(row.name),
+          description: stripNulFromText(row.description),
           defaultUserPrompt: resolveDefaultUserPrompt(row.slug, row.defaultUserPrompt)
         });
       } else {
@@ -256,8 +282,8 @@ export async function listBuildTemplates(): Promise<BuildTemplateListItem[]> {
       merged.push({
         id: row.id,
         slug: row.slug,
-        name: row.name,
-        description: row.description,
+        name: stripNulFromText(row.name),
+        description: stripNulFromText(row.description),
         defaultUserPrompt: resolveDefaultUserPrompt(row.slug, row.defaultUserPrompt)
       });
     }
@@ -281,13 +307,14 @@ export async function getBuildTemplateBySlug(slug: string): Promise<BuildTemplat
     if (row) {
       const files = row.files;
       if (files && typeof files === "object" && !Array.isArray(files)) {
+        const cleaned = stripNulBytesDeep(files) as Record<string, string>;
         return {
           id: row.id,
           slug: row.slug,
-          name: row.name,
-          description: row.description,
-          rules: row.rules,
-          files: mergePresetPuckIntoFiles(s, files as Record<string, string>)
+          name: stripNulFromText(row.name),
+          description: stripNulFromText(row.description),
+          rules: stripNulFromText(row.rules),
+          files: stripNulBytesDeep(mergePresetPuckIntoFiles(s, cleaned)) as Record<string, string>
         };
       }
     }
