@@ -1,12 +1,79 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  formatAgentModelDisplayLabel,
+  getAgentModelDocsUrl,
   getAgentOptionsForUi,
+  parseAgentPickerLabel,
   parseAgentUiLabel,
   resolveAgentForTask
 } from "@/lib/agent-models";
 
 describe("agent models catalog", () => {
+  it("uses i18n-backed display label when set", () => {
+    expect(
+      formatAgentModelDisplayLabel("DeepSeek", (k) =>
+        k === "playground_chat_brand" ? "Lemnity AI" : String(k)
+      )
+    ).toBe("Lemnity AI");
+
+    expect(formatAgentModelDisplayLabel("GPT-4.1", (k) => String(k))).toBe("GPT-4.1");
+  });
+
+  it("formats Auto label via i18n", () => {
+    expect(
+      formatAgentModelDisplayLabel("Auto", (k) =>
+        k === "playground_agent_auto" ? "Авто" : String(k)
+      )
+    ).toBe("Авто");
+  });
+
+  it("lists Auto first, then DeepSeek among available agents", () => {
+    const options = getAgentOptionsForUi({
+      plan: "FREE",
+      projectKind: "website",
+      task: "generate-stream"
+    });
+    const available = options.filter((x) => x.available);
+    expect(available[0]?.label).toBe("Auto");
+    expect(available[1]?.label).toBe("DeepSeek");
+  });
+
+  it("resolves Auto hint from prompt volume and cues", () => {
+    const long = "word ".repeat(5000);
+    const autoWebsite = resolveAgentForTask({
+      plan: "FREE",
+      projectKind: "website",
+      task: "generate-stream",
+      hint: "Auto",
+      autoFromPrompt: long
+    });
+    expect(autoWebsite.uiLabel).toBe("Kimi K2.6");
+
+    const code = "Refactor the React components in src/App.tsx ```tsx```";
+    const autoLovable = resolveAgentForTask({
+      plan: "FREE",
+      projectKind: "lovable",
+      task: "generate-stream",
+      hint: "AUTO",
+      autoFromPrompt: code
+    });
+    expect(autoLovable.uiLabel).toBe("Gemini 3 Pro");
+  });
+
+  it("exposes RouterAI docs URL for DeepSeek profile", () => {
+    expect(getAgentModelDocsUrl("DeepSeek")).toBe(
+      "https://routerai.ru/models/deepseek/deepseek-v4-flash"
+    );
+    expect(getAgentModelDocsUrl("GPT-4.1")).toBeUndefined();
+  });
+
+  it("parses Auto picker token case-insensitively", () => {
+    expect(parseAgentPickerLabel("Auto")).toBe("Auto");
+    expect(parseAgentPickerLabel("AUTO")).toBe("Auto");
+    expect(parseAgentPickerLabel("GPT-4.1")).toBe("GPT-4.1");
+  });
+
   it("parses only known UI labels", () => {
     expect(parseAgentUiLabel("GPT-4.1")).toBe("GPT-4.1");
     expect(parseAgentUiLabel("Kimi K2.6")).toBe("Kimi K2.6");
@@ -112,11 +179,18 @@ describe("agent models catalog", () => {
     const claude = options.find((x) => x.label === "Claude Sonnet 4.5");
     const gpt = options.find((x) => x.label === "GPT-4.1");
     const kimi = options.find((x) => x.label === "Kimi K2.6");
+    const auto = options.find((x) => x.label === "Auto");
 
+    const ds = options.find((x) => x.label === "DeepSeek");
+
+    expect(auto?.available).toBe(true);
+    expect(auto?.recommended).toBe(false);
+    expect(ds?.available).toBe(true);
+    expect(ds?.recommended).toBe(true);
     expect(gemini?.available).toBe(true);
     expect(claude?.available).toBe(false);
     expect(gpt?.available).toBe(true);
     expect(kimi?.available).toBe(true);
-    expect(gemini?.recommended).toBe(true);
+    expect(gemini?.recommended).toBe(false);
   });
 });

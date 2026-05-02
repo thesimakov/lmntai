@@ -141,7 +141,8 @@ async function postPromptBuilder(req: NextRequest) {
       plan: user.plan,
       projectKind: isProjectKind(body?.projectKind) ? body.projectKind : undefined,
       task: "prompt-questions",
-      hint: body?.agentHint
+      hint: body?.agentHint,
+      autoFromPrompt: idea
     });
 
     const systemPrompt = `Ты — продакт/UX-стратег для генерации интерфейса в Lemnity (Lemnity AI builder).
@@ -199,18 +200,20 @@ ${resultModeHint}
   }
 
   if (body?.mode === "compose") {
-    const agent = resolveAgentForTask({
-      plan: user.plan,
-      projectKind: isProjectKind(body?.projectKind) ? body.projectKind : undefined,
-      task: "prompt-compose",
-      hint: body?.agentHint
-    });
-
     const qa = body?.qa ?? [];
     const packed = qa
       .filter((x) => x.q && x.a)
       .map((x) => `Q: ${x.q}\nA: ${x.a}`)
       .join("\n\n");
+    const autoDigest = [idea, packed].filter((x) => x.trim().length > 0).join("\n\n");
+
+    const agent = resolveAgentForTask({
+      plan: user.plan,
+      projectKind: isProjectKind(body?.projectKind) ? body.projectKind : undefined,
+      task: "prompt-compose",
+      hint: body?.agentHint,
+      autoFromPrompt: autoDigest
+    });
 
     const composePrompt = multifile
       ? `Ты — senior prompt engineer для **многофайлового** React+TypeScript UI в Lemnity (Vite-стиль: \`src/main.tsx\`, \`src/App.tsx\`, \`src/components/*\` — как в настоящем репозитории; превью собирает платформа, Tailwind в className).

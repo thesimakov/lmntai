@@ -79,7 +79,8 @@ async function postGenerateStream(req: NextRequest) {
     plan: user.plan,
     projectKind: pk,
     task: "generate-stream",
-    hint: body?.agentHint
+    hint: body?.agentHint,
+    autoFromPrompt: rawPrompt
   });
 
   const sandboxTitle = rawPrompt.slice(0, 120);

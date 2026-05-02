@@ -38,7 +38,7 @@ import {
   resolvePublishOpenUrl,
   resolveShareablePreviewUrl
 } from "@/lib/preview-share";
-import type { AgentUiLabel } from "@/lib/agent-models";
+import { formatAgentModelDisplayLabel, type AgentPickerLabel } from "@/lib/agent-models";
 import { isAffirmativeUserReply } from "@/lib/affirmative-reply";
 import {
   formatAttachmentsForLemnityChat,
@@ -240,7 +240,7 @@ export default function PromptBuildPage() {
   const [leftCollapsed, setLeftCollapsed] = useState(false);
   const [leftWidth, setLeftWidth] = useState(400);
   const [projectKind, setProjectKind] = useState<ProjectKind | null>(null);
-  const [agentHint, setAgentHint] = useState<AgentUiLabel>("GPT-4.1");
+  const [agentHint, setAgentHint] = useState<AgentPickerLabel>("DeepSeek");
   const [coachAwaitingConfirm, setCoachAwaitingConfirm] = useState(false);
   const [pendingTechnicalPrompt, setPendingTechnicalPrompt] = useState<string | null>(null);
   const [promptCoachLoading, setPromptCoachLoading] = useState(false);
@@ -2235,7 +2235,8 @@ export default function PromptBuildPage() {
                             : t("playground_coach_stage_questions")}
                         </p>
                         <p className="text-muted-foreground/95">
-                          {t("playground_coach_model_prefix")} {agentHint}
+                          {t("playground_coach_model_prefix")}{" "}
+                          {formatAgentModelDisplayLabel(agentHint, t)}
                         </p>
                         <button
                           type="button"

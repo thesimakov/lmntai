@@ -38,10 +38,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import {
+  formatAgentModelDisplayLabel,
+  getAgentModelDocsUrl,
   getAgentOptionsForUi,
-  parseAgentUiLabel,
-  type AgentTask,
-  type AgentUiLabel
+  parseAgentPickerLabel,
+  type AgentPickerLabel,
+  type AgentTask
 } from "@/lib/agent-models";
 import { TypingAssistantContent } from "@/components/playground/typing-assistant-content";
 import { cn } from "@/lib/utils";
@@ -117,8 +119,8 @@ type AgentChatProps = {
   projectKind?: ProjectKind | null;
   /** Режим резолва в матрице агентов */
   agentTask?: AgentTask;
-  /** Отдать выбранный агент как hint в родительский компонент */
-  onModelHintChange?: (value: AgentUiLabel) => void;
+  /** Отдать выбранный агент как hint в родительский компонент (`Auto` — сервер выберет модель). */
+  onModelHintChange?: (value: AgentPickerLabel) => void;
   /**
    * Кнопка визуального редактора макета в панели ввода (студия) — аналог быстрого доступа к режиму «Редактор» в шапке превью.
    */
@@ -176,7 +178,7 @@ export function AgentChat({
     Array<{ id: string; file: File; kind: "image" | "video" | "file" }>
   >([]);
   const isEditor = onIsEditorChange != null ? Boolean(isEditorProp) : false;
-  const [model, setModel] = useState<AgentUiLabel>("DeepSeek");
+  const [model, setModel] = useState<AgentPickerLabel>("DeepSeek");
   const [modelOpen, setModelOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [templateListLoading, setTemplateListLoading] = useState(false);
@@ -201,9 +203,15 @@ export function AgentChat({
     () => modelOptions.filter((m) => !m.available),
     [modelOptions]
   );
-  const recommendedModel = useMemo<AgentUiLabel>(() => {
-    return modelOptions.find((x) => x.recommended && x.available)?.label ?? "DeepSeek";
-  }, [modelOptions]);
+  const modelDisplayLabel = useMemo(() => formatAgentModelDisplayLabel(model, t), [model, t]);
+  const recommendedModel = useMemo<AgentPickerLabel>(() => "DeepSeek", []);
+  const modelPickerTitle = useMemo(() => {
+    if (model === "Auto") {
+      return `${t("playground_agent_auto")} — ${t("playground_agent_auto_title")}`;
+    }
+    const u = getAgentModelDocsUrl(model);
+    return u ? `${modelDisplayLabel} · ${u}` : modelDisplayLabel;
+  }, [model, modelDisplayLabel, t]);
 
   const visible = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
 
@@ -213,7 +221,7 @@ export function AgentChat({
 
   useEffect(() => {
     try {
-      const stored = parseAgentUiLabel(localStorage.getItem("lemnity.chat.model"));
+      const stored = parseAgentPickerLabel(localStorage.getItem("lemnity.chat.model"));
       const isStoredAvailable = Boolean(
         stored && modelOptions.some((x) => x.label === stored && x.available)
       );
@@ -269,7 +277,7 @@ export function AgentChat({
       const gap = 8;
       const menuW = 240; // w-60
       const margin = 8;
-      const estimatedH = 220;
+      const estimatedH = 320;
       const left = Math.round(
         Math.min(Math.max(r.left, margin), window.innerWidth - menuW - margin)
       );
@@ -349,13 +357,28 @@ export function AgentChat({
     >
       {modelOpen && modelMenuPos ? (
         <div
-          className="fixed z-[9999] max-h-[min(70vh,420px)] w-60 overflow-y-auto rounded-2xl border bg-popover text-popover-foreground p-1 shadow-xl"
+          className="fixed z-[9999] w-60 overflow-visible"
           style={{
             left: modelMenuPos.left,
             top: modelMenuPos.top,
             transform: modelMenuPos.place === "above" ? "translateY(-100%)" : undefined
           }}
         >
+          <div className="relative">
+            <button
+              type="button"
+              className={cn(
+                "absolute z-[10000] inline-flex h-7 w-7 items-center justify-center rounded-full border border-border bg-popover shadow-md",
+                "-right-2 -top-2 ring-2 ring-background",
+                "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                "outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+              )}
+              aria-label={t("playground_dialog_close")}
+              onClick={() => setModelOpen(false)}
+            >
+              <X className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            </button>
+            <div className="max-h-[min(70vh,420px)] overflow-y-auto rounded-2xl border bg-popover p-1 text-popover-foreground shadow-xl">
           {availableModelOptions.length > 0 ? (
             <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
               {t("playground_agents_section_tariff")}
@@ -366,7 +389,7 @@ export function AgentChat({
               key={m.label}
               type="button"
               className={cn(
-                "flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                "flex w-full items-start justify-between gap-2 rounded-xl px-3 py-2 text-sm text-muted-foreground hover:bg-accent hover:text-accent-foreground",
                 m.label === model && "bg-accent text-accent-foreground"
               )}
               onClick={() => {
@@ -374,12 +397,23 @@ export function AgentChat({
                 setModelOpen(false);
               }}
             >
-              <span className="truncate">{m.label}</span>
-              {m.label === model ? (
-                <span className="text-xs text-muted-foreground">выбрано</span>
-              ) : m.recommended ? (
-                <span className="text-[10px] uppercase tracking-wide text-emerald-500">рекомендуем</span>
-              ) : null}
+              <span className="min-w-0 flex flex-1 flex-col items-start gap-0.5 text-left">
+                <span className="w-full truncate">
+                  {formatAgentModelDisplayLabel(m.label, t)}
+                </span>
+                {m.label === "Auto" ? (
+                  <span className="line-clamp-3 w-full text-[10px] font-normal leading-snug text-muted-foreground">
+                    {t("playground_agent_auto_hint")}
+                  </span>
+                ) : null}
+              </span>
+              <span className="shrink-0 self-start pt-0.5 text-right">
+                {m.label === model ? (
+                  <span className="text-xs text-muted-foreground">выбрано</span>
+                ) : m.recommended ? (
+                  <span className="text-[10px] uppercase tracking-wide text-emerald-500">рекомендуем</span>
+                ) : null}
+              </span>
             </button>
           ))}
           {lockedModelOptions.length > 0 ? (
@@ -398,7 +432,7 @@ export function AgentChat({
                   )}
                   disabled
                 >
-                  <span className="truncate">{m.label}</span>
+                  <span className="truncate">{formatAgentModelDisplayLabel(m.label, t)}</span>
                   <span className="rounded-full bg-purple-500/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-purple-400">
                     Pro
                   </span>
@@ -406,6 +440,8 @@ export function AgentChat({
               ))}
             </>
           ) : null}
+            </div>
+          </div>
         </div>
       ) : null}
 
@@ -872,8 +908,11 @@ export function AgentChat({
                     "inline-flex min-h-9 w-max max-w-[min(100%,12rem)] shrink-0 items-center rounded-xl py-1.5 text-sm font-medium text-foreground hover:bg-muted/50",
                     studioToolbarCompact ? "gap-1 px-1.5" : "gap-1.5 px-2"
                   )}
-                  aria-label={t("playground_chat_model_picker_aria").replace("__MODEL__", model)}
-                  title={model}
+                  aria-label={t("playground_chat_model_picker_aria").replace(
+                    "__MODEL__",
+                    modelDisplayLabel
+                  )}
+                  title={modelPickerTitle}
                   onClick={() => setModelOpen((v) => !v)}
                 >
                   <span className="flex h-4 w-4 shrink-0 items-center justify-center" aria-hidden>
@@ -903,11 +942,11 @@ export function AgentChat({
                   </span>
                   <span
                     className={cn(
-                      "min-w-0 max-w-[10rem] truncate text-left",
+                      "min-w-0 max-w-[13rem] truncate text-left",
                       studioToolbarCompact && "hidden"
                     )}
                   >
-                    {model}
+                    {modelDisplayLabel}
                   </span>
                   <ChevronDown
                     className={cn(
@@ -1074,12 +1113,15 @@ export function AgentChat({
                     ref={modelAnchorRef}
                     type="button"
                     className="flex w-full min-w-0 items-center gap-2 rounded-2xl px-2 py-1 text-sm font-medium text-foreground hover:bg-accent"
-                    aria-label={t("playground_chat_model_picker_aria").replace("__MODEL__", model)}
-                    title={model}
+                    aria-label={t("playground_chat_model_picker_aria").replace(
+                      "__MODEL__",
+                      modelDisplayLabel
+                    )}
+                    title={modelPickerTitle}
                     onClick={() => setModelOpen((v) => !v)}
                   >
                     <Sparkles className="h-4 w-4 shrink-0" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-left">{model}</span>
+                    <span className="min-w-0 flex-1 truncate text-left">{modelDisplayLabel}</span>
                     <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
                   </button>
                 </div>

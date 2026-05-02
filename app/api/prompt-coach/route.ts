@@ -70,11 +70,15 @@ async function postPromptCoach(req: NextRequest) {
       ? getProjectKindPromptBuilderContextRu(body.projectKind)
       : "";
 
+    const inputDigest = messages.map((m) => `${m.role}:${m.content}`).join("\n");
+    const autoDigest = [idea, inputDigest].filter((x) => x.trim().length > 0).join("\n\n");
+
     const agent = resolveAgentForTask({
       plan: user.plan,
       projectKind: isProjectKind(body?.projectKind) ? body.projectKind : undefined,
       task: "prompt-coach",
-      hint: body?.agentHint
+      hint: body?.agentHint,
+      autoFromPrompt: autoDigest
     });
 
     const systemContent = buildPromptCoachSystemPrompt(kindCtx, idea);
@@ -82,8 +86,6 @@ async function postPromptCoach(req: NextRequest) {
       { role: "system", content: systemContent },
       ...messages.map((m) => ({ role: m.role, content: m.content }))
     ];
-
-    const inputDigest = messages.map((m) => `${m.role}:${m.content}`).join("\n");
 
     try {
       const modelChain = buildPromptModelFallbackChain(agent.modelId);

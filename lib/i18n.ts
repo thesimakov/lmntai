@@ -1011,6 +1011,11 @@ export const messages = {
     playground_right_generating_line1_lovable: 'Lemnity AI собирает React-приложение. Чуть-чуть подождите…',
     playground_agents_section_tariff: 'В вашем тарифе',
     playground_agents_section_pro: 'Тариф Pro',
+    playground_agent_auto: 'Авто',
+    playground_agent_auto_hint:
+      'Модель подбирается по тексту запроса, оценке объёма (токены) и типу задачи.',
+    playground_agent_auto_title:
+      'Авто: выбор модели по промпту и оценке входных токенов для этой задачи.',
     playground_prompt_feedback_like: 'Нравится промпт',
     playground_prompt_feedback_dislike: 'Не нравится промпт',
     playground_prompt_stats_title: 'Статистика',
@@ -2039,6 +2044,11 @@ export const messages = {
     playground_right_generating_line1_lovable: 'Lemnity AI is building your React app. One moment…',
     playground_agents_section_tariff: 'Included in your plan',
     playground_agents_section_pro: 'Pro plan',
+    playground_agent_auto: 'Auto',
+    playground_agent_auto_hint:
+      'The model is chosen from your prompt, estimated prompt size (tokens), and task type.',
+    playground_agent_auto_title:
+      'Auto: picks a model from your prompt and estimated input tokens for this task.',
     playground_prompt_feedback_like: 'Like this prompt',
     playground_prompt_feedback_dislike: 'Dislike this prompt',
     playground_prompt_stats_title: 'Stats',
@@ -3068,6 +3078,11 @@ export const messages = {
     playground_right_generating_line1_lovable: 'Lemnity AI React-барнома месозад. Сабр кунед…',
     playground_agents_section_tariff: 'Дар тарифи шумо',
     playground_agents_section_pro: 'Тариф Pro',
+    playground_agent_auto: 'Авто',
+    playground_agent_auto_hint:
+      'Модел аз матни дархост, ҳаҷми тахминии токенҳо ва навъи вазифа интихоб мешавад.',
+    playground_agent_auto_title:
+      'Авто: интихоби модел аз рӯи промпт ва тахмини токенҳои вуруд барои ин кор.',
     playground_prompt_feedback_like: 'Ин промптро писанд аст',
     playground_prompt_feedback_dislike: 'Ин промптро намеписанд',
     playground_prompt_stats_title: 'Омор',

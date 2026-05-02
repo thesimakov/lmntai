@@ -178,11 +178,13 @@ async function enrichChatRequestForRouterModel(
       }
       delete parsed.build_template_slug;
     }
+    const userMsg = typeof parsed.message === "string" ? parsed.message : "";
     const agent = resolveAgentForTask({
       plan,
       projectKind: projectKind ?? null,
       task: "generate-stream",
-      hint
+      hint,
+      autoFromPrompt: userMsg
     });
     const ui = normalizeBridgeUiLanguage(uiLanguageHeader);
     const next: Record<string, unknown> = { ...parsed, model: agent.modelId, ui_language: ui };
