@@ -100,9 +100,6 @@ export function PageTransitionBuildLoader({ className, overPreview }: PageTransi
             <span className="ptlB-txt ib mt0 w40 dl16" aria-hidden />
             <span className="ptlB-txt ib mt0 w15 dl17" aria-hidden />
           </div>
-          <div className="fw w100">
-            <span className="ptlB-btn w15 dl16" aria-hidden />
-          </div>
         </div>
       </div>
     </div>

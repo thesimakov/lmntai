@@ -27,8 +27,8 @@ c = c.replace(
   ""
 );
 c = c.replace(
-  /.center, \.loader, \.container, \.page, \.btn:after, \.ARS \{/,
-  ".center, .loader, .container, .page, .btn:after {"
+  /.center, \.loader, \.container, \.page(?:, \.btn:after)?, \.ARS \{/,
+  ".center, .loader, .container, .page {"
 );
 c = c.replace(/\.loaded\.new-page \.ARS \{[^}]*\}/s, "");
 c = c.replace(/\.ARS:hover \{[^}]*\}/s, "");

@@ -5,7 +5,7 @@ import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
 import { prisma } from "@/lib/prisma";
 import { getOwnerShareStateForBuilder, setSandboxSharePublic } from "@/lib/sandbox-share-db";
-import { sandboxManager } from "@/lib/sandbox-manager";
+import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -27,7 +27,7 @@ async function withOwner(
     return new Response("Not found", { status: 404 });
   }
   const sandboxId = resolvedProject?.id ?? routeId;
-  const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
+  const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
     return new Response("Not found", { status: 404 });
   }

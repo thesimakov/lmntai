@@ -15,7 +15,10 @@ export default async function PublicSharePage({ params }: SharePageProps) {
   }
   let ok = false;
   try {
-    ok = (await isSandboxLinkPublic(id)) && (await sandboxManager.hasSandboxPersistent(id));
+    const pub = await isSandboxLinkPublic(id);
+    if (!pub) ok = false;
+    else if (id.startsWith("artifact_")) ok = true;
+    else ok = await sandboxManager.hasSandboxPersistent(id);
   } catch {
     notFound();
   }

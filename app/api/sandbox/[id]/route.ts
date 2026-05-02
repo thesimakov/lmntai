@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { lemnityAiUpstreamFetch } from "@/lib/lemnity-ai-upstream-client";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
+import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -12,7 +14,29 @@ export const runtime = "nodejs";
 /** Сериализованный документ (outerHTML, base64, inline SVG). При прокси (nginx) выставите client_max_body_size с большим запасом (например 128m) — 50M символов в UTF-8 могут быть сотни МБ. */
 const MAX_VISUAL_EDIT_HTML_CHARS = 50_000_000;
 
-async function respondWithHtml(sandboxId: string) {
+async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
+  if (sandboxId.startsWith("artifact_")) {
+    try {
+      const upstream = await lemnityAiUpstreamFetch(`/artifacts/${encodeURIComponent(sandboxId)}`, {
+        method: "GET",
+        headers: { Accept: "text/html" }
+      });
+      if (!upstream.ok) return new Response("Not found", { status: 404 });
+      const html = await upstream.text();
+      return new Response(html, {
+        headers: {
+          "Content-Type": upstream.headers.get("content-type") ?? "text/html; charset=utf-8",
+          "Cache-Control": "no-store"
+        }
+      });
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
+  }
+  return respondWithHtml(sandboxId);
+}
+
+async function respondWithHtml(sandboxId: string): Promise<Response> {
   const previewUrl = await sandboxManager.getPreviewUrl(sandboxId);
   if (!previewUrl) {
     return new Response("Not found", { status: 404 });
@@ -43,13 +67,16 @@ async function getSandbox(
 
   const guard = await requireDbUser();
   if (guard.ok) {
-    const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
+    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
     if (allowed) {
       if (format === "json") {
+        if (sandboxId.startsWith("artifact_")) {
+          return new Response("Not found", { status: 404 });
+        }
         const files = await sandboxManager.exportFiles(sandboxId);
         return Response.json({ files });
       }
-      return respondWithHtml(sandboxId);
+      return respondWithPublishedHtml(sandboxId);
     }
   }
 
@@ -61,7 +88,11 @@ async function getSandbox(
   // HTML превью без входа — если песочница опубликована
   let publicOk = false;
   try {
-    publicOk = (await isSandboxLinkPublic(sandboxId)) && (await sandboxManager.hasSandboxPersistent(sandboxId));
+    const pub = await isSandboxLinkPublic(sandboxId);
+    if (pub) {
+      publicOk =
+        sandboxId.startsWith("artifact_") || (await sandboxManager.hasSandboxPersistent(sandboxId));
+    }
   } catch {
     publicOk = false;
   }
@@ -69,7 +100,7 @@ async function getSandbox(
     return new Response("Not found", { status: 404 });
   }
 
-  return respondWithHtml(sandboxId);
+  return respondWithPublishedHtml(sandboxId);
 }
 
 async function patchSandbox(
@@ -86,8 +117,11 @@ async function patchSandbox(
     return new Response("Not found", { status: 404 });
   }
   const sandboxId = resolvedProject?.id ?? routeId;
-  const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
+  const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
+    return new Response("Not found", { status: 404 });
+  }
+  if (sandboxId.startsWith("artifact_")) {
     return new Response("Not found", { status: 404 });
   }
 

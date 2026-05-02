@@ -26,12 +26,25 @@ export function normalizeHost(raw: string | null | undefined): string | null {
   return host;
 }
 
+/** Регистрирует хост из URL и пару www ↔ apex, чтобы middleware не отдавал 404 при заходе на «другой» канонический вариант домена. */
+function registerAppHostsFromUrlEnv(urlEnv: string | undefined, out: Set<string>): void {
+  const host = hostFromUrlEnv(urlEnv);
+  if (!host) return;
+  const lower = host.toLowerCase();
+  out.add(lower);
+  const hostname = lower.replace(/:\d+$/, "");
+  if (hostname.startsWith("www.")) {
+    const apex = hostname.slice(4);
+    out.add(apex);
+  } else if (hostname.includes(".")) {
+    out.add(`www.${hostname}`);
+  }
+}
+
 export function getAppHosts(): Set<string> {
   const out = new Set<string>();
-  const fromSite = hostFromUrlEnv(process.env.NEXT_PUBLIC_SITE_URL);
-  const fromAuth = hostFromUrlEnv(process.env.NEXTAUTH_URL);
-  if (fromSite) out.add(fromSite);
-  if (fromAuth) out.add(fromAuth);
+  registerAppHostsFromUrlEnv(process.env.NEXT_PUBLIC_SITE_URL, out);
+  registerAppHostsFromUrlEnv(process.env.NEXTAUTH_URL, out);
   out.add("localhost:3000");
   out.add("127.0.0.1:3000");
   out.add("localhost:3001");

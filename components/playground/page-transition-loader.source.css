@@ -811,7 +811,7 @@
   overflow: hidden;
 }
 
-.center, .loader, .container, .page, .btn:after, .ARS {
+.center, .loader, .container, .page, .ARS {
   top: 0;
   left: 0;
   right: 0;
@@ -845,8 +845,7 @@
 }
 
 .img,
-.txt,
-.btn {
+.txt {
   display: block;
   position: relative;
   margin: 0.75vh;
@@ -865,38 +864,6 @@
   height: 0.75vh;
   background: #ccc;
   transform-origin: 0 50%;
-}
-
-.btn {
-  height: 4vh;
-  color: #ccc;
-  cursor: pointer;
-  transform-origin: 50% 50%;
-  z-index: 1;
-}
-.btn:after {
-  content: "RELOAD";
-  position: absolute;
-  text-align: center;
-  font: 700 1.5vh/4vh Verdana, sans-serif;
-  -moz-user-select: -moz-none;
-  -ms-user-select: none;
-  -webkit-user-select: none;
-  user-select: none;
-}
-.loaded .btn {
-  color: #fff;
-  background: #EF836E;
-  -moz-animation: btn-loaded 0.1s both 0.5s;
-  -webkit-animation: btn-loaded 0.1s both 0.5s;
-  animation: btn-loaded 0.1s both 0.5s;
-}
-.restart .btn {
-  color: #EF836E;
-  background: #EF836E;
-  -moz-animation: btn-restart 0.1s both;
-  -webkit-animation: btn-restart 0.1s both;
-  animation: btn-restart 0.1s both;
 }
 
 .w5 {
@@ -1016,11 +983,6 @@
   -moz-animation: scaleX-in 0.1s both ease-out;
   -webkit-animation: scaleX-in 0.1s both ease-out;
   animation: scaleX-in 0.1s both ease-out;
-}
-.new-page .btn {
-  -moz-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  -webkit-animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
-  animation: scale-in 0.3s both cubic-bezier(0.87, -0.41, 0.19, 1.44);
 }
 .new-page .dl1 {
   -moz-animation-delay: 0.85s;
@@ -1241,66 +1203,8 @@
     transform: scale(1);
   }
 }
-@-moz-keyframes btn-loaded {
-  from {
-    color: #ccc;
-    background: #ccc;
-  }
-  to {
-    color: #fff;
-    background: #EF836E;
-  }
-}
-@-webkit-keyframes btn-loaded {
-  from {
-    color: #ccc;
-    background: #ccc;
-  }
-  to {
-    color: #fff;
-    background: #EF836E;
-  }
-}
-@keyframes btn-loaded {
-  from {
-    color: #ccc;
-    background: #ccc;
-  }
-  to {
-    color: #fff;
-    background: #EF836E;
-  }
-}
-@-moz-keyframes btn-restart {
-  from {
-    color: #EF836E;
-    background: #EF836E;
-  }
-  to {
-    color: #ccc;
-    background: #ccc;
-  }
-}
-@-webkit-keyframes btn-restart {
-  from {
-    color: #EF836E;
-    background: #EF836E;
-  }
-  to {
-    color: #ccc;
-    background: #ccc;
-  }
-}
-@keyframes btn-restart {
-  from {
-    color: #EF836E;
-    background: #EF836E;
-  }
-  to {
-    color: #ccc;
-    background: #ccc;
-  }
-}
+
+
 body {
   background: #eaeaea;
 }

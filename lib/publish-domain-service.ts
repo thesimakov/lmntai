@@ -66,6 +66,16 @@ export async function bindPublishHost(input: {
   if (!host) return { ok: false, code: "invalid_host" };
   if (isReservedAppHost(host)) return { ok: false, code: "reserved_host" };
 
+  let fkProjectId = input.sandboxId;
+  if (input.sandboxId.startsWith("artifact_")) {
+    const link = await prisma.manusSessionLink.findFirst({
+      where: { userId: input.ownerId, previewArtifactId: input.sandboxId },
+      select: { projectId: true }
+    });
+    if (!link) return { ok: false, code: "forbidden_owner" };
+    fkProjectId = link.projectId;
+  }
+
   const builtIn = isBuiltInPublishHost(host);
   if (!builtIn && !canUseCustomDomain(input.ownerPlan)) {
     return { ok: false, code: "forbidden_plan" };
@@ -79,7 +89,7 @@ export async function bindPublishHost(input: {
       where: { subdomain: builtInSubdomain },
       select: { id: true }
     });
-    if (occupied && occupied.id !== input.sandboxId) {
+    if (occupied && occupied.id !== fkProjectId) {
       return { ok: false, code: "forbidden_owner" };
     }
   }
@@ -103,7 +113,7 @@ export async function bindPublishHost(input: {
   const row = await prisma.publishDomainBinding.upsert({
     where: { host },
     create: {
-      projectId: input.sandboxId,
+      projectId: fkProjectId,
       host,
       sandboxId: input.sandboxId,
       ownerId: input.ownerId,
@@ -114,7 +124,7 @@ export async function bindPublishHost(input: {
       lastVerificationAt: builtIn ? now : null
     },
     update: {
-      projectId: input.sandboxId,
+      projectId: fkProjectId,
       sandboxId: input.sandboxId,
       ownerId: input.ownerId,
       isActive: true,
@@ -133,7 +143,7 @@ export async function bindPublishHost(input: {
 
   if (builtInSubdomain) {
     await prisma.project.updateMany({
-      where: { id: input.sandboxId, ownerId: input.ownerId },
+      where: { id: fkProjectId, ownerId: input.ownerId },
       data: { subdomain: builtInSubdomain }
     });
   }
@@ -148,7 +158,11 @@ export async function bindPublishHost(input: {
 
 export async function listPublishHostsForSandbox(ownerId: string, sandboxId: string) {
   return prisma.publishDomainBinding.findMany({
-    where: { ownerId, sandboxId, projectId: sandboxId, isActive: true },
+    where: {
+      ownerId,
+      isActive: true,
+      OR: [{ sandboxId }, { projectId: sandboxId }]
+    },
     orderBy: { updatedAt: "desc" },
     select: {
       id: true,
