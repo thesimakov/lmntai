@@ -38,6 +38,12 @@ SELECT m."manusSessionId", m."userId", COALESCE(NULLIF(m."title", ''), 'Lemnity 
 FROM "ManusSessionLink" m
 ON CONFLICT ("id") DO NOTHING;
 
+-- Иначе projectId = manusSessionId не находится в Project и FK ManusChatCharge_projectId_fkey падает.
+DELETE FROM "ManusChatCharge" c
+WHERE NOT EXISTS (
+  SELECT 1 FROM "ManusSessionLink" m WHERE m."manusSessionId" = c."manusSessionId"
+);
+
 UPDATE "SandboxProjectState" SET "projectId" = "sandboxId" WHERE "projectId" IS NULL;
 UPDATE "SandboxShare" SET "projectId" = "sandboxId" WHERE "projectId" IS NULL;
 UPDATE "PublishDomainBinding" SET "projectId" = "sandboxId" WHERE "projectId" IS NULL;
