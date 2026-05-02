@@ -52,7 +52,11 @@ import { isLovableFileFenceDelta, shouldCollapseAssistantCodeDump } from "@/lib/
 import { formatBuildElapsed, formatBuildTotalDuration } from "@/lib/build-time-i18n";
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 import { getStreamStepTitle } from "@/lib/stream-step-title";
-import { formatLemnityBridgeErrorBody } from "@/lib/lemnity-bridge-error-format";
+import {
+  formatLemnityAssistantStreamText,
+  formatLemnityBridgeErrorBody,
+  looksLikeHtmlGatewayGarbage
+} from "@/lib/lemnity-bridge-error-format";
 
 type LemnityAiBridgeEnvelope<T> = {
   code: number;
@@ -904,6 +908,17 @@ export default function PromptBuildPage() {
           return;
         }
 
+        const contentType = (response.headers.get("content-type") ?? "").toLowerCase();
+        if (contentType.includes("text/html")) {
+          const raw = await response.text();
+          if (!isCurrentRequest()) return;
+          const message = formatLemnityBridgeErrorBody(raw, t);
+          push("assistant", `❌ ${message}`);
+          setMode("idle");
+          setStage("ready");
+          return;
+        }
+
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let buffer = "";
@@ -938,7 +953,7 @@ export default function PromptBuildPage() {
                 const isFence = !isArtifactKind && isLovableFileFenceDelta(piece);
                 if (!isArtifactKind && !isFence) {
                   bridgeSawDeltaRef.current = true;
-                  appendBridgeAssistantChunk(piece);
+                  appendBridgeAssistantChunk(formatLemnityAssistantStreamText(piece, t));
                 }
                 setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
@@ -956,10 +971,12 @@ export default function PromptBuildPage() {
                     : "";
               const trimmed = content.trim();
               if (!trimmed) return;
+              const visible = formatLemnityAssistantStreamText(trimmed, t);
+              if (!visible.trim()) return;
               if (roleRaw === "user") return;
               if (roleRaw === "assistant" || roleRaw === undefined) {
                 if (!bridgeSawDeltaRef.current) {
-                  pushBridgeAssistantMessage(trimmed);
+                  pushBridgeAssistantMessage(visible);
                 }
                 setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
@@ -1021,7 +1038,11 @@ export default function PromptBuildPage() {
 
             if (ev === "error") {
               const data = JSON.parse(chunk.data) as { error?: string };
-              push("assistant", `❌ ${data.error || "Ошибка Lemnity AI"}`);
+              const rawErr = typeof data.error === "string" ? data.error : "";
+              const message = rawErr.trim()
+                ? formatLemnityBridgeErrorBody(rawErr, t)
+                : t("playground_lemnity_api_network_error");
+              push("assistant", `❌ ${message}`);
               setMode("idle");
               setStage("ready");
               return;
@@ -1099,6 +1120,14 @@ export default function PromptBuildPage() {
               const idx = prev.findIndex((m) => m.id === bridgeIdToCollapse);
               if (idx === -1) return prev;
               const c = prev[idx].content;
+              if (looksLikeHtmlGatewayGarbage(c)) {
+                const next = [...prev];
+                next[idx] = {
+                  ...next[idx],
+                  content: formatLemnityAssistantStreamText(c, t)
+                };
+                return next;
+              }
               if (!shouldCollapseAssistantCodeDump(c)) return prev;
               const next = [...prev];
               next[idx] = { ...next[idx], content: t("playground_chat_code_moved_to_code_tab") };

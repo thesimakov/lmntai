@@ -29,6 +29,7 @@ import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type RouteCtx = { params: Promise<{ path: string[] }> };
 
