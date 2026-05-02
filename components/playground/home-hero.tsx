@@ -304,7 +304,7 @@ export function HomeHero({
   }
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-4">
       <div className="shrink-0 space-y-4">
       <div className="relative overflow-hidden rounded-3xl border bg-card/70 p-6 shadow-sm md:p-10">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(168,85,247,.25),transparent_45%),radial-gradient(circle_at_75%_70%,rgba(236,72,153,.18),transparent_48%)]" />

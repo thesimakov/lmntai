@@ -515,7 +515,7 @@ export const messages = {
       'Веб-приложение в стиле Lovable: React+TypeScript, компоненты в `src/`, Tailwind, превью как у Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
-      'Маркетинговый лендинг (скролл): hero, УТП, преимущества, соцдоказательство, тариф, отзывы, FAQ, футер — в компонентах `src/`. Одна цель (лид), mobile-first.',
+      'Одностраничный лендинг: hero с оффером, блок преимуществ, меню/тарифы (карточки), отзывы, галерея, контакты и основная кнопка (CTA). В шапке — навигация и иконка корзины (только UI). Секции вынести в компоненты `src/`, mobile-first, без бэкенда — данные моками.',
     playground_home_site_dashboard: 'Дашборд',
     playground_home_val_site_dashboard:
       'Веб-дашборд: навигация, виджеты метрик, таблицы, фильтры и детальные страницы.',
@@ -524,7 +524,7 @@ export const messages = {
       'Портфолио: обложка, проекты, процесс, отзывы клиентов, контакты и форма заявки.',
     playground_home_site_corporate: 'Корпоративный сайт',
     playground_home_val_site_corporate:
-      'Корпоративный многосекционный сайт: шапка с навигацией, «О компании», услуги, кейсы, команда, новости/вакансии (заглушка), карта, контакты и форма — секции вынести в `src/components/`. Строгий B2B-визуал.',
+      'Корпоративный многостраничный сайт (одна длинная страница-лендинг ок): шапка с меню, hero/обложка, «О компании», услуги или продукты, кейсы/проекты, команда, блок новостей или вакансий (заглушка), контакты, карта или адрес, форма обратной связи. Сдержанный B2B-визуал, каждая секция — компонент в `src/components/`. Без бэкенда.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'SaaS-лендинг: продукт, интеграции, безопасность, тарифы, логотипы клиентов, регистрация.',
@@ -533,7 +533,7 @@ export const messages = {
       'Сайт по референсу: повтори структуру и визуальный стиль, адаптируй контент под наш бренд.',
     playground_home_site_store: 'Интернет-магазин',
     playground_home_val_site_store:
-      'Интернет-магазин: витрина с категориями, сетка товаров с ценой и «В корзину», страница товара (описание, характеристики), боковая/мини корзина, оформление заказа (контакты, доставка, оплата), доверие (отзывы, реквизиты), футер. Без бэкенда — только UI и состояния на фронте.',
+      'Интернет-магазин (только интерфейс): каталог с категориями и фильтрами, сетка товаров (фото, цена, «В корзину»), страница товара (описание, характеристики), корзина (изменить количество, итог), оформление заказа (контакты, доставка, оплата — макеты полей). Промо-баннеры, отзывы, реквизиты в футере. Состояния корзины и заказа на мок-данных в `src/`, без реальной оплаты.',
     playground_home_tpl_saas: 'SaaS-продукт',
     playground_home_tpl_saas_prompt:
       'SaaS лендинг: hero, преимущества, интеграции, тарифы, FAQ, CTA на регистрацию',
@@ -1523,7 +1523,7 @@ export const messages = {
       'Lovable-style web app: React+TypeScript, files under `src/`, Tailwind, Vite-like preview.',
     playground_home_site_landing: 'Landing',
     playground_home_val_site_landing:
-      'Marketing landing (long scroll): hero, value prop, benefits, social proof, pricing, testimonials, FAQ, footer — as `src/` components. One goal, mobile-first.',
+      'Single-page marketing site: hero with offer, benefits, pricing/menu-style cards, testimonials, gallery, contacts, primary CTA. Header with nav + cart icon (UI only). Sections as `src/` components, mobile-first, mock data, no backend.',
     playground_home_site_dashboard: 'Dashboard',
     playground_home_val_site_dashboard:
       'Web dashboard: navigation, metric widgets, tables, filters, and detail views.',
@@ -1532,7 +1532,7 @@ export const messages = {
       'Portfolio: cover, projects, process, client quotes, contacts, and inquiry form.',
     playground_home_site_corporate: 'Corporate website',
     playground_home_val_site_corporate:
-      'Multi-section corporate site: top nav, about, services, case studies, team, news/careers placeholder, map/office, contact — split into `src/components/`. Professional B2B look.',
+      'Corporate site (one long scroll or clear sections): header + menu, hero, about, services/products, case studies, team, news/careers placeholder, contacts, map/address, lead form. Professional B2B look; each section a component in `src/components/`. No backend.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'SaaS landing: product, integrations, security, pricing, customer logos, signup.',
@@ -1541,7 +1541,7 @@ export const messages = {
       'Site from a reference: match structure and visual style, adapt content to our brand.',
     playground_home_site_store: 'Online store',
     playground_home_val_site_store:
-      'E-commerce UI: category navigation, product grid with price and add-to-cart, product detail, cart/checkout flow (shipping, payment placeholders), trust/reviews, footer. Front-end only, no real payments.',
+      'E-commerce UI only: categories/filters, product grid (image, price, add to cart), product detail page, cart (line items, qty, totals), checkout steps (contact, shipping, payment fields as UI). Promo blocks, reviews, footer trust/requisites. Cart/order state with mocks in `src/`, no real payments.',
     playground_home_tpl_saas: 'SaaS product',
     playground_home_tpl_saas_prompt:
       'SaaS landing: hero, benefits, integrations, pricing, FAQ, signup CTA',
@@ -2531,7 +2531,7 @@ export const messages = {
       'Барномаи веб мисли Lovable: React+TypeScript, файлҳо дар `src/`, пешнамоиш чун Vite.',
     playground_home_site_landing: 'Лендинг',
     playground_home_val_site_landing:
-      'Лендинги маркетингӣ (скролл): hero, УМ, афзалиятҳо, нарх, фикрҳо, FAQ — дар компонентҳои `src/`. Мақсад — лид, мобилӣ.',
+      'Лендинги яксафҳа: hero, бартариҳо, нарх/меню бо кортҳо, фикрҳо, галерея, тамос, CTA. Дар сарлавҳа — меню ва нишонаи сабат (танҳо UI). Компонентҳо дар `src/`, mobile-first, маълумотҳои мок, бе бэкенд.',
     playground_home_site_dashboard: 'Дашборд',
     playground_home_val_site_dashboard:
       'Дашборди веб: навигация, виҷетҳои метрик, ҷадвалҳо, филтрҳо.',
@@ -2540,7 +2540,7 @@ export const messages = {
       'Портфолио: муқова, лоиҳаҳо, раванд, фикрҳо, тамосҳо, форма.',
     playground_home_site_corporate: 'Сайти корпоративӣ',
     playground_home_val_site_corporate:
-      'Сайти корпоративии бисеквентӣ: меню, дар бораи ширкат, хизматҳо, кейсҳо, даста, ахбор/кор, харита, форма — бастаҳоро ба `src/components/`. B2B.',
+      'Сайти корпоративӣ: сарлавҳа ва меню, hero, дар бораи ширкат, хизматҳо ё маҳсулот, кейсҳо, даста, ахбор/кор (заглушка), тамос, харита, форма. Намоиши B2B, ҳар як бахш — компонент дар `src/components/`. Бе бэкенд.',
     playground_home_site_saas: 'SaaS',
     playground_home_val_site_saas:
       'Лендинги SaaS: маҳсулот, интегратсияҳо, бехатарӣ, нархгузорӣ, сабти ном.',
@@ -2549,7 +2549,7 @@ export const messages = {
       'Сайт аз референс: сохтор ва услубро такрор кунед, мундариҷаро ба бренди мо мутобиқ кунед.',
     playground_home_site_store: 'Фурӯшгоҳи онлайн',
     playground_home_val_site_store:
-      'Интернет-магазин: витрина, сеткаи молҳо, саҳифаи мол, сабат, пешниҳоди фармоиш, доставка/пардохт (UI), боварӣ, сутунпо. Бе бэкенд, танҳо интерфейс.',
+      'Фурӯши онлайн (танҳо UI): категорияҳо, сеткаи молҳо (акс, нарх, «ба сабат»), саҳифаи мол, сабат (миқдор, ҷамъ), пардохти фармоиш (тамос, расонидан, пардохт — майдонҳои UI). Промо, фикрҳо, футер. Ҳолат дар мокҳо дар `src/`, бе пардохти воқеӣ.',
     playground_home_tpl_saas: 'Маҳсулоти SaaS',
     playground_home_tpl_saas_prompt:
       'Лендинги SaaS: hero, бартариҳо, интегратсияҳо, нархгузорӣ, FAQ, CTA барои сабти ном',
