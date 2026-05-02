@@ -5,6 +5,7 @@ import {
   buildBuiltinPublishBrowseUrl,
   buildPublicSharePageUrl,
   originHostnameServesBuiltinPublishWildcard,
+  resolvePublishOpenUrl,
   resolveShareablePreviewUrl
 } from "./preview-share";
 
@@ -50,5 +51,27 @@ describe("originHostnameServesBuiltinPublishWildcard", () => {
 
   it("accepts subdomain of publish apex", () => {
     expect(originHostnameServesBuiltinPublishWildcard(`studio.${PUBLISH_BUILTIN_BASE_DOMAIN}`)).toBe(true);
+  });
+});
+
+describe("resolvePublishOpenUrl", () => {
+  it("uses share URL for builtin subdomain even when preferred is https", () => {
+    expect(
+      resolvePublishOpenUrl(
+        "http://localhost:3001",
+        "sandbox-1",
+        `https://project-fec378.${PUBLISH_BUILTIN_BASE_DOMAIN}`
+      )
+    ).toBe("http://localhost:3001/share/sandbox-1");
+  });
+
+  it("opens custom host as-is", () => {
+    expect(resolvePublishOpenUrl("https://app.example.com", "sb", "https://app.customer.com")).toBe(
+      "https://app.customer.com"
+    );
+  });
+
+  it("falls back when preferred invalid", () => {
+    expect(resolvePublishOpenUrl("https://x.com", "sb", "not-a-url")).toBe("https://x.com/share/sb");
   });
 });

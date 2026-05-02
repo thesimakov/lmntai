@@ -35,6 +35,7 @@ import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from
 import {
   buildPublicSharePageUrl,
   deriveSandboxIdFromAppPreviewUrl,
+  resolvePublishOpenUrl,
   resolveShareablePreviewUrl
 } from "@/lib/preview-share";
 import type { AgentUiLabel } from "@/lib/agent-models";
@@ -420,10 +421,7 @@ export default function PromptBuildPage() {
         }
         setShareIsPublic(true);
       }
-      const publicUrl =
-        detail?.openUrl && /^https?:\/\//i.test(detail.openUrl.trim())
-          ? detail.openUrl.trim()
-          : buildPublicSharePageUrl(origin, sandboxId);
+      const publicUrl = resolvePublishOpenUrl(origin, sandboxId, detail?.openUrl);
       window.open(publicUrl, "_blank", "noopener,noreferrer");
       setPublishDialogOpen(false);
       setMessages((prev) => [
@@ -1182,7 +1180,7 @@ export default function PromptBuildPage() {
           credentials: "include",
           body: JSON.stringify({
             slug,
-            ...(hostProjectId ? {} : { projectId })
+            projectId
           }),
           signal: controller.signal
         });
@@ -1229,7 +1227,7 @@ export default function PromptBuildPage() {
         if (mountedRef.current) toast.error(t("playground_build_template_preview_error"));
       }
     },
-    [hostProjectId, reserveProjectId, t]
+    [reserveProjectId, t]
   );
 
   const handleBuildTemplateChange = useCallback(
@@ -1863,7 +1861,7 @@ export default function PromptBuildPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt,
-          ...(hostProjectId ? {} : { projectId }),
+          projectId,
           projectKind: projectKind ?? undefined,
           agentHint,
           ...(buildTemplate?.slug ? { buildTemplateSlug: buildTemplate.slug } : {})

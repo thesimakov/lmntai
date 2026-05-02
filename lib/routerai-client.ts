@@ -40,6 +40,28 @@ export type RouterAIJsonResult = {
   model?: string;
 };
 
+/** OpenAI-compatible APIs usually return a string; some gateways return multipart content arrays. */
+export function stringifyChatCompletionContent(content: unknown): string {
+  if (content == null) return "";
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) {
+    const parts: string[] = [];
+    for (const item of content) {
+      if (typeof item === "string") {
+        parts.push(item);
+        continue;
+      }
+      if (item && typeof item === "object") {
+        const o = item as Record<string, unknown>;
+        if (typeof o.text === "string") parts.push(o.text);
+        else if (typeof o.content === "string") parts.push(o.content);
+      }
+    }
+    return parts.join("");
+  }
+  return "";
+}
+
 function buildRequestBody(
   payload: RouterAIPayload,
   stream: boolean
@@ -125,7 +147,7 @@ export async function requestRouterAIJson(
 
   const json = (await res.json()) as RouterAiChatCompletionJson;
   const textRaw = json.choices?.[0]?.message?.content;
-  const text = typeof textRaw === "string" ? textRaw : "";
+  const text = stringifyChatCompletionContent(textRaw);
   const model = typeof json.model === "string" ? json.model : undefined;
 
   const usageRaw = json.usage;

@@ -89,3 +89,27 @@ export function buildBuiltinPublishBrowseUrl(
   }
   return buildPublicSharePageUrl(origin, sandboxId);
 }
+
+/**
+ * После «Опубликовать»: не открываем в браузере встроенный поддомен `*.{PUBLISH_BUILTIN_BASE_DOMAIN}`, пока у пользователя
+ * может не быть wildcard DNS — открываем стабильную `/share/{sandboxId}` на текущем origin.
+ * Свой (верифицированный) домен открываем как есть.
+ */
+export function resolvePublishOpenUrl(origin: string, sandboxId: string, preferredHttpsUrl: string | undefined): string {
+  const fallback = buildPublicSharePageUrl(origin, sandboxId);
+  const raw = preferredHttpsUrl?.trim();
+  if (!raw || !/^https?:\/\//i.test(raw)) {
+    return fallback;
+  }
+  let hostname: string;
+  try {
+    hostname = new URL(raw).hostname.toLowerCase();
+  } catch {
+    return fallback;
+  }
+  const base = PUBLISH_BUILTIN_BASE_DOMAIN.toLowerCase();
+  if (hostname === base || hostname.endsWith(`.${base}`)) {
+    return fallback;
+  }
+  return raw;
+}

@@ -1,6 +1,22 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { requestRouterAIJsonWithFallback } from "@/lib/routerai-client";
+import { requestRouterAIJsonWithFallback, stringifyChatCompletionContent } from "@/lib/routerai-client";
+
+describe("stringifyChatCompletionContent", () => {
+  it("joins multipart content arrays", () => {
+    expect(
+      stringifyChatCompletionContent([
+        { type: "text", text: '{"reply":"hi"' },
+        { type: "text", text: ',"phase":"gathering"}' }
+      ])
+    ).toBe('{"reply":"hi","phase":"gathering"}');
+  });
+
+  it("returns empty string for unknown shapes", () => {
+    expect(stringifyChatCompletionContent(null)).toBe("");
+    expect(stringifyChatCompletionContent(42)).toBe("");
+  });
+});
 
 describe("requestRouterAIJsonWithFallback", () => {
   afterEach(() => {

@@ -9,6 +9,7 @@ import {
   FileText,
   Github,
   History,
+  Home,
   MoreHorizontal,
   Printer,
   PenLine,
@@ -80,6 +81,16 @@ export function BuildPreviewChrome({
               <span className="mr-0.5 flex shrink-0 items-center">{expandChatRailSlot}</span>
             </TooltipProvider>
           ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="mr-0.5 shrink-0 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+            aria-label={t("nav_home")}
+            onClick={() => router.push("/playground")}
+          >
+            <Home className="h-4 w-4" aria-hidden />
+          </Button>
           <div className="flex items-center gap-0.5 rounded-lg border border-border bg-muted/40 p-0.5">
             <Button
               type="button"
@@ -129,21 +140,24 @@ export function BuildPreviewChrome({
           </div>
 
           {previewEditorToggle && (tab === "preview" || tab === "document") ? (
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant={previewEditorToggle.active ? "default" : "outline"}
               className={cn(
-                "ml-1 inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium sm:text-sm",
-                previewEditorToggle.active
-                  ? "bg-muted/80 text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                "ml-1 h-8 shrink-0 gap-1.5 px-2.5 text-xs font-semibold shadow-sm sm:text-sm",
+                previewEditorToggle.active &&
+                  "shadow-md ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
+                !previewEditorToggle.active &&
+                  "border-primary/45 bg-primary/5 text-foreground hover:border-primary/65 hover:bg-primary/12"
               )}
               aria-label={t("build_editor_aria")}
               aria-pressed={previewEditorToggle.active}
               onClick={previewEditorToggle.onToggle}
             >
-              <PenLine className="h-3.5 w-3.5 shrink-0" />
+              <PenLine className="h-4 w-4 shrink-0" aria-hidden />
               {t("build_editor_label")}
-            </button>
+            </Button>
           ) : null}
 
           <Button

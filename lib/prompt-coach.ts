@@ -71,27 +71,120 @@ function extractFirstJsonObject(text: string): string | null {
   return null;
 }
 
-function parsePromptCoachJsonObject(text: string): Record<string, unknown> | null {
-  try {
-    return JSON.parse(text) as Record<string, unknown>;
-  } catch {
-    return null;
+const MIN_DERIVED_TECHNICAL_PROMPT_LEN = 60;
+
+function normalizeJsonLikeSlice(slice: string): string {
+  return slice
+    .trim()
+    .replace(/^\uFEFF/, "")
+    .replace(/[\u201C\u201D\u00AB\u00BB]/g, '"');
+}
+
+function tryParseJsonObject(slice: string): Record<string, unknown> | null {
+  const variants = [slice, normalizeJsonLikeSlice(slice)];
+  for (const v of variants) {
+    if (!v.trim()) continue;
+    try {
+      return JSON.parse(v) as Record<string, unknown>;
+    } catch {
+      continue;
+    }
   }
+  return null;
+}
+
+function unwrapNestedCoachPayload(parsed: Record<string, unknown>): Record<string, unknown> {
+  const hasFlat =
+    parsed.reply !== undefined ||
+    parsed.phase !== undefined ||
+    parsed.technical_prompt !== undefined ||
+    parsed.technicalPrompt !== undefined ||
+    parsed.message !== undefined;
+  if (hasFlat) return parsed;
+  for (const key of ["data", "result", "output", "response"] as const) {
+    const inner = parsed[key];
+    if (inner && typeof inner === "object" && !Array.isArray(inner)) {
+      return unwrapNestedCoachPayload(inner as Record<string, unknown>);
+    }
+  }
+  return parsed;
+}
+
+function pickCoachReply(p: Record<string, unknown>): unknown {
+  if (p.reply !== undefined) return p.reply;
+  const msg = p.message;
+  if (typeof msg === "string") return msg;
+  if (msg && typeof msg === "object" && !Array.isArray(msg)) {
+    const inner = msg as Record<string, unknown>;
+    const c = inner.content;
+    if (typeof c === "string") return c;
+    if (Array.isArray(c)) {
+      const parts: string[] = [];
+      for (const item of c) {
+        if (typeof item === "string") parts.push(item);
+        else if (item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string") {
+          parts.push((item as { text: string }).text);
+        }
+      }
+      const joined = parts.join("");
+      if (joined) return joined;
+    }
+  }
+  return p.answer ?? p.text;
+}
+
+function coerceCoachShape(parsed: Record<string, unknown>): Record<string, unknown> {
+  const p = unwrapNestedCoachPayload(parsed);
+  return {
+    ...p,
+    reply: pickCoachReply(p),
+    phase: p.phase ?? p.stage ?? p.step,
+    technical_prompt:
+      p.technical_prompt ?? p.technicalPrompt ?? p.final_prompt ?? p.spec ?? p.prompt_technical
+  };
+}
+
+function stripConfirmSuffixFromReply(reply: string): string {
+  return reply.replace(/\n\nВсё верно\? Запускать\?\s*$/i, "").trim();
 }
 
 export function parsePromptCoachJson(text: string): PromptCoachModelJson | null {
-  const raw = stripMarkdownJsonFence(text);
-  const parsed =
-    parsePromptCoachJsonObject(raw) ??
-    parsePromptCoachJsonObject(extractFirstJsonObject(raw) ?? "") ??
-    parsePromptCoachJsonObject(extractFirstJsonObject(text) ?? "");
+  const cleaned = text.replace(/^\uFEFF/, "").trim();
+  const raw = stripMarkdownJsonFence(cleaned);
+  const normCleaned = normalizeJsonLikeSlice(cleaned);
+  const normRaw = normalizeJsonLikeSlice(raw);
+
+  const slices = [
+    raw,
+    normRaw,
+    normCleaned,
+    extractFirstJsonObject(raw) ?? "",
+    extractFirstJsonObject(normRaw) ?? "",
+    extractFirstJsonObject(cleaned) ?? "",
+    extractFirstJsonObject(normCleaned) ?? ""
+  ].filter((s) => s.trim().length > 0);
+
+  let parsed: Record<string, unknown> | null = null;
+  for (const slice of slices) {
+    const p = tryParseJsonObject(slice);
+    if (p) {
+      parsed = coerceCoachShape(p);
+      break;
+    }
+  }
   if (!parsed) return null;
 
-  const replyRaw = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+  const replyRaw =
+    typeof parsed.reply === "string"
+      ? parsed.reply.trim()
+      : parsed.reply != null
+        ? String(parsed.reply).trim()
+        : "";
   if (!replyRaw) return null;
 
   const phaseRaw = typeof parsed.phase === "string" ? parsed.phase.trim().toLowerCase() : "";
   const phase: PromptCoachPhase = phaseRaw === "confirm" ? "confirm" : "gathering";
+
   const tp = parsed.technical_prompt;
   let technical_prompt: string | null = null;
   if (typeof tp === "string" && tp.trim()) {
@@ -104,10 +197,21 @@ export function parsePromptCoachJson(text: string): PromptCoachModelJson | null 
       technical_prompt = null;
     }
   }
-  if (phase === "confirm" && !technical_prompt) return null;
+
   if (phase === "gathering") {
     technical_prompt = null;
+  } else if (phase === "confirm" && !technical_prompt) {
+    const stripped = stripConfirmSuffixFromReply(replyRaw);
+    const candidate =
+      stripped.length >= MIN_DERIVED_TECHNICAL_PROMPT_LEN
+        ? stripped
+        : replyRaw.length >= MIN_DERIVED_TECHNICAL_PROMPT_LEN
+          ? replyRaw.trim()
+          : "";
+    if (candidate) technical_prompt = candidate;
   }
+
+  if (phase === "confirm" && !technical_prompt) return null;
 
   let reply = replyRaw;
   if (phase === "confirm" && !reply.includes("Запускать?")) {
