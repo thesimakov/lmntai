@@ -24,6 +24,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n-provider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -33,6 +34,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SITE_URL } from "@/lib/site";
+import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
@@ -66,11 +68,24 @@ const ACCOUNT_MENU_ROWS: AccountMenuRow[] = [
   { type: "logout" }
 ];
 
+function activePlanLabelKey(plan: PlanId): MessageKey {
+  switch (plan) {
+    case "PRO":
+      return "pricing_plan_pro_name";
+    case "TEAM":
+      return "pricing_plan_team_name";
+    default:
+      return "pricing_plan_starter_name";
+  }
+}
+
 function SidebarBody({ className }: { className?: string }) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t, lang } = useI18n();
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+
+  const activePlan = useMemo(() => normalizePlanId(session?.user?.plan), [session?.user?.plan]);
 
   const numberLocale = lang === "en" ? "en-US" : lang === "tg" ? "tg-TJ" : "ru-RU";
 
@@ -125,8 +140,20 @@ function SidebarBody({ className }: { className?: string }) {
                 isActive && "bg-accent text-accent-foreground"
               )}
             >
-              <Icon className="h-4 w-4" />
-              <span>{t(item.labelKey)}</span>
+              <Icon className="h-4 w-4 shrink-0" />
+              <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
+              {item.href === "/pricing" ? (
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    "ml-auto max-w-[7rem] shrink-0 truncate border-border/50 px-2 py-0 text-xs font-medium text-muted-foreground",
+                    isActive && "border-primary/25 bg-background/80 text-foreground"
+                  )}
+                  title={t(activePlanLabelKey(activePlan))}
+                >
+                  {t(activePlanLabelKey(activePlan))}
+                </Badge>
+              ) : null}
             </Link>
           );
         })}
