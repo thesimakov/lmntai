@@ -23,7 +23,8 @@ export async function setSandboxImageAsset(
   key: string,
   asset: StoredImageAsset,
   source: "materialized" | "upload" = "upload",
-  sourceUrl?: string
+  sourceUrl?: string,
+  opts?: { dbProjectId?: string }
 ): Promise<void> {
   await writeProjectImageAsset({
     projectId,
@@ -31,15 +32,16 @@ export async function setSandboxImageAsset(
     mime: asset.mime,
     data: asset.data
   });
+  const rowProjectId = opts?.dbProjectId ?? projectId;
   await prisma.projectImageAsset.upsert({
     where: {
       projectId_assetKey: {
-        projectId,
+        projectId: rowProjectId,
         assetKey: key
       }
     },
     create: {
-      projectId,
+      projectId: rowProjectId,
       assetKey: key,
       mime: asset.mime,
       bytes: asset.data.length,

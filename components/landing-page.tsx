@@ -35,9 +35,9 @@ const SHOWCASE_SECTION_ENABLED = false;
 
 const LANDING_DISPLAY_PROJECT_COUNT = (() => {
   const raw = process.env.NEXT_PUBLIC_LANDING_PROJECTS_COUNT;
-  if (raw == null || String(raw).trim() === "") return 4053;
+  if (raw == null || String(raw).trim() === "") return 1022;
   const n = Number.parseInt(String(raw).trim(), 10);
-  return Number.isFinite(n) && n >= 0 ? n : 4053;
+  return Number.isFinite(n) && n >= 0 ? n : 1022;
 })();
 
 export function LandingPage() {
@@ -201,17 +201,17 @@ export function LandingPage() {
         </p>
 
         <div id="hero-input" className="mx-auto mt-9 w-full max-w-3xl sm:mt-11">
-          <div className="rounded-[1.35rem] border border-zinc-200/90 bg-white p-4 shadow-[0_12px_40px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.03] sm:rounded-3xl sm:p-5">
-            <div className="relative min-h-[100px] sm:min-h-[120px]">
+          <div className="rounded-[1.35rem] border border-zinc-200/90 bg-white p-3 shadow-[0_12px_40px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.03] sm:rounded-3xl sm:p-4">
+            <div className="relative min-h-[76px] sm:min-h-[92px]">
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 placeholder=""
-                rows={4}
+                rows={3}
                 aria-label={t("landing_simple_placeholder")}
-                className="min-h-[100px] w-full resize-none border-0 bg-transparent text-[15px] leading-relaxed text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:min-h-[120px] sm:text-base"
+                className="min-h-[76px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:min-h-[92px] sm:text-base sm:leading-relaxed"
               />
               <AnimatePresence mode="wait">
                 {!prompt.trim() && !isFocused ? (
@@ -227,7 +227,7 @@ export function LandingPage() {
                       mass: 0.85,
                       opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
                     }}
-                    className="pointer-events-none absolute left-0 top-0 z-10 pr-14 text-[15px] leading-relaxed text-zinc-400 sm:text-base"
+                    className="pointer-events-none absolute left-0 top-0 z-10 pr-12 text-[15px] leading-snug text-zinc-400 sm:text-base sm:leading-relaxed"
                   >
                     <span>{typed}</span>
                     <motion.span
@@ -244,33 +244,33 @@ export function LandingPage() {
                 ) : null}
               </AnimatePresence>
             </div>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-3">
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2">
               <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
                   aria-label={t("landing_simple_attach")}
                 >
-                  <Paperclip className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} />
+                  <Paperclip className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
                   aria-label={t("landing_dark_image_attach_aria")}
                 >
-                  <ImageIcon className="h-[1.125rem] w-[1.125rem]" strokeWidth={1.75} />
+                  <ImageIcon className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
                 </button>
                 <button
                   type="button"
                   tabIndex={-1}
-                  className="ml-1 inline-flex max-w-[min(100%,14rem)] items-center gap-2 rounded-full border border-zinc-200 bg-zinc-50 py-1.5 pl-2 pr-2.5 text-left text-[11px] font-medium text-zinc-800 shadow-sm sm:max-w-none sm:gap-2.5 sm:pl-2.5 sm:pr-3 sm:text-[13px]"
+                  className="ml-1 inline-flex max-w-[min(100%,14rem)] items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-1.5 pr-2 text-left text-[11px] font-medium text-zinc-800 shadow-sm sm:max-w-none sm:gap-2 sm:pl-2 sm:pr-2.5 sm:text-[13px]"
                   aria-hidden
                 >
                   <span
-                    className="flex h-[1.375rem] w-[1.375rem] shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-indigo-600 text-[10px] font-bold text-white"
+                    className="flex h-[1.25rem] w-[1.25rem] shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-indigo-600 text-[9px] font-bold text-white sm:h-[1.375rem] sm:w-[1.375rem] sm:text-[10px]"
                     aria-hidden
                   >
-                    D
+                    L
                   </span>
                   <span className="min-w-0 truncate">{t("landing_model_pill_label")}</span>
                   <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
@@ -280,10 +280,10 @@ export function LandingPage() {
                 type="button"
                 onClick={goApp}
                 disabled={!prompt.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
                 aria-label="Send"
               >
-                <ArrowUp className="h-[1.2rem] w-[1.2rem]" strokeWidth={2.35} />
+                <ArrowUp className="h-[1.1rem] w-[1.1rem]" strokeWidth={2.35} />
               </button>
             </div>
           </div>

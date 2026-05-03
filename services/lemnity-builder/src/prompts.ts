@@ -284,40 +284,141 @@ export function truncateHtmlForRevision(html: string, max = 180_000): string {
   return `${t.slice(0, head)}\n<!-- … truncated ${t.length - head - tail} chars … -->\n${t.slice(t.length - tail)}`;
 }
 
+/** Макс. объём сохранённого снимка Lovable в payload сессии. */
+export const LOVABLE_SOURCES_SESSION_MAX_CHARS = 1_800_000;
+
+/** Лимит вставки файлов предыдущей сборки в промпт исполнителя. */
+export const LOVABLE_PRIOR_SOURCES_PROMPT_MAX = 130_000;
+
+function lovableSourcePathPriority(rel: string): number {
+  if (rel === "puck.json") return 0;
+  if (rel === "src/App.tsx") return 2;
+  if (rel === "src/index.css") return 3;
+  if (rel === "src/main.tsx") return 4;
+  if (rel.startsWith("src/")) return 8;
+  if (rel === "index.html") return 12;
+  if (rel === "vite.config.ts") return 15;
+  if (rel === "package.json") return 17;
+  if (rel.startsWith("tsconfig")) return 22;
+  return 25;
+}
+
+export function sortLovableSourcePaths(paths: Iterable<string>): string[] {
+  return [...paths].sort((a, b) => {
+    const d = lovableSourcePathPriority(a) - lovableSourcePathPriority(b);
+    if (d !== 0) return d;
+    return a.localeCompare(b);
+  });
+}
+
+export function capLovableSources(files: Record<string, string>): Record<string, string> {
+  const sorted = sortLovableSourcePaths(Object.keys(files));
+  const out: Record<string, string> = {};
+  let used = 0;
+  const marker = "\n\n/* … truncated — session snapshot size cap … */\n";
+
+  for (const path of sorted) {
+    const raw = files[path];
+    if (typeof raw !== "string") continue;
+    const overhead = path.length + 48;
+    const avail = LOVABLE_SOURCES_SESSION_MAX_CHARS - used - overhead;
+    if (avail < 120) break;
+    let body = raw;
+    if (body.length > avail) {
+      body = body.slice(0, Math.max(0, avail - marker.length)) + marker;
+    }
+    out[path] = body;
+    used += overhead + body.length;
+  }
+  return out;
+}
+
+function fenceLanguageForPath(path: string): string {
+  if (path.endsWith(".tsx")) return "tsx";
+  if (path.endsWith(".ts")) return "ts";
+  if (path.endsWith(".css")) return "css";
+  if (path.endsWith(".json")) return "json";
+  if (path.endsWith(".html")) return "html";
+  return "txt";
+}
+
+export function formatLovableSourcesSnapshotForPrompt(
+  files: Record<string, string>,
+  maxChars = LOVABLE_PRIOR_SOURCES_PROMPT_MAX
+): string {
+  const sorted = sortLovableSourcePaths(Object.keys(files));
+  const parts: string[] = [];
+  let used = 0;
+  const footer = "\n… (further source files omitted for prompt size) …\n";
+  const sep = "```";
+
+  for (const path of sorted) {
+    const body = (files[path] ?? "").trimEnd();
+    const lang = fenceLanguageForPath(path);
+    const block = `${sep}${lang}:${path}\n${body}\n${sep}\n\n`;
+    if (used + block.length > maxChars) {
+      const room = maxChars - used - footer.length;
+      if (room < 200) {
+        parts.push(footer);
+        break;
+      }
+      parts.push(block.slice(0, room) + footer);
+      break;
+    }
+    parts.push(block);
+    used += block.length;
+  }
+  return parts.join("");
+}
+
 export function createPlanPrompt(input: {
   message: string;
   attachments?: string;
-  sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+  sessionContext?: {
+    transcript: string;
+    priorHtmlExcerpt: string | null;
+    priorLovableFilePaths?: string | null;
+  };
   /** Язык интерфейса приложения: тексты плана на этом языке (не только по языку сообщения). */
   uiLanguage?: AppUiLanguage;
 }): string {
-  const rev = input.sessionContext?.priorHtmlExcerpt?.trim();
+  const rev = input.sessionContext?.priorHtmlExcerpt?.trim() ?? "";
+  const pathLine = input.sessionContext?.priorLovableFilePaths?.trim() ?? "";
   const trans = input.sessionContext?.transcript?.trim();
-  const revisionBlock =
-    rev && rev.length > 0
-      ? [
-          "",
-          "SESSION CONTINUITY (critical):",
-          "- This chat already has a generated HTML preview in this session.",
-          "- The latest user message is a FOLLOW-UP: iterate on that same project (layout, copy, colors, sections).",
-          "- Do NOT plan a completely new unrelated website or change the product type unless the user clearly asks to pivot.",
-          "- Keep the same artifact_kind as fits the EXISTING build (see HTML excerpt below), unless the user explicitly requests a different deliverable type.",
-          "- Steps must describe incremental edits (what to change in the current UI), not 'build a new site from scratch'.",
-          "",
-          "Excerpt of the current HTML preview (reference only; full document is sent to the executor):",
-          "```html",
-          rev,
-          "```",
-          ""
-        ].join("\n")
-      : trans && trans.length > 20
-        ? [
-            "",
-            "CONVERSATION SO FAR (same session — keep topic and deliverable consistent):",
-            trans,
-            ""
-          ].join("\n")
-        : "";
+  const hasContinuity = rev.length > 0 || pathLine.length > 2;
+
+  const revisionBlock = hasContinuity
+    ? [
+        "",
+        "SESSION CONTINUITY (critical):",
+        "- This chat already has a generated preview in this session.",
+        "- The latest user message is a FOLLOW-UP: iterate on that same project (layout, copy, colors, sections).",
+        "- Do NOT plan a completely new unrelated website or change the product type unless the user clearly asks to pivot.",
+        "- Keep the same artifact_kind as fits the EXISTING build (see excerpts below when present), unless the user explicitly requests a different deliverable type.",
+        "- Steps must describe incremental edits (what to change in the current UI), not 'build a new site from scratch'.",
+        "- For **lovable/landing** React previews, steps must assume the project already builds: prefer “adjust styles / tweak component X”, not scaffolding an unrelated Vite app.",
+        pathLine.length > 2
+          ? [
+              "",
+              `- The executor retains the **previous multi-file React snapshot**; paths include: \`${pathLine.length > 2000 ? `${pathLine.slice(0, 2000)}…` : pathLine}\`.`,
+              "- Plan **file-targeted** work (mention concrete paths/components), not a green-field repo.",
+              ""
+            ].join("\n")
+          : "",
+        rev.length > 0
+          ? [
+              "",
+              "Excerpt of the current HTML preview (reference only — executor may also receive stored sources):",
+              "```html",
+              rev,
+              "```",
+              ""
+            ].join("\n")
+          : ""
+      ].join("\n")
+    : trans && trans.length > 20
+      ? ["", "CONVERSATION SO FAR (same session — keep topic and deliverable consistent):", trans, ""].join("\n")
+      : "";
 
   const ui: AppUiLanguage = input.uiLanguage ?? "ru";
   const { code: uiCode, labelEn: uiLabel } = appLanguageInstruction(ui);
@@ -441,9 +542,65 @@ export function executeLovableUiPrompt(input: {
   message: string;
   plan: BuilderPlan;
   modelContext?: string;
+  /**
+   * При `priorSources` — короткий HTML-excerpt; без них — усечённый bundled HTML.
+   */
+  priorHtml?: string | null;
+  /** Последний успешный распарсенный проект — приоритетный контекст для правок. */
+  priorSources?: Record<string, string> | null;
 }): string {
   const steps = input.plan.steps.map((s) => `${s.id}. ${s.description}`).join("\n");
   const kindGuidance = artifactKindExecutionGuidance("lovable", input.plan.language);
+  const priorRaw = input.priorHtml?.trim() ?? "";
+
+  const sourceKeys =
+    input.priorSources && typeof input.priorSources === "object" ? Object.keys(input.priorSources) : [];
+  const hasPriorSources = sourceKeys.length > 0;
+
+  const priorFromStoredSources =
+    hasPriorSources && input.priorSources
+      ? [
+          "",
+          "ITERATIVE EDIT — **AUTHORITATIVE: previous multi-file project (same session)**",
+          "Below are fenced files from the **last successful build**. Treat them as source of truth.",
+          "- **Edit these files**, do not invent unrelated layouts. Preserve section order, copy, typography, imagery, imports unless this user message demands changes.",
+          "- **Minimal diffs:** apply the narrowest Tailwind/component/`puck.json` edits needed.",
+          "- Re-emit every **required** Vite scaffold file the bundler expects; unchanged bodies may repeat verbatim.",
+          "",
+          formatLovableSourcesSnapshotForPrompt(input.priorSources),
+          priorRaw.length > 40
+            ? [
+                "",
+                "--- Short bundled HTML excerpt (sanity check — prefer sources above) ---",
+                "```html",
+                priorRaw,
+                "```",
+                ""
+              ].join("\n")
+            : "",
+          ""
+        ].join("\n")
+      : "";
+
+  const priorBundledHtmlOnly =
+    !hasPriorSources && priorRaw.length > 10
+      ? [
+          "",
+          "ITERATIVE EDIT (mandatory for this session turn — multi-file React):",
+          "A preview ALREADY exists from the previous assistant turn. The latest user message is a **follow-up tweak**, not authorization to redo the entire site.",
+          "",
+          "- **Preserve:** section/block order in the viewport; headings and body copy; nav labels & links (href text); logos; featured images (same subjects); overall spacing rhythm font sizes — unless the user explicitly asks to change them.",
+          "- **Minimal change:** apply only what the user asked (e.g. changing button colours → narrow Tailwind `className`/palette updates on buttons; leave hero, typography, grids, unrelated sections unchanged).",
+          "- **Output:** Same required project files (`src/App.tsx`, `src/index.css`, `puck.json` if relevant, …) so the bundled preview reflects the SAME page with deltas — not an unrelated marketing template.",
+          "- **puck.json:** If the project uses it, emit an UPDATED fence that stays in sync with TSX edits; omitting stale layout copy is unacceptable.",
+          "- **Do NOT** replace the user's topic/copy with canned placeholder content or pivot to unrelated brand unless they asked.",
+          "",
+          "--- BUNDLED PREVIEW HTML (reference — current esbuild output; may be truncated in the middle) ---",
+          priorRaw,
+          "--- END PREVIEW EXCERPT ---",
+          ""
+        ].join("\n")
+      : "";
 
   return [
     LEMNITY_SYSTEM_PROMPT,
@@ -451,6 +608,8 @@ export function executeLovableUiPrompt(input: {
     "Generate the Lovable-style React+TypeScript preview for Lemnity (multiple source files, not one HTML string).",
     "",
     kindGuidance,
+    priorFromStoredSources,
+    priorBundledHtmlOnly,
     "",
     "Strict output rules:",
     "- Output one or more fenced code blocks. Each block opens with ` ```tsx:relative/path.tsx`, ` ```ts:...`, or ` ```json:puck.json` (language, colon, path on the same line as the opening fence), then the file body, then closing fence.",

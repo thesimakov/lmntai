@@ -130,7 +130,7 @@ export const messages = {
     landing_dark_hero_lead:
       'Коротко опишите задачу — Лемнити ИИ предложит структуру, тексты и адаптивную вёрстку. Без кода и отдельного дизайнера.',
     landing_dark_typewriter: 'Лендинг для доставки еды',
-    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_model_pill_label: 'Lemnity AI',
     landing_dark_image_attach_aria: 'Прикрепить изображение',
     landing_simple_placeholder: 'Опишите дашборд с метриками, графиками и таблицами…',
     landing_simple_attach: 'Добавить',
@@ -1167,7 +1167,7 @@ export const messages = {
     landing_dark_hero_lead:
       'Briefly describe what you need—Lemnity AI suggests structure, copy, and responsive layouts. No code or separate designer required.',
     landing_dark_typewriter: 'Food delivery landing page',
-    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_model_pill_label: 'Lemnity AI',
     landing_dark_image_attach_aria: 'Attach image',
     landing_simple_placeholder: 'Describe a dashboard with metrics, charts, and tables…',
     landing_simple_attach: 'Add',
@@ -2199,7 +2199,7 @@ export const messages = {
     landing_dark_hero_lead:
       'Кӯтоҳ тавсиф кунед — ИИ‑и Lemnity сохтор, матн ва версткаи мобилӣ пешниҳод мекунад. Бе код ва дизайнери алоҳида.',
     landing_dark_typewriter: 'Лендинги доставкии озуқаворӣ',
-    landing_model_pill_label: 'DeepSeek V4 Flash',
+    landing_model_pill_label: 'Lemnity AI',
     landing_dark_image_attach_aria: 'Сурат зам кардан',
     landing_simple_placeholder: 'Дашборд бо метрикаҳо, графикҳо ва ҷадвалҳо тавсиф кунед…',
     landing_simple_attach: 'Илова кардан',

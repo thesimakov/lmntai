@@ -22,6 +22,8 @@ export type SessionRecord = {
   status: string;
   events: BuilderEvent[];
   is_shared?: boolean;
+  /** Последний успешный Lovable parse — для итеративных правок по исходникам без «пересборки с нуля». */
+  last_lovable_sources?: Record<string, string> | null;
 };
 
 export type SessionEnvelopeData = {

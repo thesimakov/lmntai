@@ -20,7 +20,8 @@ function emptyRecord(id: string): SessionRecord {
     title: null,
     status: "idle",
     events: [],
-    is_shared: false
+    is_shared: false,
+    last_lovable_sources: null
   };
 }
 
@@ -146,12 +147,23 @@ export class PgSessionStore implements SessionStore {
     const row = rows[0];
     if (!row?.payload) return null;
     const p = row.payload;
+    let lastLovableSources: Record<string, string> | null = null;
+    const rawLv = (p as { last_lovable_sources?: unknown }).last_lovable_sources;
+    if (rawLv && typeof rawLv === "object" && rawLv !== null && !Array.isArray(rawLv)) {
+      lastLovableSources = {};
+      for (const [k, v] of Object.entries(rawLv as Record<string, unknown>)) {
+        if (!k || typeof v !== "string") continue;
+        lastLovableSources[k] = v;
+      }
+      if (Object.keys(lastLovableSources).length === 0) lastLovableSources = null;
+    }
     return structuredClone({
       session_id: p.session_id ?? id,
       title: p.title ?? null,
       status: p.status ?? "idle",
       events: Array.isArray(p.events) ? p.events : [],
-      is_shared: Boolean(p.is_shared)
+      is_shared: Boolean(p.is_shared),
+      last_lovable_sources: lastLovableSources
     });
   }
 

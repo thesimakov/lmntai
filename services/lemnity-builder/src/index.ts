@@ -296,6 +296,10 @@ export async function main() {
 
       const priorHtml = await getLatestHtmlArtifactHtml(store, rec);
       const transcript = formatBuilderTranscript(rec.events, 14_000);
+      const priorLovableFilePaths =
+        rec.last_lovable_sources && Object.keys(rec.last_lovable_sources).length > 0
+          ? Object.keys(rec.last_lovable_sources).sort().join(", ")
+          : null;
 
       res.writeHead(200, sseHeaders());
 
@@ -316,7 +320,8 @@ export async function main() {
           user: routerUser,
           sessionContext: {
             transcript,
-            priorHtmlExcerpt: priorHtml ? excerptHtmlForPlanner(priorHtml) : null
+            priorHtmlExcerpt: priorHtml ? excerptHtmlForPlanner(priorHtml) : null,
+            priorLovableFilePaths
           },
           forceArtifactKind,
           uiLanguage: uiLang
@@ -336,13 +341,19 @@ export async function main() {
         const previewPath = `/api/lemnity-ai/artifacts/`;
 
         if (plan.artifact_kind === "lovable" || plan.artifact_kind === "landing") {
-          const html = await executePlanToLovable({
+          const lovableResult = await executePlanToLovable({
             message: userMessage,
             model,
             plan,
             user: routerUser,
+            priorHtml,
+            priorSources: rec.last_lovable_sources ?? null,
             emit: (eventName, data) => emit(eventName, data, eventName !== "delta")
           });
+          const html = lovableResult.html;
+          if (lovableResult.lovableSources) {
+            rec.last_lovable_sources = lovableResult.lovableSources;
+          }
           const artifact = await store.createArtifact(id, { kind: "html", html });
           emit("tool", {
             tool_call_id: `preview-${artifact.artifact_id}`,

@@ -5,7 +5,10 @@ import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { randomBytes } from "crypto";
 import { setSandboxImageAsset } from "@/lib/sandbox-image-assets";
 import { sandboxManager } from "@/lib/sandbox-manager";
-import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
+import {
+  resolveProjectIdForImageAssetRow,
+  userCanAccessPreviewAssetStorage
+} from "@/lib/sandbox-preview-asset-access";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -60,7 +63,15 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
 
   const buf = Buffer.from(await file.arrayBuffer());
   const key = `img_${randomBytes(10).toString("hex")}.${ext}`;
-  await setSandboxImageAsset(sandboxId, key, { mime, data: buf }, "upload");
+  let rowProjectId: string;
+  try {
+    rowProjectId = await resolveProjectIdForImageAssetRow(guard.data.user.id, sandboxId);
+  } catch {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
+  await setSandboxImageAsset(sandboxId, key, { mime, data: buf }, "upload", undefined, {
+    dbProjectId: rowProjectId
+  });
 
   const origin = new URL(req.url).origin;
   const publicUrl = `${origin}/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;

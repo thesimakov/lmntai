@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  capLovableSources,
   createPlanPrompt,
+  excerptHtmlForPlanner,
   executeLovableUiPrompt,
   executeUiPrompt,
   fallbackPlan,
@@ -111,7 +113,11 @@ export async function createPlan(input: {
   message: string;
   model: string;
   user?: string;
-  sessionContext?: { transcript: string; priorHtmlExcerpt: string | null };
+  sessionContext?: {
+    transcript: string;
+    priorHtmlExcerpt: string | null;
+    priorLovableFilePaths?: string | null;
+  };
   /** См. `project_kind` из Playground (Lovable) — фиксирует тип, если задан. */
   forceArtifactKind?: ArtifactKind | null;
   /** Язык UI приложения — язык `message`/`title`/описаний шагов в плане. */
@@ -224,11 +230,28 @@ export async function executePlanToLovable(input: {
   plan: BuilderPlan;
   user?: string;
   emit: Emit;
-}): Promise<string> {
+  /** Последний HTML превью (bundled). */
+  priorHtml?: string | null;
+  /** Распарсенные fenced-файлы прошлой успешной сборки — приоритет для итераций. */
+  priorSources?: Record<string, string> | null;
+}): Promise<{ html: string; lovableSources: Record<string, string> | null }> {
   let raw = "";
+  const rawHtml = input.priorHtml?.trim() ?? "";
+  const hasStoredSources = Boolean(
+    input.priorSources && Object.keys(input.priorSources).length > 0
+  );
+  const priorHtmlFragment =
+    rawHtml.length > 0
+      ? hasStoredSources
+        ? excerptHtmlForPlanner(rawHtml, 10_000)
+        : truncateHtmlForRevision(rawHtml)
+      : null;
+
   const prompt = executeLovableUiPrompt({
     message: input.message,
-    plan: input.plan
+    plan: input.plan,
+    priorHtml: priorHtmlFragment,
+    priorSources: hasStoredSources ? input.priorSources! : null
   });
   const mainStep =
     input.plan.steps.find((s) => /tsx|react|src|app|код|preview|превью|lovable/i.test(s.description)) ??
@@ -276,9 +299,9 @@ export async function executePlanToLovable(input: {
   if (files) {
     const bundled = await bundleLovableToPreviewHtml(files);
     if (bundled.ok) {
-      return bundled.html;
+      return { html: bundled.html, lovableSources: capLovableSources(files) };
     }
-    return lovableBundleErrorHtml(bundled.error);
+    return { html: lovableBundleErrorHtml(bundled.error), lovableSources: null };
   }
-  return extractHtmlArtifact(raw);
+  return { html: extractHtmlArtifact(raw), lovableSources: null };
 }
