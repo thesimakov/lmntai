@@ -181,7 +181,9 @@ export function LandingPage() {
             <span className="h-3 w-px bg-zinc-300" aria-hidden />
             <button
               type="button"
-              onClick={() => router.push(authed ? "/playground" : "/login")}
+              onClick={() =>
+                router.push(authed ? "/playground" : "/login?register=1")
+              }
               className="font-medium text-blue-600 transition hover:text-blue-700"
             >
               {t("landing_simple_badge_trial")}

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { ensureUserReferralCode } from "@/lib/referrals";
 import { logAuthEvent } from "@/lib/request-log";
 import { ensureUserVirtualWorkspace } from "@/lib/user-virtual-storage";
+import { sendWelcomeEmailAfterRegistration } from "@/lib/notisend-email";
 
 export const authEvents: NextAuthOptions["events"] = {
   async createUser({ user }) {
@@ -21,6 +22,17 @@ export const authEvents: NextAuthOptions["events"] = {
       await ensureUserReferralCode(user.id);
     } catch {
       // ignore referral code collisions/transient issues; profile route will retry later.
+    }
+    const email = user.email?.trim();
+    if (email) {
+      try {
+        await sendWelcomeEmailAfterRegistration({
+          email,
+          name: user.name ?? null
+        });
+      } catch (e) {
+        console.error("[auth] welcome email (oauth) failed", e);
+      }
     }
   },
   async signIn({ user, account, isNewUser }) {

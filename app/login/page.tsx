@@ -59,6 +59,17 @@ async function readFeatures(): Promise<LoginFeatures> {
   };
 }
 
-export default async function LoginPage() {
-  return <LoginForm features={await readFeatures()} />;
+export default async function LoginPage({
+  searchParams
+}: {
+  searchParams: Promise<{ reset?: string; register?: string }>;
+}) {
+  const sp = await searchParams;
+  return (
+    <LoginForm
+      features={await readFeatures()}
+      passwordResetSuccess={sp.reset === "ok"}
+      startWithRegister={sp.register === "1" || sp.register === "true"}
+    />
+  );
 }

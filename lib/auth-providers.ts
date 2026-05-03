@@ -17,6 +17,7 @@ import {
   registerUserWithPassword
 } from "@/lib/token-manager";
 import { normalizeEmail } from "@/lib/auth-normalizers";
+import { sendWelcomeEmailAfterRegistration } from "@/lib/notisend-email";
 
 function smtpConfigured() {
   return Boolean(
@@ -156,6 +157,14 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
               await applyAdminEnvBootstrap(created.id, created.email, password);
             } catch (e) {
               console.error("[auth] admin env bootstrap (register) failed", e);
+            }
+            try {
+              await sendWelcomeEmailAfterRegistration({
+                email: created.email,
+                name: created.name ?? displayName
+              });
+            } catch (e) {
+              console.error("[auth] welcome email failed", e);
             }
             return {
               id: created.id,

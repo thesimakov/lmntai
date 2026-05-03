@@ -125,7 +125,7 @@ export const messages = {
       'Оформляя подписку на рассылку или отмечая согласие в форме, вы принимаете получение информационных и рекламных сообщений о продукте Lemnity / Lemnity ИИ и услугах ООО «Лемнити» на указанный адрес электронной почты. Отказ от рассылки возможен в любой момент по ссылке в письме или через обращение в поддержку.',
     marketing_docs_back: 'К списку разделов',
     landing_simple_badge_free: '3 дня бесплатно!',
-    landing_simple_badge_trial: 'Попробовать бесплатно',
+    landing_simple_badge_trial: 'Попробовать',
     landing_simple_hero_h1: 'Создайте проект с помощью Лемнити ИИ',
     landing_dark_hero_lead:
       'Коротко опишите задачу — Лемнити ИИ предложит структуру, тексты и адаптивную вёрстку. Без кода и отдельного дизайнера.',
@@ -1162,7 +1162,7 @@ export const messages = {
       'By opting in to emails or checking the consent box, you agree to receive informational and promotional messages about Lemnity / Lemnity AI and Lemnity LLC services at the email you provide. You can unsubscribe anytime via the link in emails or by contacting support.',
     marketing_docs_back: 'Back to sections',
     landing_simple_badge_free: '3 days free!',
-    landing_simple_badge_trial: 'Start free trial',
+    landing_simple_badge_trial: 'Try it',
     landing_simple_hero_h1: 'Create a project with Lemnity AI',
     landing_dark_hero_lead:
       'Briefly describe what you need—Lemnity AI suggests structure, copy, and responsive layouts. No code or separate designer required.',
@@ -2194,7 +2194,7 @@ export const messages = {
       'Бо розӣ шудан ба почтаи электронӣ ё қайди розигӣ, шумо ба гирифтани паёмҳои иттилоотӣ ва таблиғотӣ дар бораи Lemnity / Lemnity ИИ ва хизматрасониҳои ООО «Лемнити» розӣ мешавед. Бекор кардан дар ҳар вақт аз роҳи истинод дар паём ё дастгирӣ имконпазир аст.',
     marketing_docs_back: 'Ба рӯйхати бахшҳо',
     landing_simple_badge_free: '3 рӯз ройгон!',
-    landing_simple_badge_trial: 'Озмоиши ройгон',
+    landing_simple_badge_trial: 'Озмоиш кунед',
     landing_simple_hero_h1: 'Лоиҳаро бо ИИ‑и Lemnity эҷод кунед',
     landing_dark_hero_lead:
       'Кӯтоҳ тавсиф кунед — ИИ‑и Lemnity сохтор, матн ва версткаи мобилӣ пешниҳод мекунад. Бе код ва дизайнери алоҳида.',

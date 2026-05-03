@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -87,9 +87,15 @@ export type LoginFeatures = {
 export function LoginForm({
   features,
   embedded = false,
-  splitLayout
+  splitLayout,
+  passwordResetSuccess = false,
+  startWithRegister = false
 }: {
   features: LoginFeatures;
+  /** После успешного сброса пароля (`/login?reset=ok`) */
+  passwordResetSuccess?: boolean;
+  /** Открыть форму регистрации (например `?register=1` с лендинга) */
+  startWithRegister?: boolean;
   /** Карточка без внешнего main/Card — для модального окна */
   embedded?: boolean;
   /**
@@ -109,7 +115,9 @@ export function LoginForm({
   const [regPassword, setRegPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(
+    passwordResetSuccess ? "Пароль обновлён. Войдите с новым паролем." : null
+  );
   const [loadingState, setLoadingState] = useState<
     "idle" | "oauth" | "credentials" | "register" | "magic"
   >("idle");
@@ -117,6 +125,19 @@ export function LoginForm({
   const [emailLoginOpen, setEmailLoginOpen] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const isLoading = loadingState !== "idle";
+
+  useEffect(() => {
+    if (passwordResetSuccess) {
+      setEmailLoginOpen(true);
+    }
+  }, [passwordResetSuccess]);
+
+  useEffect(() => {
+    if (startWithRegister) {
+      setRegisterOpen(true);
+      setEmailLoginOpen(false);
+    }
+  }, [startWithRegister]);
 
   function openEmailLogin() {
     setError(null);
@@ -234,7 +255,8 @@ export function LoginForm({
         return;
       }
       await claimPendingReferral();
-      router.push(consumePostLoginRedirect("/playground"));
+      consumePostLoginRedirect("/playground");
+      router.push("/playground");
     } catch {
       setError("Не удалось создать аккаунт. Повторите попытку.");
     } finally {
@@ -569,6 +591,14 @@ export function LoginForm({
                   {showLoginPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                 </button>
               </div>
+              <p className="text-right text-sm">
+                <Link
+                  href="/forgot-password"
+                  className="font-medium text-foreground underline-offset-2 hover:underline"
+                >
+                  Забыли пароль?
+                </Link>
+              </p>
               {error ? <p className="text-sm text-red-400">{error}</p> : null}
               {info ? <p className="text-sm text-emerald-500">{info}</p> : null}
               <Button
