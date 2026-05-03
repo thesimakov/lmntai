@@ -143,13 +143,12 @@ export function BuildPreviewChrome({
             <Button
               type="button"
               size="sm"
-              variant={previewEditorToggle.active ? "default" : "outline"}
+              variant="default"
               className={cn(
-                "ml-1 h-8 shrink-0 gap-1.5 px-2.5 text-xs font-semibold shadow-sm sm:text-sm",
-                previewEditorToggle.active &&
-                  "shadow-md ring-2 ring-primary/35 ring-offset-2 ring-offset-background",
-                !previewEditorToggle.active &&
-                  "border-primary/45 bg-primary/5 text-foreground hover:border-primary/65 hover:bg-primary/12"
+                "ml-1 h-9 shrink-0 gap-2 px-3 text-sm font-semibold transition-[box-shadow,filter] sm:px-3.5",
+                previewEditorToggle.active
+                  ? "shadow-md ring-2 ring-primary/45 ring-offset-2 ring-offset-background hover:bg-primary/90"
+                  : "border-0 bg-gradient-to-r from-violet-600 via-fuchsia-600 to-pink-500 text-white shadow-md hover:brightness-105 hover:shadow-lg dark:from-violet-500 dark:via-fuchsia-500 dark:to-pink-400"
               )}
               aria-label={t("build_editor_aria")}
               aria-pressed={previewEditorToggle.active}

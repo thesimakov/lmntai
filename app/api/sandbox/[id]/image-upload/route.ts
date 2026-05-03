@@ -73,13 +73,12 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
     dbProjectId: rowProjectId
   });
 
-  const origin = new URL(req.url).origin;
-  const publicUrl = `${origin}/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;
+  /** Same-origin путь: не привязываемся к `req.url` (за прокси там бывает 0.0.0.0 и т.п.). */
+  const publicUrl = `/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;
 
   try {
-    const pathOnly = `/api/sandbox/${encodeURIComponent(sandboxId)}/image-asset/${encodeURIComponent(key)}`;
     await sandboxManager.mergeProjectGalleryAppendUploadItem(sandboxId, {
-      path: pathOnly,
+      path: publicUrl,
       mime,
       source: "upload",
       assetKey: key,

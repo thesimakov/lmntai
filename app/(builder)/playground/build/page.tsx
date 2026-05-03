@@ -381,14 +381,6 @@ export default function PromptBuildPage() {
     setVisualLayoutEditor((v) => !v);
   }, [previewUrl, previewArtifactMime, tab]);
 
-  const visualEditorInChat = useMemo(() => {
-    if (!previewUrl || isPptxArtifact(previewArtifactMime)) return null;
-    return {
-      active: (tab === "preview" || tab === "document") && visualLayoutEditor,
-      onToggle: handleChatVisualEditorToggle
-    };
-  }, [previewUrl, previewArtifactMime, tab, visualLayoutEditor, handleChatVisualEditorToggle]);
-
   const settingsProjectTitle = useMemo(() => {
     const raw = finalPrompt.trim() || idea.trim();
     if (!raw) return "";
@@ -2172,7 +2164,6 @@ export default function PromptBuildPage() {
               onModelHintChange={setAgentHint}
               buildTemplate={buildTemplate}
               onBuildTemplateChange={handleBuildTemplateChange}
-              visualEditorInChat={visualEditorInChat}
               threadStatusSlot={
                 streamSteps.length > 0 || streamToolLine ? (
                   <BuildStreamSteps steps={streamSteps} toolLine={streamToolLine} className="border-0 bg-transparent" />

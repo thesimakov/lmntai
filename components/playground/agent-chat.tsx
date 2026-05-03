@@ -9,7 +9,6 @@ import {
   Image as ImageIcon,
   LayoutTemplate,
   Lock,
-  MousePointer2,
   MoreHorizontal,
   Paperclip,
   SendHorizontal,
@@ -121,14 +120,6 @@ type AgentChatProps = {
   agentTask?: AgentTask;
   /** Отдать выбранный агент как hint в родительский компонент (`Auto` — сервер выберет модель). */
   onModelHintChange?: (value: AgentPickerLabel) => void;
-  /**
-   * Кнопка визуального редактора макета в панели ввода (студия) — аналог быстрого доступа к режиму «Редактор» в шапке превью.
-   */
-  visualEditorInChat?: {
-    active: boolean;
-    onToggle: () => void;
-    disabled?: boolean;
-  } | null;
   /** Слот слева в шапке студии (навигация, меню проекта) */
   studioToolbarSlot?: React.ReactNode;
   /** Слот справа в шапке студии (например, сворачивание колонки чата) */
@@ -158,7 +149,6 @@ export function AgentChat({
   projectKind = null,
   agentTask = "generate-stream",
   onModelHintChange,
-  visualEditorInChat = null,
   studioToolbarSlot,
   studioToolbarTrailingSlot,
   buildTemplate = null,
@@ -874,30 +864,6 @@ export function AgentChat({
                       </TooltipContent>
                     </Tooltip>
                   ) : null}
-
-                  {visualEditorInChat ? (
-                  <>
-                    <div className="mx-0.5 h-5 w-px shrink-0 bg-border" aria-hidden />
-                    <button
-                      type="button"
-                      disabled={visualEditorInChat.disabled}
-                      title={t("playground_chat_visual_editor_title")}
-                      aria-pressed={visualEditorInChat.active}
-                      aria-label={t("playground_chat_visual_editor_aria")}
-                      className={cn(
-                        "inline-flex h-7 max-w-[min(120px,32cqw)] shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors",
-                        visualEditorInChat.disabled && "pointer-events-none opacity-50",
-                        visualEditorInChat.active
-                          ? "bg-muted/90 text-foreground"
-                          : "text-muted-foreground hover:bg-stone-100/90 hover:text-foreground dark:hover:bg-zinc-800/80"
-                      )}
-                      onClick={() => visualEditorInChat.onToggle()}
-                    >
-                      <MousePointer2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                      <span className="min-w-0 truncate">{t("build_editor_label")}</span>
-                    </button>
-                  </>
-                ) : null}
 
                 <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
 

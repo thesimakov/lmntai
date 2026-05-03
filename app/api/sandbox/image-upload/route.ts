@@ -71,13 +71,11 @@ async function postUpload(req: NextRequest) {
     dbProjectId: rowProjectId
   });
 
-  const origin = new URL(req.url).origin;
-  const publicUrl = `${origin}/api/sandbox/image-asset/${encodeURIComponent(key)}`;
+  const publicUrl = `/api/sandbox/image-asset/${encodeURIComponent(key)}`;
 
   try {
-    const pathOnly = `/api/sandbox/image-asset/${encodeURIComponent(key)}`;
     await sandboxManager.mergeProjectGalleryAppendUploadItem(sandboxId, {
-      path: pathOnly,
+      path: publicUrl,
       mime,
       source: "upload",
       assetKey: key,
