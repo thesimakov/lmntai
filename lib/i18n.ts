@@ -124,7 +124,7 @@ export const messages = {
     marketing_docs_marketing_body:
       'Оформляя подписку на рассылку или отмечая согласие в форме, вы принимаете получение информационных и рекламных сообщений о продукте Lemnity / Lemnity ИИ и услугах ООО «Лемнити» на указанный адрес электронной почты. Отказ от рассылки возможен в любой момент по ссылке в письме или через обращение в поддержку.',
     marketing_docs_back: 'К списку разделов',
-    landing_simple_badge_free: '7 дней бесплатно!',
+    landing_simple_badge_free: '3 дня бесплатно!',
     landing_simple_badge_trial: 'Попробовать бесплатно',
     landing_simple_hero_h1: 'Создайте проект с помощью Лемнити ИИ',
     landing_dark_hero_lead:
@@ -140,7 +140,7 @@ export const messages = {
     landing_simple_quick_design: 'Дизайн',
     landing_simple_quick_more: 'Ещё',
     landing_projects_status_before: 'Уже',
-    landing_projects_status_after: 'проектов создано в Lemnity',
+    landing_projects_status_after: 'проектов создано в Lemnity AI',
     landing_showcase_title: 'Каталог проектов',
     landing_showcase_subtitle: 'Сайты и интерфейсы, собранные в Lemnity — откройте живую версию в новой вкладке.',
     landing_showcase_view_all: 'Смотреть все',
@@ -257,7 +257,7 @@ export const messages = {
     pricing_plan_starter_price: '99 ₽',
     pricing_plan_starter_period: '/мес',
     pricing_plan_starter_desc:
-      'Первые 7 дней бесплатно: 10 токенов в день, один проект и шаблон, публикация с лейблом только на *.lemnity.com. После — подписка 99 ₽/мес: 50 токенов в день.',
+      'Первые 3 дня бесплатно: 10 токенов в день, один проект и шаблон, публикация с лейблом только на *.lemnity.com. После — подписка 99 ₽/мес: 50 токенов в день.',
     pricing_plan_starter_feat_1: '1 активный проект / один шаблон',
     pricing_plan_starter_feat_2: '10 токенов в день в пробный период; 50 в день после оплаты 99 ₽',
     pricing_plan_starter_feat_3:
@@ -1161,7 +1161,7 @@ export const messages = {
     marketing_docs_marketing_body:
       'By opting in to emails or checking the consent box, you agree to receive informational and promotional messages about Lemnity / Lemnity AI and Lemnity LLC services at the email you provide. You can unsubscribe anytime via the link in emails or by contacting support.',
     marketing_docs_back: 'Back to sections',
-    landing_simple_badge_free: '7 days free!',
+    landing_simple_badge_free: '3 days free!',
     landing_simple_badge_trial: 'Start free trial',
     landing_simple_hero_h1: 'Create a project with Lemnity AI',
     landing_dark_hero_lead:
@@ -1177,7 +1177,7 @@ export const messages = {
     landing_simple_quick_design: 'Design',
     landing_simple_quick_more: 'More',
     landing_projects_status_before: 'Already',
-    landing_projects_status_after: 'projects created on Lemnity',
+    landing_projects_status_after: 'projects created on Lemnity AI',
     landing_showcase_title: 'Project gallery',
     landing_showcase_subtitle: 'Sites and UIs built with Lemnity — open a live preview in a new tab.',
     landing_showcase_view_all: 'View all',
@@ -1294,7 +1294,7 @@ export const messages = {
     pricing_plan_starter_price: '$1.08',
     pricing_plan_starter_period: '/mo',
     pricing_plan_starter_desc:
-      'First 7 days free: 10 tokens/day, one project/template, branded publishing on *.lemnity.com only. After that — 99 ₽/mo subscription: 50 tokens/day.',
+      'First 3 days free: 10 tokens/day, one project/template, branded publishing on *.lemnity.com only. After that — 99 ₽/mo subscription: 50 tokens/day.',
     pricing_plan_starter_feat_1: '1 active project / one template',
     pricing_plan_starter_feat_2: '10 tokens/day during trial; 50/day after subscribing at 99 ₽',
     pricing_plan_starter_feat_3:
@@ -2193,7 +2193,7 @@ export const messages = {
     marketing_docs_marketing_body:
       'Бо розӣ шудан ба почтаи электронӣ ё қайди розигӣ, шумо ба гирифтани паёмҳои иттилоотӣ ва таблиғотӣ дар бораи Lemnity / Lemnity ИИ ва хизматрасониҳои ООО «Лемнити» розӣ мешавед. Бекор кардан дар ҳар вақт аз роҳи истинод дар паём ё дастгирӣ имконпазир аст.',
     marketing_docs_back: 'Ба рӯйхати бахшҳо',
-    landing_simple_badge_free: '7 рӯз ройгон!',
+    landing_simple_badge_free: '3 рӯз ройгон!',
     landing_simple_badge_trial: 'Озмоиши ройгон',
     landing_simple_hero_h1: 'Лоиҳаро бо ИИ‑и Lemnity эҷод кунед',
     landing_dark_hero_lead:
@@ -2209,7 +2209,7 @@ export const messages = {
     landing_simple_quick_design: 'Дизайн',
     landing_simple_quick_more: 'Бештар',
     landing_projects_status_before: 'Аллакай',
-    landing_projects_status_after: 'лоиҳа дар Lemnity эҷод шудаанд',
+    landing_projects_status_after: 'лоиҳа дар Lemnity AI эҷод шудаанд',
     landing_showcase_title: 'Каталоги лоиҳаҳо',
     landing_showcase_subtitle:
       'Сомонаҳо ва интерфейсҳо дар Lemnity — версияи зинда дар вкладкаи нав кушоед.',
@@ -2327,7 +2327,7 @@ export const messages = {
     pricing_plan_starter_price: '12 TJS',
     pricing_plan_starter_period: '/моҳ',
     pricing_plan_starter_desc:
-      '7 рӯзи нахуст ройгон: 10 токен/рӯз, як лоиҳа ва шаблон, нашр бо лейбл танҳо дар *.lemnity.com. Нигоҳ дории 99 ₽/моҳ: 50 токен/рӯз.',
+      '3 рӯзи нахуст ройгон: 10 токен/рӯз, як лоиҳа ва шаблон, нашр бо лейбл танҳо дар *.lemnity.com. Нигоҳ дории 99 ₽/моҳ: 50 токен/рӯз.',
     pricing_plan_starter_feat_1: '1 лоиҳаи фаъол / як шаблон',
     pricing_plan_starter_feat_2: '10 токен/рӯз дар санҷиш; баъд аз пардохти 99 ₽ — 50/рӯз',
     pricing_plan_starter_feat_3:

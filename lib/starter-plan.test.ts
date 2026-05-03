@@ -32,7 +32,7 @@ describe("starter plan gates", () => {
     vi.useRealTimers();
   });
 
-  it("trial is 7 days from createdAt", () => {
+  it("trial duration matches STARTER_TRIAL_MS from createdAt", () => {
     const u = user({ createdAt: new Date("2026-03-10T00:00:00.000Z") });
     const ends = getStarterTrialEndsAt(u);
     expect(ends.getTime() - u.createdAt.getTime()).toBe(STARTER_TRIAL_MS);

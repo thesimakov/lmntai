@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import { Check, Sparkles } from "lucide-react"
+import { useSession } from "next-auth/react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useI18n } from "@/components/i18n-provider"
@@ -12,7 +13,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import type { MessageKey } from "@/lib/i18n"
+import type { MessageKey, UiLanguage } from "@/lib/i18n"
+import { normalizePlanId } from "@/lib/plan-config"
 import {
   type BillingPeriod,
   subscriptionBillingLinearMinor,
@@ -91,6 +93,31 @@ function formatStarterPlanLine(
   }
 }
 
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+
+function starterTrialRemainLabel(lang: UiLanguage, n: number): string {
+  if (lang === "ru") {
+    const abs = n % 100
+    const d = n % 10
+    let word = "дней"
+    if (abs < 11 || abs > 14) {
+      if (d === 1) word = "день"
+      else if (d >= 2 && d <= 4) word = "дня"
+    }
+    return `Ещё ${n} ${word} пробного периода`
+  }
+  if (lang === "tg") {
+    return `Боз ${n} рӯзи санҷиш`
+  }
+  return n === 1 ? `${n} day left in trial` : `${n} days left in trial`
+}
+
+type ProfileTrialFields = {
+  plan: string
+  starterPaidUntil: string | null
+  starterTrialEndsAt: string | null
+}
+
 const billingOptions: { id: BillingPeriod; tab: MessageKey }[] = [
   { id: "monthly", tab: "pricing_billing_tab_month" },
   { id: "quarter", tab: "pricing_billing_tab_quarter" },
@@ -125,6 +152,10 @@ type PromoPreviewResponse = {
 
 export function Pricing() {
   const { t, lang } = useI18n()
+  const { status } = useSession()
+  const [profileTrialSlice, setProfileTrialSlice] = useState<
+    ProfileTrialFields | null
+  >(null)
   const [displayPricing, setDisplayPricing] = useState<PricingDisplayPayload | null>(null)
   const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly")
   const [promoInput, setPromoInput] = useState("")
@@ -187,6 +218,30 @@ export function Pricing() {
     if (!c) return
     void applyPromoWithCode(c)
   }, [billingPeriod, lang, applyPromoWithCode])
+
+  useEffect(() => {
+    if (status !== "authenticated") {
+      setProfileTrialSlice(null)
+      return
+    }
+    let cancelled = false
+    void fetch("/api/profile", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { user?: ProfileTrialFields } | null) => {
+        if (cancelled || !body?.user) return
+        setProfileTrialSlice({
+          plan: body.user.plan,
+          starterPaidUntil: body.user.starterPaidUntil,
+          starterTrialEndsAt: body.user.starterTrialEndsAt,
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setProfileTrialSlice(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [status])
 
   useEffect(() => {
     let cancelled = false
@@ -375,6 +430,25 @@ export function Pricing() {
     return [starter, pro, team]
   }, [displayPricing, t, lang, billingPeriod, showBilling, promoResult])
 
+  const starterTrialRemainText = useMemo(() => {
+    if (!profileTrialSlice?.starterTrialEndsAt) return null
+    if (normalizePlanId(profileTrialSlice.plan) !== "FREE") return null
+    if (profileTrialSlice.starterPaidUntil) {
+      const paidUntil = new Date(profileTrialSlice.starterPaidUntil)
+      if (
+        Number.isFinite(paidUntil.getTime()) &&
+        paidUntil.getTime() > Date.now()
+      ) {
+        return null
+      }
+    }
+    const ends = new Date(profileTrialSlice.starterTrialEndsAt)
+    const msLeft = ends.getTime() - Date.now()
+    if (!Number.isFinite(msLeft) || msLeft <= 0) return null
+    const days = Math.max(1, Math.ceil(msLeft / MS_PER_DAY))
+    return starterTrialRemainLabel(lang, days)
+  }, [profileTrialSlice, lang])
+
   const paygPacks = useMemo(
     () =>
       (["starter", "optimal", "max"] as const).map((pack: TokenPackId) => ({
@@ -536,7 +610,14 @@ export function Pricing() {
 
             {/* Plan Header */}
             <div className="mb-6">
-              <h3 className="text-lg font-medium text-foreground">{plan.name}</h3>
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
+                <h3 className="text-lg font-medium text-foreground">{plan.name}</h3>
+                {plan.id === "starter" && starterTrialRemainText ? (
+                  <span className="ml-auto shrink-0 text-right text-xs font-normal tabular-nums leading-snug text-muted-foreground sm:text-[13px]">
+                    {starterTrialRemainText}
+                  </span>
+                ) : null}
+              </div>
               <div className="mt-2 flex flex-wrap items-baseline gap-x-1.5 gap-y-1">
                 {"priceWas" in plan && plan.priceWas ? (
                   <span className="mr-1 text-lg font-medium line-through tabular-nums text-muted-foreground">

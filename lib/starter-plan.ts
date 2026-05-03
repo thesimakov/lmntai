@@ -10,7 +10,7 @@ export function startOfLocalCalendarDay(reference = new Date()): Date {
   return d;
 }
 
-export const STARTER_TRIAL_DAYS = 7;
+export const STARTER_TRIAL_DAYS = 3;
 export const STARTER_TRIAL_MS = STARTER_TRIAL_DAYS * 24 * 60 * 60 * 1000;
 export const STARTER_TOKENS_PER_DAY_TRIAL = 10;
 export const STARTER_TOKENS_PER_DAY_PAID = 50;
@@ -43,7 +43,7 @@ export function starterTrialActive(
 }
 
 /**
- * На тарифе FREE кабинет заблокирован, если истёк 7-дневный пробный период
+ * На тарифе FREE кабинет заблокирован, если истёк 3-дневный пробный период
  * и нет активной оплаченной подписки «Старт».
  */
 export function isStarterCabinetBlocked(user: StarterCabinetGateUser, reference = new Date()): boolean {
