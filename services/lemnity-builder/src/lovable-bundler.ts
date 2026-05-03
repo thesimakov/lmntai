@@ -256,6 +256,26 @@ export function withLovableProjectScaffold(input: Record<string, string>): Recor
   return applySrcRootImportFallbacks(files);
 }
 
+/**
+ * Превью esbuild без asset/metafile: `import "./X.module.css"` даёт ошибку «output path configured».
+ * Подставляем пустой default export — классы берите из Tailwind / глобального `index.css`.
+ */
+function cssModuleStubPlugin(): esbuild.Plugin {
+  return {
+    name: "lemnity-css-module-stub",
+    setup(build) {
+      build.onResolve({ filter: /\.module\.css$/ }, (args) => ({
+        path: path.isAbsolute(args.path) ? args.path : path.resolve(args.resolveDir, args.path),
+        namespace: "lemnity-css-module-stub"
+      }));
+      build.onLoad({ filter: /\.module\.css$/, namespace: "lemnity-css-module-stub" }, () => ({
+        contents: `export default Object.create(null);\n`,
+        loader: "js"
+      }));
+    }
+  };
+}
+
 function resolveBareImportsFromBuilderRootPlugin(): esbuild.Plugin {
   return {
     name: "resolve-bare-from-builder-root",
@@ -378,7 +398,7 @@ export async function bundleLovableToPreviewHtml(inputFiles: Record<string, stri
         logLevel: "silent",
         loader: { ".css": "empty" },
         nodePaths: [path.join(builderRoot, "node_modules")],
-        plugins: [resolveBareImportsFromBuilderRootPlugin()]
+        plugins: [cssModuleStubPlugin(), resolveBareImportsFromBuilderRootPlugin()]
       });
     } catch (err) {
       return { ok: false, error: formatEsbuildFailure(err) };
