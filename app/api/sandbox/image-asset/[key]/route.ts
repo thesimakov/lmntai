@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { isSvgMime } from "@/lib/image-content-validation";
 import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
@@ -20,29 +21,37 @@ async function getSandboxImage(
   }
   const { key } = await params;
   const sandboxId = project.id;
+  const guard = await requireDbUser();
+  let canRead = false;
+  if (guard.ok) {
+    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
+    if (allowed) {
+      canRead = true;
+    }
+  }
+
+  if (!canRead) {
+    const publicOk =
+      (await isSandboxLinkPublic(sandboxId).catch(() => false)) &&
+      (await sandboxManager.hasSandboxPersistent(sandboxId).catch(() => false));
+    canRead = publicOk;
+  }
+  if (!canRead) {
+    return new Response("Not found", { status: 404 });
+  }
+
   const asset = await getSandboxImageAsset(sandboxId, key);
   if (!asset) {
     return new Response("Not found", { status: 404 });
   }
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": asset.mime,
-    "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400"
+    "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+    "X-Content-Type-Options": "nosniff"
   };
-
-  const guard = await requireDbUser();
-  if (guard.ok) {
-    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
-    if (allowed) {
-      return new Response(new Uint8Array(asset.data), { headers });
-    }
-  }
-
-  const publicOk =
-    (await isSandboxLinkPublic(sandboxId).catch(() => false)) &&
-    (await sandboxManager.hasSandboxPersistent(sandboxId).catch(() => false));
-  if (!publicOk) {
-    return new Response("Not found", { status: 404 });
+  if (isSvgMime(asset.mime)) {
+    headers["Content-Disposition"] = "attachment";
   }
   return new Response(new Uint8Array(asset.data), { headers });
 }

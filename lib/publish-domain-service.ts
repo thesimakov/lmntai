@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { resolveTxt } from "node:dns/promises";
 
 import { prisma } from "@/lib/prisma";
+import { triggerPublishDomainProvision } from "@/lib/publish-domain-provision";
 import {
   canUseCustomDomain,
   getAppHosts,
@@ -104,6 +105,7 @@ export async function bindPublishHost(input: {
 
   const now = new Date();
   const status = builtIn ? "VERIFIED" : existing?.verificationStatus ?? "PENDING";
+  const becameVerified = status === "VERIFIED" && existing?.verificationStatus !== "VERIFIED";
   const token =
     builtIn
       ? null
@@ -145,6 +147,14 @@ export async function bindPublishHost(input: {
     await prisma.project.updateMany({
       where: { id: fkProjectId, ownerId: input.ownerId },
       data: { subdomain: builtInSubdomain }
+    });
+  }
+  if (becameVerified) {
+    triggerPublishDomainProvision({
+      host: row.host,
+      projectId: fkProjectId,
+      ownerId: input.ownerId,
+      event: "bind_verified"
     });
   }
 
@@ -289,6 +299,7 @@ export async function verifyPublishHost(input: { ownerId: string; hostRaw: strin
   }
   const expected = verifyRecordValue(row.verificationToken);
   const matched = records.includes(expected);
+  const becameVerified = matched && row.verificationStatus !== "VERIFIED";
 
   const updated = await prisma.publishDomainBinding.update({
     where: { host },
@@ -301,9 +312,18 @@ export async function verifyPublishHost(input: { ownerId: string; hostRaw: strin
       host: true,
       verificationStatus: true,
       verificationToken: true,
-      verifiedAt: true
+      verifiedAt: true,
+      projectId: true
     }
   });
+  if (becameVerified) {
+    triggerPublishDomainProvision({
+      host: updated.host,
+      projectId: updated.projectId,
+      ownerId: input.ownerId,
+      event: "verify_passed"
+    });
+  }
 
   return {
     ok: true as const,

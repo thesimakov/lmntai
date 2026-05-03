@@ -73,6 +73,12 @@ export async function findProjectByHost(rawHost: string): Promise<ResolvedProjec
 }
 
 export async function resolveProjectFromHeaders(headersLike: HeaderReader): Promise<ResolvedProject | null> {
+  const hostRaw = headersLike.get("x-forwarded-host") ?? headersLike.get("host");
+  const host = normalizeHost(hostRaw);
+  if (host && !isReservedAppHost(host)) {
+    return findProjectByHost(host);
+  }
+
   const fromHeader = headersLike.get("x-project-id")?.trim();
   if (fromHeader) {
     const byId = await prisma.project.findUnique({
@@ -81,9 +87,7 @@ export async function resolveProjectFromHeaders(headersLike: HeaderReader): Prom
     });
     if (byId) return byId;
   }
-  const host = headersLike.get("x-forwarded-host") ?? headersLike.get("host");
-  if (!host) return null;
-  return findProjectByHost(host);
+  return null;
 }
 
 export async function resolveProjectFromRequest(req: NextRequest | Request): Promise<ResolvedProject | null> {

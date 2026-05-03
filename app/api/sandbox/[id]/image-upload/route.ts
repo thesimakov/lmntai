@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import {
+  detectUploadImageMime,
+  normalizeUploadImageMime,
+  uploadImageExtensionFromMime
+} from "@/lib/image-content-validation";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { randomBytes } from "crypto";
 import { setSandboxImageAsset } from "@/lib/sandbox-image-assets";
@@ -14,14 +19,6 @@ import { withApiLogging } from "@/lib/with-api-logging";
 export const runtime = "nodejs";
 
 const MAX_BYTES = 6 * 1024 * 1024;
-
-const ALLOWED = new Map([
-  ["image/png", "png"],
-  ["image/jpeg", "jpg"],
-  ["image/jpg", "jpg"],
-  ["image/webp", "webp"],
-  ["image/svg+xml", "svg"]
-]);
 
 async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const guard = await requireDbUser();
@@ -55,13 +52,17 @@ async function postUpload(req: NextRequest, { params }: { params: Promise<{ id: 
     return Response.json({ error: "File too large" }, { status: 413 });
   }
 
-  const mime = file.type || "application/octet-stream";
-  const ext = ALLOWED.get(mime);
-  if (!ext) {
+  const buf = Buffer.from(await file.arrayBuffer());
+  const detectedMime = detectUploadImageMime(buf);
+  if (!detectedMime) {
     return Response.json({ error: "Unsupported image type" }, { status: 415 });
   }
-
-  const buf = Buffer.from(await file.arrayBuffer());
+  const claimedMime = normalizeUploadImageMime(file.type);
+  if (claimedMime && claimedMime !== detectedMime) {
+    return Response.json({ error: "MIME type mismatch" }, { status: 415 });
+  }
+  const mime = detectedMime;
+  const ext = uploadImageExtensionFromMime(mime);
   const key = `img_${randomBytes(10).toString("hex")}.${ext}`;
   let rowProjectId: string;
   try {

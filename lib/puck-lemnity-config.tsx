@@ -62,6 +62,37 @@ function isProbablyRemoteHref(href: string) {
   return /^https?:\/\//i.test(href.trim());
 }
 
+function sanitizeHref(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (value.startsWith("#")) return value;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function sanitizeImageSrc(raw: string): string | null {
+  const value = raw.trim();
+  if (!value) return null;
+  if (value.startsWith("/") && !value.startsWith("//")) return value;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export const lemnityPuckConfig: Config = {
   components: {
     Heading: {
@@ -96,12 +127,13 @@ export const lemnityPuckConfig: Config = {
         const safe = level in levelToTag ? level : "1";
         const L = levelToTag[safe];
         const { linkOn, hrefRaw } = readLinkFields(props);
+        const safeHref = sanitizeHref(hrefRaw);
         const inner =
-          linkOn && hrefRaw ? (
+          linkOn && safeHref ? (
             <a
-              href={hrefRaw}
+              href={safeHref}
               className="text-inherit underline decoration-muted-foreground/60 underline-offset-2 hover:decoration-foreground"
-              {...(isProbablyRemoteHref(hrefRaw)
+              {...(isProbablyRemoteHref(safeHref)
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
             >
@@ -142,14 +174,15 @@ export const lemnityPuckConfig: Config = {
         const text = typeof props.text === "string" ? props.text : "";
         const size = (props.size as TextBlockProps["size"] | undefined) ?? "md";
         const { linkOn, hrefRaw } = readLinkFields(props);
+        const safeHref = sanitizeHref(hrefRaw);
         const fontSize = size in textSize ? textSize[size] : "1.05rem";
         const body =
-          linkOn && hrefRaw ? (
+          linkOn && safeHref ? (
             <a
-              href={hrefRaw}
+              href={safeHref}
               className="text-inherit text-primary underline underline-offset-2 hover:opacity-90"
               style={{ fontSize, lineHeight: 1.55 }}
-              {...(isProbablyRemoteHref(hrefRaw)
+              {...(isProbablyRemoteHref(safeHref)
                 ? { target: "_blank", rel: "noopener noreferrer" }
                 : {})}
             >
@@ -188,9 +221,20 @@ export const lemnityPuckConfig: Config = {
       },
       defaultProps: { src: "https://placehold.co/800x400/1a1a1a/fff?text=image", alt: "", width: "narrow" } satisfies Partial<ImageBlockProps>,
       render: (props) => {
-        const src = typeof props.src === "string" ? props.src : "";
+        const srcRaw = typeof props.src === "string" ? props.src : "";
+        const src = sanitizeImageSrc(srcRaw);
         const alt = typeof props.alt === "string" ? props.alt : "";
         const width = (props.width as ImageBlockProps["width"] | undefined) ?? "narrow";
+        if (!src) {
+          return (
+            <div
+              className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground"
+              style={width === "full" ? { width: "100%" } : { maxWidth: 640 }}
+            >
+              Некорректный URL изображения
+            </div>
+          );
+        }
         return (
           <figure className="m-0" style={width === "full" ? { width: "100%" } : { maxWidth: 640 }}>
             <img
@@ -221,11 +265,13 @@ export const lemnityPuckConfig: Config = {
       defaultProps: { label: "Действие", href: "#", variant: "solid" } satisfies Partial<ButtonBlockProps>,
       render: (props) => {
         const label = typeof props.label === "string" ? props.label : "—";
-        const href = typeof props.href === "string" ? props.href : "#";
+        const hrefRaw = typeof props.href === "string" ? props.href : "#";
+        const href = sanitizeHref(hrefRaw) ?? "#";
         const variant = (props.variant as ButtonBlockProps["variant"] | undefined) ?? "solid";
         return (
           <a
             href={href}
+            {...(isProbablyRemoteHref(href) ? { target: "_blank", rel: "noopener noreferrer" } : {})}
             className={
               variant === "ghost"
                 ? "inline-flex items-center justify-center rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted/60"

@@ -9,6 +9,15 @@ import { withApiLogging } from "@/lib/with-api-logging";
 export const runtime = "nodejs";
 
 const MAX_HTML_CHARS = 2_000_000;
+const SAFE_FILENAME_RE = /[^A-Za-z0-9._-]/g;
+
+function sanitizeDocxFilename(input: string): string | null {
+  const cleaned = input.trim().replace(/[\r\n\0]/g, "");
+  if (!cleaned.toLowerCase().endsWith(".docx")) return null;
+  const compact = cleaned.slice(-120).replace(SAFE_FILENAME_RE, "_");
+  if (!compact || compact === ".docx") return null;
+  return compact;
+}
 
 async function postDocx(req: NextRequest) {
   const guard = await requireDbUser();
@@ -43,8 +52,11 @@ async function postDocx(req: NextRequest) {
     }
     const files = await sandboxManager.exportFiles(projectId);
     html = files["index.html"] ?? null;
-    if (typeof b.filename === "string" && b.filename.trim().endsWith(".docx")) {
-      downloadName = b.filename.trim().slice(-120);
+    if (typeof b.filename === "string") {
+      const safeName = sanitizeDocxFilename(b.filename);
+      if (safeName) {
+        downloadName = safeName;
+      }
     }
   }
 
@@ -66,11 +78,12 @@ async function postDocx(req: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "Content-Disposition": `attachment; filename="${downloadName.replace(/"/g, "")}"`
+        "Content-Disposition": `attachment; filename="${downloadName}"`
       }
     });
-  } catch (e) {
-    return new Response((e as Error).message ?? "conversion_failed", { status: 500 });
+  } catch (error) {
+    console.error("[api/export/docx] conversion_failed", error);
+    return new Response("conversion_failed", { status: 500 });
   }
 }
 

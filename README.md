@@ -164,6 +164,20 @@ cd /root/lmntai && set -a && . /etc/lemnity/production.env && set +a && npm run 
 - Не используйте в обычном деплое `npm run db:reset`.
 - Проверьте прокси (Nginx/Caddy): HTTPS на `https://lemnity.com` должен проксировать на `127.0.0.1:3000`.
 
+### Автопровижининг сертификатов для новых publish-host
+
+Если хотите автоматически выпускать TLS для новых доменов/поддоменов при публикации, задайте в серверном env:
+
+```bash
+PUBLISH_DOMAIN_PROVISION_HOOK='bash /var/www/lmntai/scripts/publish-domain-provision.example.sh'
+LETSENCRYPT_EMAIL=ops@example.com
+```
+
+Хук запускается асинхронно при переходе домена в `VERIFIED` и получает переменные:
+`LMNT_PUBLISH_HOST`, `LMNT_PUBLISH_PROJECT_ID`, `LMNT_PUBLISH_OWNER_ID`, `LMNT_PUBLISH_EVENT`.
+
+Для встроенной зоны `*.{NEXT_PUBLIC_PUBLISH_BASE_DOMAIN}` на проде предпочтительнее wildcard-сертификат (DNS-01), чтобы не упираться в rate limits при большом количестве поддоменов.
+
 Заливка в GitHub с локальной машины (после коммита):
 
 ```bash

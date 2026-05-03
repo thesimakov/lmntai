@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { isSvgMime } from "@/lib/image-content-validation";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
@@ -20,32 +21,40 @@ async function getSandboxImage(
     return new Response("Not found", { status: 404 });
   }
   const sandboxId = resolvedProject?.id ?? routeId;
+  const guard = await requireDbUser();
+  let canRead = false;
+  if (guard.ok) {
+    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
+    if (allowed) {
+      canRead = true;
+    }
+  }
+
+  if (!canRead) {
+    let publicOk = false;
+    try {
+      publicOk = (await isSandboxLinkPublic(sandboxId)) && (await sandboxManager.hasSandboxPersistent(sandboxId));
+    } catch {
+      publicOk = false;
+    }
+    canRead = publicOk;
+  }
+  if (!canRead) {
+    return new Response("Not found", { status: 404 });
+  }
+
   const asset = await getSandboxImageAsset(sandboxId, key);
   if (!asset) {
     return new Response("Not found", { status: 404 });
   }
 
-  const headers = {
+  const headers: Record<string, string> = {
     "Content-Type": asset.mime,
-    "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400"
+    "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+    "X-Content-Type-Options": "nosniff"
   };
-
-  const guard = await requireDbUser();
-  if (guard.ok) {
-    const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
-    if (allowed) {
-      return new Response(new Uint8Array(asset.data), { headers });
-    }
-  }
-
-  let publicOk = false;
-  try {
-    publicOk = (await isSandboxLinkPublic(sandboxId)) && (await sandboxManager.hasSandboxPersistent(sandboxId));
-  } catch {
-    publicOk = false;
-  }
-  if (!publicOk) {
-    return new Response("Not found", { status: 404 });
+  if (isSvgMime(asset.mime)) {
+    headers["Content-Disposition"] = "attachment";
   }
 
   return new Response(new Uint8Array(asset.data), { headers });

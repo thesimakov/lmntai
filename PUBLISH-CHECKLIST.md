@@ -10,6 +10,7 @@
 - Reverse proxy (Nginx/Caddy) configured to proxy host -> `/share/{sandboxId}`.
 - HTTPS certificates (Certbot/ACME).
 - Persistent DB + app process manager (PM2/systemd) for stable share metadata.
+- Optional automation: set `PUBLISH_DOMAIN_PROVISION_HOOK` so app can trigger cert provisioning automatically when host becomes `VERIFIED`.
 
 ## Required DNS Side
 - A/AAAA record for each custom domain/subdomain to your server IP.
@@ -34,3 +35,4 @@
 ## Notes / Limitations
 - Domain verification is TXT-based (`_lemnity-verify.<host>` with value `lemnity-verify=<token>`).
 - Reverse proxy still required as ingress (TLS termination and request pass-through to app), but per-host manual `proxy_pass /share/{id}` no longer нужен.
+- Для встроенных массовых поддоменов (`*.base-domain`) рекомендуется wildcard TLS (DNS-01), иначе per-host certbot может упираться в rate limits.

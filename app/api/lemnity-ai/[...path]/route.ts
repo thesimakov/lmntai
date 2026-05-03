@@ -378,6 +378,12 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   }
 
   if (path[0] === "artifacts" && path.length === 2 && req.method === "GET") {
+    const artifactId = path[1];
+    try {
+      await ensureUserCanEditLemnityArtifact(user.id, artifactId);
+    } catch {
+      return new Response("Not found", { status: 404 });
+    }
     const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
       method: "GET",
       headers: withLemnityAiUpstreamAuthHeaders({

@@ -1,4 +1,5 @@
 import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
+import { detectRasterImageMime } from "@/lib/image-content-validation";
 import {
   keepUploadGalleryItems,
   PROJECT_IMAGE_GALLERY_README_TEXT,
@@ -20,6 +21,7 @@ const HOST_ALLOW = new Set([
 const MAX_IMAGES = 24;
 const MAX_IMAGE_BYTES = 2_000_000;
 const MAX_TOTAL_BYTES = 8_000_000;
+const MAX_REDIRECTS = 4;
 
 // https://… до конца в типичных JSX/строковых литералах (без жадного перебора)
 const CANDIDATE_RE =
@@ -36,41 +38,47 @@ function isAllowedImageUrl(u: string): boolean {
   return HOST_ALLOW.has(parsed.hostname);
 }
 
-function guessMimeFromUrl(u: string): string | null {
-  const lower = u.toLowerCase();
-  if (lower.includes(".png") || lower.endsWith("png")) return "image/png";
-  if (lower.includes(".webp") || lower.endsWith("webp")) return "image/webp";
-  if (lower.includes(".gif") || lower.endsWith("gif")) return "image/gif";
-  if (lower.includes("format=png")) return "image/png";
-  if (lower.includes("fm=png")) return "image/png";
-  return null;
-}
-
 async function fetchOne(url: string): Promise<{ buf: Buffer; mime: string } | null> {
   try {
-    const res = await fetch(url, {
-      redirect: "follow",
-      headers: {
-        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
-        "User-Agent":
-          "Mozilla/5.0 (compatible; LemnityPreview/1.0; +https://lemnity.com) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      },
-      signal: AbortSignal.timeout(10_000)
-    });
+    let current = new URL(url);
+    if (!isAllowedImageUrl(current.toString())) return null;
+    const signal = AbortSignal.timeout(10_000);
+    let res: Response | null = null;
+
+    for (let i = 0; i <= MAX_REDIRECTS; i += 1) {
+      res = await fetch(current.toString(), {
+        redirect: "manual",
+        headers: {
+          Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+          "User-Agent":
+            "Mozilla/5.0 (compatible; LemnityPreview/1.0; +https://lemnity.com) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
+        signal
+      });
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get("location");
+        if (!location) return null;
+        const next = new URL(location, current);
+        if (!isAllowedImageUrl(next.toString())) return null;
+        current = next;
+        continue;
+      }
+      break;
+    }
+
+    if (!res) return null;
+    if (res.status >= 300 && res.status < 400) return null;
     if (!res.ok) return null;
-    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim();
     const ab = await res.arrayBuffer();
     const buf = Buffer.from(ab);
     if (buf.length === 0 || buf.length > MAX_IMAGE_BYTES) return null;
-    if (ct.startsWith("image/")) {
-      return { buf, mime: ct };
+    const mime = detectRasterImageMime(buf);
+    if (!mime) return null;
+    const ct = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (ct.startsWith("image/") && ct !== mime && !(ct === "image/jpg" && mime === "image/jpeg")) {
+      return null;
     }
-    const g = guessMimeFromUrl(url);
-    if (g) return { buf, mime: g };
-    if (buf[0] === 0xff && buf[1] === 0xd8) return { buf, mime: "image/jpeg" };
-    if (buf[0] === 0x89 && buf[1] === 0x50) return { buf, mime: "image/png" };
-    if (buf[0] === 0x47 && buf[1] === 0x49) return { buf, mime: "image/gif" };
-    return null;
+    return { buf, mime };
   } catch {
     return null;
   }
