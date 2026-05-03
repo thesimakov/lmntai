@@ -42,6 +42,29 @@ export function isNotisendConfigured(): boolean {
 
 type NotisendResult = { ok: true } | { ok: false; detail: string };
 
+function extractNotisendErrorFromJson(parsed: unknown, fallback: string): string {
+  if (!parsed || typeof parsed !== "object") {
+    return fallback;
+  }
+  const p = parsed as Record<string, unknown>;
+  const errs = p.errors;
+  if (Array.isArray(errs) && errs.length > 0) {
+    const first = errs[0] as { detail?: string; title?: string; code?: string };
+    return [first.detail, first.title, first.code].filter(Boolean).join(" — ") || JSON.stringify(first);
+  }
+  const err = p.error;
+  if (typeof err === "string") {
+    return err;
+  }
+  if (err && typeof err === "object" && "message" in err) {
+    const msg = (err as { message?: unknown }).message;
+    if (typeof msg === "string") {
+      return msg;
+    }
+  }
+  return fallback;
+}
+
 async function postNotisend(url: string, body: Record<string, unknown>): Promise<NotisendResult> {
   const key = notisendApiKey();
   if (!key) {
@@ -58,17 +81,47 @@ async function postNotisend(url: string, body: Record<string, unknown>): Promise
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(20_000)
     });
-    if (res.ok) {
-      return { ok: true };
-    }
     const text = await res.text().catch(() => "");
-    try {
-      const j = JSON.parse(text) as { errors?: Array<{ detail?: string }> };
-      const detail = j?.errors?.[0]?.detail ?? text.slice(0, 500);
-      return { ok: false, detail: `${res.status} ${detail}` };
-    } catch {
-      return { ok: false, detail: `${res.status} ${text.slice(0, 500)}` };
+
+    let parsed: unknown = null;
+    if (text.trim()) {
+      try {
+        parsed = JSON.parse(text) as unknown;
+      } catch {
+        // не JSON
+      }
     }
+
+    if (process.env.NOTISEND_DEBUG === "1") {
+      console.info("[notisend] POST", url, "HTTP", res.status, "body:", text.slice(0, 1200));
+    }
+
+    if (!res.ok) {
+      const fromJson =
+        parsed && typeof parsed === "object"
+          ? extractNotisendErrorFromJson(parsed, "")
+          : "";
+      const detail = fromJson || text.slice(0, 500) || `HTTP ${res.status}`;
+      return { ok: false, detail: `${res.status} ${detail}` };
+    }
+
+    if (parsed && typeof parsed === "object") {
+      const p = parsed as Record<string, unknown>;
+      if (Array.isArray(p.errors) && p.errors.length > 0) {
+        return {
+          ok: false,
+          detail: `HTTP ${res.status} ${extractNotisendErrorFromJson(parsed, "errors in response body")}`
+        };
+      }
+      if (p.error !== undefined && p.error !== null) {
+        const msg = extractNotisendErrorFromJson(parsed, String(p.error));
+        if (msg) {
+          return { ok: false, detail: `HTTP ${res.status} ${msg}` };
+        }
+      }
+    }
+
+    return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { ok: false, detail: msg };
