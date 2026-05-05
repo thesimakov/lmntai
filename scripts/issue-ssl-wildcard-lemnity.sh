@@ -42,7 +42,9 @@ if ! command -v certbot >/dev/null 2>&1; then
   exit 1
 fi
 
-DOMAINS=( -d lemnity.com -d www.lemnity.com -d '*.lemnity.com' )
+# Apex обязателен отдельно; wildcard *.lemnity.com покрывает www и все поддомены первого уровня.
+# Нельзя добавлять www отдельным -d: LE считает это избыточным и отклоняет заказ.
+DOMAINS=( -d lemnity.com -d '*.lemnity.com' )
 
 case "$MODE" in
   manual)

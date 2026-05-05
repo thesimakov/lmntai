@@ -16,7 +16,7 @@
 
 Сертификат только для `lemnity.com` + `www` **не покрывает** `lmnt.lemnity.com` и др. — браузеры покажут ошибку имени сертификата.
 
-**Решение:** один SAN/wildcard-сертификат на **`lemnity.com`**, **`www.lemnity.com`** и **`*.lemnity.com`** (выдаётся через **DNS-01**, не HTTP-01).
+**Решение:** один сертификат через **DNS-01**: **`lemnity.com`** (apex) + **`*.lemnity.com`** (wildcard). Имя **`www.lemnity.com`** отдельно в заказ нельзя — Let's Encrypt считает его избыточным рядом с wildcard; **`www` уже входит в `*.lemnity.com`**.
 
 **Если DNS у REG.RU (без Cloudflare)** — два пути:
 
