@@ -18,20 +18,40 @@
 
 **Решение:** один SAN/wildcard-сертификат на **`lemnity.com`**, **`www.lemnity.com`** и **`*.lemnity.com`** (выдаётся через **DNS-01**, не HTTP-01).
 
-1. На сервере из корня репозитория:
-   - интерактивно (TXT в DNS у регистратора при каждом выпуске/renew с manual):
-     ```bash
-     sudo bash scripts/issue-ssl-wildcard-lemnity.sh manual
-     ```
-   - или автоматом через **Cloudflare** (пакет `python3-certbot-dns-cloudflare`, API token на зону):
-     ```bash
-     export CLOUDFLARE_CREDENTIALS=/root/.secrets/cloudflare-lemnity.ini
-     export LETSENCRYPT_EMAIL=you@lemnity.com
-     sudo -E bash scripts/issue-ssl-wildcard-lemnity.sh cloudflare
-     ```
-2. В nginx один блок `listen 443 ssl` с `server_name lemnity.com www.lemnity.com *.lemnity.com` и путями к **`/etc/letsencrypt/live/lemnity-unified/`** (или переименуйте через `LEMNITY_CERT_NAME`). Пример: `deploy/nginx/lemnity-unified-tls.example.conf`.
-3. Уберите отдельные `ssl_certificate` только для apex, если они перехватывают весь `:443` как `default_server` без wildcard — иначе поддомены снова получат «чужой» сертификат.
-4. Проверка:
+**Если DNS у REG.RU (без Cloudflare)** — два пути:
+
+1. **Вручную в панели REG.RU** (без API): certbot покажет **TXT** для `_acme-challenge.lemnity.com` — добавьте в «Управление зоной DNS», подождите 5–15 минут, подтвердите в certbot. Удобно для разового выпуска; **авто-продление** тогда сложнее (нужен hook или переход на API).
+   ```bash
+   cd /var/www/lmntai
+   export LETSENCRYPT_EMAIL=you@lemnity.com
+   sudo -E bash scripts/issue-ssl-wildcard-lemnity.sh manual
+   ```
+2. **Автомат через API REG.RU** (рекомендуется для продления): пароль API в [настройках REG.RU](https://www.reg.ru/user/account/settings/api/), плагин community **`certbot-dns-regru`**:
+   ```bash
+   sudo apt-get install -y python3-pip
+   sudo pip install --break-system-packages certbot-dns-regru
+   sudo nano /etc/letsencrypt/regru.ini
+   ```
+   Содержимое:
+   ```ini
+   dns_regru_username=ВАШ_ЛОГИН
+   dns_regru_password=ПАРОЛЬ_API
+   ```
+   ```bash
+   sudo chmod 600 /etc/letsencrypt/regru.ini
+   cd /var/www/lmntai
+   export LETSENCRYPT_EMAIL=you@lemnity.com
+   sudo -E bash scripts/issue-ssl-wildcard-lemnity.sh regru
+   ```
+   При необходимости увеличьте ожидание DNS: `export REG_DNS_PROPAGATION_SECONDS=300`.
+
+Дополнительно (если DNS на **Cloudflare**): пакет `python3-certbot-dns-cloudflare` и `scripts/issue-ssl-wildcard-lemnity.sh cloudflare`.
+
+Общие шаги после выпуска:
+
+1. В nginx один блок `listen 443 ssl` с `server_name lemnity.com www.lemnity.com *.lemnity.com` и путями к **`/etc/letsencrypt/live/lemnity-unified/`** (или переименуйте через `LEMNITY_CERT_NAME`). Пример: `deploy/nginx/lemnity-unified-tls.example.conf`.
+2. Уберите отдельные `ssl_certificate` только для apex, если они перехватывают весь `:443` как `default_server` без wildcard — иначе поддомены снова получат «чужой» сертификат.
+3. Проверка:
    ```bash
    openssl s_client -connect lmnt.lemnity.com:443 -servername lmnt.lemnity.com </dev/null 2>/dev/null \
      | openssl x509 -noout -ext subjectAltName
