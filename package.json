@@ -10,6 +10,7 @@
     "dev:clean": "rm -rf .next && prisma generate && next dev -p 3001",
     "dev:clean:3002": "rm -rf .next && prisma generate && next dev -p 3002",
     "dev:poll": "prisma generate && WATCHPACK_POLLING=true next dev -p 3001",
+    "build": "prisma generate && next build",
     "build:wpriver-bootstrap": "node scripts/build-box-template-bootstrap.mjs wpriver-saveweb",
     "build:consultation-bootstrap": "node scripts/build-box-template-bootstrap.mjs consultation-masco",
     "build:clean": "rm -rf .next && next build",
