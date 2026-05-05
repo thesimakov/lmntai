@@ -11,7 +11,7 @@ import { STAFF_PERMISSIONS, STAFF_PERMISSION_KEYS } from "@/lib/staff-permission
 export default async function AdminTeamPage() {
   const g = await requireAdminUser();
   if (!g.ok) {
-    redirect(g.status === 401 ? "/login" : "/admin/users");
+    redirect(g.status === 401 ? "/" : "/admin/users");
   }
 
   const managers = await listManagerUsers();

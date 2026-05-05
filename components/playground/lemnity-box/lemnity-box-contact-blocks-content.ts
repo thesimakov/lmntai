@@ -100,9 +100,8 @@ ${CONTACT_CSS}
     badge: "CT03",
     title: "Текст и карта",
     hint: "две колонки на белом",
-    content: `<section data-gjs-name="Контакты: текст+карта" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(18px,4vw,36px);background:#fff;font-family:system-ui,sans-serif;color:#111;position:relative">
+    content: `<section data-gjs-name="Контакты: текст+карта" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(18px,4vw,36px);background:#fff;font-family:system-ui,sans-serif;color:#111">
 ${CONTACT_CSS}
-<div style="position:absolute;top:18px;right:22px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <div class="ct2" style="max-width:1140px;margin:0 auto;align-items:center;gap:clamp(28px,5vw,48px);min-height:0">
 <div>
 <h2 style="margin:0 0 18px;font-size:clamp(22px,2.6vw,30px);font-weight:800">Contact us</h2>
@@ -150,9 +149,8 @@ ${PIN}
     badge: "CT05",
     title: "Четыре колонки",
     hint: "Our Contacts — сетка",
-    content: `<section data-gjs-name="Контакты: 4 колонки" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(48px,8vw,96px) clamp(18px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;color:#111;position:relative">
+    content: `<section data-gjs-name="Контакты: 4 колонки" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(48px,8vw,96px) clamp(18px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;color:#111">
 ${CONTACT_CSS}
-<div style="position:absolute;top:18px;right:22px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <div style="text-align:center;max-width:720px;margin:0 auto 48px">
 <h2 style="margin:0 0 14px;font-size:clamp(26px,3.2vw,36px);font-weight:800">Our Contacts</h2>
 <p style="margin:0;font-size:15px;line-height:1.65;color:#6b7280">Feel free to write, call, and visit us. We really love to communicate with our clients.</p>
@@ -303,9 +301,8 @@ ${CONTACT_CSS}
     badge: "CT12",
     title: "Минимал: заголовок",
     hint: "центр, serif детали",
-    content: `<section data-gjs-name="Контакты: минимал" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(56px,9vw,100px) 24px;background:#fff;font-family:system-ui,sans-serif;text-align:center;color:#111;position:relative">
+    content: `<section data-gjs-name="Контакты: минимал" class="lemnity-contact-s lemnity-section" style="margin:0;padding:clamp(56px,9vw,100px) 24px;background:#fff;font-family:system-ui,sans-serif;text-align:center;color:#111">
 ${CONTACT_CSS}
-<div style="position:absolute;top:18px;right:22px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <h2 style="margin:0 0 16px;font-size:clamp(28px,3.2vw,38px);font-weight:800">Contacts</h2>
 <p style="margin:0 auto 36px;max-width:520px;font-size:15px;line-height:1.65;color:#6b7280">If you have any questions, connect us by phone or e-mail. Also we have a special address where you can get your order.</p>
 <div style="font-family:Georgia,serif;font-size:16px;line-height:1.7">

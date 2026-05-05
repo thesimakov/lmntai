@@ -1,6 +1,7 @@
 import type { CmsFormBridgeContext } from "@/lib/cms-form-bridge";
 import { injectCmsFormBridgeIntoFullHtml } from "@/lib/cms-form-bridge";
 import type { LemnityBoxCanvasContent } from "@/lib/lemnity-box-editor-schema";
+import { prepareLemnityBoxBodyHtmlForPublish } from "@/lib/lemnity-box-html-embed-expand";
 
 function escapeHtmlAttr(value: string) {
   return value
@@ -17,6 +18,7 @@ export function buildLemnityBoxIndexHtml(
 ): string {
   const title = (options?.title ?? "Lemnity Box").trim() || "Lemnity Box";
   const { html, css } = content;
+  const bodyHtml = prepareLemnityBoxBodyHtmlForPublish(html);
   const bridge = options?.cmsFormBridge;
   const doc = `<!DOCTYPE html>
 <html lang="ru">
@@ -29,7 +31,7 @@ ${css}
 </style>
 </head>
 <body>
-${html}
+${bodyHtml}
 </body>
 </html>`;
   if (!bridge) return doc;

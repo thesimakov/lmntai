@@ -8,6 +8,8 @@ function findPreviewButtonEl(dock: HTMLElement): HTMLElement | null {
   const btns = [...row.querySelectorAll<HTMLElement>(".gjs-pn-btn")];
   const byAria = btns.find((b) => /просмотр|preview/i.test(b.getAttribute("aria-label") ?? ""));
   if (byAria) return byAria;
+  const byTitle = btns.find((b) => /просмотр|preview/i.test(b.getAttribute("title") ?? ""));
+  if (byTitle) return byTitle;
   // В панели «options» второй элемент — предпросмотр (после outline).
   return btns[1] ?? null;
 }
@@ -27,17 +29,17 @@ export function attachLemnityBoxPreviewModeLabel(
   const wrap = document.createElement("span");
   wrap.className = "lemnity-preview-with-label";
   wrap.style.cssText =
-    "display:inline-flex;align-items:center;gap:4px;flex-shrink:0;vertical-align:middle;margin-right:2px;";
-
-  previewEl.parentElement.insertBefore(wrap, previewEl);
-  wrap.appendChild(previewEl);
+    "display:inline-flex;align-items:center;gap:6px;flex-shrink:0;vertical-align:middle;margin-right:4px;";
 
   const textBtn = document.createElement("button");
   textBtn.type = "button";
   textBtn.className = "lemnity-preview-mode-label-btn";
   textBtn.style.cssText =
-    "font-size:12px;line-height:1.25;color:#64748b;background:transparent;border:none;cursor:pointer;padding:2px 4px 2px 0;white-space:nowrap;font-family:inherit;";
+    "font-size:12px;line-height:1.25;font-weight:600;color:#334155;background:transparent;border:none;cursor:pointer;padding:2px 6px 2px 2px;white-space:nowrap;font-family:inherit;";
+
+  previewEl.parentElement.insertBefore(wrap, previewEl);
   wrap.appendChild(textBtn);
+  wrap.appendChild(previewEl);
 
   const sync = () => {
     let active = false;
@@ -64,10 +66,8 @@ export function attachLemnityBoxPreviewModeLabel(
   };
   textBtn.addEventListener("click", onTextClick);
 
-  const onRun = () => sync();
-  const onStop = () => sync();
-  editor.on("command:run:preview", onRun);
-  editor.on("command:stop:preview", onStop);
+  editor.on("command:run:preview", sync);
+  editor.on("command:stop:preview", sync);
   (editor as unknown as Record<string, () => void>)[SYNC_KEY] = sync;
   sync();
 }

@@ -20,6 +20,25 @@ export function buildCmsFormBridgeScript(ctx: CmsFormBridgeContext): string {
 (function(){
   var ctx=${payload};
   var endpoint='/api/public/cms/sites/'+encodeURIComponent(ctx.siteId)+'/form-submissions';
+  function clearFormFeedback(form){
+    var n=form.nextSibling;
+    while(n&&n.nodeType===1&&n.classList&&n.classList.contains('lemnity-cms-form-feedback')){
+      var nx=n.nextSibling;
+      n.remove();
+      n=nx;
+    }
+  }
+  function showFormFeedback(form, ok, text){
+    clearFormFeedback(form);
+    var el=document.createElement('div');
+    el.className='lemnity-cms-form-feedback';
+    el.setAttribute('role','status');
+    el.style.cssText=ok
+      ?'padding:14px;border-radius:10px;background:#ecfdf5;color:#065f46;margin-top:10px;font-size:14px;line-height:1.4;font-family:system-ui,sans-serif;'
+      :'padding:14px;border-radius:10px;background:#fef2f2;color:#991b1b;margin-top:10px;font-size:14px;line-height:1.4;font-family:system-ui,sans-serif;';
+    el.textContent=text;
+    form.insertAdjacentElement('afterend', el);
+  }
   document.addEventListener('submit',function(ev){
     var form=ev.target;
     if(!(form instanceof HTMLFormElement))return;
@@ -32,12 +51,14 @@ export function buildCmsFormBridgeScript(ctx: CmsFormBridgeContext): string {
       if(typeof v!=='string')return;
       fields[k]=v;
     });
+    var pid=(typeof ctx.pageId==='string'&&ctx.pageId.trim())?ctx.pageId:null;
+    var ppath=(typeof ctx.pagePath==='string'&&ctx.pagePath.trim())?ctx.pagePath:null;
     fetch(endpoint,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({
-        pageId:ctx.pageId||null,
-        pagePath:ctx.pagePath||null,
+        pageId:pid,
+        pagePath:ppath,
         formName:form.getAttribute('name')||form.id||null,
         fields:fields
       })
@@ -45,13 +66,9 @@ export function buildCmsFormBridgeScript(ctx: CmsFormBridgeContext): string {
       if(!res.ok)throw new Error('HTTP_'+res.status);
       return res.json().catch(function(){return {};});
     }).then(function(){
-      var thanks=document.createElement('div');
-      thanks.setAttribute('role','status');
-      thanks.style.cssText='padding:14px;border-radius:10px;background:#ecfdf5;color:#065f46;margin-top:10px;font-size:14px;line-height:1.4;font-family:system-ui,sans-serif;';
-      thanks.textContent='Спасибо! Заявка отправлена.';
-      form.replaceWith(thanks);
+      showFormFeedback(form,true,'Спасибо! Ваша заявка отправлена!');
     }).catch(function(){
-      alert('Не удалось отправить форму. Попробуйте позже.');
+      showFormFeedback(form,false,'Увы, произошла ошибка. Перезагрузите страницу и попробуйте еще раз!');
     });
   },true);
 })();
@@ -86,4 +103,12 @@ export function injectCmsFormBridgeIntoFullHtml(fullHtml: string, ctx: CmsFormBr
   const idx = lower.lastIndexOf("</body>");
   if (idx === -1) return `${fullHtml}${bridge}`;
   return `${fullHtml.slice(0, idx)}${bridge}${fullHtml.slice(idx)}`;
+}
+
+/** Любой HTML документа или фрагмента canvas: без дублирования маркера моста. */
+export function injectCmsFormBridgeIntoHtmlDocument(html: string, ctx: CmsFormBridgeContext): string {
+  if (!html || html.includes(CMS_FORM_BRIDGE_MARKER)) return html;
+  const lower = html.toLowerCase();
+  if (lower.includes("</body>")) return injectCmsFormBridgeIntoFullHtml(html, ctx);
+  return appendCmsFormBridgeToCanvasHtml(html, ctx);
 }

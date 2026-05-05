@@ -10,7 +10,7 @@ import { parsePermissionList, STAFF_PERMISSIONS } from "@/lib/staff-permissions"
 export default async function AdminSettingsPage() {
   const g = await requireStaffPanel();
   if (!g.ok) {
-    redirect(g.status === 401 ? "/login" : "/playground");
+    redirect(g.status === 401 ? "/" : "/playground");
   }
 
   return (

@@ -6,7 +6,6 @@ import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Frame, Loader2, Pencil, Rocket, Sparkles, Trash2 } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
-import { NewProjectFlowDialog } from "@/components/dashboard/new-project-flow-dialog";
 import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,7 +46,6 @@ function ProjectsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -83,8 +81,7 @@ function ProjectsPageContent() {
 
   useEffect(() => {
     if (searchParams.get("new") !== "1") return;
-    setNewProjectOpen(true);
-    router.replace("/projects", { scroll: false });
+    router.replace("/projects/new", { scroll: false });
   }, [searchParams, router]);
 
   const dateLocale = useMemo(() => {
@@ -138,17 +135,11 @@ function ProjectsPageContent() {
               {projects.length} {t("projects_count")}
             </p>
           </div>
-          <Button type="button" onClick={() => setNewProjectOpen(true)}>
+          <Button type="button" onClick={() => router.push("/projects/new")}>
             <Rocket className="h-4 w-4" />
             {t("projects_new")}
           </Button>
         </div>
-
-        <NewProjectFlowDialog
-          open={newProjectOpen}
-          onOpenChange={setNewProjectOpen}
-          onProjectCreated={() => void loadProjects()}
-        />
 
         {isLoading ? (
           <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-border/60 bg-card/20">

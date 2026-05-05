@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -14,12 +14,25 @@ import { LemnityBoxVisualEditor, type LemnityBoxVisualEditorHandle } from "@/com
 import { PageTransition } from "@/components/page-transition";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
+import { getEmptyBoxStarterCanvas } from "@/lib/box-new-page-starters";
 import { fetchCmsPageDocument, saveCmsPageDraft } from "@/lib/cms-editor-client";
 import { writeLemnityBoxCanvasDraft } from "@/lib/lemnity-box-editor-persistence";
-import type { PageDocument } from "@/lib/lemnity-box-editor-schema";
+import { emptyPageDocument, type PageDocument } from "@/lib/lemnity-box-editor-schema";
+import { mergeLemnityBoxSectionMotionCss } from "@/lib/lemnity-box-section-motion";
 import { pushLemnityBoxCanvasToSandbox } from "@/lib/lemnity-box-push-sandbox";
 import { readBuilderHandoff } from "@/lib/landing-handoff";
 import { resolvePublishOpenUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
+
+const BOX_TEMPLATE_BOOTSTRAP_JSON = {
+  universal: "/box-templates/wpriver-saveweb/grapes-bootstrap.json",
+  consultation: "/box-templates/consultation-masco/grapes-bootstrap.json",
+} as const;
+
+type RemoteBoxStarter = keyof typeof BOX_TEMPLATE_BOOTSTRAP_JSON;
+
+function isRemoteBoxStarter(param: string | null): param is RemoteBoxStarter {
+  return param !== null && Object.hasOwn(BOX_TEMPLATE_BOOTSTRAP_JSON, param);
+}
 
 export default function PlaygroundLemnityBoxEditorPage() {
   const { t } = useI18n();
@@ -36,6 +49,7 @@ export default function PlaygroundLemnityBoxEditorPage() {
   const cmsPagePathRaw = searchParams.get("pagePath")?.trim();
   const cmsPagePath = cmsPagePathRaw && cmsPagePathRaw.length > 0 ? cmsPagePathRaw : "/";
   const cmsMode = Boolean(cmsSiteId && cmsPageId);
+  const boxStarterParam = searchParams.get("boxStarter")?.trim() ?? null;
   const effectiveSandboxId = sandboxId ?? projectIdParam;
   const previewUrlFromQuery = searchParams.get("previewUrl")?.trim() || null;
   const [cmsBootstrap, setCmsBootstrap] = useState<PageDocument | undefined>(undefined);
@@ -70,6 +84,62 @@ export default function PlaygroundLemnityBoxEditorPage() {
     const idea = handoff?.idea?.trim();
     return idea && idea.length > 0 ? idea : "";
   }, []);
+
+  const [sandboxBootstrapDocument, setSandboxBootstrapDocument] = useState<PageDocument | undefined>(undefined);
+
+  useEffect(() => {
+    if (cmsMode) {
+      setSandboxBootstrapDocument(undefined);
+      return;
+    }
+    if (boxStarterParam !== "empty" && !isRemoteBoxStarter(boxStarterParam)) {
+      setSandboxBootstrapDocument(undefined);
+      return;
+    }
+
+    const title = seedText.trim() || t("projects_box_default_title");
+
+    if (boxStarterParam === "empty") {
+      const doc = emptyPageDocument(title);
+      doc.grapesjs = getEmptyBoxStarterCanvas();
+      setSandboxBootstrapDocument(doc);
+      return;
+    }
+
+    let cancelled = false;
+    setSandboxBootstrapDocument(undefined);
+
+    const bootstrapUrl = BOX_TEMPLATE_BOOTSTRAP_JSON[boxStarterParam];
+
+    void fetch(bootstrapUrl)
+      .then((res) => {
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json() as Promise<{ html: string; css: string }>;
+      })
+      .then((bundle) => {
+        if (cancelled) return;
+        const doc = emptyPageDocument(title);
+        doc.grapesjs = {
+          html: bundle.html,
+          css: mergeLemnityBoxSectionMotionCss(bundle.css),
+        };
+        setSandboxBootstrapDocument(doc);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        toast.error(t("projects_box_saveweb_load_failed"));
+        const doc = emptyPageDocument(title);
+        doc.grapesjs = getEmptyBoxStarterCanvas();
+        setSandboxBootstrapDocument(doc);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [boxStarterParam, cmsMode, seedText, t]);
+
+  const templateBootstrapPending =
+    !cmsMode && isRemoteBoxStarter(boxStarterParam) && sandboxBootstrapDocument === undefined;
 
   const planFromSession = String(session?.user?.plan ?? "");
   const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";
@@ -290,17 +360,33 @@ export default function PlaygroundLemnityBoxEditorPage() {
 
         {editorFailed ? <p className="shrink-0 text-sm text-destructive">{t("build_box_status_error")}</p> : null}
         {cmsLoading ? <p className="shrink-0 text-sm text-muted-foreground">Загрузка CMS-страницы…</p> : null}
+        {templateBootstrapPending ? (
+          <p className="inline-flex shrink-0 items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+            {t("projects_box_saveweb_loading")}
+          </p>
+        ) : null}
 
         <div className="flex min-h-[min(100dvh,900px)] flex-1 flex-col overflow-hidden rounded-lg border border-border bg-card/40 shadow-sm md:min-h-[50vh]">
-          <LemnityBoxVisualEditor
+          {!cmsBootstrap && templateBootstrapPending ? (
+            <div className="flex min-h-[360px] flex-1 items-center justify-center bg-muted/20">
+              <Loader2 className="size-10 animate-spin text-muted-foreground" aria-hidden />
+            </div>
+          ) : (
+            <LemnityBoxVisualEditor
             ref={canvasRef}
             canvasTopDeviceDockRef={canvasDeviceDockRef}
             canvasTopOptionsDockRef={canvasOptionsDockRef}
-            {...(cmsBootstrap ? { bootstrapDocument: cmsBootstrap } : {})}
+            {...(cmsBootstrap
+              ? { bootstrapDocument: cmsBootstrap }
+              : sandboxBootstrapDocument
+                ? { bootstrapDocument: sandboxBootstrapDocument }
+                : {})}
             className="h-full min-h-[360px] w-full flex-1"
             onInitError={onInitError}
             onCanvasChange={() => setReadyForPublish(false)}
-          />
+            />
+          )}
         </div>
       </div>
 

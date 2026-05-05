@@ -9,7 +9,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const session = await getSafeServerSession();
 
   if (!session) {
-    redirect("/login");
+    redirect("/");
   }
 
   let wall: Awaited<ReturnType<typeof getStarterCabinetWallState>> = { show: false };

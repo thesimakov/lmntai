@@ -77,7 +77,7 @@ export function AdminShell({ role, permissionKeys, email, children }: Props) {
               type="button"
               variant="ghost"
               className="w-full justify-start text-muted-foreground hover:text-foreground"
-              onClick={() => signOut({ callbackUrl: "/login" })}
+              onClick={() => signOut({ callbackUrl: "/" })}
             >
               <LogOut className="mr-2 h-4 w-4" />
               Выйти

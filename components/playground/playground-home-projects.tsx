@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ExternalLink, LayoutGrid, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { NewProjectFlowDialog } from "@/components/dashboard/new-project-flow-dialog";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -19,12 +19,12 @@ type RuntimeProject = {
 
 export function PlaygroundHomeProjects({ className }: { className?: string }) {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const [projects, setProjects] = useState<RuntimeProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [newProjectOpen, setNewProjectOpen] = useState(false);
 
   const loadProjects = useCallback(async () => {
     setLoading(true);
@@ -130,7 +130,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
             type="button"
             size="sm"
             className="h-9 shrink-0 gap-2 px-3 font-semibold shadow-sm"
-            onClick={() => setNewProjectOpen(true)}
+            onClick={() => router.push("/projects/new")}
           >
             <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
             {t("projects_add")}
@@ -210,11 +210,6 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
           ))}
         </ul>
       )}
-      <NewProjectFlowDialog
-        open={newProjectOpen}
-        onOpenChange={setNewProjectOpen}
-        onProjectCreated={() => void loadProjects()}
-      />
     </section>
   );
 }

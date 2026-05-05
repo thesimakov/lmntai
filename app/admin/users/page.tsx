@@ -36,7 +36,7 @@ function formatStorage(used: bigint | null | undefined, limit: bigint | null | u
 export default async function AdminUsersPage() {
   const g = await requireStaffPermission("users.read");
   if (!g.ok) {
-    redirect(g.status === 401 ? "/login" : "/playground");
+    redirect(g.status === 401 ? "/" : "/playground");
   }
   const { user: me } = g.data;
   const canWrite = canDo(me, "users.write");

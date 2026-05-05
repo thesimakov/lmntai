@@ -6,6 +6,7 @@ import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
+import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -19,7 +20,7 @@ async function respondWithHtml(projectId: string) {
   }
   const files = await sandboxManager.exportFiles(projectId);
   const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
-  const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
+  const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",

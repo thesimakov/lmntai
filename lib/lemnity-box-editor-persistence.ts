@@ -38,3 +38,12 @@ export function writeLemnityBoxCanvasDraft(content: LemnityBoxCanvasContent): vo
     /* ignore quota */
   }
 }
+
+export function clearLemnityBoxCanvasDraft(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}

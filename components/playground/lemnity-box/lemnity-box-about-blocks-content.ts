@@ -91,9 +91,8 @@ ${ABOUT_CSS}
     badge: "AU02",
     title: "Проект и двойное фото",
     hint: "метаданные, кнопка, сетка",
-    content: `<section data-gjs-name="О нас: проекты" class="lemnity-about-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(18px,4vw,36px);background:#fff;font-family:system-ui,sans-serif;color:#111;position:relative;">
+    content: `<section data-gjs-name="О нас: проекты" class="lemnity-about-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(18px,4vw,36px);background:#fff;font-family:system-ui,sans-serif;color:#111;">
 ${ABOUT_CSS}
-<div style="position:absolute;top:clamp(16px,3vw,28px);right:clamp(16px,4vw,32px);color:#d1d5db;font-size:22px;line-height:1" aria-hidden="true">★</div>
 <p style="margin:0 0 8px;font-size:12px;color:#9ca3af;max-width:1140px;margin-left:auto;margin-right:auto;">Актуальные проекты сезона</p>
 <div style="max-width:1140px;margin:0 auto;">
 <h2 style="margin:0 0 8px;font-size:clamp(26px,3.5vw,38px);font-weight:800;">Наши проекты</h2>
@@ -207,7 +206,6 @@ ${ABOUT_CSS}
 </div>
 <div style="position:relative;min-height:min(420px,70vw);">
 <img src="${IU}/photo-1486718448742-163732cd1544?w=900&q=80" alt="" style="width:100%;height:100%;object-fit:cover;min-height:min(420px,70vw);"/>
-<span style="position:absolute;top:16px;right:16px;width:36px;height:36px;background:rgba(0,0,0,.45);color:#fff;display:flex;align-items:center;justify-content:center;font-size:16px;border-radius:4px;" aria-hidden="true">★</span>
 </div>
 </div>
 </section>`,

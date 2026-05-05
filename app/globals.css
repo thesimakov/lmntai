@@ -275,8 +275,8 @@
   margin: 0;
   display: flex;
   align-items: center;
-  min-height: 52px;
-  padding: 10px 24px 10px 64px;
+  min-height: 45px;
+  padding: 8px 24px 8px 64px;
   width: 100%;
   max-width: none;
   border-radius: 0;
@@ -284,7 +284,7 @@
   background: var(--gjs-block-bg);
   color: var(--gjs-ink);
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 400;
   letter-spacing: normal;
   line-height: 1.3;
   text-align: left;
@@ -314,8 +314,8 @@
   justify-content: flex-start;
   gap: 12px;
   width: 100%;
-  min-height: 52px;
-  padding: 10px 24px;
+  min-height: 45px;
+  padding: 8px 24px;
   margin: 0;
   border: none;
   border-bottom: 1px solid var(--gjs-row-border);
@@ -323,6 +323,7 @@
   background: var(--gjs-block-bg);
   box-shadow: none;
   color: var(--gjs-ink);
+  font-weight: 400;
   transition: background 0.1s ease;
 }
 
@@ -361,7 +362,7 @@
   min-width: 0;
   line-height: 1.3;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 400;
   text-align: left;
   padding: 0;
   word-break: break-word;
@@ -541,7 +542,7 @@
   color: var(--tilda-ink-muted) !important;
   border-bottom: 1px solid #e4e7ec !important;
   font-size: 11px !important;
-  font-weight: 800 !important;
+  font-weight: 400 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
   padding: 10px 14px 10px 16px !important;
@@ -551,12 +552,12 @@
 
 .gjs-editor .gjs-sm-sector-label {
   color: var(--tilda-ink) !important;
-  font-weight: 800 !important;
+  font-weight: 400 !important;
   font-size: 13px !important;
 }
 
 .gjs-editor .gjs-sm-header {
-  font-weight: 700 !important;
+  font-weight: 400 !important;
   color: var(--tilda-ink) !important;
 }
 
@@ -982,6 +983,12 @@
   gap: 4px;
 }
 
+/* Подпись «Просмотр» / «Редактировать» рядом с иконкой Grapes — не сжимать в узкой шапке */
+.playground-box-options-dock .lemnity-preview-with-label {
+  flex-shrink: 0;
+  min-width: min-content;
+}
+
 .gjs-editor .gjs-pn-btn[data-gjs-instant-tip],
 .playground-box-options-dock .gjs-pn-btn[data-gjs-instant-tip] {
   position: relative;
@@ -1013,6 +1020,119 @@
   text-align: center;
   pointer-events: none;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.25);
+}
+
+/* Модалка «Настройки»: класс GrapesJS вешает на .gjs-mdl-container (не на .gjs-mdl-dialog) */
+.gjs-mdl-container.lemnity-box-settings-modal-dialog {
+  --gjs-secondary-color: #0f172a !important;
+  --gjs-main-color: #ffffff !important;
+  --gjs-font-color: #0f172a !important;
+  --gjs-font-color-active: #020617 !important;
+  --gjs-main-dark-color: #f1f5f9 !important;
+  --gjs-secondary-dark-color: #e2e8f0 !important;
+  --gjs-tertiary-color: #f8fafc !important;
+  --gjs-quaternary-color: #4f46e5 !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-dialog {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.22) !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-header {
+  background: #f8fafc !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-title {
+  color: #0f172a !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-btn-close {
+  color: #64748b !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-btn-close:hover {
+  color: #0f172a !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .gjs-mdl-content {
+  max-width: min(92vw, 720px);
+  width: min(92vw, 720px);
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: min(82vh, 760px);
+  overflow: auto;
+  padding: 4px 2px 8px;
+  text-align: left;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-section-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  padding: 10px 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #0f172a;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #ffffff;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-sm-sector,
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-trt-trait {
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-field input,
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-field select,
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-field textarea {
+  background: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-sm-property .gjs-sm-label,
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-slot .gjs-trt-label {
+  color: #475569 !important;
+}
+
+.gjs-mdl-container.lemnity-box-settings-modal-dialog .lemnity-box-settings-modal-empty {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #475569;
 }
 
 /* Текстовая кнопка «Блоки»: слева в полосе устройств над холстом */
@@ -1333,4 +1453,18 @@
     0 2px 6px rgba(15, 23, 42, 0.22),
     0 1px 2px rgba(15, 23, 42, 0.12);
   cursor: ew-resize;
+}
+
+/* Верх / низ — изменение высоты */
+.gjs-editor .gjs-resizer-c .gjs-resizer-h-tc,
+.gjs-editor .gjs-resizer-c .gjs-resizer-h-bc {
+  width: 48px;
+  height: 9px;
+  border-radius: 999px;
+  background: #60a5fa;
+  border: 1px solid rgba(37, 99, 235, 0.85);
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.22),
+    0 1px 2px rgba(15, 23, 42, 0.12);
+  cursor: ns-resize;
 }

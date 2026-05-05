@@ -1,0 +1,952 @@
+<!DOCTYPE html><html lang="ru" class="scroll-smooth"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Консультация — экспертная поддержка и развитие бизнеса онлайн</title>
+    <meta name="description" content="Шаблон лендинга для консультаций: услуги, кейсы и заявка на связь.">
+
+    <!-- Favicon  -->
+    <link rel="icon" href="assets/img/favicon.png">
+
+    <!-- Icon Font -->
+    <link rel="stylesheet" href="assets/fonts/iconfonts/font-awesome/stylesheet.css">
+    <!-- Site font -->
+    <link rel="stylesheet" href="assets/fonts/webfonts/inter/stylesheet.css">
+    <link rel="stylesheet" href="assets/fonts/webfonts/plus-jakarta-sans/stylesheet.css">
+
+    <!-- Vendor CSS -->
+    <link rel="stylesheet" href="assets/css/vendors/swiper-bundle.min.css">
+    <link rel="stylesheet" href="assets/css/vendors/jos.css">
+    <link rel="stylesheet" href="assets/css/vendors/menu.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="assets/css/custom.css">
+
+    <!-- Development css -->
+    <link href="assets/css/style.css" rel="stylesheet">
+
+    <!-- Production css -->
+    <!-- <link rel="stylesheet" href="assets/css/style.min.css"> -->
+</head>
+
+<body>
+    <div class="page-wrapper relative z-[1] bg-white">
+        <!--...::: Header Start :::... -->
+        <header class="site-header site-header--sticky mobile-sticky-enable is--white py-3" id="sticky-menu">
+            <div class="container-default">
+                <div class="flex items-center justify-between gap-x-8">
+                    <!-- Header Logo -->
+                    <a href="#" class="">
+                        <img src="assets/img/lemnity-logo.svg" alt="Lemnity" width="140" height="32" style="height:28px;width:auto;filter:brightness(0);">
+                    </a>
+                    <!-- Header Logo -->
+
+                    <!-- Header Navigation -->
+                    <div class="menu-block-wrapper">
+                        <div class="menu-overlay"></div>
+                        <nav class="menu-block" id="append-menu-header">
+                            <div class="mobile-menu-head">
+                                <div class="go-back">
+                                    <i class="fa-solid fa-angle-left"></i>
+                                </div>
+                                <div class="current-menu-title"></div>
+                                <div class="mobile-menu-close" aria-hidden="true">&times;</div>
+                            </div>
+                            <ul class="site-menu-main">
+                                <li class="nav-item nav-item-has-children">
+                                    <a href="#" class="nav-link-item drop-trigger">Главная</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="#section-services" class="nav-link-item">Услуги</a>
+                                </li>
+                                <li class="nav-item nav-item-has-children">
+                                    <a href="#section-about" class="nav-link-item drop-trigger">О нас</a>
+                                </li>
+                                <li class="nav-item nav-item-has-children">
+                                    <a href="#section-projects" class="nav-link-item drop-trigger">Кейсы</a>
+                                </li>
+                                <li class="nav-item nav-item-has-children">
+                                    <a href="#section-testimonial" class="nav-link-item drop-trigger">Отзывы</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                    <!-- Header Navigation -->
+
+                    <!-- Header User Event -->
+                    <div class="flex items-center gap-6">
+                        <a href="login.html" class="btn-text hidden hover:text-ColorBlue sm:inline-block">Войти</a>
+                        <a href="signup.html" class="btn is-blue is-rounded btn-animation group hidden sm:inline-block"><span>Записаться бесплатно</span></a>
+                        <!-- Responsive Offcanvas Menu Button -->
+                        <div class="block lg:hidden">
+                            <button id="openBtn" class="hamburger-menu mobile-menu-trigger">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Header User Event -->
+                </div>
+            </div>
+        </header>
+        <!--...::: Header End :::... -->
+
+        <main class="main-wrapper relative overflow-hidden">
+            <!--...::: Hero Section Start :::... -->
+            <section class="section-hero">
+                <div class="relative z-10 overflow-hidden bg-[#FAF9F5]">
+                    <!-- Section Space -->
+                    <div class="pb-[60px] pt-28 md:pb-20 md:pt-36 lg:pb-[100px] lg:pt-[150px] xxl:pb-[120px] xxl:pt-[185px]">
+                        <!-- Section Container -->
+                        <div class="container-custom">
+                            <!-- Hero Area -->
+                            <div class="grid gap-10 lg:grid-cols-2 xxl:grid-cols-[1.1fr_minmax(0,_1fr)]">
+                                <!-- Hero Content Block -->
+                                <div class="jos">
+                                    <div class="has-container-custom">
+                                        <h1 class="mb-6">
+                                            Помогаем расти онлайн: стратегия, контент и консультации
+                                        </h1>
+                                        <p>
+                                            Создаём сильный цифровой образ вместе с вами: дизайн, разработка
+                                            и маркетинговая стратегия в одной команде. Подберём формат сопровождения
+                                            под ваши задачи и этап роста.
+                                        </p>
+                                        <form action="#" method="post" class="relative mx-auto flex w-full items-center sm:w-[80%] lg:mx-0 lg:mt-5 lg:max-w-md">
+                                            <input type="email" placeholder="Ваш email" class="w-full rounded-[50px] border border-ColorBlack bg-white px-5 py-[15px] pr-40 text-base font-semibold text-opacity-50 outline-none">
+                                            <button type="submit" class="btn is-blue is-rounded absolute right-[5px] py-[10px]">
+                                                Получить консультацию
+                                            </button>
+                                        </form>
+                                        <div class="mt-5 text-sm leading-6 md:justify-normal">
+                                            <span class="mr-2 inline-block text-lg text-ColorBlue"><i class="fa-solid fa-badge-check"></i></span>
+                                            <span class="opacity-50">Без привязки карты — можете отказаться в любой момент</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Hero Content Block -->
+
+                                <!-- Hero Image Block -->
+                                <div class="jos">
+                                    <div class="relative flex items-center justify-center">
+                                        <img src="assets/img/th-1/hero-img.jpg" alt="Иллюстрация к блоку героя" width="600" height="579" class="h-auto w-full">
+                                        <a data-fslightbox="gallery" href="https://www.youtube.com/watch?v=3nQNiWdeH2Q" class="group group absolute flex h-[100px] w-[100px] items-center justify-center rounded-[50%] bg-white text-ColorBlue" aria-label="Воспроизвести видео">
+                                            <span class="text-2xl transition-all duration-300 ease-linear group-hover:scale-110"><i class="fa-solid fa-play"></i></span>
+                                        </a>
+                                    </div>
+                                </div>
+                                <!-- Hero Image Block -->
+                            </div>
+                            <!-- Hero Area -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+
+                    <!-- Hero Shape - 1 -->
+                    <div class="absolute left-0 top-0 -z-10">
+                        <img src="assets/img/elements/hero-1-shape-1.svg" alt="hero-shape-1" width="607" height="792" class="">
+                    </div>
+
+                    <!-- Hero Shape - 2 -->
+                    <div class="absolute bottom-0 right-0 -z-[1]">
+                        <img src="assets/img/elements/hero-1-shape-2.svg" alt="hero-shape-2" width="607" height="792">
+                    </div>
+                </div>
+            </section>
+            <!--...::: Hero Section End :::... -->
+
+            <!--...::: Brand Section Start :::... -->
+            <div class="section-brand">
+                <div class="jos">
+                    <!-- Section Space -->
+                    <div class="py-[60px] md:py-20 lg:py-[100px]">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <div class="mx-auto mb-10 max-w-[80%] text-center text-xl font-semibold leading-[1.4] opacity-70 md:mb-16 lg:mb-20 lg:max-w-2xl">
+                                От стартапов до крупных компаний — работаем с командами любого масштаба
+                            </div>
+                            <!-- Brand Slider -->
+                            <div class="swiper brand-slider">
+                                <!-- Additional required wrapper -->
+                                <div class="swiper-wrapper">
+                                    <!-- Slides -->
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-1.png" alt="brand-1" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-2.png" alt="brand-2" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-3.png" alt="brand-3" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-4.png" alt="brand-4" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-5.png" alt="brand-5" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-1.png" alt="brand-1" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-2.png" alt="brand-2" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-3.png" alt="brand-3" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-4.png" alt="brand-4" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                    <div class="swiper-slide">
+                                        <img src="assets/img/th-1/brand-5.png" alt="brand-5" width="186" height="46" class="h-auto w-fit">
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Brand Slider -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+                </div>
+            </div>
+            <!--...::: Brand Section End :::... -->
+
+            <!-- Horizontal Line Separator -->
+            <div class="horizontal-line bg-ColorBlack"></div>
+            <!-- Horizontal Line Separator -->
+
+            <!--...::: Service Section Start :::... -->
+            <section class="section-service" id="section-services">
+                <div class="relative z-10 overflow-hidden">
+                    <!-- Section Space -->
+                    <div class="section-space">
+                        <!-- Section Container -->
+                        <div class="container-custom">
+                            <!-- Section Content Wrapper -->
+                            <div class="jos mb-[60px] xl:mb-20">
+                                <!-- Section Content Block -->
+                                <div class="mx-auto max-w-[590px]">
+                                    <h2 class="text-center">
+                                        Услуги и форматы консультаций, удобные именно вам
+                                    </h2>
+                                </div>
+                                <!-- Section Content Block -->
+                            </div>
+                            <!-- Section Content Wrapper -->
+
+                            <!-- Service List -->
+                            <div class="grid gap-6 sm:grid-cols-2">
+                                <!-- Service Item -->
+                                <div class="jos" data-jos_delay="0">
+                                    <div class="group rounded-[10px] border border-[#E6E6E6] bg-white p-8 transition-all duration-300 ease-in-out hover:border-ColorOffWhite hover:bg-ColorOffWhite lg:p-10 h-full">
+                                        <div class="flex flex-col gap-x-10 gap-y-6 sm:gap-y-8 lg:flex-row">
+                                            <div class="relative mx-auto flex w-16 items-center justify-center lg:w-[98px]">
+                                                <img src="assets/img/icons/icon-black-service-1.svg" alt="icon-service-1" width="98" height="100" class="opcity-100 h-auto w-full transition-all duration-300 ease-in-out group-hover:opacity-0">
+                                                <img src="assets/img/icons/icon-blue-service-1.svg" alt="icon-service-1" width="98" height="100" class="absolute h-auto w-full opacity-0 transition-all duration-300 ease-in-out group-hover:opacity-100">
+                                            </div>
+                                            <div class="flex-1 text-center lg:text-left">
+                                                <div class="mb-4 text-xl font-semibold leading-[1.33] -tracking-[0.5px] text-ColorBlack lg:text-2xl">
+                                                    Стратегия и узнаваемость бренда
+                                                </div>
+                                                <p class="mb-5 line-clamp-2 text-ColorBlack/80">
+                                                    Выстраиваем позиционирование и коммуникации так,
+                                                    чтобы вы заметно отличались на рынке
+                                                </p>
+                                                <a href="service-details.html" class="inline-flex items-center gap-x-2 text-base font-bold text-ColorBlack group-hover:text-ColorBlue">Подробнее
+                                                    <span class="transition-all duration-300 ease-in-out group-hover:translate-x-2">
+                                                        <i class="fa-solid fa-arrow-right"></i>
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Service Item -->
+                                <!-- Service Item -->
+                                <div class="jos" data-jos_delay="0.3">
+                                    <div class="group rounded-[10px] border border-[#E6E6E6] bg-white p-8 transition-all duration-300 ease-in-out hover:border-ColorOffWhite hover:bg-ColorOffWhite lg:p-10 h-full">
+                                        <div class="flex flex-col gap-x-10 gap-y-6 sm:gap-y-8 lg:flex-row">
+                                            <div class="relative mx-auto flex w-16 items-center justify-center lg:w-[98px]">
+                                                <img src="assets/img/icons/icon-black-service-2.svg" alt="icon-service-2" width="98" height="100" class="opcity-100 h-auto w-full transition-all duration-300 ease-in-out group-hover:opacity-0">
+                                                <img src="assets/img/icons/icon-blue-service-2.svg" alt="icon-service-2" width="98" height="100" class="absolute h-auto w-full opacity-0 transition-all duration-300 ease-in-out group-hover:opacity-100">
+                                            </div>
+                                            <div class="flex-1 text-center lg:text-left">
+                                                <div class="mb-4 text-xl font-semibold leading-[1.33] -tracking-[0.5px] text-ColorBlack lg:text-2xl">
+                                                    Веб-дизайн и цифровые продукты
+                                                </div>
+                                                <p class="mb-5 line-clamp-2 text-ColorBlack/80">
+                                                    Проектируем интерфейсы и сайты, которые поддерживают
+                                                    продажи и доверие клиентов
+                                                </p>
+                                                <a href="service-details.html" class="inline-flex items-center gap-x-2 text-base font-bold text-ColorBlack group-hover:text-ColorBlue">Подробнее
+                                                    <span class="transition-all duration-300 ease-in-out group-hover:translate-x-2">
+                                                        <i class="fa-solid fa-arrow-right"></i>
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Service Item -->
+                                <!-- Service Item -->
+                                <div class="jos" data-jos_delay="0.6">
+                                    <div class="group rounded-[10px] border border-[#E6E6E6] bg-white p-8 transition-all duration-300 ease-in-out hover:border-ColorOffWhite hover:bg-ColorOffWhite lg:p-10 h-full">
+                                        <div class="flex flex-col gap-x-10 gap-y-6 sm:gap-y-8 lg:flex-row">
+                                            <div class="relative mx-auto flex w-16 items-center justify-center lg:w-[98px]">
+                                                <img src="assets/img/icons/icon-black-service-3.svg" alt="icon-service-3" width="98" height="100" class="opcity-100 h-auto w-full transition-all duration-300 ease-in-out group-hover:opacity-0">
+                                                <img src="assets/img/icons/icon-blue-service-3.svg" alt="icon-service-3" width="98" height="100" class="absolute h-auto w-full opacity-0 transition-all duration-300 ease-in-out group-hover:opacity-100">
+                                            </div>
+                                            <div class="flex-1 text-center lg:text-left">
+                                                <div class="mb-4 text-xl font-semibold leading-[1.33] -tracking-[0.5px] text-ColorBlack lg:text-2xl">
+                                                    Маркетинг с упором на результат
+                                                </div>
+                                                <p class="mb-5 line-clamp-2 text-ColorBlack/80">
+                                                    Запускаем кампании в digital-каналах и усиливаем воронку
+                                                    без лишней суеты
+                                                </p>
+                                                <a href="service-details.html" class="inline-flex items-center gap-x-2 text-base font-bold text-ColorBlack group-hover:text-ColorBlue">Подробнее
+                                                    <span class="transition-all duration-300 ease-in-out group-hover:translate-x-2">
+                                                        <i class="fa-solid fa-arrow-right"></i>
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Service Item -->
+                                <!-- Service Item -->
+                                <div class="jos" data-jos_delay="0.9">
+                                    <div class="group rounded-[10px] border border-[#E6E6E6] bg-white p-8 transition-all duration-300 ease-in-out hover:border-ColorOffWhite hover:bg-ColorOffWhite lg:p-10 h-full">
+                                        <div class="flex flex-col gap-x-10 gap-y-6 sm:gap-y-8 lg:flex-row">
+                                            <div class="relative mx-auto flex w-16 items-center justify-center lg:w-[98px]">
+                                                <img src="assets/img/icons/icon-black-service-4.svg" alt="icon-service-4" width="98" height="100" class="opcity-100 h-auto w-full transition-all duration-300 ease-in-out group-hover:opacity-0">
+                                                <img src="assets/img/icons/icon-blue-service-4.svg" alt="icon-service-4" width="98" height="100" class="absolute h-auto w-full opacity-0 transition-all duration-300 ease-in-out group-hover:opacity-100">
+                                            </div>
+                                            <div class="flex-1 text-center lg:text-left">
+                                                <div class="mb-4 text-xl font-semibold leading-[1.33] -tracking-[0.5px] text-ColorBlack lg:text-2xl">
+                                                    Индивидуальные IT-решения
+                                                </div>
+                                                <p class="mb-5 line-clamp-2 text-ColorBlack/80">
+                                                    Продумываем архитектуру и запускаем решения под ваши процессы
+                                                    и масштаб
+                                                </p>
+                                                <a href="service-details.html" class="inline-flex items-center gap-x-2 text-base font-bold text-ColorBlack group-hover:text-ColorBlue">Подробнее
+                                                    <span class="transition-all duration-300 ease-in-out group-hover:translate-x-2">
+                                                        <i class="fa-solid fa-arrow-right"></i>
+                                                    </span>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Service Item -->
+                            </div>
+                            <!-- Service List -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+
+                    <!-- Service Shape -->
+                    <div class="absolute bottom-0 left-0 -z-10">
+                        <img src="assets/img/elements/service-1-shape-1.svg" alt="service-section-shape" width="390" height="507">
+                    </div>
+                    <!-- Service Shape -->
+                </div>
+            </section>
+            <!--...::: Service Section End :::... -->
+
+            <!--...::: Content Section Start :::... -->
+            <section class="section-content" id="section-about">
+                <!-- Section Background -->
+                <div class="bg-ColorOffWhite">
+                    <!-- Section Spacer -->
+                    <div class="section-space">
+                        <!-- Section Container -->
+                        <div class="container-custom">
+                            <div class="flex flex-col gap-y-20 lg:gap-y-[100px] xl:gap-y-[120px]">
+                                <!-- Content Area Single -->
+                                <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-24 xl:grid-cols-[1.2fr_minmax(0,_1fr)] xl:gap-[135px]">
+                                    <!-- Content Block Left -->
+                                    <div class="jos" data-jos_animation="fade-right">
+                                        <!-- Section Wrapper -->
+                                        <div>
+                                            <!-- Section Block -->
+                                            <div class="mb-5">
+                                                <h2>
+                                                    Усиливаем промо и выстраиваем цельный образ бренда
+                                                </h2>
+                                            </div>
+                                            <!-- Section Block -->
+                                        </div>
+                                        <!-- Section Wrapper -->
+                                        <p>
+                                            Уже много лет превращаем смелые идеи в рабочие цифровые продукты:
+                                            от концепции до запуска, опираясь на данные и опыт команд.
+                                        </p>
+                                        <p>
+                                            Закрываем задачи комплексно: от аудита до реализации, держим
+                                            бюджет и сроки на контроле.
+                                        </p>
+                                    </div>
+                                    <!-- Content Block Left -->
+                                    <!-- Content Block Right -->
+                                    <div class="jos relative" data-jos_animation="fade-left">
+                                        <div class="rounded-[10px] bg-[#FCEDCF] p-[30px] lg:p-10 xl:p-[50px]">
+                                            <!-- Content Image -->
+                                            <img src="assets/img/th-1/content-img-1.jpg" alt="content-img-1" width="426" height="398" class="h-auto w-full rounded-[10px]">
+                                        </div>
+                                        <!-- Content Shape -->
+                                        <img src="assets/img/elements/content-shape-1.svg" alt="content-shape-1" width="168" height="61" class="absolute -right-16 -top-16">
+                                    </div>
+                                    <!-- Content Block Right -->
+                                </div>
+                                <!-- Content Area Single -->
+
+                                <!-- Content Area Single -->
+                                <div class="grid items-center gap-10 lg:grid-cols-2 lg:gap-24 xl:grid-cols-[1fr_minmax(0,_1.2fr)] xl:gap-[135px]">
+                                    <!-- Content Block Left -->
+                                    <div class="jos lg:order-2" data-jos_animation="fade-left">
+                                        <!-- Section Wrapper -->
+                                        <div>
+                                            <!-- Section Block -->
+                                            <div class="mb-5">
+                                                <h2>
+                                                    Актуальные digital-стратегии и идеи для роста бизнеса
+                                                </h2>
+                                            </div>
+                                            <!-- Section Block -->
+                                        </div>
+                                        <!-- Section Wrapper -->
+                                        <p>
+                                            Делаем выразительные сайты на современном стеке и аккуратно
+                                            связываем их с вашими процессами.
+                                        </p>
+                                        <ul class="flex flex-col gap-5 font-semibold text-ColorBlack">
+                                            <li>
+                                                <span class="mr-3 inline-block text-xl text-ColorBlue"><i class="fa-solid fa-badge-check"></i></span>
+                                                Открываем новые возможности и быстро проверяем гипотезы.
+                                            </li>
+                                            <li>
+                                                <span class="mr-3 inline-block text-xl text-ColorBlue"><i class="fa-solid fa-badge-check"></i></span>
+                                                Автоматизируем рутину и даём понятную аналитику для решений.
+                                            </li>
+                                            <li>
+                                                <span class="mr-3 inline-block text-xl text-ColorBlue"><i class="fa-solid fa-badge-check"></i></span>
+                                                Строим облачные решения: лёгкие в поддержке и масштабируемые.
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <!-- Content Block Left -->
+                                    <!-- Content Block Right -->
+                                    <div class="jos relative lg:order-1" data-jos_animation="fade-right">
+                                        <div class="rounded-[10px] bg-[#BEF8FC] p-[30px] lg:p-10 xl:p-[50px]">
+                                            <!-- Content Image -->
+                                            <img src="assets/img/th-1/content-img-2.jpg" alt="content-img-1" width="426" height="398" class="h-auto w-full rounded-[10px]">
+                                        </div>
+                                        <!-- Content Shape -->
+                                        <img src="assets/img/elements/content-shape-2.svg" alt="content-shape-1" width="107" height="105" class="absolute -bottom-1 -left-1">
+                                    </div>
+                                    <!-- Content Block Right -->
+                                </div>
+                                <!-- Content Area Single -->
+                            </div>
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Spacer -->
+                </div>
+                <!-- Section Background -->
+            </section>
+            <!--...::: Content Section End :::... -->
+
+            <!--...::: Portfolio Section Start :::... -->
+            <section class="section-portfolio" id="section-projects">
+                <div class="relative z-10 overflow-hidden">
+                    <!-- Section Space -->
+                    <div class="section-space">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <!-- Section Wrapper -->
+                            <div class="jos mb-[60px] flex flex-wrap items-end justify-between gap-8 xl:mb-20">
+                                <!-- Section Block -->
+                                <div class="max-w-[550px]">
+                                    <h2>Сильный дизайн и узнаваемый бренд под ключ</h2>
+                                </div>
+                                <!-- Section Block -->
+                                <a href="portfolio.html" class="btn is-blue is-rounded btn-animation is-large group"><span>Смотреть ещё работы</span></a>
+                            </div>
+                            <!-- Section Wrapper -->
+
+                            <!-- Portfolio List -->
+                            <div class="grid gap-8 md:grid-cols-2 lg:gap-10 xl:gap-[60px]">
+                                <!-- Portfolio Item -->
+                                <div class="jos" data-jos_delay="0">
+                                    <div class="group">
+                                        <div class="overflow-hidden rounded-[10px]">
+                                            <img src="assets/img/th-1/portfolio-img-1.jpg" alt="portfolio-img-1" width="617" height="450" class="h-full w-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105">
+                                        </div>
+                                        <div class="mt-6">
+                                            <div class="mb-5 flex flex-wrap justify-between gap-5 text-ColorBlack lg:flex-nowrap xl:mb-7">
+                                                <a href="portfolio-details.html" class="text-xl font-semibold leading-[1.33] -tracking-[0.5px] group-hover:text-ColorBlue xl:text-2xl">Приложение — сила коммуникаций</a>
+                                                <a href="#" class="hover:text-ColorBlue">UX/UI дизайн</a>
+                                            </div>
+                                            <a href="portfolio-details.html" class="text-base font-bold capitalize leading-[1.5] group-hover:text-ColorBlue">Смотреть кейс
+                                                <span class="inline-block transition-all duration-150 group-hover:translate-x-2"><i class="fa-solid fa-arrow-right"></i></span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Portfolio Item -->
+                                <!-- Portfolio Item -->
+                                <div class="jos" data-jos_delay="0.3">
+                                    <div class="group">
+                                        <div class="overflow-hidden rounded-[10px]">
+                                            <img src="assets/img/th-1/portfolio-img-2.jpg" alt="portfolio-img-2" width="617" height="450" class="h-full w-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105">
+                                        </div>
+                                        <div class="mt-6">
+                                            <div class="mb-5 flex flex-wrap justify-between gap-5 text-ColorBlack lg:flex-nowrap xl:mb-7">
+                                                <a href="portfolio-details.html" class="text-xl font-semibold leading-[1.33] -tracking-[0.5px] group-hover:text-ColorBlue xl:text-2xl">Сайт — платформа нового формата</a>
+                                                <a href="#" class="hover:text-ColorBlue">Брендинг</a>
+                                            </div>
+                                            <a href="portfolio-details.html" class="text-base font-bold capitalize leading-[1.5] group-hover:text-ColorBlue">Смотреть кейс
+                                                <span class="inline-block transition-all duration-150 group-hover:translate-x-2"><i class="fa-solid fa-arrow-right"></i></span></a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Portfolio Item -->
+                            </div>
+                            <!-- Portfolio List -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+
+                    <!-- Portfolio Shape - 2 -->
+                    <div class="absolute right-0 top-0 -z-10">
+                        <img src="assets/img/elements/portfolio-1-shape-1.svg" alt="portfolio-1-shape-1" width="467" height="609">
+                    </div>
+                </div>
+            </section>
+            <!--...::: Portfolio Section End :::... -->
+
+            <!--...::: Testimonial Section Start :::... -->
+            <section class="section-testimonial" id="section-testimonial">
+                <!-- Section Background -->
+                <div class="bg-ColorOffWhite">
+                    <!-- Section Space -->
+                    <div class="section-space">
+                        <!-- Section Container -->
+                        <div class="container-custom">
+                            <!-- Section Content Wrapper -->
+                            <div class="jos mb-[60px] xl:mb-20">
+                                <!-- Section Content Block -->
+                                <div class="mx-auto max-w-[625px]">
+                                    <h2 class="text-center">
+                                        Большинство довольных клиентов делятся обратной связью
+                                    </h2>
+                                </div>
+                                <!-- Section Content Block -->
+                            </div>
+                            <!-- Section Content Wrapper -->
+
+                            <!-- Testimonial Area -->
+                            <div class="grid items-center gap-10 lg:grid-cols-2 xl:gap-20 xxl:grid-cols-[1.1fr_minmax(0,_1fr)]">
+                                <img src="assets/img/th-1/testimonial-image-1.jpg" alt="testimonial-image-1" width="636" height="446" class="jos h-auto w-full rounded-2xl" data-jos_animation="fade-right">
+                                <div class="jos flex flex-col text-ColorBlack" data-jos_animation="fade-left">
+                                    <img src="assets/img/icons/icon-blue-quote-right-reverse.svg" alt="icon-blue-quote-right-reverse" width="90" height="60" class="h-auto w-10 xl:w-[90px]">
+                                    <p class="mt-[30px] text-xl font-semibold leading-[1.33] -tracking-[0.5px] lg:text-2xl">
+                                        Одна из самых комфортных команд для совместной работы в digital:
+                                        чувствуется внимание к нашим целям, гибкость по бюджету и срокам,
+                                        и очень высокая планка качества реализации.
+                                    </p>
+                                    <div class="mb-8 lg:mb-[50px]">
+                                        <span class="block text-xl font-semibold">Анна Волкова</span>
+                                        <span class="block">Руководитель digital-маркетинга (имитация кейса)</span>
+                                    </div>
+                                    <a href="portfolio-details.html" class="group text-base font-bold capitalize leading-[1.5] hover:text-ColorBlue">Ещё отзывы
+                                        <span class="inline-block transition-all duration-150 group-hover:translate-x-2"><i class="fa-solid fa-arrow-right"></i></span></a>
+                                </div>
+                            </div>
+                            <!-- Testimonial Area -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+                </div>
+                <!-- Section Background -->
+            </section>
+            <!--...::: Testimonial Section End :::... -->
+
+            <!--...::: FAQ Section Start :::... -->
+            <section class="section-faq">
+                <div class="relative z-10 overflow-hidden">
+                    <!-- Section Space -->
+                    <div class="section-space">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <!-- Section Content Wrapper -->
+                            <div class="jos mb-[60px] xl:mb-20">
+                                <!-- Section Content Block -->
+                                <div class="mx-auto max-w-[625px]">
+                                    <h2 class="text-center">
+                                        Частые вопросы о консультациях и digital-сопровождении
+                                    </h2>
+                                </div>
+                                <!-- Section Content Block -->
+                            </div>
+                            <!-- Section Content Wrapper -->
+                            <!-- FAQ Area -->
+                            <div class="jos">
+                                <!-- Accordion List -->
+                                <ul class="mx-auto max-w-[1076px] rounded-[10px] border border-ColorBlack">
+                                    <!-- Accordion Item -->
+                                    <li class="accordion-item active overflow-hidden border-b border-ColorBlack p-[30px] last:border-b-0">
+                                        <!-- Accordion Header -->
+                                        <div class="accordion-header flex justify-between gap-6 text-xl font-semibold text-ColorBlack">
+                                            <button class="flex-1 text-left">
+                                                В. Чем полезна консультация по digital-развитию?
+                                            </button>
+                                            <div class="accordion-icon-1 relative flex h-5 w-5 items-center justify-center rounded-[50%] bg-ColorBlue">
+                                                <span class="inline-block h-0.5 w-[10px] rounded-sm bg-white"></span>
+                                                <span class="absolute inline-block h-[10px] w-0.5 rotate-0 rounded-sm bg-white"></span>
+                                            </div>
+                                        </div>
+                                        <!-- Accordion Header -->
+                                        <!-- Accordion Body -->
+                                        <div class="accordion-body max-w-[826px] opacity-80">
+                                            <p class="pt-5">
+                                                Это экспертная поддержка по каналам роста в интернете: сайт,
+                                                контент, реклама, продукт и аналитика — с понятным планом и метриками.
+                                            </p>
+                                        </div>
+                                        <!-- Accordion Body -->
+                                    </li>
+                                    <!-- Accordion Item -->
+                                    <!-- Accordion Item -->
+                                    <li class="accordion-item overflow-hidden border-b border-ColorBlack p-[30px] last:border-b-0">
+                                        <!-- Accordion Header -->
+                                        <div class="accordion-header flex justify-between gap-6 text-xl font-semibold text-ColorBlack">
+                                            <button class="flex-1 text-left">
+                                                В. Какие услуги обычно входят в сопровождение?
+                                            </button>
+                                            <div class="accordion-icon-1 relative flex h-5 w-5 items-center justify-center rounded-[50%] bg-ColorBlue">
+                                                <span class="inline-block h-0.5 w-[10px] rounded-sm bg-white"></span>
+                                                <span class="absolute inline-block h-[10px] w-0.5 rotate-0 rounded-sm bg-white"></span>
+                                            </div>
+                                        </div>
+                                        <!-- Accordion Header -->
+                                        <!-- Accordion Body -->
+                                        <div class="accordion-body max-w-[826px] opacity-80">
+                                            <p class="pt-5">
+                                                Обычно это аудит текущих каналов, стратегия и дорожная карта, дизайн
+                                                и контент, разработка или доработка сайта, настройка рекламы и отчётность
+                                                по ключевым показателям.
+                                            </p>
+                                        </div>
+                                        <!-- Accordion Body -->
+                                    </li>
+                                    <!-- Accordion Item -->
+                                    <!-- Accordion Item -->
+                                    <li class="accordion-item overflow-hidden border-b border-ColorBlack p-[30px] last:border-b-0">
+                                        <!-- Accordion Header -->
+                                        <div class="accordion-header flex justify-between gap-6 text-xl font-semibold text-ColorBlack">
+                                            <button class="flex-1 text-left">
+                                                В. Агентство или штат: в чём разница для бизнеса?
+                                            </button>
+                                            <div class="accordion-icon-1 relative flex h-5 w-5 items-center justify-center rounded-[50%] bg-ColorBlue">
+                                                <span class="inline-block h-0.5 w-[10px] rounded-sm bg-white"></span>
+                                                <span class="absolute inline-block h-[10px] w-0.5 rotate-0 rounded-sm bg-white"></span>
+                                            </div>
+                                        </div>
+                                        <!-- Accordion Header -->
+                                        <!-- Accordion Body -->
+                                        <div class="accordion-body max-w-[826px] opacity-80">
+                                            <p class="pt-5">
+                                                Подрядчик даёт готовую команду и опыт по смежным задачам; штатные
+                                                специалисты глубже погружаются во внутренние процессы. Часто выгодно
+                                                совмещать: ядро внутри, пики нагрузки — снаружи.
+                                            </p>
+                                        </div>
+                                        <!-- Accordion Body -->
+                                    </li>
+                                    <!-- Accordion Item -->
+                                    <!-- Accordion Item -->
+                                    <li class="accordion-item overflow-hidden border-b border-ColorBlack p-[30px] last:border-b-0">
+                                        <!-- Accordion Header -->
+                                        <div class="accordion-header flex justify-between gap-6 text-xl font-semibold text-ColorBlack">
+                                            <button class="flex-1 text-left">
+                                                В. Какие вопросы задать на первой встрече с подрядчиком?
+                                            </button>
+                                            <div class="accordion-icon-1 relative flex h-5 w-5 items-center justify-center rounded-[50%] bg-ColorBlue">
+                                                <span class="inline-block h-0.5 w-[10px] rounded-sm bg-white"></span>
+                                                <span class="absolute inline-block h-[10px] w-0.5 rotate-0 rounded-sm bg-white"></span>
+                                            </div>
+                                        </div>
+                                        <!-- Accordion Header -->
+                                        <!-- Accordion Body -->
+                                        <div class="accordion-body max-w-[826px] opacity-80">
+                                            <p class="pt-5">
+                                                Спросите про опыт в нише, состав команды, этапы и сроки, формат
+                                                коммуникации, KPI успеха, как учитываются правки и что входит в стоимость.
+                                            </p>
+                                        </div>
+                                        <!-- Accordion Body -->
+                                    </li>
+                                    <!-- Accordion Item -->
+                                    <!-- Accordion Item -->
+                                    <li class="accordion-item overflow-hidden border-b border-ColorBlack p-[30px] last:border-b-0">
+                                        <!-- Accordion Header -->
+                                        <div class="accordion-header flex justify-between gap-6 text-xl font-semibold text-ColorBlack">
+                                            <button class="flex-1 text-left">
+                                                В. Как обычно строится оплата таких проектов?
+                                            </button>
+                                            <div class="accordion-icon-1 relative flex h-5 w-5 items-center justify-center rounded-[50%] bg-ColorBlue">
+                                                <span class="inline-block h-0.5 w-[10px] rounded-sm bg-white"></span>
+                                                <span class="absolute inline-block h-[10px] w-0.5 rotate-0 rounded-sm bg-white"></span>
+                                            </div>
+                                        </div>
+                                        <!-- Accordion Header -->
+                                        <!-- Accordion Body -->
+                                        <div class="accordion-body max-w-[826px] opacity-80">
+                                            <p class="pt-5">
+                                                Чаще всего фиксированная сумма за этап или спринт, ежемесячный
+                                                ретейнер на сопровождение либо почасовая ставка для консультаций —
+                                                модель выбирают под тип задач и предсказуемость объёма работ.
+                                            </p>
+                                        </div>
+                                        <!-- Accordion Body -->
+                                    </li>
+                                    <!-- Accordion Item -->
+                                </ul>
+                                <!-- Accordion List -->
+
+                                <div class="jos mt-[60px] flex justify-center xl:mt-20">
+                                    <a href="contact.html" class="btn is-blue is-rounded btn-animation is-large group"><span>Остались вопросы? Напишите нам</span></a>
+                                </div>
+                            </div>
+                            <!-- FAQ Area -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Section Space -->
+
+                    <!-- FAQ Shape - 1 -->
+                    <div class="absolute left-0 top-0 -z-10">
+                        <img src="assets/img/elements/faq-1-shape-1.svg" alt="service-section-shape" width="390" height="507">
+                    </div>
+                    <!-- FAQ Shape - 2 -->
+                    <div class="absolute bottom-0 right-0 -z-10">
+                        <img src="assets/img/elements/faq-1-shape-2.svg" alt="service-section-shape" width="467" height="609">
+                    </div>
+                </div>
+            </section>
+            <!--...::: FAQ Section End :::... -->
+        </main>
+
+        <!--...::: Footer Section Start :::... -->
+        <footer class="section-footer">
+            <div class="bg-ColorBlack">
+                <!-- Footer Area Top -->
+                <div class="relative z-10">
+                    <!-- Footer Top Spacing -->
+                    <div class="pb-[60px] pt-20 lg:pb-20 lg:pt-[100px] xl:pt-[120px]">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <!-- Section Wrapper -->
+                            <div class="flex flex-wrap items-center justify-center text-center lg:text-left lg:justify-between gap-8">
+                                <!-- Section Block -->
+                                <div class="max-w-[400px] md:max-w-[500px] lg:max-w-[550px]">
+                                    <h2 class="text-white">
+                                        Готовы усилить бизнес онлайн?
+                                    </h2>
+                                </div>
+                                <!-- Section Block -->
+                                <a href="portfolio.html" class="btn is-blue is-rounded btn-animation is-large group"><span>Обсудить проект</span></a>
+                            </div>
+                            <!-- Section Wrapper -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Footer Top Spacing -->
+
+                    <!-- CTA Shape -->
+                    <div class="absolute right-[9%] top-8 -z-10 hidden xxl:block">
+                        <img src="assets/img/elements/cta-1-shape-1.svg" alt="cta-1-shape-1" width="115" height="130">
+                    </div>
+                </div>
+                <!-- Footer Area Top -->
+
+                <!-- Horizontal Line Separator -->
+                <div class="horizontal-line bg-white"></div>
+                <!-- Horizontal Line Separator -->
+
+                <!-- Footer Area Center -->
+                <div class="text-white">
+                    <!-- Footer Center Spacing -->
+                    <div class="py-[60px] lg:py-20">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <!-- Footer Widget List -->
+                            <div class="grid gap-x-16 gap-y-10 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-[1fr_repeat(3,_auto)] xl:gap-x-24 xxl:gap-x-[134px]">
+                                <!-- Footer Widget Item -->
+                                <div class="flex flex-col gap-y-7 md:col-span-3 lg:col-span-1">
+                                    <!-- Footer Logo -->
+                                    <a href="#">
+                                        <img src="assets/img/lemnity-logo.svg" alt="Lemnity" width="140" height="32" style="height:28px;width:auto;">
+                                    </a>
+                                    <!-- Footer Content -->
+                                    <div>
+                                        <!-- Footer About Text -->
+                                        <div class="lg:max-w-[416px]">
+                                            Консультационная команда: UX, мобильные сценарии, соцсети,
+                                            сбор данных и промо — всё связано в одну стратегию.
+                                        </div>
+                                        <!-- Footer Mail -->
+                                        <a href="mailto:hello@example.ru" class="my-6 block underline-offset-4 transition-all duration-300 hover:underline">hello@example.ru</a>
+                                        <!-- Footer Social Link -->
+                                        <div class="flex flex-wrap gap-5">
+                                            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" class="flex h-[30px] w-[30px] items-center justify-center rounded-[50%] bg-white bg-opacity-5 text-sm text-white transition-all duration-300 hover:bg-ColorBlue" aria-label="twitter">
+                                                <i class="fa-brands fa-x-twitter"></i>
+                                            </a>
+                                            <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" class="flex h-[30px] w-[30px] items-center justify-center rounded-[50%] bg-white bg-opacity-5 text-sm text-white transition-all duration-300 hover:bg-ColorBlue" aria-label="facebook">
+                                                <i class="fa-brands fa-facebook-f"></i>
+                                            </a>
+                                            <a href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer" class="flex h-[30px] w-[30px] items-center justify-center rounded-[50%] bg-white bg-opacity-5 text-sm text-white transition-all duration-300 hover:bg-ColorBlue" aria-label="instagram">
+                                                <i class="fa-brands fa-instagram"></i>
+                                            </a>
+                                            <a href="https://www.github.com/" target="_blank" rel="noopener noreferrer" class="flex h-[30px] w-[30px] items-center justify-center rounded-[50%] bg-white bg-opacity-5 text-sm text-white transition-all duration-300 hover:bg-ColorBlue" aria-label="github">
+                                                <i class="fa-brands fa-github"></i>
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <!-- Footer Content -->
+                                </div>
+                                <!-- Footer Widget Item -->
+
+                                <!-- Footer Widget Item -->
+                                <div class="flex flex-col gap-y-7 md:col-span-1 lg:col-span-1">
+                                    <!-- Footer Widget Title -->
+                                    <div class="text-xl font-semibold capitalize">
+                                        Основное
+                                    </div>
+                                    <!-- Footer Navbar -->
+                                    <ul class="flex flex-col gap-y-[10px] capitalize">
+                                        <li>
+                                            <a href="#" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Главная</a>
+                                        </li>
+                                        <li>
+                                            <a href="about.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">О нас</a>
+                                        </li>
+                                        <li>
+                                            <a href="services.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Услуги</a>
+                                        </li>
+                                        <li>
+                                            <a href="pricing.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Тарифы</a>
+                                        </li>
+                                        <li>
+                                            <a href="contact.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Контакты</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <!-- Footer Widget Item -->
+
+                                <!-- Footer Widget Item -->
+                                <div class="flex flex-col gap-y-6 md:col-span-1 lg:col-span-1">
+                                    <!-- Footer Title -->
+                                    <div class="text-xl font-semibold capitalize">
+                                        Служебное
+                                    </div>
+                                    <!-- Footer Title -->
+
+                                    <!-- Footer Navbar -->
+                                    <ul class="flex flex-col gap-y-[10px] capitalize">
+                                        <li>
+                                            <a href="signup.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Регистрация</a>
+                                        </li>
+                                        <li>
+                                            <a href="login.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Войти</a>
+                                        </li>
+                                        <li>
+                                            <a href="error-404.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">404 — страница не найдена</a>
+                                        </li>
+                                        <li>
+                                            <a href="reset-password.html" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Сброс пароля</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <!-- Footer Widget Item-->
+
+                                <!-- Footer Widget Item -->
+                                <div class="flex flex-col gap-y-6 md:col-span-1 lg:col-span-1">
+                                    <!-- Footer Title -->
+                                    <div class="text-xl font-semibold capitalize">
+                                        Материалы
+                                    </div>
+                                    <!-- Footer Title -->
+
+                                    <!-- Footer Navbar -->
+                                    <ul class="flex flex-col gap-y-[10px] capitalize">
+                                        <li>
+                                            <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Поддержка</a>
+                                        </li>
+                                        <li>
+                                            <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Политика конфиденциальности</a>
+                                        </li>
+                                        <li>
+                                            <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Условия использования</a>
+                                        </li>
+                                        <li>
+                                            <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Финансовая стратегия</a>
+                                        </li>
+                                        <li>
+                                            <a href="https://www.example.com/" target="_blank" rel="noopener noreferrer" class="hover:opcity-100 underline-offset-4 opacity-80 transition-all duration-300 ease-linear hover:underline">Видеоинструкции</a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <!-- Footer Widget Item -->
+                            </div>
+                            <!-- Footer Widget List -->
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Footer Center Spacing -->
+                </div>
+                <!-- Footer Area Center -->
+
+                <!-- Footer Bottom -->
+                <div class="bg-white bg-opacity-5">
+                    <!-- Footer Bottom Spacing -->
+                    <div class="py-[18px]">
+                        <!-- Section Container -->
+                        <div class="container-default">
+                            <div class="text-center text-white text-opacity-80">
+                                © 2026. Все права защищены.
+                            </div>
+                            <p class="mt-3 text-center text-sm text-white/70">
+                                Сделано на <span class="font-semibold text-white/90">Lemnity</span>
+                            </p>
+                        </div>
+                        <!-- Section Container -->
+                    </div>
+                    <!-- Footer Bottom Spacing -->
+                </div>
+                <!-- Footer Bottom -->
+            </div>
+        </footer>
+        <!--...::: Footer Section End :::... -->
+    </div>
+
+    <!--Vendor js-->
+    <script src="assets/js/vendors/counterup.js" type="module"></script>
+    <script src="assets/js/vendors/swiper-bundle.min.js"></script>
+    <script src="assets/js/vendors/fslightbox.js"></script>
+    <script src="assets/js/vendors/jos.min.js"></script>
+    <script src="assets/js/vendors/menu.js"></script>
+
+    <!-- Main js -->
+    <script src="assets/js/main.js"></script>
+
+
+
+</body></html>

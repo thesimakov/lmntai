@@ -22,6 +22,7 @@ function isDesktopLikeDevice(editor: Editor): boolean {
 const CANVAS_GRID_DOC_CSS = `
 /* Невидимая вертикальная сетка 12 колонок (только редактор) */
 html[data-lemnity-grid12="on"] body {
+  position: relative;
   background-size: calc(100% / 12) 100%;
   background-image:
     repeating-linear-gradient(
@@ -35,18 +36,85 @@ html[data-lemnity-grid12="off"] body {
   background-size: unset !important;
   background-image: none !important;
 }
+
+/*
+ * ПК-режим: вертикальные направляющие (2px, чёрный пунктир) на границе контентной зоны:
+ * отступ слева и справа по 40px от края холста.
+ */
+html[data-lemnity-grid12="on"]::before,
+html[data-lemnity-grid12="on"]::after {
+  content: "";
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  pointer-events: none;
+  z-index: 2147483000;
+  box-sizing: border-box;
+  background-repeat: repeat-y;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(15, 15, 15, 0.88) 0 5px,
+    transparent 5px 11px
+  );
+}
+html[data-lemnity-grid12="on"]::before {
+  left: 40px;
+}
+html[data-lemnity-grid12="on"]::after {
+  right: 40px;
+}
+
+html[data-lemnity-grid12="on"] .lemnity-zero-block {
+  position: relative;
+}
+html[data-lemnity-grid12="on"] .lemnity-zero-block::before,
+html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  pointer-events: none;
+  z-index: 50;
+  box-sizing: border-box;
+  background-repeat: repeat-y;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(15, 15, 15, 0.88) 0 5px,
+    transparent 5px 11px
+  );
+}
+html[data-lemnity-grid12="on"] .lemnity-zero-block::before {
+  left: 40px;
+}
+html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
+  right: 40px;
+}
+
+html[data-lemnity-grid12="off"]::before,
+html[data-lemnity-grid12="off"]::after {
+  content: none !important;
+  background-image: none !important;
+}
+html[data-lemnity-grid12="off"] .lemnity-zero-block::before,
+html[data-lemnity-grid12="off"] .lemnity-zero-block::after {
+  content: none !important;
+  background-image: none !important;
+}
 `;
 
 export function syncBlockGridOverlay(editor: Editor) {
   const doc = editor.Canvas.getDocument();
   const html = doc?.documentElement;
   if (!html) return;
-  if (!doc.getElementById(BLOCK_GRID_DOC_STYLE_ID)) {
-    const tag = doc.createElement("style");
+  let tag = doc.getElementById(BLOCK_GRID_DOC_STYLE_ID) as HTMLStyleElement | null;
+  if (!tag) {
+    tag = doc.createElement("style");
     tag.id = BLOCK_GRID_DOC_STYLE_ID;
-    tag.textContent = CANVAS_GRID_DOC_CSS;
     doc.head.appendChild(tag);
   }
+  tag.textContent = CANVAS_GRID_DOC_CSS;
   html.setAttribute("data-lemnity-grid12", isDesktopLikeDevice(editor) ? "on" : "off");
 }
 
@@ -67,6 +135,18 @@ function isLemnityGridSection(component: Component | null | undefined): boolean 
   if (!component?.get) return false;
   if (component.get("type") === "lemnity-grid-section") return true;
   return false;
+}
+
+function readComponentClasses(component: Component): string[] {
+  const cls = component.getClasses?.();
+  if (Array.isArray(cls)) return cls.map(String);
+  if (typeof cls === "string") return cls.split(/\s+/).filter(Boolean);
+  return [];
+}
+
+function isZeroBlockSection(component: Component): boolean {
+  if (String(component.get?.("tagName") ?? "").toLowerCase() !== "section") return false;
+  return readComponentClasses(component).includes("lemnity-zero-block");
 }
 
 function shouldOfferSideResize(comp: Component, editor: Editor): boolean {
@@ -122,6 +202,14 @@ type ResizeUpdateOpts = {
 export function applyLemnitySectionWidthLayout(component: Component) {
   const tag = String(component.get?.("tagName") ?? "").toLowerCase();
   if (tag !== "section") return;
+
+  if (isZeroBlockSection(component)) {
+    component.removeStyle("max-width");
+    component.removeStyle("margin-left");
+    component.removeStyle("margin-right");
+    component.addStyle({ width: "100%", "box-sizing": "border-box" });
+    return;
+  }
 
   component.removeStyle("width");
 
@@ -199,6 +287,7 @@ export function scheduleLemnityCanvasLayoutRefresh(editor: Editor) {
 
 function normalizeNewSection(component: Component) {
   if (String(component.get?.("tagName") ?? "").toLowerCase() !== "section") return;
+  if (isZeroBlockSection(component)) return;
   const a = component.getAttributes();
   if (a["data-ln-span"] != null || a["data-ln-align"] != null) return;
   component.addAttributes({ "data-ln-span": "12", "data-ln-align": "center" }, { silent: true } as never);
@@ -401,12 +490,12 @@ export function attachLemnityBoxSectionWidthGrid(editor: Editor): () => void {
     opts.resizable = {
       ...inherit,
       tl: false,
-      tc: false,
+      tc: true,
       tr: false,
       cl: true,
       cr: true,
       bl: false,
-      bc: false,
+      bc: true,
       br: false,
     };
   };
@@ -480,9 +569,14 @@ export function attachLemnityBoxSectionWidthGrid(editor: Editor): () => void {
     syncBlockGridOverlay(editor);
   };
 
+  const onFrameBodyLoad = () => {
+    syncBlockGridOverlay(editor);
+  };
+
   editor.on("load", onBootstrap);
   editor.on("device:select", onDevice);
   editor.on("canvas:frame:load", onFrameLoad);
+  editor.on("canvas:frame:load:body" as never, onFrameBodyLoad as never);
   editor.on("component:add", onComponentAdd);
   editor.on("component:drag:end", onDragEnd);
   editor.on("component:resize:init" as never, onResizeInit as never);
@@ -492,6 +586,7 @@ export function attachLemnityBoxSectionWidthGrid(editor: Editor): () => void {
     editor.off?.("load", onBootstrap);
     editor.off?.("device:select", onDevice);
     editor.off?.("canvas:frame:load", onFrameLoad);
+    editor.off?.("canvas:frame:load:body" as never, onFrameBodyLoad as never);
     editor.off?.("component:add", onComponentAdd);
     editor.off?.("component:drag:end", onDragEnd);
     editor.off?.("component:resize:init" as never, onResizeInit as never);

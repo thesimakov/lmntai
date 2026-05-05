@@ -9,6 +9,9 @@ import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-ac
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
+import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
+import { injectCmsFormBridgeIntoHtmlDocument } from "@/lib/cms-form-bridge";
+import { resolveCmsFormBridgeContextByProjectId } from "@/lib/cms-sandbox-form-sync";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -25,7 +28,7 @@ async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
       });
       if (!upstream.ok) return new Response("Not found", { status: 404 });
       const htmlRaw = await upstream.text();
-      const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
+      const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
       return new Response(html, {
         headers: {
           "Content-Type": upstream.headers.get("content-type") ?? "text/html; charset=utf-8",
@@ -46,8 +49,14 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
   }
 
   const files = await sandboxManager.exportFiles(sandboxId);
-  const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
-  const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
+  let htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  if (!sandboxId.startsWith("artifact_")) {
+    const bridgeCtx = await resolveCmsFormBridgeContextByProjectId(sandboxId);
+    if (bridgeCtx) {
+      htmlRaw = injectCmsFormBridgeIntoHtmlDocument(htmlRaw, bridgeCtx);
+    }
+  }
+  const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",

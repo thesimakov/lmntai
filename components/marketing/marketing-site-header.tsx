@@ -129,7 +129,7 @@ export function MarketingSiteHeader({ tone = "light" }: { tone?: MarketingHeader
             </Button>
           ) : (
             <Button asChild size="sm" className="rounded-full bg-white px-5 text-zinc-900 hover:bg-zinc-100">
-              <Link href="/login">{t("landing_login")}</Link>
+              <Link href="/">{t("landing_login")}</Link>
             </Button>
           )}
         </div>

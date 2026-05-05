@@ -92,14 +92,14 @@ export function LoginForm({
   startWithRegister = false
 }: {
   features: LoginFeatures;
-  /** После успешного сброса пароля (`/login?reset=ok`) */
+  /** После успешного сброса пароля (`/?reset=ok`) */
   passwordResetSuccess?: boolean;
   /** Открыть форму регистрации (например `?register=1` с лендинга) */
   startWithRegister?: boolean;
   /** Карточка без внешнего main/Card — для модального окна */
   embedded?: boolean;
   /**
-   * Двухколоночный макет: форма слева, визуализация справа (страница /login).
+   * Двухколоночный макет: форма слева, визуализация справа (главная страница входа).
    * По умолчанию true, если не embedded. Передайте false, чтобы осталась одна карточка по центру.
    */
   splitLayout?: boolean;
@@ -668,9 +668,9 @@ export function LoginForm({
   if (useSplitLayout) {
     return (
       <div className="min-h-dvh w-full bg-zinc-50 text-foreground dark:bg-zinc-950">
-        <div className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col lg:flex-row lg:items-stretch">
-          <section className="flex min-h-dvh w-full min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-8 lg:min-h-0 lg:basis-1/2 lg:px-12 lg:py-8 xl:px-16">
-            <header className="flex shrink-0 items-center justify-between gap-4">
+        <div className="mx-auto flex min-h-dvh w-full max-w-[1600px] flex-col md:flex-row md:items-stretch">
+          <section className="flex min-h-dvh w-full min-w-0 flex-1 flex-col px-5 py-6 sm:px-10 sm:py-8 md:min-h-0 md:basis-0 md:flex-1 md:px-10 md:py-8 lg:px-12 xl:px-16">
+            <header className="flex shrink-0 items-center gap-4">
               <Link
                 href="/"
                 className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
@@ -684,12 +684,9 @@ export function LoginForm({
                   priority
                 />
               </Link>
-              <Button variant="ghost" size="sm" asChild>
-                <Link href="/">На главную</Link>
-              </Button>
             </header>
             <div className="flex min-h-0 w-full flex-1 flex-col justify-center overflow-y-auto overflow-x-hidden overscroll-contain [scrollbar-gutter:stable]">
-              <div className="mx-auto w-full max-w-md py-6 sm:py-8 lg:py-4">
+              <div className="mx-auto w-full max-w-md py-6 sm:py-8 md:py-4">
                 <p className="text-sm font-semibold text-muted-foreground">Начни создавать</p>
                 <h1 className="mt-1 text-2xl font-bold tracking-tight sm:text-3xl">
                   {registerOpen ? "Создать аккаунт" : "Войдите в свой аккаунт"}
@@ -703,8 +700,8 @@ export function LoginForm({
               </div>
             </div>
           </section>
-          <section className="relative w-full min-w-0 flex-1 bg-zinc-100/50 p-3 sm:p-4 lg:min-h-dvh lg:basis-1/2 lg:bg-transparent lg:py-6 lg:pl-0 lg:pr-6 lg:pt-6 xl:pr-10">
-            <div className="h-full min-h-[280px] lg:min-h-0">
+          <section className="relative w-full min-w-0 flex-1 bg-zinc-100/50 p-3 sm:p-4 md:min-h-dvh md:basis-0 md:flex-1 md:bg-transparent md:py-6 md:pl-0 md:pr-6 md:pt-6 xl:pr-10">
+            <div className="h-full min-h-[280px] md:min-h-0">
               <LoginSplitHero />
             </div>
           </section>
@@ -715,7 +712,7 @@ export function LoginForm({
 
   return (
     <div className="flex min-h-dvh flex-col bg-background">
-      <header className="flex shrink-0 items-center justify-between border-b border-border/80 bg-card/50 px-4 py-3 backdrop-blur-sm sm:px-6">
+      <header className="flex shrink-0 items-center border-b border-border/80 bg-card/50 px-4 py-3 backdrop-blur-sm sm:px-6">
         <Link
           href="/"
           className="inline-flex items-center gap-2 rounded-lg outline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring"
@@ -729,9 +726,6 @@ export function LoginForm({
             priority
           />
         </Link>
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/">На главную</Link>
-        </Button>
       </header>
       <main className="flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 sm:justify-center sm:py-10">
         <Card className="glass w-full max-w-md rounded-3xl shadow-lg">

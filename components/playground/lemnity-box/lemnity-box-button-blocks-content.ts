@@ -57,9 +57,8 @@ ${BTN_CSS}
     badge: "BF02",
     title: "Соцсети колонкой",
     hint: "полоса: иконка, название, стрелка",
-    content: `<section data-gjs-name="Кнопки: соцсети столбик" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(28px,5vw,48px) clamp(16px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;position:relative;">
+    content: `<section data-gjs-name="Кнопки: соцсети столбик" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(28px,5vw,48px) clamp(16px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;">
 ${BTN_CSS}
-<div style="position:absolute;top:20px;right:20px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <div style="max-width:400px;margin:0 auto;display:flex;flex-direction:column;gap:10px">
 <a href="#" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;background:#3b5998;color:#fff;font-weight:600;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.1)"><span style="display:flex;width:26px;justify-content:center">${I_FB}</span><span style="flex:1">Facebook</span>${I_CHV}</a>
 <a href="#" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:10px;background:#1da1f2;color:#fff;font-weight:600;font-size:15px;box-shadow:0 2px 8px rgba(0,0,0,.1)"><span style="display:flex;width:26px;justify-content:center">${I_TW}</span><span style="flex:1">Twitter</span>${I_CHV}</a>
@@ -101,9 +100,8 @@ ${BTN_CSS}
     badge: "BF05",
     title: "Магазины приложений",
     hint: "заголовок и бейджи App Store / Google Play",
-    content: `<section data-gjs-name="Кнопки: приложения" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(40px,7vw,80px) clamp(18px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;position:relative;color:#111;">
+    content: `<section data-gjs-name="Кнопки: приложения" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(40px,7vw,80px) clamp(18px,4vw,32px);background:#fff;font-family:system-ui,sans-serif;color:#111;">
 ${BTN_CSS}
-<div style="position:absolute;top:22px;right:22px;color:#e5e7eb;font-size:20px;pointer-events:none" aria-hidden="true">★</div>
 <div style="max-width:560px;margin:0 auto;text-align:center">
 <h2 style="margin:0 0 14px;font-size:clamp(22px,3vw,32px);font-weight:800;line-height:1.2">Начните бесплатно</h2>
 <p style="margin:0 0 28px;font-size:15px;line-height:1.65;color:#6b7280">Приложение доступно в App Store и Google Play. Отслеживайте тренировки и прогресс каждый день.</p>
@@ -159,9 +157,8 @@ ${BTN_CSS}
     badge: "BF08",
     title: "Скачать файл (заливка)",
     hint: "чёрная кнопка с иконкой",
-    content: `<section data-gjs-name="Кнопки: скачать заливка" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(36px,6vw,64px) 20px;background:#fff;font-family:system-ui,sans-serif;position:relative;">
+    content: `<section data-gjs-name="Кнопки: скачать заливка" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(36px,6vw,64px) 20px;background:#fff;font-family:system-ui,sans-serif;">
 ${BTN_CSS}
-<div style="position:absolute;top:18px;right:22px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <div style="display:flex;justify-content:center">
 <a href="#" style="display:inline-flex;align-items:center;gap:12px;padding:16px 28px;background:#111;color:#fff;font-weight:700;font-size:15px;border-radius:6px;box-shadow:0 4px 14px rgba(0,0,0,.2)">${I_DL}<span>Скачать файл</span></a>
 </div>
@@ -172,9 +169,8 @@ ${BTN_CSS}
     badge: "BF09",
     title: "Наверх",
     hint: "круглая чёрная кнопка со стрелкой",
-    content: `<section data-gjs-name="Кнопки: наверх" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(40px,8vw,80px) 20px;background:#fff;font-family:system-ui,sans-serif;position:relative;">
+    content: `<section data-gjs-name="Кнопки: наверх" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(40px,8vw,80px) 20px;background:#fff;font-family:system-ui,sans-serif;">
 ${BTN_CSS}
-<div style="position:absolute;top:20px;right:24px;color:#e5e7eb;font-size:18px;pointer-events:none" aria-hidden="true">★</div>
 <div style="display:flex;justify-content:center">
 <a href="#" aria-label="Наверх" style="width:52px;height:52px;border-radius:50%;background:#111;color:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.18)">${I_UP}</a>
 </div>

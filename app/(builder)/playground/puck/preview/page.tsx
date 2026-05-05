@@ -124,7 +124,7 @@ function PlaygroundPuckPreviewInner() {
     return (
       <div className="flex min-h-0 flex-1 flex-col gap-3 bg-background p-4">
         <p className="text-sm text-destructive">{t("puck_page_auth_required")}</p>
-        <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => router.push("/login")}>
+        <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => router.push("/")}>
           {t("puck_page_login")}
         </Button>
       </div>

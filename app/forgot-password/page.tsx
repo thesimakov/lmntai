@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
           <Image src="/logo-w.svg" alt="Lemnity" width={112} height={28} className="h-7 w-auto brightness-0 dark:invert" priority />
         </Link>
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/login">Вход</Link>
+          <Link href="/">Вход</Link>
         </Button>
       </header>
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-10">
@@ -48,7 +48,7 @@ export default function ForgotPasswordPage() {
           <div className="mt-6 rounded-xl border border-border bg-card p-4 text-sm text-muted-foreground">
             Если такой аккаунт с паролем найден, письмо со ссылкой отправлено. Проверьте почту и папку «Спам».
             <div className="mt-4">
-              <Button type="button" variant="outline" className="w-full" onClick={() => router.push("/login")}>
+              <Button type="button" variant="outline" className="w-full" onClick={() => router.push("/")}>
                 Ко входу
               </Button>
             </div>

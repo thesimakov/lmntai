@@ -160,7 +160,7 @@ export function LandingPage() {
     if (!text) return;
     saveBuilderHandoff(text, undefined, null);
     setPostLoginRedirect("/playground/build");
-    router.push(authed ? "/playground/build" : "/login");
+    router.push(authed ? "/playground/build" : "/");
   }, [authed, prompt, router]);
 
   return (
@@ -182,7 +182,7 @@ export function LandingPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(authed ? "/playground" : "/login?register=1")
+                router.push(authed ? "/playground" : "/?register=1")
               }
               className="font-medium text-blue-600 transition hover:text-blue-700"
             >
@@ -323,7 +323,7 @@ export function LandingPage() {
               className="w-full shrink-0 rounded-full border-zinc-300 bg-white px-6 text-zinc-800 shadow-sm hover:bg-zinc-50 sm:w-auto"
               asChild
             >
-              <Link href={authed ? "/projects" : "/login"}>{t("landing_showcase_view_all")}</Link>
+              <Link href={authed ? "/projects" : "/"}>{t("landing_showcase_view_all")}</Link>
             </Button>
           </div>
 
@@ -436,7 +436,7 @@ export function LandingPage() {
 
       <footer className="border-t border-zinc-200/80 py-8 text-center text-xs text-zinc-500">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <Link href="/login" className="hover:text-zinc-800">
+          <Link href="/" className="hover:text-zinc-800">
             {t("landing_footer_login")}
           </Link>
           <Link href="/plans" className="hover:text-zinc-800">
@@ -445,7 +445,7 @@ export function LandingPage() {
           <Link href="/docs" className="hover:text-zinc-800">
             {t("landing_simple_nav_docs")}
           </Link>
-          <Link href={authed ? "/playground" : "/login"} className="hover:text-zinc-800">
+          <Link href={authed ? "/playground" : "/"} className="hover:text-zinc-800">
             {t("landing_footer_dashboard")}
           </Link>
         </div>

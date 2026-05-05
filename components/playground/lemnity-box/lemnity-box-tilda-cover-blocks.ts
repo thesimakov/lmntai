@@ -1,5 +1,3 @@
-import type { Editor } from "grapesjs";
-
 /** Фоновые кадры — стабильные Unsplash; в блоке можно заменить URL в Style Manager / коде. */
 const IMG_MOUNTAIN = "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=2000&q=80";
 const IMG_BLUE_LAGOON = "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=2000&q=80";
@@ -95,22 +93,5 @@ const LANDING_HERO_SIMPLE: CoverBlock = {
 </section>`,
 };
 
-/** Заголовок флайаута выбора полноэкранных обложек (CR-макеты). */
-export const TILDA_FIRST_SCREEN_CATEGORY = "Первый экран";
-
-/** Одна секция GrapesJS: обложки, главный экран, магазин. */
-export const LEMNITY_BOX_SECTION_CATEGORY = "Секции";
-
-/** Варианты блока «Обложки» в LEMNITY_BOX_BLOCK_LIBRARIES — в палитре один лаунчер. */
+/** Варианты обложек и простого первого экрана — объединены с блоком «Главный экран» в реестре. */
 export const TILDA_COVER_PICKER_ITEMS: ReadonlyArray<CoverBlock> = [...COVER_BLOCKS, LANDING_HERO_SIMPLE];
-
-export const COVER_LAUNCHER_BLOCK_ID = "lemnity-cover-gallery";
-
-/** Один блок «Обложки» в «Секции» — по клику открывает флайаут со всеми CR (свяжите `onClick` снаружи). */
-export function registerCoverGalleryStub(editor: Editor) {
-  editor.BlockManager.add(COVER_LAUNCHER_BLOCK_ID, {
-    label: "Обложки",
-    category: LEMNITY_BOX_SECTION_CATEGORY,
-    content: `<section class="lemnity-section"><h2>Обложки</h2><p>Клик — выбор макета в панели справа.</p></section>`
-  });
-}

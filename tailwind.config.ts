@@ -108,7 +108,7 @@ const config: Config = {
           "0%, 100%": { opacity: "0.45", filter: "brightness(0.9)" },
           "50%": { opacity: "1", filter: "brightness(1.12)" }
         },
-        /** Правая панель /login: фон + блобы */
+        /** Правая панель формы входа (главная): фон + блобы */
         "login-hero-mesh": {
           "0%": { backgroundPosition: "0% 40%" },
           "25%": { backgroundPosition: "100% 0%" },

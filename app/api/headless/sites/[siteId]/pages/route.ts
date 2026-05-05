@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 
 import { injectCmsFormBridgeIntoPageDocument } from "@/lib/cms-form-bridge";
-import { prisma } from "@/lib/prisma";
 import type { PageDocument } from "@/lib/lemnity-box-editor-schema";
+import { prepareLemnityBoxBodyHtmlForPublish } from "@/lib/lemnity-box-html-embed-expand";
+import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,14 @@ function enrichPublishedContent(
   if (!content || typeof content !== "object") return content;
   const c = content as PageDocument;
   if (c.version !== 1 || !c.grapesjs || typeof c.grapesjs.html !== "string") return content;
-  return injectCmsFormBridgeIntoPageDocument(c, {
+  const expanded: PageDocument = {
+    ...c,
+    grapesjs: {
+      ...c.grapesjs,
+      html: prepareLemnityBoxBodyHtmlForPublish(c.grapesjs.html),
+    },
+  };
+  return injectCmsFormBridgeIntoPageDocument(expanded, {
     siteId: ctx.siteId,
     pageId: ctx.pageId,
     pagePath: ctx.path,

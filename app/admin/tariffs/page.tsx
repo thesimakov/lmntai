@@ -6,7 +6,7 @@ import { requireAdminUser } from "@/lib/auth-guards";
 export default async function AdminTariffsPage() {
   const g = await requireAdminUser();
   if (!g.ok) {
-    redirect(g.status === 401 ? "/login" : "/admin/users");
+    redirect(g.status === 401 ? "/" : "/admin/users");
   }
 
   return (

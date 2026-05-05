@@ -3,7 +3,8 @@ const MAX_KEY_LEN = 120;
 const MAX_VAL_LEN = 8000;
 
 export function normalizeCmsFormSubmissionFields(raw: unknown): Record<string, string> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (raw === undefined || raw === null) return null;
+  if (typeof raw !== "object" || Array.isArray(raw)) return null;
   const out: Record<string, string> = {};
   let count = 0;
   for (const [k0, v0] of Object.entries(raw as Record<string, unknown>)) {
@@ -14,5 +15,5 @@ export function normalizeCmsFormSubmissionFields(raw: unknown): Record<string, s
     out[k] = v0.slice(0, MAX_VAL_LEN);
     count++;
   }
-  return Object.keys(out).length ? out : null;
+  return out;
 }

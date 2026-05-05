@@ -64,7 +64,7 @@ async function postSubmission(
   }
 
   const fields = normalizeCmsFormSubmissionFields(b.fields);
-  if (!fields) {
+  if (fields === null) {
     return new Response(JSON.stringify({ ok: false, error: "bad_fields" }), {
       status: 400,
       headers: { "Content-Type": "application/json", ...corsHeaders },
