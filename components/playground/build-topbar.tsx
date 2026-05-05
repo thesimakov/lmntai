@@ -13,6 +13,7 @@ import {
   MoreHorizontal,
   Printer,
   PenLine,
+  Save,
   Settings2,
   Upload
 } from "lucide-react";
@@ -32,6 +33,130 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+
+type PlaygroundSharePublishActionsProps = {
+  shareMenu: ReactNode;
+  onPublish: () => void;
+  publishDisabled?: boolean;
+  sandboxId?: string | null;
+  /** «⋯» студии: файлы задания, доки. На странице Lemnity Box можно отключить. */
+  showStudioMenu?: boolean;
+  /** Кнопки слева от GitHub (например «Блоки» в Lemnity Box). */
+  leadingSlot?: ReactNode;
+  onSave?: () => void | Promise<void>;
+  saveDisabled?: boolean;
+  savePending?: boolean;
+};
+
+/**
+ * Правая группа студии: «ещё», GitHub Deploy, «Поделиться», «Опубликовать».
+ * Используется в {@link BuildPreviewChrome} и на `/playground/box/editor`.
+ */
+export function PlaygroundSharePublishActions({
+  shareMenu,
+  onPublish,
+  publishDisabled = false,
+  sandboxId = null,
+  showStudioMenu = true,
+  leadingSlot = null,
+  onSave,
+  saveDisabled = false,
+  savePending = false
+}: PlaygroundSharePublishActionsProps) {
+  const [taskFilesOpen, setTaskFilesOpen] = useState(false);
+  const { t } = useI18n();
+  const router = useRouter();
+
+  return (
+    <>
+      <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
+        {leadingSlot ? <span className="flex shrink-0 flex-wrap items-center justify-end gap-1">{leadingSlot}</span> : null}
+        {onSave ? (
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-8 min-w-0 shrink-0 gap-1.5 rounded-lg px-2 sm:px-3"
+            disabled={saveDisabled || savePending}
+            aria-label={t("playground_box_save")}
+            onClick={() => void onSave()}
+          >
+            {savePending ? (
+              <span
+                className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+                aria-hidden
+              />
+            ) : (
+              <Save className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            )}
+            {t("playground_box_save")}
+          </Button>
+        ) : null}
+        {showStudioMenu ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0 text-muted-foreground"
+                aria-label={t("build_aria_more")}
+                aria-haspopup="menu"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">{t("build_studio_label")}</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={!sandboxId}
+                onSelect={() => setTaskFilesOpen(true)}
+                className="gap-2"
+              >
+                <FileSearch className="h-4 w-4" />
+                {t("build_menu_task_files")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2"
+                onSelect={() => {
+                  router.push("/docs");
+                }}
+              >
+                <BookOpen className="h-4 w-4" />
+                {t("sidebar_popover_docs")}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 text-muted-foreground"
+          disabled={publishDisabled}
+          aria-label={t("build_aria_github_sandbox")}
+          onClick={onPublish}
+        >
+          <Github className="h-4 w-4" />
+        </Button>
+        {shareMenu}
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 min-w-0 shrink-0 rounded-lg px-2 sm:px-3"
+          disabled={publishDisabled}
+          onClick={onPublish}
+          aria-label={t("build_aria_publish_open")}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+          {t("build_publish")}
+        </Button>
+      </div>
+
+      <BuildTaskFilesDialog open={taskFilesOpen} onOpenChange={setTaskFilesOpen} sandboxId={sandboxId} />
+    </>
+  );
+}
 
 export type BuildWorkspaceTab = "preview" | "document" | "settings" | "code";
 
@@ -68,7 +193,6 @@ export function BuildPreviewChrome({
   onHistoryClick,
   expandChatRailSlot = null
 }: BuildPreviewChromeProps) {
-  const [taskFilesOpen, setTaskFilesOpen] = useState(false);
   const { t } = useI18n();
   const router = useRouter();
 
@@ -178,68 +302,13 @@ export function BuildPreviewChrome({
           </Button>
         </div>
 
-        <div className="flex w-full min-w-0 flex-wrap items-center justify-end gap-1 sm:ml-auto sm:w-auto">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0 text-muted-foreground"
-                aria-label={t("build_aria_more")}
-                aria-haspopup="menu"
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal text-xs text-muted-foreground">{t("build_studio_label")}</DropdownMenuLabel>
-              <DropdownMenuItem
-                disabled={!sandboxId}
-                onSelect={() => setTaskFilesOpen(true)}
-                className="gap-2"
-              >
-                <FileSearch className="h-4 w-4" />
-                {t("build_menu_task_files")}
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2"
-                onSelect={() => {
-                  router.push("/docs");
-                }}
-              >
-                <BookOpen className="h-4 w-4" />
-                {t("sidebar_popover_docs")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0 text-muted-foreground"
-            disabled={publishDisabled}
-            aria-label={t("build_aria_github_sandbox")}
-            onClick={onPublish}
-          >
-            <Github className="h-4 w-4" />
-          </Button>
-          {shareMenu}
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 min-w-0 shrink-0 rounded-lg px-2 sm:px-3"
-            disabled={publishDisabled}
-            onClick={onPublish}
-            aria-label={t("build_aria_publish_open")}
-          >
-            <Upload className="mr-1.5 h-3.5 w-3.5 shrink-0" />
-            {t("build_publish")}
-          </Button>
-        </div>
+        <PlaygroundSharePublishActions
+          sandboxId={sandboxId}
+          shareMenu={shareMenu}
+          onPublish={onPublish}
+          publishDisabled={publishDisabled}
+        />
       </div>
-
-      <BuildTaskFilesDialog open={taskFilesOpen} onOpenChange={setTaskFilesOpen} sandboxId={sandboxId} />
     </div>
   );
 }

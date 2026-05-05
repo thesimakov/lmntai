@@ -8,6 +8,7 @@ import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
+import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -23,7 +24,8 @@ async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
         headers: { Accept: "text/html" }
       });
       if (!upstream.ok) return new Response("Not found", { status: 404 });
-      const html = await upstream.text();
+      const htmlRaw = await upstream.text();
+      const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
       return new Response(html, {
         headers: {
           "Content-Type": upstream.headers.get("content-type") ?? "text/html; charset=utf-8",
@@ -44,7 +46,8 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
   }
 
   const files = await sandboxManager.exportFiles(sandboxId);
-  const html = files["index.html"] ?? "<html><body>Empty</body></html>";
+  const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -146,6 +149,17 @@ async function patchSandbox(
   }
   if (sandboxId.startsWith("artifact_")) {
     return new Response("Not found", { status: 404 });
+  }
+
+  try {
+    await sandboxManager.ensureSandboxStateForOwnedProject(sandboxId, guard.data.user.id);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (msg === "PROJECT_NOT_FOUND") {
+      return new Response("Not found", { status: 404 });
+    }
+    console.error("[PATCH /api/sandbox/[id]] ensureSandboxStateForOwnedProject", e);
+    return new Response(msg || "Error", { status: 500 });
   }
 
   const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";

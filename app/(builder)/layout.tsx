@@ -10,7 +10,12 @@ export default async function BuilderLayout({ children }: { children: React.Reac
     redirect("/login");
   }
 
-  const wall = await getStarterCabinetWallState(session.user.email, Boolean(session.user.demoOffline));
+  let wall: Awaited<ReturnType<typeof getStarterCabinetWallState>> = { show: false };
+  try {
+    wall = await getStarterCabinetWallState(session.user.email, Boolean(session.user.demoOffline));
+  } catch (err) {
+    console.error("[builder-layout] getStarterCabinetWallState failed", err);
+  }
 
   return (
     <div className="box-border h-[100dvh] min-h-0 w-full min-w-0 overflow-x-hidden p-0">

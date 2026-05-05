@@ -7,8 +7,16 @@ import { prisma } from "@/lib/prisma";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { normalizeProjectSubdomain, upsertProjectCell } from "@/lib/project-context";
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
+import {
+  buildPlaygroundEditUrlForStoredEditor,
+  normalizePreferredPlaygroundEditor,
+  parsePreferredPlaygroundEditor
+} from "@/lib/playground-project-edit-url";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 async function getProjects(req: NextRequest) {
   void req;
@@ -17,8 +25,9 @@ async function getProjects(req: NextRequest) {
     return new Response(guard.message, { status: guard.status });
   }
 
-  if (isLemnityAiBridgeEnabledServer()) {
-    const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
+  try {
+    if (isLemnityAiBridgeEnabledServer()) {
+      const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
     const ids = Array.from(
       new Set(
         sessions
@@ -29,11 +38,14 @@ async function getProjects(req: NextRequest) {
     const domains = ids.length
       ? await prisma.project.findMany({
           where: { ownerId: guard.data.user.id, id: { in: ids } },
-          select: { id: true, subdomain: true }
+          select: { id: true, subdomain: true, preferredEditor: true }
         })
       : [];
     const subdomainByProjectId = new Map(domains.map((row) => [row.id, row.subdomain]));
-    const projects = sessions.map((row) => {
+    const preferredEditorByProjectId = new Map(
+      domains.map((row) => [row.id, normalizePreferredPlaygroundEditor(row.preferredEditor)])
+    );
+    const aiProjects = sessions.map((row) => {
       const sessionId = row.session_id;
       const projectId = row.project_id || row.session_id;
       const artifact =
@@ -48,33 +60,93 @@ async function getProjects(req: NextRequest) {
         typeof row.created_at === "string" && row.created_at.length > 0 ? row.created_at : updatedAt;
       return {
         id: projectId,
-        name: sanitizeProjectTitleForUser(row.title?.trim() || "") || "Проект",
+        name: sanitizeProjectTitleForUser(String(row.title ?? "").trim()) || "Проект",
         subdomain: subdomainByProjectId.get(projectId) ?? null,
-        status: row.status || "pending",
+        status: String(row.status ?? "") || "pending",
         createdAt,
         updatedAt,
         embedUrl,
-        editUrl: `/playground/build?sessionId=${encodeURIComponent(sessionId)}`,
-        openUrl: embedUrl ?? `/playground/build?sessionId=${encodeURIComponent(sessionId)}`
+        editUrl: buildPlaygroundEditUrlForStoredEditor(preferredEditorByProjectId.get(projectId) ?? "build", {
+          projectId,
+          sessionId
+        }),
+        openUrl:
+          embedUrl ??
+          buildPlaygroundEditUrlForStoredEditor(preferredEditorByProjectId.get(projectId) ?? "build", {
+            projectId,
+            sessionId
+          })
       };
     });
-    return Response.json({ projects });
+    const aiIds = new Set(aiProjects.map((p) => p.id));
+    const prismaRows = await prisma.project.findMany({
+      where: { ownerId: guard.data.user.id },
+      select: { id: true, name: true, subdomain: true, createdAt: true, updatedAt: true, preferredEditor: true }
+    });
+    const orphanProjects = prismaRows
+      .filter((row) => !aiIds.has(row.id))
+      .map((row) => {
+        const createdAt = row.createdAt.toISOString();
+        const updatedAt = row.updatedAt.toISOString();
+        const editor = normalizePreferredPlaygroundEditor(row.preferredEditor);
+        const editUrl = buildPlaygroundEditUrlForStoredEditor(editor, {
+          projectId: row.id,
+          preferProjectIdQuery: true
+        });
+        const openUrl =
+          editor === "box"
+            ? `/api/sandbox/${encodeURIComponent(row.id)}`
+            : `/playground/build?projectId=${encodeURIComponent(row.id)}`;
+        return {
+          id: row.id,
+          name: sanitizeProjectTitleForUser(row.name?.trim() || "") || "Проект",
+          subdomain: row.subdomain,
+          status: "draft",
+          createdAt,
+          updatedAt,
+          embedUrl: null as string | null,
+          editUrl,
+          openUrl
+        };
+      });
+    const merged = [...aiProjects, ...orphanProjects].sort(
+      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+    );
+    return Response.json({ projects: merged });
+    }
+
+    const rows = await sandboxManager.listSandboxesByOwner(guard.data.user.id);
+
+    const sandboxProjects = rows.map((row) => ({
+      id: row.sandboxId,
+      name: sanitizeProjectTitleForUser(row.title || "") || "Новый проект",
+      subdomain: row.subdomain,
+      status: row.updatedAt === row.createdAt ? "Черновик" : "Готов",
+      createdAt: new Date(row.createdAt).toISOString(),
+      updatedAt: new Date(row.updatedAt).toISOString(),
+      embedUrl: `/api/sandbox/${row.sandboxId}`,
+      editUrl: buildPlaygroundEditUrlForStoredEditor(row.preferredEditor ?? "build", {
+        projectId: row.sandboxId
+      }),
+      openUrl: `/api/sandbox/${row.sandboxId}`
+    }));
+
+    return Response.json({ projects: sandboxProjects });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    const prismaCode =
+      typeof e === "object" && e !== null && "code" in e ? String((e as { code: unknown }).code) : null;
+    console.error("[GET /api/projects]", e);
+    const schemaHint =
+      /column/i.test(msg) ||
+      /does not exist/i.test(msg) ||
+      /Unknown column/i.test(msg) ||
+      /no such column/i.test(msg);
+    const errorText = schemaHint
+      ? `Схема БД не совпадает с кодом: выполните «npx prisma migrate deploy» и перезапустите сервер. (${msg})`
+      : msg;
+    return Response.json({ error: errorText, prismaCode }, { status: 500 });
   }
-
-  const rows = await sandboxManager.listSandboxesByOwner(guard.data.user.id);
-  const projects = rows.map((row) => ({
-    id: row.sandboxId,
-    name: sanitizeProjectTitleForUser(row.title || "") || "Новый проект",
-    subdomain: row.subdomain,
-    status: row.updatedAt === row.createdAt ? "Черновик" : "Готов",
-    createdAt: new Date(row.createdAt).toISOString(),
-    updatedAt: new Date(row.updatedAt).toISOString(),
-    embedUrl: `/api/sandbox/${row.sandboxId}`,
-        editUrl: `/playground/build?sandboxId=${encodeURIComponent(row.sandboxId)}`,
-    openUrl: `/api/sandbox/${row.sandboxId}`
-  }));
-
-  return Response.json({ projects });
 }
 
 async function postProject(req: NextRequest) {
@@ -82,28 +154,38 @@ async function postProject(req: NextRequest) {
   if (!guard.ok) {
     return new Response(guard.message, { status: guard.status });
   }
+
+  const body = (await req.json().catch(() => null)) as {
+    name?: string;
+    subdomain?: string;
+    preferredEditor?: unknown;
+  } | null;
+
   const projectGate = await checkProjectCreationAllowed(guard.data.user.id, guard.data.user.plan);
   if (!projectGate.ok) {
     return new Response(projectGate.message, { status: projectGate.status });
   }
-  const body = (await req.json().catch(() => null)) as { name?: string; subdomain?: string } | null;
-  const projectId = crypto.randomUUID();
   const name = sanitizeProjectTitleForUser(body?.name?.trim() || "") || "New project";
+
+  const projectId = crypto.randomUUID();
   const subdomain =
     typeof body?.subdomain === "string" && body.subdomain.trim()
       ? normalizeProjectSubdomain(body.subdomain)
       : undefined;
+  const preferredEditor = parsePreferredPlaygroundEditor(body?.preferredEditor);
   const project = await upsertProjectCell({
     projectId,
     ownerId: guard.data.user.id,
     name,
-    subdomain
+    subdomain,
+    ...(preferredEditor ? { preferredEditor } : {})
   });
   return Response.json({
     project: {
       id: project.projectId,
       name: project.name,
       subdomain: project.subdomain,
+      preferredEditor: project.preferredEditor,
       createdAt: project.createdAt.toISOString()
     }
   });

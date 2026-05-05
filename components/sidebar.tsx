@@ -11,7 +11,6 @@ import {
   Bot,
   ChevronRight,
   CreditCard,
-  FolderKanban,
   HelpCircle,
   LogOut,
   Menu,
@@ -40,7 +39,6 @@ import type { MessageKey } from "@/lib/i18n";
 
 const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot }[] = [
   { href: "/playground", labelKey: "nav_playground", icon: Bot },
-  { href: "/projects", labelKey: "nav_projects", icon: FolderKanban },
   { href: "/pricing", labelKey: "nav_pricing", icon: CreditCard },
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },

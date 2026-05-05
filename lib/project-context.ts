@@ -1,10 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import {
+  normalizePreferredPlaygroundEditor,
+  type PreferredPlaygroundEditor
+} from "@/lib/playground-project-edit-url";
 
 export type ProjectScope = {
   projectId: string;
   ownerId: string;
   name: string;
   subdomain: string;
+  preferredEditor: PreferredPlaygroundEditor;
   createdAt: Date;
 };
 
@@ -73,6 +78,7 @@ export async function upsertProjectCell(input: {
   ownerId: string;
   name: string;
   subdomain?: string;
+  preferredEditor?: PreferredPlaygroundEditor;
 }): Promise<ProjectScope> {
   const projectId = normalizeProjectId(input.projectId);
   const normalizedName = normalizeProjectName(input.name);
@@ -87,6 +93,7 @@ export async function upsertProjectCell(input: {
       ownerId: true,
       name: true,
       subdomain: true,
+      preferredEditor: true,
       createdAt: true
     }
   });
@@ -100,12 +107,17 @@ export async function upsertProjectCell(input: {
     );
     const row = await prisma.project.update({
       where: { id: projectId },
-      data: { name: normalizedName, subdomain },
+      data: {
+        name: normalizedName,
+        subdomain,
+        ...(input.preferredEditor !== undefined ? { preferredEditor: input.preferredEditor } : {})
+      },
       select: {
         id: true,
         ownerId: true,
         name: true,
         subdomain: true,
+        preferredEditor: true,
         createdAt: true
       }
     });
@@ -114,6 +126,7 @@ export async function upsertProjectCell(input: {
       ownerId: row.ownerId,
       name: row.name,
       subdomain: row.subdomain,
+      preferredEditor: normalizePreferredPlaygroundEditor(row.preferredEditor),
       createdAt: row.createdAt
     };
   }
@@ -126,13 +139,15 @@ export async function upsertProjectCell(input: {
       id: projectId,
       ownerId: input.ownerId,
       name: normalizedName,
-      subdomain
+      subdomain,
+      preferredEditor: input.preferredEditor ?? "build"
     },
     select: {
       id: true,
       ownerId: true,
       name: true,
       subdomain: true,
+      preferredEditor: true,
       createdAt: true
     }
   });
@@ -141,6 +156,7 @@ export async function upsertProjectCell(input: {
     ownerId: created.ownerId,
     name: created.name,
     subdomain: created.subdomain,
+    preferredEditor: normalizePreferredPlaygroundEditor(created.preferredEditor),
     createdAt: created.createdAt
   };
 }
@@ -156,6 +172,7 @@ export async function getProjectScopeForOwner(
       ownerId: true,
       name: true,
       subdomain: true,
+      preferredEditor: true,
       createdAt: true
     }
   });
@@ -165,6 +182,7 @@ export async function getProjectScopeForOwner(
     ownerId: row.ownerId,
     name: row.name,
     subdomain: row.subdomain,
+    preferredEditor: normalizePreferredPlaygroundEditor(row.preferredEditor),
     createdAt: row.createdAt
   };
 }
@@ -184,13 +202,21 @@ export async function listProjectScopesForOwner(ownerId: string): Promise<Projec
   const rows = await prisma.project.findMany({
     where: { ownerId },
     orderBy: { updatedAt: "desc" },
-    select: { id: true, ownerId: true, name: true, subdomain: true, createdAt: true }
+    select: {
+      id: true,
+      ownerId: true,
+      name: true,
+      subdomain: true,
+      preferredEditor: true,
+      createdAt: true
+    }
   });
   return rows.map((row) => ({
     projectId: row.id,
     ownerId: row.ownerId,
     name: row.name,
     subdomain: row.subdomain,
+    preferredEditor: normalizePreferredPlaygroundEditor(row.preferredEditor),
     createdAt: row.createdAt
   }));
 }

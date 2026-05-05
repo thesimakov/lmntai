@@ -25,6 +25,10 @@ export type BuilderHandoff = {
    * С /playground: только превью макета, без цепочки промпта/описания и без автозапуска чата агента.
    */
   templateDirectPreview?: boolean;
+  /** Формат контента: несколько страниц одного шаблона или одна страница (главная и т.п.). */
+  sitePageFormat?: "reusable" | "single";
+  /** Уникальный идентификатор типа/шаблона в стиле API (латиница, цифры, подчёркивание). */
+  pageTypeApiId?: string;
 };
 
 export function readBuilderHandoff(): BuilderHandoff | null {
@@ -48,13 +52,23 @@ export function readBuilderHandoff(): BuilderHandoff | null {
         };
       }
     }
+    const sitePageFormatRaw = (data as { sitePageFormat?: string }).sitePageFormat;
+    const sitePageFormat =
+      sitePageFormatRaw === "reusable" || sitePageFormatRaw === "single" ? sitePageFormatRaw : undefined;
+    const pageTypeApiIdRaw = (data as { pageTypeApiId?: string }).pageTypeApiId;
+    const pageTypeApiId =
+      typeof pageTypeApiIdRaw === "string" && pageTypeApiIdRaw.trim().length > 0
+        ? pageTypeApiIdRaw.trim()
+        : undefined;
     return {
       idea,
       projectKind: isProjectKind(pk) ? pk : undefined,
       ...(buildTemplate ? { buildTemplate } : {}),
       ...((data as { templateDirectPreview?: boolean }).templateDirectPreview === true
         ? { templateDirectPreview: true as const }
-        : {})
+        : {}),
+      ...(sitePageFormat ? { sitePageFormat } : {}),
+      ...(pageTypeApiId ? { pageTypeApiId } : {})
     };
   } catch {
     return null;
@@ -73,11 +87,17 @@ export function isHandoffTemplateDirectPreview(h: BuilderHandoff): boolean {
   return Boolean(idea && idea === label);
 }
 
+export type SaveBuilderHandoffOptions = {
+  templateDirectPreview?: boolean;
+  sitePageFormat?: "reusable" | "single";
+  pageTypeApiId?: string;
+};
+
 export function saveBuilderHandoff(
   idea: string,
   projectKind?: ProjectKind,
   buildTemplate?: BuilderHandoffBuildTemplate | null,
-  options?: { templateDirectPreview?: boolean }
+  options?: SaveBuilderHandoffOptions
 ) {
   const trimmed = idea.trim();
   if (!trimmed) return;
@@ -125,6 +145,22 @@ export function saveBuilderHandoff(
   if (mergedProjectKind) payload.projectKind = mergedProjectKind;
   if (mergedBuildTemplate) payload.buildTemplate = mergedBuildTemplate;
   if (mergedDirectPreview) payload.templateDirectPreview = true;
+
+  const fmtOpt = options?.sitePageFormat;
+  const mergedFormat =
+    fmtOpt === "reusable" || fmtOpt === "single"
+      ? fmtOpt
+      : prev?.sitePageFormat === "reusable" || prev?.sitePageFormat === "single"
+        ? prev.sitePageFormat
+        : undefined;
+  if (mergedFormat) payload.sitePageFormat = mergedFormat;
+
+  const apiFromOptions = options?.pageTypeApiId;
+  const mergedApiId =
+    apiFromOptions !== undefined
+      ? apiFromOptions.trim() || undefined
+      : prev?.pageTypeApiId?.trim();
+  if (mergedApiId) payload.pageTypeApiId = mergedApiId;
 
   try {
     localStorage.setItem(BUILDER_STORAGE_KEY, JSON.stringify(payload));

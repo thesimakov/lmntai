@@ -31,11 +31,11 @@ async function deleteProject(
   const userId = guard.data.user.id;
 
   if (isLemnityAiBridgeEnabledServer()) {
-    const removed = await deleteLemnityAiSessionForUser(userId, id);
-    if (removed === 0) {
+    await deleteLemnityAiSessionForUser(userId, id);
+    const cellRemoved = await deleteProjectCellForOwner(id, userId);
+    if (!cellRemoved) {
       return new Response("Not found", { status: 404 });
     }
-    await deleteProjectCellForOwner(id, userId);
     return new Response(null, { status: 204 });
   }
 

@@ -151,10 +151,13 @@ export async function requireDbUser(): Promise<GuardResult<DbUserContext>> {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[requireDbUser] prisma error", err);
+    const hint = /Can't reach database server|ECONNREFUSED|P1001/i.test(detail)
+      ? " Запустите PostgreSQL (в корне проекта: npm run db:up, затем npm run db:migrate) и проверьте DATABASE_URL."
+      : "";
     return {
       ok: false,
       status: 503,
-      message: `База данных недоступна или ошибка запроса: ${detail.slice(0, 200)}`
+      message: `База данных недоступна или ошибка запроса: ${detail.slice(0, 200)}${hint}`
     };
   }
 }

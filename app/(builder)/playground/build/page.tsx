@@ -180,6 +180,9 @@ export default function PromptBuildPage() {
   const { ready: lemnityAiBridgeReady, fullParity: shouldUseLemnityAiBridge } = useLemnityAiBridgeFromServer();
   const requestedSessionId = searchParams.get("sessionId");
   const requestedSandboxId = searchParams.get("sandboxId")?.trim() || null;
+  const requestedProjectIdParam = searchParams.get("projectId")?.trim() || null;
+  const requestedProjectIdFromUrlRef = useRef<string | null>(requestedProjectIdParam);
+  requestedProjectIdFromUrlRef.current = requestedProjectIdParam;
   const mountedRef = useRef(true);
   const requestAbortRef = useRef<AbortController | null>(null);
   const streamRequestSeqRef = useRef(0);
@@ -189,7 +192,7 @@ export default function PromptBuildPage() {
   const lastSsePreviewSandboxIdRef = useRef<string | null>(null);
   /** Песочница, созданная только для мгновенного превью стартового шаблона (до ответа агента). */
   const templatePreviewSandboxIdRef = useRef<string | null>(null);
-  const pendingProjectIdRef = useRef<string | null>(requestedSandboxId);
+  const pendingProjectIdRef = useRef<string | null>(requestedProjectIdParam ?? requestedSandboxId);
   const [hostProjectId, setHostProjectId] = useState<string | null>(null);
   /** После первого завершения GET /api/projects/current (или ошибки сети) — чтобы handoff превью шаблона не летел до прихода контекста хост-проекта. */
   const [projectScopeReady, setProjectScopeReady] = useState(false);
@@ -479,6 +482,12 @@ export default function PromptBuildPage() {
   }, []);
 
   useEffect(() => {
+    const id = requestedProjectIdParam?.trim();
+    if (!id) return;
+    pendingProjectIdRef.current = id;
+  }, [requestedProjectIdParam]);
+
+  useEffect(() => {
     hostProjectIdRef.current = hostProjectId;
   }, [hostProjectId]);
 
@@ -495,6 +504,9 @@ export default function PromptBuildPage() {
     })
       .then(async (res) => {
         if (!res.ok || cancelled) return;
+        if (requestedProjectIdFromUrlRef.current?.trim()) {
+          return;
+        }
         const payload = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
         const id = typeof payload?.project?.id === "string" ? payload.project.id.trim() : "";
         if (!id || cancelled) return;
@@ -513,6 +525,11 @@ export default function PromptBuildPage() {
   }, []);
 
   const reserveProjectId = useCallback(() => {
+    const urlId = requestedProjectIdFromUrlRef.current?.trim();
+    if (urlId) {
+      pendingProjectIdRef.current = urlId;
+      return urlId;
+    }
     const h = hostProjectIdRef.current?.trim();
     if (h) {
       pendingProjectIdRef.current = h;

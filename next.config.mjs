@@ -8,8 +8,11 @@ const nextConfig = {
   // Когда в родительской папке есть ещё один package-lock, Next 15 путает корень — явно указываем репо.
   outputFileTracingRoot: __dirname,
   /** esbuild — только для серверного бандла превью Lovable; не тянуть .d.ts в client graph. */
-  serverExternalPackages: ["esbuild"],
+  /** Prisma обязан браться из `node_modules` после `generate`; иначе бандлер иногда подмешивает устаревший DMMF (нет `preferredEditor`). */
+  serverExternalPackages: ["esbuild", "nodemailer", "@prisma/client"],
   experimental: {
+    /** У части сборок Next 15 dev падает с 500: SegmentViewNode / React Client Manifest. */
+    devtoolSegmentExplorer: false,
     // Включение на проде (Next 14.2.x) у части деплоев давало в рантайме
     // TypeError: Cannot read properties of undefined (reading 'clientModules').
     // register() в instrumentation.ts не критичен для рендера; при необходимости вернуть
@@ -43,6 +46,11 @@ const nextConfig = {
         pathname: "/**"
       }
     ]
+  },
+  async redirects() {
+    return [
+      { source: "/playground/grapes", destination: "/playground/box/editor", permanent: true }
+    ];
   },
   async rewrites() {
     return [{ source: "/api/manus/:path*", destination: "/api/lemnity-ai/:path*" }];

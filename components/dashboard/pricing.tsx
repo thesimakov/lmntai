@@ -362,7 +362,7 @@ export function Pricing() {
     } else if (pr?.applicable && pr.kind === "BONUS_TOKENS" && (pr.bonusTokens ?? 0) > 0) {
       proLine = {
         ...proLineBase,
-        promoLine: `+${(pr.bonusTokens ?? 0).toLocaleString("ru-RU")} ${t("pricing_promo_tokens_gift")}`
+        promoLine: t("pricing_promo_bonus_generic")
       }
     }
 
@@ -380,7 +380,7 @@ export function Pricing() {
     } else if (tm?.applicable && tm.kind === "BONUS_TOKENS" && (tm.bonusTokens ?? 0) > 0) {
       teamLine = {
         ...teamLineBase,
-        promoLine: `+${(tm.bonusTokens ?? 0).toLocaleString("ru-RU")} ${t("pricing_promo_tokens_gift")}`
+        promoLine: t("pricing_promo_bonus_generic")
       }
     }
 
@@ -398,7 +398,6 @@ export function Pricing() {
         t("pricing_plan_pro_feat_1"),
         t("pricing_plan_pro_feat_2"),
         t("pricing_plan_pro_feat_3"),
-        t("pricing_plan_pro_feat_4"),
       ],
       cta: t("pricing_plan_pro_cta"),
       current: false,

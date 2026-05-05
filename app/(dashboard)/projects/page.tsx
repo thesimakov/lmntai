@@ -1,10 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Frame, Loader2, Pencil, Rocket, Sparkles, Trash2 } from "lucide-react";
 
 import { useI18n } from "@/components/i18n-provider";
+import { NewProjectFlowDialog } from "@/components/dashboard/new-project-flow-dialog";
 import { PageTransition } from "@/components/page-transition";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,42 +24,74 @@ type RuntimeProject = {
 };
 
 export default function ProjectsPage() {
+  return (
+    <Suspense
+      fallback={
+        <PageTransition>
+          <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-border/60 bg-card/20">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden />
+          </div>
+        </PageTransition>
+      }
+    >
+      <ProjectsPageContent />
+    </Suspense>
+  );
+}
+
+function ProjectsPageContent() {
   const { t, lang } = useI18n();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [projects, setProjects] = useState<RuntimeProject[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+
+  const loadProjects = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const res = await fetch("/api/projects", { credentials: "include" });
+      if (!res.ok) {
+        throw new Error(await res.text().catch(() => t("projects_load_failed")));
+      }
+      const data = (await res.json()) as { projects?: RuntimeProject[] };
+      setProjects(data.projects ?? []);
+    } catch {
+      setLoadError(t("projects_load_failed"));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    void loadProjects();
+  }, [loadProjects]);
+
+  useEffect(() => {
+    const onRefresh = () => {
+      void loadProjects();
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("playground-projects-refresh", onRefresh);
+      return () => window.removeEventListener("playground-projects-refresh", onRefresh);
+    }
+    return undefined;
+  }, [loadProjects]);
+
+  useEffect(() => {
+    if (searchParams.get("new") !== "1") return;
+    setNewProjectOpen(true);
+    router.replace("/projects", { scroll: false });
+  }, [searchParams, router]);
 
   const dateLocale = useMemo(() => {
     if (lang === "en") return "en-US";
     if (lang === "tg") return "tg-TJ";
     return "ru-RU";
   }, [lang]);
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      setIsLoading(true);
-      setLoadError(null);
-      try {
-        const res = await fetch("/api/projects", { credentials: "include" });
-        if (!res.ok) {
-          throw new Error(await res.text().catch(() => t("projects_load_failed")));
-        }
-        const data = (await res.json()) as { projects?: RuntimeProject[] };
-        if (!mounted) return;
-        setProjects(data.projects ?? []);
-      } catch {
-        if (!mounted) return;
-        setLoadError(t("projects_load_failed"));
-      } finally {
-        if (mounted) setIsLoading(false);
-      }
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, [t]);
 
   const deleteProject = useCallback(
     async (project: RuntimeProject) => {
@@ -104,13 +138,17 @@ export default function ProjectsPage() {
               {projects.length} {t("projects_count")}
             </p>
           </div>
-          <Button asChild>
-            <Link href="/playground/build">
-              <Rocket className="h-4 w-4" />
-              {t("projects_new")}
-            </Link>
+          <Button type="button" onClick={() => setNewProjectOpen(true)}>
+            <Rocket className="h-4 w-4" />
+            {t("projects_new")}
           </Button>
         </div>
+
+        <NewProjectFlowDialog
+          open={newProjectOpen}
+          onOpenChange={setNewProjectOpen}
+          onProjectCreated={() => void loadProjects()}
+        />
 
         {isLoading ? (
           <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-border/60 bg-card/20">

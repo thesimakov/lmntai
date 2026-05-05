@@ -12,7 +12,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect("/login");
   }
 
-  const wall = await getStarterCabinetWallState(session.user.email, Boolean(session.user.demoOffline));
+  let wall: Awaited<ReturnType<typeof getStarterCabinetWallState>> = { show: false };
+  try {
+    wall = await getStarterCabinetWallState(session.user.email, Boolean(session.user.demoOffline));
+  } catch (err) {
+    console.error("[dashboard-layout] getStarterCabinetWallState failed", err);
+  }
 
   return (
     <div className="min-h-screen p-4">

@@ -14,6 +14,8 @@ model Project {
   owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   name      String
   subdomain String   @unique
+  /// Редактор по умолчанию: `build` — /playground/build, `box` — /playground/box/editor
+  preferredEditor String @default("build")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -28,6 +30,7 @@ model Project {
   tokenUsageLogs      TokenUsageLog[]
   manusCharges        ManusChatCharge[]
   virtualEntries      UserVirtualEntry[]
+  cmsSite             CmsSite?
 
   @@index([ownerId, updatedAt])
 }
@@ -88,6 +91,223 @@ model PublishDomainBinding {
   @@index([sandboxId, isActive])
 }
 
+/// CMS-сайт в рамках проекта (1 сайт на 1 проект).
+model CmsSite {
+  id            String   @id @default(cuid())
+  projectId     String   @unique
+  ownerId       String
+  name          String
+  defaultLocale String   @default("ru")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  project       Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner         User             @relation("CmsSiteOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       CmsSiteMember[]
+  pages         CmsPage[]
+  pageRevisions CmsPageRevision[]
+  contentTypes  CmsContentType[]
+  fields        CmsContentField[]
+  entries       CmsEntry[]
+  entryVersions CmsEntryVersion[]
+  mediaAssets   CmsMediaAsset[]
+  publishJobs   CmsPublishJob[]
+
+  @@index([ownerId, updatedAt])
+}
+
+/// Участники сайта с правами (OWNER/ADMIN/EDITOR/VIEWER).
+model CmsSiteMember {
+  id        String   @id @default(cuid())
+  siteId    String
+  userId    String
+  role      String   @default("EDITOR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site      CmsSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, userId])
+  @@index([userId, updatedAt])
+}
+
+/// Многостраничная структура сайта.
+model CmsPage {
+  id                String   @id @default(cuid())
+  siteId            String
+  parentId          String?
+  title             String
+  slug              String
+  path              String
+  kind              String   @default("page")
+  isHome            Boolean  @default(false)
+  sortOrder         Int      @default(0)
+  seoTitle          String?
+  seoDescription    String?
+  noIndex           Boolean  @default(false)
+  draftRevisionId   String?  @unique
+  publishedRevisionId String? @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  site              CmsSite          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  parent            CmsPage?         @relation("CmsPageTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children          CmsPage[]        @relation("CmsPageTree")
+  revisions         CmsPageRevision[] @relation("CmsPageToRevision")
+  draftRevision     CmsPageRevision? @relation("CmsPageDraftRevision", fields: [draftRevisionId], references: [id], onDelete: SetNull)
+  publishedRevision CmsPageRevision? @relation("CmsPagePublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, path])
+  @@index([siteId, parentId, sortOrder])
+  @@index([siteId, updatedAt])
+  @@index([siteId, isHome])
+}
+
+/// Ревизия страницы (draft/published/scheduled).
+model CmsPageRevision {
+  id         String   @id @default(cuid())
+  pageId      String
+  siteId      String
+  authorId    String
+  version     Int
+  status      String   @default("draft")
+  label       String?
+  content     Json
+  createdAt   DateTime @default(now())
+
+  page        CmsPage  @relation("CmsPageToRevision", fields: [pageId], references: [id], onDelete: Cascade)
+  site        CmsSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  author      User     @relation("CmsPageRevisionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  draftOfPage CmsPage? @relation("CmsPageDraftRevision")
+  publishedOfPage CmsPage? @relation("CmsPagePublishedRevision")
+
+  @@unique([pageId, version])
+  @@index([pageId, createdAt])
+  @@index([siteId, status, createdAt])
+}
+
+/// Описание headless-типа контента (например article, faq, team_member).
+model CmsContentType {
+  id          String   @id @default(cuid())
+  siteId      String
+  ownerId     String
+  apiKey      String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  site        CmsSite            @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  owner       User               @relation("CmsContentTypeOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  fields      CmsContentField[]
+  entries     CmsEntry[]
+
+  @@unique([siteId, apiKey])
+  @@index([ownerId, updatedAt])
+}
+
+/// Поле типа контента (настройка схемы).
+model CmsContentField {
+  id            String   @id @default(cuid())
+  siteId        String
+  contentTypeId String
+  key           String
+  label         String
+  fieldType     String
+  required      Boolean  @default(false)
+  sortOrder     Int      @default(0)
+  config        Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  site          CmsSite         @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType   CmsContentType  @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([contentTypeId, key])
+  @@index([siteId, contentTypeId, sortOrder])
+}
+
+/// Контент-элемент (entry) по типу.
+model CmsEntry {
+  id               String   @id @default(cuid())
+  siteId           String
+  contentTypeId    String
+  slug             String
+  status           String   @default("draft")
+  draftVersionId   String?  @unique
+  publishedVersionId String? @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  site             CmsSite          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  contentType      CmsContentType   @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  versions         CmsEntryVersion[] @relation("CmsEntryToVersion")
+  draftVersion     CmsEntryVersion? @relation("CmsEntryDraftVersion", fields: [draftVersionId], references: [id], onDelete: SetNull)
+  publishedVersion CmsEntryVersion? @relation("CmsEntryPublishedVersion", fields: [publishedVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([siteId, contentTypeId, slug])
+  @@index([siteId, updatedAt])
+}
+
+/// Версия entry для workflow (draft/review/published).
+model CmsEntryVersion {
+  id         String   @id @default(cuid())
+  entryId     String
+  siteId      String
+  authorId    String
+  version     Int
+  status      String   @default("draft")
+  data        Json
+  createdAt   DateTime @default(now())
+
+  entry       CmsEntry  @relation("CmsEntryToVersion", fields: [entryId], references: [id], onDelete: Cascade)
+  site        CmsSite   @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  author      User      @relation("CmsEntryVersionAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  draftOfEntry CmsEntry? @relation("CmsEntryDraftVersion")
+  publishedOfEntry CmsEntry? @relation("CmsEntryPublishedVersion")
+
+  @@unique([entryId, version])
+  @@index([siteId, status, createdAt])
+}
+
+/// Медиа-файлы сайта (library).
+model CmsMediaAsset {
+  id        String   @id @default(cuid())
+  siteId    String
+  ownerId   String
+  assetKey  String
+  url       String
+  mime      String
+  bytes     Int
+  alt       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  site      CmsSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  owner     User     @relation("CmsMediaAssetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, assetKey])
+  @@index([siteId, createdAt])
+}
+
+/// История публикаций/релизов сайта.
+model CmsPublishJob {
+  id          String   @id @default(cuid())
+  siteId       String
+  createdById  String?
+  status       String   @default("queued")
+  snapshot     Json?
+  errorMessage String?  @db.Text
+  createdAt    DateTime @default(now())
+  publishedAt  DateTime?
+
+  site         CmsSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  createdBy    User?    @relation("CmsPublishJobAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([siteId, createdAt])
+}
+
 model User {
   id             String          @id @default(cuid())
   email          String          @unique
@@ -140,6 +360,13 @@ model User {
   publishDomains PublishDomainBinding[]
   sandboxProjects SandboxProjectState[]
   virtualWorkspace UserVirtualWorkspace?
+  cmsSitesOwned CmsSite[] @relation("CmsSiteOwner")
+  cmsSiteMemberships CmsSiteMember[]
+  cmsPageRevisions CmsPageRevision[] @relation("CmsPageRevisionAuthor")
+  cmsContentTypesOwned CmsContentType[] @relation("CmsContentTypeOwner")
+  cmsEntryVersions CmsEntryVersion[] @relation("CmsEntryVersionAuthor")
+  cmsMediaAssetsOwned CmsMediaAsset[] @relation("CmsMediaAssetOwner")
+  cmsPublishJobs CmsPublishJob[] @relation("CmsPublishJobAuthor")
 
   /// Ключи прав для роли MANAGER: users.read, users.write, tariffs, team, settings.
   adminPermissions  Json?

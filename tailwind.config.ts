@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import { nextui } from "@nextui-org/theme";
 import tailwindcssAnimate from "tailwindcss-animate";
 
 const config: Config = {
@@ -6,7 +7,8 @@ const config: Config = {
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
-    "./lib/**/*.{ts,tsx}"
+    "./lib/**/*.{ts,tsx}",
+    "./node_modules/@nextui-org/theme/dist/**/*.{js,mjs,ts}"
   ],
   theme: {
     extend: {
@@ -46,6 +48,16 @@ const config: Config = {
         card: {
           DEFAULT: "hsl(var(--card) / <alpha-value>)",
           foreground: "hsl(var(--card-foreground) / <alpha-value>)"
+        },
+        sidebar: {
+          DEFAULT: "hsl(var(--sidebar-background) / <alpha-value>)",
+          foreground: "hsl(var(--sidebar-foreground) / <alpha-value>)",
+          primary: "hsl(var(--sidebar-primary) / <alpha-value>)",
+          "primary-foreground": "hsl(var(--sidebar-primary-foreground) / <alpha-value>)",
+          accent: "hsl(var(--sidebar-accent) / <alpha-value>)",
+          "accent-foreground": "hsl(var(--sidebar-accent-foreground) / <alpha-value>)",
+          border: "hsl(var(--sidebar-border) / <alpha-value>)",
+          ring: "hsl(var(--sidebar-ring) / <alpha-value>)"
         },
         panel: "#171717",
         accentFrom: "#a855f7",
@@ -162,7 +174,7 @@ const config: Config = {
       }
     }
   },
-  plugins: [tailwindcssAnimate]
+  plugins: [tailwindcssAnimate, nextui()]
 };
 
 export default config;

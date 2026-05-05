@@ -1048,6 +1048,7 @@ export const sandboxManager = {
         return {
           sandboxId: project.projectId,
           subdomain: project.subdomain,
+          preferredEditor: project.preferredEditor,
           title,
           createdAt,
           updatedAt,

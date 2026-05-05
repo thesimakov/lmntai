@@ -5,6 +5,7 @@ import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
+import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -17,7 +18,8 @@ async function respondWithHtml(projectId: string) {
     return new Response("Not found", { status: 404 });
   }
   const files = await sandboxManager.exportFiles(projectId);
-  const html = files["index.html"] ?? "<html><body>Empty</body></html>";
+  const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  const html = injectCarouselNavIntoHtmlDocument(htmlRaw);
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
