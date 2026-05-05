@@ -2,9 +2,9 @@ import { redirect } from "next/navigation";
 
 import { LoginForm } from "@/components/login-form";
 import { getSafeServerSession } from "@/lib/auth";
-import { LOGIN_PAGE_DYNAMIC, readLoginFeatures } from "@/lib/read-login-features";
+import { readLoginFeatures } from "@/lib/read-login-features";
 
-export const dynamic = LOGIN_PAGE_DYNAMIC;
+export const dynamic = "force-dynamic";
 
 export default async function HomePage({
   searchParams,
