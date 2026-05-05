@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireCmsSiteAccess } from "@/lib/cms-core";
+import { syncCmsSandboxPreviewWithFormBridge } from "@/lib/cms-sandbox-form-sync";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -80,6 +81,11 @@ async function publishSite(
     return { job, publishedPages, publishedEntries };
   });
 
+  const sandboxPreviewSync = await syncCmsSandboxPreviewWithFormBridge({ siteId });
+  if (!sandboxPreviewSync.ok) {
+    console.error("[cms publish] sandbox preview sync failed", sandboxPreviewSync.message);
+  }
+
   return Response.json({
     ok: true,
     siteId,
@@ -91,6 +97,7 @@ async function publishSite(
       createdAt: result.job.createdAt.toISOString(),
       publishedAt: result.job.publishedAt?.toISOString() ?? null,
     },
+    sandboxPreviewSync,
   });
 }
 
