@@ -45,8 +45,10 @@ function NextUIRouterProvider({
 }
 
 export function Providers({ children, initialLang, session }: ProvidersProps) {
+  /* Явный basePath: иначе клиент берёт path из NEXTAUTH_URL; при URL вида https://домен/login
+     запросы уходят не на /api/auth/* → HTML вместо JSON → CLIENT_FETCH_ERROR. */
   return (
-    <SessionProvider session={session}>
+    <SessionProvider session={session} basePath="/api/auth">
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <NextUIRouterProvider locale={initialLang}>
           <I18nProvider initialLang={initialLang}>
