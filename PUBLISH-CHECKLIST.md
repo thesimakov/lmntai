@@ -12,6 +12,32 @@
 - Persistent DB + app process manager (PM2/systemd) for stable share metadata.
 - Optional automation: set `PUBLISH_DOMAIN_PROVISION_HOOK` so app can trigger cert provisioning automatically when host becomes `VERIFIED`.
 
+### TLS для встроенных поддоменов (`*.lemnity.com`)
+
+Сертификат только для `lemnity.com` + `www` **не покрывает** `lmnt.lemnity.com` и др. — браузеры покажут ошибку имени сертификата.
+
+**Решение:** один SAN/wildcard-сертификат на **`lemnity.com`**, **`www.lemnity.com`** и **`*.lemnity.com`** (выдаётся через **DNS-01**, не HTTP-01).
+
+1. На сервере из корня репозитория:
+   - интерактивно (TXT в DNS у регистратора при каждом выпуске/renew с manual):
+     ```bash
+     sudo bash scripts/issue-ssl-wildcard-lemnity.sh manual
+     ```
+   - или автоматом через **Cloudflare** (пакет `python3-certbot-dns-cloudflare`, API token на зону):
+     ```bash
+     export CLOUDFLARE_CREDENTIALS=/root/.secrets/cloudflare-lemnity.ini
+     export LETSENCRYPT_EMAIL=you@lemnity.com
+     sudo -E bash scripts/issue-ssl-wildcard-lemnity.sh cloudflare
+     ```
+2. В nginx один блок `listen 443 ssl` с `server_name lemnity.com www.lemnity.com *.lemnity.com` и путями к **`/etc/letsencrypt/live/lemnity-unified/`** (или переименуйте через `LEMNITY_CERT_NAME`). Пример: `deploy/nginx/lemnity-unified-tls.example.conf`.
+3. Уберите отдельные `ssl_certificate` только для apex, если они перехватывают весь `:443` как `default_server` без wildcard — иначе поддомены снова получат «чужой» сертификат.
+4. Проверка:
+   ```bash
+   openssl s_client -connect lmnt.lemnity.com:443 -servername lmnt.lemnity.com </dev/null 2>/dev/null \
+     | openssl x509 -noout -ext subjectAltName
+   ```
+   В SAN должны быть apex/www и **`DNS:*.lemnity.com`** (или явный список поддоменов).
+
 ## Required DNS Side
 - A/AAAA record for each custom domain/subdomain to your server IP.
 - If using wildcard subdomains, add wildcard DNS record (`*.your-domain.tld`).
