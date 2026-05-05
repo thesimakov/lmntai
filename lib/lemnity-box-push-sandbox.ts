@@ -1,3 +1,4 @@
+import type { CmsFormBridgeContext } from "@/lib/cms-form-bridge";
 import { buildLemnityBoxIndexHtml } from "@/lib/lemnity-box-build-index-html";
 import type { LemnityBoxCanvasContent } from "@/lib/lemnity-box-editor-schema";
 import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
@@ -8,9 +9,13 @@ import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
  */
 export async function pushLemnityBoxCanvasToSandbox(
   sandboxId: string,
-  content: LemnityBoxCanvasContent
+  content: LemnityBoxCanvasContent,
+  options?: { title?: string; cmsFormBridge?: CmsFormBridgeContext }
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const docHtml = buildLemnityBoxIndexHtml(content);
+  const docHtml = buildLemnityBoxIndexHtml(content, {
+    title: options?.title,
+    cmsFormBridge: options?.cmsFormBridge,
+  });
   let body: BodyInit;
   let headers: HeadersInit;
   try {

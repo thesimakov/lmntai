@@ -111,7 +111,8 @@ model CmsSite {
   entries       CmsEntry[]
   entryVersions CmsEntryVersion[]
   mediaAssets   CmsMediaAsset[]
-  publishJobs   CmsPublishJob[]
+  publishJobs       CmsPublishJob[]
+  formSubmissions   CmsFormSubmission[]
 
   @@index([ownerId, updatedAt])
 }
@@ -157,6 +158,7 @@ model CmsPage {
   revisions         CmsPageRevision[] @relation("CmsPageToRevision")
   draftRevision     CmsPageRevision? @relation("CmsPageDraftRevision", fields: [draftRevisionId], references: [id], onDelete: SetNull)
   publishedRevision CmsPageRevision? @relation("CmsPagePublishedRevision", fields: [publishedRevisionId], references: [id], onDelete: SetNull)
+  formSubmissions   CmsFormSubmission[]
 
   @@unique([siteId, path])
   @@index([siteId, parentId, sortOrder])
@@ -306,6 +308,24 @@ model CmsPublishJob {
   createdBy    User?    @relation("CmsPublishJobAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
   @@index([siteId, createdAt])
+}
+
+/// Заявки с форм на опубликованных страницах (аналог раздела форм в Tilda).
+model CmsFormSubmission {
+  id        String   @id @default(cuid())
+  siteId    String
+  pageId    String?
+  pagePath  String?
+  formName  String?
+  fields    Json
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  site CmsSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  page CmsPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
+
+  @@index([siteId, createdAt])
+  @@index([pageId, createdAt])
 }
 
 model User {

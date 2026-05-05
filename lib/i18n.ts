@@ -851,6 +851,15 @@ export const messages = {
     playground_cms_save_entry_draft: 'Сохранить черновик',
     playground_cms_entry_status: 'Статус',
     playground_cms_entries_empty: 'У выбранного типа нет записей',
+    playground_cms_submissions_heading: 'Заявки',
+    playground_cms_submissions_intro:
+      'Ответы посетителей из форм на страницах сайта (опубликованный контент и превью с мостом форм) отображаются здесь.',
+    playground_cms_submissions_empty: 'Заявок пока нет — отправьте тест из формы на опубликованной странице.',
+    playground_cms_submissions_loading: 'Загрузка заявок…',
+    playground_cms_submissions_col_date: 'Дата',
+    playground_cms_submissions_col_page: 'Страница',
+    playground_cms_submissions_col_form: 'Форма',
+    playground_cms_submissions_col_fields: 'Данные',
     playground_cms_domain_title: 'Домен',
     playground_cms_domain_intro:
       'Адрес сайта на поддомене *.lemnity.com и при необходимости свой домен для этого проекта.',
@@ -2040,6 +2049,15 @@ export const messages = {
     playground_cms_save_entry_draft: 'Save draft',
     playground_cms_entry_status: 'Status',
     playground_cms_entries_empty: 'No entries for this type',
+    playground_cms_submissions_heading: 'Leads',
+    playground_cms_submissions_intro:
+      'Visitor submissions from site forms (published pages and preview with the form bridge) appear here.',
+    playground_cms_submissions_empty: 'No submissions yet — submit a test from a published page form.',
+    playground_cms_submissions_loading: 'Loading submissions…',
+    playground_cms_submissions_col_date: 'Date',
+    playground_cms_submissions_col_page: 'Page',
+    playground_cms_submissions_col_form: 'Form',
+    playground_cms_submissions_col_fields: 'Fields',
     playground_cms_domain_title: 'Domain',
     playground_cms_domain_intro:
       'Site URL on a *.lemnity.com subdomain and, if needed, your own domain for this project.',
@@ -3230,6 +3248,15 @@ export const messages = {
     playground_cms_save_entry_draft: 'Нигоҳ доштани чорновигӣ',
     playground_cms_entry_status: 'Ҳолат',
     playground_cms_entries_empty: 'Барои ин намуд сабт нест',
+    playground_cms_submissions_heading: 'Дархостҳо',
+    playground_cms_submissions_intro:
+      'Ҷавобҳои меҳмонон аз формаҳо дар саҳифаҳои нашршуда дар ин ҷо намоиш дода мешаванд.',
+    playground_cms_submissions_empty: 'Ҳоло дархост нест.',
+    playground_cms_submissions_loading: 'Бор кардани дархостҳо…',
+    playground_cms_submissions_col_date: 'Сана',
+    playground_cms_submissions_col_page: 'Саҳифа',
+    playground_cms_submissions_col_form: 'Форма',
+    playground_cms_submissions_col_fields: 'Маълумот',
     playground_cms_domain_title: 'Домен',
     playground_cms_domain_intro:
       'Нишонии сайт дар зердомени *.lemnity.com ва агар лозим бошад — домени шахсӣ барои ин лоиҳа.',

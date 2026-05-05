@@ -116,7 +116,7 @@ function blockToHtml(block: BlockNode): string {
   }
 
   if (block.type === "form") {
-    return `${sectionOpen(sectionStyle)}><form><h2>${escapeHtml(prop(block, "title", "Form"))}</h2><input placeholder="Имя" /><input placeholder="Email" /><button type="button">${escapeHtml(prop(block, "buttonLabel", "Отправить"))}</button></form></section>`;
+    return `${sectionOpen(sectionStyle)}><form method="post" action="#"><h2>${escapeHtml(prop(block, "title", "Form"))}</h2><input name="name" placeholder="Имя" /><input name="email" type="email" placeholder="Email" /><button type="submit">${escapeHtml(prop(block, "buttonLabel", "Отправить"))}</button></form></section>`;
   }
 
   if (block.type === "columns") {

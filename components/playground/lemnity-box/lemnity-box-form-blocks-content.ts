@@ -63,13 +63,13 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
       <div class="lf-pane-card">
         <h2 class="lf-h2">Свяжитесь с нами</h2>
         <p class="lf-lead">Оставьте заявку в форме — ответим в ближайшее время.</p>
-        <form>
+        <form method="post" action="#">
           <div class="lf-row2">
             <div><span class="lf-lab">Имя</span><input class="lf-inp" name="first_name" placeholder=""/></div>
             <div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="last_name" placeholder=""/></div>
           </div>
           <div style="margin-top:14px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" name="email" type="email" required placeholder="you@company.ru"/></div>
-          <button type="button" class="lf-btn">Отправить</button>
+          <button type="submit" class="lf-btn">Отправить</button>
         </form>
       </div>
       <div class="lf-pane-media"><img src="${IMG.dunes}" alt="" width="640" height="480"/></div>
@@ -90,12 +90,12 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
         <div style="background:#fff;border-radius:12px;padding:clamp(22px,3vw,32px);max-width:460px;width:100%;box-shadow:0 18px 48px rgba(15,23,42,.08);margin-top:-72px;">
           <h2 class="lf-h2" style="text-align:center;">Запросить расчёт</h2>
           <p class="lf-lead" style="margin-left:auto;margin-right:auto;text-align:center;">Заполните форму — подготовим предложение.</p>
-          <form>
+          <form method="post" action="#">
             <div class="lf-row2"><div><span class="lf-lab">Имя</span><input class="lf-inp" name="first_name"/></div><div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="last_name"/></div></div>
             <div style="margin-top:14px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" type="email" required name="email"/></div>
             <div style="margin-top:14px"><span class="lf-lab">Тема *</span><input class="lf-inp" required name="subject"/></div>
             <div style="margin-top:14px"><span class="lf-lab">Сообщение</span><textarea class="lf-inp lf-ta" name="message" placeholder="Кратко опишите задачу"></textarea></div>
-            <button type="button" class="lf-btn">Отправить</button>
+            <button type="submit" class="lf-btn">Отправить</button>
           </form>
         </div>
       </div>
@@ -115,7 +115,7 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
         <p class="lf-job-h">Отклик</p><hr/><p class="lf-job-p">Заполните анкету — мы свяжемся с вами.</p>
       </aside>
       <div class="lf-job-main">
-        <form>
+        <form method="post" action="#">
           <div class="lf-grid">
             <div><span class="lf-lab">Имя</span><input class="lf-inp" name="first_name"/></div>
             <div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="last_name"/></div>
@@ -126,7 +126,7 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
             <div><span class="lf-lab">Выход на работу</span><input class="lf-inp" name="start" type="date"/></div>
             <div style="grid-column:span 2"><span class="lf-lab">Ссылка на резюме *</span><input class="lf-inp" required name="cv" placeholder="https://"/></div>
           </div>
-          <button type="button" class="lf-btn">Отправить</button>
+          <button type="submit" class="lf-btn">Отправить</button>
         </form>
       </div>
     </div>
@@ -143,10 +143,10 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
     <div class="lf-split50-pad">
       <h2 class="lf-h2" style="text-align:center;">Начните бесплатно</h2>
       <p class="lf-lead" style="text-align:center;margin-left:auto;margin-right:auto;">Укажите данные ниже.</p>
-      <form style="margin-top:8px">
+      <form method="post" action="#" style="margin-top:8px">
         <div class="lf-row2"><div><span class="lf-lab">Имя</span><input class="lf-inp" name="fn"/></div><div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="ln"/></div></div>
         <div style="margin-top:14px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" type="email" required name="email"/></div>
-        <button type="button" class="lf-btn">Отправить</button>
+        <button type="submit" class="lf-btn">Отправить</button>
       </form>
     </div>
     <div class="lf-split50-img"><img src="${IMG.dunes2}" alt=""/></div>
@@ -169,12 +169,12 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
           <img src="${IMG.dunes}" alt="" style="width:min(220px,52%);border-radius:10px;object-fit:cover;margin-top:24px"/>
         </div>
       </div>
-      <form class="lf-line" style="padding-top:8px">
+      <form method="post" action="#" class="lf-line" style="padding-top:8px">
         <div class="lf-row2"><div><span class="lf-lab">Имя</span><input class="lf-inp" name="fn"/></div><div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="ln"/></div></div>
         <div style="margin-top:18px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" type="email" required name="email"/></div>
         <div style="margin-top:18px"><span class="lf-lab">Тема</span><input class="lf-inp" name="subject"/></div>
         <div style="margin-top:18px"><span class="lf-lab">Сообщение</span><input class="lf-inp" name="message" placeholder="Текст сообщения"/></div>
-        <button type="button" class="lf-btn">Отправить</button>
+        <button type="submit" class="lf-btn">Отправить</button>
       </form>
     </div>
   </div>
@@ -192,11 +192,11 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
       <div style="background:rgba(255,255,255,.94);backdrop-filter:blur(6px);padding:clamp(24px,4vw,36px);max-width:520px;width:100%;border-radius:12px;box-shadow:0 20px 50px rgba(15,23,42,.12)">
         <h2 class="lf-h2" style="text-align:center;">Подписка на новости</h2>
         <p class="lf-lead" style="text-align:center;margin-left:auto;margin-right:auto;font-size:13px">Получайте письма и доступ к материалам для подписчиков.</p>
-        <form class="lf-line">
+        <form method="post" action="#" class="lf-line">
           <div class="lf-row2"><div><span class="lf-lab">Имя</span><input class="lf-inp" name="fn"/></div><div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="ln"/></div></div>
           <div class="lf-sub-actions">
             <div><span class="lf-lab">Электропочта *</span><input class="lf-inp" type="email" required name="email"/></div>
-            <button type="button" class="lf-btn" style="margin-top:0">Подписаться</button>
+            <button type="submit" class="lf-btn" style="margin-top:0">Подписаться</button>
           </div>
         </form>
       </div>
@@ -215,11 +215,11 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
     <div class="lf-split50-pad" style="background:#f8fafc;align-items:stretch;text-align:left">
       <h2 class="lf-h2" style="font-size:clamp(20px,3.5vw,26px);text-align:left">Бесплатный урок с преподавателем</h2>
       <p class="lf-lead" style="margin-bottom:20px;text-align:left">Приходите знакомиться с группой и школой.</p>
-      <form class="lf-line">
+      <form method="post" action="#" class="lf-line">
         <div style="margin-top:14px"><input class="lf-inp" name="email" type="email" placeholder="Электропочта"/></div>
         <div style="margin-top:18px"><input class="lf-inp" name="fullname" placeholder="ФИО"/></div>
         <div style="margin-top:18px"><input class="lf-inp" name="phone" type="tel" placeholder="Телефон"/></div>
-        <button type="button" class="lf-btn lf-btn--pill" style="width:auto;display:inline-block;min-width:160px;margin-top:24px">Записаться</button>
+        <button type="submit" class="lf-btn lf-btn--pill" style="width:auto;display:inline-block;min-width:160px;margin-top:24px">Записаться</button>
       </form>
     </div>
   </div>

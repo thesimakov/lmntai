@@ -1,10 +1,26 @@
 import type { NextRequest } from "next/server";
 
+import { injectCmsFormBridgeIntoPageDocument } from "@/lib/cms-form-bridge";
 import { prisma } from "@/lib/prisma";
+import type { PageDocument } from "@/lib/lemnity-box-editor-schema";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+function enrichPublishedContent(
+  content: unknown,
+  ctx: { siteId: string; pageId: string; path: string },
+): unknown {
+  if (!content || typeof content !== "object") return content;
+  const c = content as PageDocument;
+  if (c.version !== 1 || !c.grapesjs || typeof c.grapesjs.html !== "string") return content;
+  return injectCmsFormBridgeIntoPageDocument(c, {
+    siteId: ctx.siteId,
+    pageId: ctx.pageId,
+    pagePath: ctx.path,
+  });
+}
 
 async function getPublishedPages(
   req: NextRequest,
@@ -42,7 +58,11 @@ async function getPublishedPages(
       seoDescription: p.seoDescription,
       noIndex: p.noIndex,
       publishedAt: p.publishedRevision?.createdAt?.toISOString() ?? null,
-      content: p.publishedRevision?.content ?? null,
+      content: enrichPublishedContent(p.publishedRevision?.content ?? null, {
+        siteId,
+        pageId: p.id,
+        path: p.path,
+      }),
     })),
   });
 }

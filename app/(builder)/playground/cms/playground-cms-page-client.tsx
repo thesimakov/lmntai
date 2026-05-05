@@ -13,6 +13,7 @@ import {
   FileText,
   Globe,
   History,
+  Inbox,
   Layers,
   Link2,
   Loader2,
@@ -95,7 +96,24 @@ type EntryRow = {
   publishedVersion: { data: unknown } | null;
 };
 
-type CmsPanelSectionId = "pages" | "seo" | "history" | "domain" | "content-types" | "entries";
+type FormSubmissionRow = {
+  id: string;
+  pageId: string | null;
+  pagePath: string | null;
+  pageTitle: string | null;
+  formName: string | null;
+  fields: Record<string, string>;
+  createdAt: string;
+};
+
+type CmsPanelSectionId =
+  | "pages"
+  | "seo"
+  | "history"
+  | "domain"
+  | "content-types"
+  | "entries"
+  | "submissions";
 
 async function readJson<T>(res: Response): Promise<T> {
   const text = await res.text();
@@ -146,6 +164,8 @@ export default function PlaygroundCmsPage() {
   const [contentTypes, setContentTypes] = useState<ContentTypeRow[]>([]);
   const [selectedTypeId, setSelectedTypeId] = useState("");
   const [entries, setEntries] = useState<EntryRow[]>([]);
+  const [formSubmissions, setFormSubmissions] = useState<FormSubmissionRow[]>([]);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
 
   const [createPageTitle, setCreatePageTitle] = useState("");
   const [createPageSlug, setCreatePageSlug] = useState("");
@@ -210,6 +230,7 @@ export default function PlaygroundCmsPage() {
           ["domain", Link2, "playground_cms_domain_title"],
           ["content-types", Layers, "playground_cms_content_types_title"],
           ["entries", ClipboardList, "playground_cms_entries_heading"],
+          ["submissions", Inbox, "playground_cms_submissions_heading"],
         ] as const
       ).map(([id, icon, msgKey]) => ({
         id: id as CmsPanelSectionId,
@@ -302,6 +323,45 @@ export default function PlaygroundCmsPage() {
     const body = await readJson<{ entries?: EntryRow[] }>(res);
     setEntries(body.entries ?? []);
   }, []);
+
+  const loadFormSubmissions = useCallback(async (siteId: string) => {
+    if (!siteId) {
+      setFormSubmissions([]);
+      return;
+    }
+    const res = await fetch(`/api/cms/sites/${encodeURIComponent(siteId)}/form-submissions?take=120`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!res.ok) throw new Error((await res.text()) || "Не удалось загрузить заявки");
+    const body = await readJson<{ submissions?: FormSubmissionRow[] }>(res);
+    const raw = body.submissions ?? [];
+    setFormSubmissions(
+      raw.map((s) => ({
+        ...s,
+        fields:
+          s.fields && typeof s.fields === "object" && !Array.isArray(s.fields)
+            ? (s.fields as Record<string, string>)
+            : {},
+      })),
+    );
+  }, []);
+
+  useEffect(() => {
+    if (cmsActiveSection !== "submissions" || !selectedSiteId) return;
+    let cancelled = false;
+    setSubmissionsLoading(true);
+    void loadFormSubmissions(selectedSiteId)
+      .catch((e) => {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : "Ошибка загрузки заявок");
+      })
+      .finally(() => {
+        if (!cancelled) setSubmissionsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [cmsActiveSection, loadFormSubmissions, selectedSiteId]);
 
   const copyCmsUrl = useCallback(
     async (url: string) => {
@@ -946,14 +1006,27 @@ export default function PlaygroundCmsPage() {
                               </p>
                             </div>
                             <div className="flex min-w-0 flex-wrap items-center justify-start gap-1.5 sm:justify-end">
-                              <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-[11px]" asChild>
-                                <Link
-                                  href={`/playground/box/editor?siteId=${encodeURIComponent(selectedSiteId)}&pageId=${encodeURIComponent(p.id)}`}
+                              {selectedSite?.projectId ? (
+                                <Button variant="secondary" size="sm" className="h-8 gap-1.5 text-[11px]" asChild>
+                                  <Link
+                                    href={`/playground/box/editor?siteId=${encodeURIComponent(selectedSiteId)}&pageId=${encodeURIComponent(p.id)}&projectId=${encodeURIComponent(selectedSite.projectId)}&pagePath=${encodeURIComponent(p.path)}`}
+                                  >
+                                    <ExternalLink className="size-3.5 shrink-0" aria-hidden />
+                                    {t("playground_cms_edit")}
+                                  </Link>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-8 gap-1.5 text-[11px]"
+                                  disabled
+                                  title={t("playground_cms_domain_select_site")}
                                 >
                                   <ExternalLink className="size-3.5 shrink-0" aria-hidden />
                                   {t("playground_cms_edit")}
-                                </Link>
-                              </Button>
+                                </Button>
+                              )}
                               <Button
                                 type="button"
                                 size="sm"
@@ -1533,6 +1606,48 @@ export default function PlaygroundCmsPage() {
                     ) : null}
                   </div>
                 </div>
+                ) : null}
+                {cmsActiveSection === "submissions" ? (
+                  <div className="flex min-h-0 flex-col gap-3 rounded-lg border border-border bg-background p-3">
+                    {!selectedSiteId ? (
+                      <p className="text-sm text-muted-foreground">{t("playground_cms_domain_select_site")}</p>
+                    ) : (
+                      <>
+                        <p className="text-xs leading-relaxed text-muted-foreground">{t("playground_cms_submissions_intro")}</p>
+                        {submissionsLoading ? (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            {t("playground_cms_submissions_loading")}
+                          </div>
+                        ) : (
+                          <div className="min-h-0 flex-1 space-y-2 overflow-auto">
+                            {formSubmissions.map((s) => (
+                              <div key={s.id} className="rounded-md border border-border p-2 text-xs">
+                                <div className="flex flex-wrap items-center justify-between gap-2 font-medium text-foreground">
+                                  <span>{fmtDate(s.createdAt)}</span>
+                                  {s.formName ? (
+                                    <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">
+                                      {s.formName}
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="mt-1 text-muted-foreground">
+                                  <span className="font-medium text-foreground/80">{t("playground_cms_submissions_col_page")}:</span>{" "}
+                                  {s.pageTitle ?? s.pagePath ?? "—"}
+                                </p>
+                                <pre className="mt-2 max-h-40 overflow-auto rounded bg-muted p-2 font-mono text-[11px] leading-snug">
+                                  {JSON.stringify(s.fields, null, 2)}
+                                </pre>
+                              </div>
+                            ))}
+                            {formSubmissions.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">{t("playground_cms_submissions_empty")}</p>
+                            ) : null}
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
                 ) : null}
               </div>
             </main>

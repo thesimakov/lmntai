@@ -32,6 +32,9 @@ export default function PlaygroundLemnityBoxEditorPage() {
   const projectIdParam = searchParams.get("projectId")?.trim() || null;
   const cmsSiteId = searchParams.get("siteId")?.trim() || null;
   const cmsPageId = searchParams.get("pageId")?.trim() || null;
+  const cmsProjectId = searchParams.get("projectId")?.trim() || null;
+  const cmsPagePathRaw = searchParams.get("pagePath")?.trim();
+  const cmsPagePath = cmsPagePathRaw && cmsPagePathRaw.length > 0 ? cmsPagePathRaw : "/";
   const cmsMode = Boolean(cmsSiteId && cmsPageId);
   const effectiveSandboxId = sandboxId ?? projectIdParam;
   const previewUrlFromQuery = searchParams.get("previewUrl")?.trim() || null;
@@ -115,6 +118,23 @@ export default function PlaygroundLemnityBoxEditorPage() {
           return;
         }
         toast.success("Черновик CMS-страницы сохранён");
+        if (cmsProjectId) {
+          const pushed = await pushLemnityBoxCanvasToSandbox(cmsProjectId, snap, {
+            title: cmsBootstrap?.title?.trim() || undefined,
+            cmsFormBridge: { siteId: cmsSiteId, pageId: cmsPageId, pagePath: cmsPagePath },
+          });
+          if (!pushed.ok) {
+            toast.warning("Превью не обновлено", {
+              description:
+                pushed.message ||
+                "Не удалось записать index.html в проект — формы на превью могут не отправляться.",
+            });
+          } else if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("lemnity:sandbox-files-updated", { detail: { sandboxId: String(cmsProjectId) } }),
+            );
+          }
+        }
       } else if (effectiveSandboxId) {
         const pushed = await pushLemnityBoxCanvasToSandbox(effectiveSandboxId, snap);
         if (!pushed.ok) {
@@ -135,7 +155,16 @@ export default function PlaygroundLemnityBoxEditorPage() {
     } finally {
       setSavePending(false);
     }
-  }, [cmsMode, cmsPageId, cmsSiteId, effectiveSandboxId, t]);
+  }, [
+    cmsBootstrap?.title,
+    cmsMode,
+    cmsPageId,
+    cmsPagePath,
+    cmsProjectId,
+    cmsSiteId,
+    effectiveSandboxId,
+    t,
+  ]);
 
   const handlePublishConfirm = useCallback(
     async (detail: { openUrl: string }) => {

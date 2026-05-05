@@ -84,11 +84,11 @@ ${CONTACT_CSS}
 </div>
 <div style="background:#1e3a5f;color:#fff;padding:clamp(32px,5vw,52px) clamp(24px,4vw,40px);display:flex;flex-direction:column;justify-content:center">
 <h2 style="margin:0 0 24px;font-size:clamp(24px,2.8vw,32px);font-weight:800;line-height:1.15">Get in Touch With Us</h2>
-<form style="display:flex;flex-direction:column;gap:14px" onsubmit="return false">
+<form method="post" action="#" style="display:flex;flex-direction:column;gap:14px">
 <input class="ct-inp ct-inp--inv" type="text" placeholder="Name" name="name"/>
 <input class="ct-inp ct-inp--inv" type="email" placeholder="Email" name="email"/>
 <textarea class="ct-inp ct-inp--inv" placeholder="Your Message" name="message"></textarea>
-<button type="button" style="margin-top:8px;padding:14px 24px;background:#fff;color:#1e3a5f;border:0;border-radius:8px;font-weight:800;font-size:15px;cursor:pointer;width:100%">Send Request</button>
+<button type="submit" style="margin-top:8px;padding:14px 24px;background:#fff;color:#1e3a5f;border:0;border-radius:8px;font-weight:800;font-size:15px;cursor:pointer;width:100%">Send Request</button>
 </form>
 <p style="margin:16px 0 0;font-size:11px;color:rgba(255,255,255,.55);text-align:center">By clicking the button, you agree to our privacy policy</p>
 </div>
@@ -330,12 +330,12 @@ ${CONTACT_CSS}
 <a href="#" style="color:#111">${I_TW}</a>
 <a href="#" style="color:#111">${I_IG}</a>
 </div>
-<form style="max-width:420px;margin:0 auto;text-align:left;display:flex;flex-direction:column;gap:12px" onsubmit="return false">
-<input class="ct-inp" placeholder="Имя"/>
-<input class="ct-inp" placeholder="Email"/>
-<input class="ct-inp" placeholder="Тема"/>
-<textarea class="ct-inp" placeholder="Сообщение"></textarea>
-<button type="button" style="padding:14px;background:#111;color:#fff;border:0;font-weight:700;cursor:pointer;margin-top:4px">Отправить</button>
+<form method="post" action="#" style="max-width:420px;margin:0 auto;text-align:left;display:flex;flex-direction:column;gap:12px">
+<input class="ct-inp" name="name" placeholder="Имя"/>
+<input class="ct-inp" name="email" type="email" placeholder="Email"/>
+<input class="ct-inp" name="subject" placeholder="Тема"/>
+<textarea class="ct-inp" name="message" placeholder="Сообщение"></textarea>
+<button type="submit" style="padding:14px;background:#111;color:#fff;border:0;font-weight:700;cursor:pointer;margin-top:4px">Отправить</button>
 </form>
 </section>`,
   },
@@ -397,12 +397,12 @@ ${CONTACT_CSS}
 <div style="background:#faf8f0;padding:clamp(28px,5vw,48px) clamp(20px,4vw,36px);display:flex;flex-direction:column;align-items:center;text-align:center">
 <h2 style="margin:0 0 20px;font-family:'Brush Script MT','Segoe Script',cursive;font-size:clamp(32px,4vw,44px);font-weight:400;color:#b8860b">Ты на связи</h2>
 <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#4b5563;max-width:320px">2030 Terry Francois Street, San Francisco, CA 94158<br/>info@mysite.com / Tel: 123-456-7890</p>
-<form style="width:100%;max-width:340px" onsubmit="return false">
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;border-bottom:1px solid #d4c4a8;padding-bottom:8px"><input type="text" style="border:0;background:transparent;font-size:13px;width:100%" placeholder=""/><input type="text" style="border:0;background:transparent;font-size:13px;width:100%" placeholder=""/></div>
-<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:16px"><input type="text" style="border:0;background:transparent;width:100%;font-size:13px" placeholder=""/></div>
-<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:16px"><input type="text" style="border:0;background:transparent;width:100%;font-size:13px" placeholder=""/></div>
-<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:20px"><textarea style="border:0;background:transparent;width:100%;min-height:72px;font-size:13px;resize:none;font-family:inherit"></textarea></div>
-<button type="button" style="border:0;background:transparent;color:#b8860b;font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline">Отправить</button>
+<form method="post" action="#" style="width:100%;max-width:340px">
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;border-bottom:1px solid #d4c4a8;padding-bottom:8px"><input type="text" name="first_name" style="border:0;background:transparent;font-size:13px;width:100%" placeholder=""/><input type="text" name="last_name" style="border:0;background:transparent;font-size:13px;width:100%" placeholder=""/></div>
+<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:16px"><input type="text" name="line2" style="border:0;background:transparent;width:100%;font-size:13px" placeholder=""/></div>
+<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:16px"><input type="email" name="email" style="border:0;background:transparent;width:100%;font-size:13px" placeholder=""/></div>
+<div style="border-bottom:1px solid #d4c4a8;padding-bottom:8px;margin-bottom:20px"><textarea name="message" style="border:0;background:transparent;width:100%;min-height:72px;font-size:13px;resize:none;font-family:inherit"></textarea></div>
+<button type="submit" style="border:0;background:transparent;color:#b8860b;font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline">Отправить</button>
 </form>
 </div>
 <div style="min-height:280px;background:url(${FOOD}) center/cover no-repeat"></div>
