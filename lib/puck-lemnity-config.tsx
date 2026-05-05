@@ -237,6 +237,8 @@ export const lemnityPuckConfig: Config = {
         }
         return (
           <figure className="m-0" style={width === "full" ? { width: "100%" } : { maxWidth: 640 }}>
+            {/* Puck preview — произвольный URL контента; Next/Image требует домены в remotePatterns. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               className="h-auto w-full rounded-lg border border-border object-cover"
               src={src}

@@ -285,7 +285,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [blocksPanelOpen, libraryBlockId]);
+  }, [blocksPanelOpen, libraryBlockId, setBlocksPanelOpen]);
 
   useEffect(() => {
     let mounted = true;
@@ -690,6 +690,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
       editorRef.current?.destroy();
       editorRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Grapes mount-once; dock refs optional and stable object identity
   }, []);
 
   useEffect(() => {

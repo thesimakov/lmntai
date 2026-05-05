@@ -1614,15 +1614,19 @@ export default function PlaygroundCmsPage() {
                     ) : (
                       <>
                         <p className="text-xs leading-relaxed text-muted-foreground">{t("playground_cms_submissions_intro")}</p>
-                        {submissionsLoading ? (
+                            {submissionsLoading ? (
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Loader2 className="h-4 w-4 animate-spin" />
                             {t("playground_cms_submissions_loading")}
                           </div>
                         ) : (
                           <div className="min-h-0 flex-1 space-y-2 overflow-auto">
-                            {formSubmissions.map((s) => (
-                              <div key={s.id} className="rounded-md border border-border p-2 text-xs">
+                            {formSubmissions.map((s, idx) => (
+                              <div
+                                key={s.id}
+                                style={{ animationDelay: `${idx * 80}ms` }}
+                                className="rounded-md border border-border p-2 text-xs transition-colors hover:border-primary/60 hover:bg-primary/[0.03] motion-safe:animate-fade-in-up motion-reduce:animate-none"
+                              >
                                 <div className="flex flex-wrap items-center justify-between gap-2 font-medium text-foreground">
                                   <span>{fmtDate(s.createdAt)}</span>
                                   {s.formName ? (

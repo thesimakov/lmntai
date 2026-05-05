@@ -62,6 +62,8 @@ export function BuildTemplateThumbnail({
       aria-hidden
     >
       {previewSrc ? (
+        // Static asset thumbnails — Next/Image не даёт выигрыша для произвольных путей из PREVIEW_SRC_BY_SLUG.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={previewSrc}
           alt=""

@@ -172,6 +172,6 @@ function ScaledIframeLibraryPreview({ srcDoc, highlight }: { srcDoc: string; hig
 }
 
 function VariantPreview({ variant }: { variant: LemnityBoxLibraryVariant }) {
-  const srcDoc = useMemo(() => buildPreviewSrcDoc(variant), [variant.content, variant.previewCss]);
+  const srcDoc = useMemo(() => buildPreviewSrcDoc(variant), [variant]);
   return <ScaledIframeLibraryPreview srcDoc={srcDoc} highlight={false} />;
 }

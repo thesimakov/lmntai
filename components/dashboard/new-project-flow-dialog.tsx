@@ -82,19 +82,22 @@ export function NewProjectFlowDialog({ open, onOpenChange, onProjectCreated }: N
   const domainInvalid = attemptedSubmit && trimmedDomain.length > 0 && !domainValid;
   const domainTakenBlocking = domainValid && subdomainCheck === "taken";
 
-  const resetForm = () => {
+  const resetForm = useCallback(() => {
     setStep(1);
     setFormat("reusable");
     setDisplayName("");
     setDomainInput("");
     setAttemptedSubmit(false);
     setSubdomainCheck("idle");
-  };
+  }, []);
 
-  const handleOpenChange = (next: boolean) => {
-    onOpenChange(next);
-    if (!next) resetForm();
-  };
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      onOpenChange(next);
+      if (!next) resetForm();
+    },
+    [onOpenChange, resetForm]
+  );
 
   const onNameBlur = () => {
     if (domainInput.trim()) return;

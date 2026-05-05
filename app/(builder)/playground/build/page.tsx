@@ -33,7 +33,6 @@ import {
 import { rememberBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
 import {
-  buildPublicSharePageUrl,
   deriveSandboxIdFromAppPreviewUrl,
   resolvePublishOpenUrl,
   resolveShareablePreviewUrl
@@ -368,21 +367,6 @@ export default function PromptBuildPage() {
     }
     return t("playground_chat_input_placeholder_studio");
   }, [shouldUseLemnityAiBridge, buildTemplate, t]);
-
-  const handleChatVisualEditorToggle = useCallback(() => {
-    if (!previewUrl) return;
-    if (isPptxArtifact(previewArtifactMime)) return;
-    if (tab === "code" || tab === "settings") {
-      setTab("preview");
-      setVisualLayoutEditor(true);
-      return;
-    }
-    if (tab === "document") {
-      setVisualLayoutEditor(true);
-      return;
-    }
-    setVisualLayoutEditor((v) => !v);
-  }, [previewUrl, previewArtifactMime, tab]);
 
   const settingsProjectTitle = useMemo(() => {
     const raw = finalPrompt.trim() || idea.trim();
@@ -1661,6 +1645,7 @@ export default function PromptBuildPage() {
     setStage("questions");
     push("assistant", `Проект создан по запросу:\n\n“${fromStorage}”\n\nСейчас уточню детали и соберу идеальный промпт.`);
     void handleCreateQuestions(fromStorage, handoff?.projectKind);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handoff bootstrap: avoid re-run when push/handleCreateQuestions identities change
   }, [
     lemnityAiBridgeReady,
     projectScopeReady,

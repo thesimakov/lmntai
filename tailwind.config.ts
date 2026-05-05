@@ -60,8 +60,9 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring) / <alpha-value>)"
         },
         panel: "#171717",
-        accentFrom: "#a855f7",
-        accentTo: "#ec4899"
+        // Deep-blue (confidence) accents
+        accentFrom: "#0B2A5B",
+        accentTo: "#2563EB"
       },
       borderRadius: {
         DEFAULT: "15px",

@@ -6,7 +6,7 @@ import {
   type LemnityBoxCanvasEditorHandle,
   type LemnityBoxCanvasEditorProps
 } from "@/components/playground/lemnity-box/lemnity-box-canvas-editor";
-import type { LemnityBoxCanvasContent, PageDocument } from "@/lib/lemnity-box-editor-schema";
+import type { PageDocument } from "@/lib/lemnity-box-editor-schema";
 import { emptyPageDocument } from "@/lib/lemnity-box-editor-schema";
 import { readLemnityBoxCanvasDraft } from "@/lib/lemnity-box-editor-persistence";
 import { cn } from "@/lib/utils";
@@ -49,7 +49,7 @@ export const LemnityBoxVisualEditor = forwardRef<LemnityBoxVisualEditorHandle, P
     return doc;
   }, [bootstrapProp]);
 
-  const onChange = (content: LemnityBoxCanvasContent) => {
+  const onChange: LemnityBoxCanvasEditorProps["onChange"] = () => {
     onCanvasChange?.();
   };
 
