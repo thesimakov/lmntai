@@ -148,6 +148,24 @@ const ICON_SOCIAL = {
   ig: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 2h10a5 5 0 015 5v10a5 5 0 01-5 5H7a5 5 0 01-5-5V7a5 5 0 015-5zm0 2a3 3 0 00-3 3v10a3 3 0 003 3h10a3 3 0 003-3V7a3 3 0 00-3-3H7zm5 3.5A3.5 3.5 0 1015.5 12 3.5 3.5 0 0012 7.5zM17.5 6a1.5 1.5 0 11-1.5 1.5 1.5 1.5 0 011.5-1.5z"/></svg>',
 };
 
+/** Иконки для строк мобильного меню (stroke). */
+const ICON_NAV_MOBILE = {
+  home: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  chat:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  bag: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  phone:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  chevron:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>',
+};
+
+const ICON_SOCIAL_TG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 7.17a2 2 0 0 0-2.07-.42l-16.03 6.2c-1.45.56-1.44 1.38-.26 1.74l4.1 1.28 1.53 4.69c.19.58.09.81-.47.48l-3.77-2.79-1.82 1.76c-.18.18-.33.33-.68.33l.26-3.66 14.43-13.36c.63-.56-.14-.87-.97-.48z"/></svg>';
+
+const ICON_SOCIAL_VK =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.07 2H8.93C3.33 2 2 3.33 2 8.93v6.14C2 20.67 3.33 22 8.93 22h6.14c5.6 0 6.93-1.33 6.93-6.93V8.93C22 3.33 20.67 2 15.07 2zm3.28 14.27h-1.46c-.55 0-.71-.45-1.69-1.47-.85-.79-1.23-.9-1.43-.9-.3 0-.37.08-.37.47v1.34c0 .34-.11.54-1 .54-1.46 0-3.08-.87-4.22-2.5-1.72-2.39-2.19-4.19-2.19-4.56 0-.2.08-.39.47-.39h1.46c.34 0 .47.16.6.54.66 1.93 1.77 3.62 2.23 3.62.17 0 .25-.08.25-.54v-2.07c-.05-.89-.52-1-.72-1.03.17-.11.37-.15.68-.15 1.27 0 2.88.77 3.77 2.19 1.42 2.22 1.81 3.99 1.81 4.29 0 .2-.08.39-.51.39z"/></svg>';
+
 function styleV5(): string {
   return `<style>${HDR_CORE}
 .lemnity-hdr-s.hdr-e{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a}
@@ -380,6 +398,82 @@ function styleV16(): string {
   .lemnity-hdr-s.hdr-p .hdr-cb:checked+.hdr-burger span:nth-child(1){transform:translateY(7px) rotate(45deg)}
   .lemnity-hdr-s.hdr-p .hdr-cb:checked+.hdr-burger span:nth-child(2){opacity:0}
   .lemnity-hdr-s.hdr-p .hdr-cb:checked+.hdr-burger span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+}
+</style>`;
+}
+
+function styleV17(): string {
+  return `<style>${HDR_CORE}
+.lemnity-hdr-s.hdr-q{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111827;background:#fff}
+.lemnity-hdr-s.hdr-q a.hdr-brand--logo,.lemnity-hdr-s.hdr-q .hdr-brand--logo{background:none;border:0;padding:0;box-shadow:none}
+.lemnity-hdr-s.hdr-q a.hdr-brand--logo:hover .lemnity-hdr-logo{transform:none}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.lemnity-hdr-s.hdr-q .hdr-shell{background:#fff;border-bottom:1px solid #e5e7eb;position:relative;z-index:40}
+.lemnity-hdr-s.hdr-q .hdr-row-q{max-width:1180px;margin:0 auto;padding:12px clamp(14px,4vw,24px);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:nowrap;min-height:52px}
+.lemnity-hdr-s.hdr-q .hdr-burger-q{display:none;flex-direction:column;justify-content:center;gap:5px;cursor:pointer;padding:10px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;margin-left:auto;flex-shrink:0}
+.lemnity-hdr-s.hdr-q .hdr-burger-q span{display:block;width:22px;height:2px;background:#111827;border-radius:1px;transition:transform .28s ease,opacity .2s ease}
+.lemnity-hdr-s.hdr-q .hdr-desktop-nav{display:flex;align-items:center;gap:6px 8px;flex:1;justify-content:center;flex-wrap:nowrap;min-width:0}
+.lemnity-hdr-s.hdr-q .hdr-nav-link{display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;font-weight:400;font-size:.9rem;color:#4b5563;text-decoration:none;transition:background .2s,color .2s;border:1px solid transparent;flex-shrink:0;box-shadow:none}
+.lemnity-hdr-s.hdr-q .hdr-nav-link:hover{color:#111827;background:#f3f4f6}
+.lemnity-hdr-s.hdr-q .hdr-item-mega:hover .hdr-nav-link--mega,.lemnity-hdr-s.hdr-q .hdr-item-mega:focus-within .hdr-nav-link--mega{background:#2563eb;color:#fff;border-color:transparent}
+.lemnity-hdr-s.hdr-q .hdr-q-chev{display:inline-flex;flex-shrink:0;transition:transform .2s ease}
+.lemnity-hdr-s.hdr-q .hdr-item-mega:hover .hdr-q-chev,.lemnity-hdr-s.hdr-q .hdr-item-mega:focus-within .hdr-q-chev{transform:rotate(180deg)}
+.lemnity-hdr-s.hdr-q .hdr-item-mega{position:relative;flex-shrink:0}
+.lemnity-hdr-s.hdr-q .hdr-mega-panel{position:absolute;left:50%;transform:translate3d(-50%,0,0) translateY(8px);top:100%;width:min(920px,calc(100vw - 32px));margin-top:8px;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .22s ease,visibility .22s ease,transform .22s ease;z-index:50;contain:paint}
+.lemnity-hdr-s.hdr-q .hdr-item-mega:hover .hdr-mega-panel,.lemnity-hdr-s.hdr-q .hdr-item-mega:focus-within .hdr-mega-panel{opacity:1;visibility:visible;pointer-events:auto;transform:translate3d(-50%,0,0) translateY(0)}
+.lemnity-hdr-s.hdr-q .hdr-mega-inner{background:#fff;border-radius:16px;box-shadow:0 18px 50px rgba(15,23,42,.12),0 2px 8px rgba(15,23,42,.06);padding:18px;border:1px solid #f3f4f6}
+.lemnity-hdr-s.hdr-q .hdr-mega-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:640px){.lemnity-hdr-s.hdr-q .hdr-mega-grid{grid-template-columns:1fr}}
+.lemnity-hdr-s.hdr-q .hdr-mega-card{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;text-decoration:none;color:inherit;border:1px solid transparent;transition:background .2s,border-color .2s}
+.lemnity-hdr-s.hdr-q .hdr-mega-card:hover{background:#f9fafb;border-color:#e5e7eb}
+.lemnity-hdr-s.hdr-q .hdr-mega-card--active{background:#eff6ff;border-color:#bfdbfe}
+.lemnity-hdr-s.hdr-q .hdr-mega-card--active .hdr-mega-strong{color:#2563eb}
+.lemnity-hdr-s.hdr-q .hdr-mega-ico{flex-shrink:0;width:44px;height:44px;border-radius:10px;background:#e5e7eb}
+.lemnity-hdr-s.hdr-q .hdr-mega-strong{display:block;font-size:.9375rem;font-weight:400;color:#111827;line-height:1.25}
+.lemnity-hdr-s.hdr-q .hdr-mega-desc{display:block;font-size:.8125rem;color:#6b7280;line-height:1.35;margin-top:4px;font-weight:400}
+.lemnity-hdr-s.hdr-q .hdr-cta-bar{padding:10px 18px;border-radius:12px;background:#1f2937;color:#fff;font-weight:400;font-size:.875rem;text-decoration:none;white-space:nowrap;transition:background .2s,opacity .2s;flex-shrink:0}
+.lemnity-hdr-s.hdr-q .hdr-cta-bar:hover{background:#374151;opacity:.95}
+.lemnity-hdr-s.hdr-q .hdr-scrim{position:fixed;inset:0;background:rgba(17,24,39,.55);opacity:0;visibility:hidden;transition:opacity .28s ease,visibility .28s ease;z-index:180}
+.lemnity-hdr-s.hdr-q .hdr-drawer-panel{position:fixed;top:0;left:0;width:min(360px,90vw);height:100%;background:#fff;z-index:190;transform:translateX(-100%);transition:transform .3s cubic-bezier(0.22,1,0.36,1);overflow-y:auto;box-shadow:8px 0 40px rgba(0,0,0,.12);padding:56px 20px 28px;display:flex;flex-direction:column;gap:4px}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb:checked ~ .hdr-scrim{opacity:1;visibility:visible}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb:checked ~ .hdr-drawer-panel{transform:translateX(0)}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb:checked + .hdr-shell .hdr-burger-q span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb:checked + .hdr-shell .hdr-burger-q span:nth-child(2){opacity:0}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cb:checked + .hdr-shell .hdr-burger-q span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.lemnity-hdr-s.hdr-q .hdr-drawer-close{position:absolute;top:14px;right:14px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:10px;border:1px solid #e5e7eb;background:#fff;font-size:1.35rem;line-height:1;color:#374151;cursor:pointer}
+.lemnity-hdr-s.hdr-q .hdr-mobile-row{display:flex;align-items:center;gap:12px;padding:12px 4px;font-weight:400;font-size:1rem;color:#111827;text-decoration:none;border-bottom:1px solid #f3f4f6}
+.lemnity-hdr-s.hdr-q .hdr-mobile-row:hover{background:#fafafa}
+.lemnity-hdr-s.hdr-q .hdr-mobile-row .hdr-mi{display:flex;align-items:center;gap:12px;color:#374151}
+.lemnity-hdr-s.hdr-q .hdr-mobile-row .hdr-mi svg{flex-shrink:0;opacity:.85}
+.lemnity-hdr-s.hdr-q .hdr-sub-cb{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.lemnity-hdr-s.hdr-q .hdr-acc-row{display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;padding:12px 4px;border-bottom:1px solid #f3f4f6;font-weight:400;font-size:1rem;color:#111827}
+.lemnity-hdr-s.hdr-q .hdr-acc-row:hover{background:#fafafa}
+.lemnity-hdr-s.hdr-q .hdr-acc-left{display:flex;align-items:center;gap:12px;color:#374151}
+.lemnity-hdr-s.hdr-q .hdr-acc-chev{transition:transform .25s ease;display:flex;opacity:.65}
+.lemnity-hdr-s.hdr-q .hdr-sub-cb:checked + .hdr-acc-row .hdr-acc-chev{transform:rotate(180deg)}
+.lemnity-hdr-s.hdr-q .hdr-mobile-sub{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.lemnity-hdr-s.hdr-q .hdr-sub-cb:checked ~ .hdr-mobile-sub{max-height:520px}
+.lemnity-hdr-s.hdr-q .hdr-mobile-sub a{display:block;padding:10px 12px 10px 36px;font-size:.9375rem;color:#4b5563;text-decoration:none;border-radius:8px}
+.lemnity-hdr-s.hdr-q .hdr-mobile-sub a:hover{background:#f3f4f6;color:#111827}
+.lemnity-hdr-s.hdr-q .hdr-drawer-foot{margin-top:auto;padding-top:24px;display:flex;flex-direction:column;gap:16px}
+.lemnity-hdr-s.hdr-q .hdr-drawer-foot p{margin:0;font-size:.875rem;color:#6b7280;line-height:1.45}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cta{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:12px 16px;border-radius:12px;background:#2563eb;color:#fff;font-weight:400;font-size:.9375rem;text-decoration:none;text-align:center;transition:background .2s,opacity .15s}
+.lemnity-hdr-s.hdr-q .hdr-drawer-cta:hover{background:#1d4ed8;opacity:.95}
+.lemnity-hdr-s.hdr-q .hdr-drawer-soc{display:flex;gap:12px;align-items:center}
+.lemnity-hdr-s.hdr-q .hdr-drawer-soc a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:#2563eb;color:#fff;text-decoration:none;transition:opacity .2s,box-shadow .2s}
+.lemnity-hdr-s.hdr-q .hdr-drawer-soc a:hover{opacity:.92;box-shadow:0 4px 12px rgba(37,99,235,.35)}
+@media (max-width:900px){
+  .lemnity-hdr-s.hdr-q .hdr-row-q{flex-wrap:wrap}
+  .lemnity-hdr-s.hdr-q .hdr-desktop-nav{display:none!important}
+  .lemnity-hdr-s.hdr-q .hdr-mega-panel{display:none!important}
+  .lemnity-hdr-s.hdr-q .hdr-cta-bar{display:none!important}
+  .lemnity-hdr-s.hdr-q .hdr-burger-q{display:flex!important}
+}
+@media (min-width:901px){
+  .lemnity-hdr-s.hdr-q .hdr-scrim,.lemnity-hdr-s.hdr-q .hdr-drawer-panel{display:none!important}
+}
+@media (prefers-reduced-motion:reduce){
+  .lemnity-hdr-s.hdr-q .hdr-mega-panel,.lemnity-hdr-s.hdr-q .hdr-drawer-panel,.lemnity-hdr-s.hdr-q .hdr-scrim,.lemnity-hdr-s.hdr-q .hdr-mobile-sub,.lemnity-hdr-s.hdr-q .hdr-q-chev,.lemnity-hdr-s.hdr-q .hdr-burger-q span{transition:none!important}
 }
 </style>`;
 }
@@ -663,6 +757,69 @@ ${styleV16()}
 <label for="lemnity-hnav-p" class="hdr-burger" aria-label="Открыть меню"><span></span><span></span><span></span></label>
 <nav class="hdr-nav" aria-label="Меню"><a href="#">О проекте</a><a href="#">Работы</a><a href="#">Тарифы</a><a href="#">Контакты</a></nav>
 </div></header>
+</section>`,
+  },
+  {
+    id: "hdr-mega-drawer-ru",
+    badge: "HD17",
+    title: "Мега-меню и выезжающее меню",
+    hint: "карточки в выпадашке, моб. drawer + CTA и TG/VK",
+    content: `<section data-gjs-name="Шапка: мега и drawer" class="lemnity-hdr-s lemnity-hdr-s--logo-dark lemnity-section hdr-q" style="margin:0;padding:0">
+${styleV17()}
+<input type="checkbox" id="lemnity-hdrawer-q" class="hdr-drawer-cb" aria-hidden="true" tabindex="-1"/>
+<header class="hdr-shell hdr-anim">
+<div class="hdr-row hdr-row-q">
+<a class="hdr-brand hdr-brand--logo" href="#">${hdrLogoImg()}</a>
+<nav class="hdr-desktop-nav" aria-label="Основное меню">
+<a href="#" class="hdr-nav-link">Главная</a>
+<a href="#" class="hdr-nav-link">О нас</a>
+<div class="hdr-item-mega">
+<a href="#" class="hdr-nav-link hdr-nav-link--mega" aria-expanded="false">Продукция<span class="hdr-q-chev">${ICON_NAV_MOBILE.chevron}</span></a>
+<div class="hdr-mega-panel" role="region" aria-label="Каталог продукции">
+<div class="hdr-mega-inner">
+<div class="hdr-mega-grid">
+<a class="hdr-mega-card hdr-mega-card--active" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Каталог решений</span><span class="hdr-mega-desc">Обзор линеек и форматов поставки</span></span></a>
+<a class="hdr-mega-card" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Отраслевые кейсы</span><span class="hdr-mega-desc">Примеры внедрения по отраслям</span></span></a>
+<a class="hdr-mega-card" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Документация</span><span class="hdr-mega-desc">Спецификации и регламенты</span></span></a>
+<a class="hdr-mega-card" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Обучение</span><span class="hdr-mega-desc">Курсы и материалы для команды</span></span></a>
+<a class="hdr-mega-card" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Партнёрам</span><span class="hdr-mega-desc">Условия и программы сотрудничества</span></span></a>
+<a class="hdr-mega-card" href="#"><span class="hdr-mega-ico" aria-hidden="true"></span><span><span class="hdr-mega-strong">Поддержка</span><span class="hdr-mega-desc">Сервисные пакеты и SLA</span></span></a>
+</div>
+</div>
+</div>
+</div>
+<a href="#" class="hdr-nav-link">Контакты</a>
+</nav>
+<a class="hdr-cta-bar" href="#">Оставить заявку</a>
+<label for="lemnity-hdrawer-q" class="hdr-burger hdr-burger-q" aria-label="Открыть меню"><span></span><span></span><span></span></label>
+</div>
+</header>
+<label for="lemnity-hdrawer-q" class="hdr-scrim" aria-hidden="true"></label>
+<aside class="hdr-drawer-panel" aria-label="Мобильное меню">
+<label for="lemnity-hdrawer-q" class="hdr-drawer-close" aria-label="Закрыть меню">×</label>
+<a href="#" class="hdr-mobile-row"><span class="hdr-mi">${ICON_NAV_MOBILE.home} Главная</span></a>
+<a href="#" class="hdr-mobile-row"><span class="hdr-mi">${ICON_NAV_MOBILE.chat} О нас</span></a>
+<input type="checkbox" id="lemnity-hsub-q" class="hdr-sub-cb" aria-hidden="true" tabindex="-1"/>
+<label for="lemnity-hsub-q" class="hdr-acc-row"><span class="hdr-acc-left">${ICON_NAV_MOBILE.bag} Продукция</span><span class="hdr-acc-chev">${ICON_NAV_MOBILE.chevron}</span></label>
+<div class="hdr-mobile-sub">
+<a href="#">Каталог решений</a>
+<a href="#">Отраслевые кейсы</a>
+<a href="#">Документация</a>
+<a href="#">Обучение</a>
+<a href="#">Партнёрам</a>
+<a href="#">Поддержка</a>
+</div>
+<a href="#" class="hdr-mobile-row"><span class="hdr-mi">${ICON_NAV_MOBILE.phone} Контакты</span></a>
+<div class="hdr-drawer-foot">
+<p>Оставьте заявку на консультацию</p>
+<a href="#" class="hdr-drawer-cta">Оставить заявку</a>
+<p>Есть вопросы? Напишите нам!</p>
+<div class="hdr-drawer-soc">
+<a href="https://t.me/" target="_blank" rel="noopener noreferrer" aria-label="Telegram">${ICON_SOCIAL_TG}</a>
+<a href="https://vk.com/" target="_blank" rel="noopener noreferrer" aria-label="ВКонтакте">${ICON_SOCIAL_VK}</a>
+</div>
+</div>
+</aside>
 </section>`,
   },
 ];

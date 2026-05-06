@@ -21,6 +21,7 @@ import { attachLemnityBoxHtmlEmbed } from "@/components/playground/lemnity-box/l
 import { attachLemnityBoxSectionWidthGrid } from "@/components/playground/lemnity-box/lemnity-box-section-width-grid";
 import { attachLemnityBoxCanvasViewportGuides } from "@/components/playground/lemnity-box/lemnity-box-canvas-viewport-guides";
 import { attachLemnityBoxLayerActions } from "@/components/playground/lemnity-box/lemnity-box-layer-actions";
+import { attachLemnityBoxEditorRightPanelsOverlay } from "@/components/playground/lemnity-box/lemnity-box-editor-right-panels-overlay";
 import { attachLemnityBoxStyleManagerChoiceDropdowns } from "@/components/playground/lemnity-box/lemnity-box-style-manager-dropdowns";
 import { mountPlaygroundBoxDeviceMenu } from "@/components/playground/lemnity-box/lemnity-box-device-dock-menu";
 import { registerLemnityBoxToolbarSiblingMoves } from "@/components/playground/lemnity-box/lemnity-box-toolbar-sibling-moves";
@@ -707,6 +708,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
   useEffect(() => {
     let mounted = true;
     let detachViewportGuides: (() => void) | undefined;
+    let detachRightPanelsOverlay: (() => void) | undefined;
     let detachScopedStyles: (() => void) | undefined;
     let detachSectionWidthGrid: (() => void) | undefined;
     let detachBlockSettings: (() => void) | undefined;
@@ -723,7 +725,9 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           import("grapesjs-preset-webpage"),
           import("grapesjs-blocks-basic"),
         ]);
-        if (!mounted || !containerRef.current || !blocksRef.current) return;
+        if (!mounted || !containerRef.current || !blocksRef.current) {
+          return;
+        }
 
         const rawInitial = initialContentRef.current ?? starterContentRef.current;
         const initialContent: LemnityBoxCanvasContent = {
@@ -1020,7 +1024,9 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           detachDeviceDock = undefined;
 
           editorMount
-            .querySelectorAll<HTMLElement>(".gjs-pn-devices-c .gjs-pn-buttons .gjs-pn-btn:not(.lemnity-box-blocks-toolbar-btn)")
+            .querySelectorAll<HTMLElement>(
+              ".gjs-pn-devices-c .gjs-pn-buttons > .gjs-pn-btn:not(.lemnity-box-blocks-toolbar-btn):not(.lemnity-box-styles-toolbar-btn)"
+            )
             .forEach((btn) => btn.style.setProperty("display", "none"));
 
           detachDeviceDock = mountPlaygroundBoxDeviceMenu(dock, editor, editorMount);
@@ -1117,6 +1123,8 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
             bmCats.models?.forEach((cat) => cat.set("open", false));
 
             detachBlocksAsideInsetRef.current = attachBlocksAsideInset(editor);
+            detachRightPanelsOverlay?.();
+            detachRightPanelsOverlay = attachLemnityBoxEditorRightPanelsOverlay(editor, () => containerRef.current);
             void fetch("/api/box-image-library?mode=seed")
               .then((r) => r.json())
               .then((body: BoxImageLibraryResponse) => {
@@ -1160,6 +1168,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
       detachDeviceDock?.();
       detachDeviceDock = undefined;
       detachViewportGuides?.();
+      detachRightPanelsOverlay?.();
       detachScopedStyles?.();
       detachSectionWidthGrid?.();
       detachBlockSettings?.();
@@ -1194,7 +1203,10 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           </div>
         </div>
       ) : null}
-      <div ref={containerRef} className="relative z-0 h-full min-h-[240px] min-w-0 flex-1" />
+      <div
+        ref={containerRef}
+        className="lemnity-box-gjs-mount relative z-0 h-full min-h-[240px] min-w-0 flex-1"
+      />
       <aside
         ref={blocksAsideRef}
         className={`lemnity-box-block-panel tilda-block-panel absolute bottom-0 left-0 z-30 flex min-h-0 w-[227px] flex-col overflow-hidden border-r border-[#eeeeee] bg-white text-[#0f172a] shadow-[4px_0_24px_rgba(15,23,42,0.12)] transition-transform duration-200 ease-out ${

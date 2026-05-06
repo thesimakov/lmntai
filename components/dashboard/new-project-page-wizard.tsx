@@ -12,8 +12,7 @@ import {
   LayoutTemplate,
   Loader2,
   Search,
-  Sparkles,
-  Tags
+  Sparkles
 } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +31,8 @@ import { cn } from "@/lib/utils";
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
 const NEW_PROJECT_AI_STEP_ENABLED = false;
+
+type BuilderChoice = "none" | "ai" | "box";
 
 const TEMPLATE_TAB_IDS = [
   "business",
@@ -86,6 +87,7 @@ export function NewProjectPageWizard() {
   const nameFieldId = useId();
   const domainFieldId = useId();
 
+  const [builderChoice, setBuilderChoice] = useState<BuilderChoice>("none");
   const [activeTemplateTab, setActiveTemplateTab] = useState<TemplateTabId>("business");
   const [displayName, setDisplayName] = useState("");
   const [domainInput, setDomainInput] = useState("");
@@ -233,243 +235,35 @@ export function NewProjectPageWizard() {
     }
   };
 
-  return (
-    <div className="mx-auto flex w-full min-w-0 max-w-full flex-col gap-10 px-4 py-8 pb-16 sm:px-6 lg:px-8">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="ghost" size="sm" className="gap-2 text-muted-foreground" asChild>
-          <Link href="/projects">
-            <ArrowLeft className="size-4 shrink-0" aria-hidden />
-            {t("projects_wizard_back_projects")}
-          </Link>
-        </Button>
-      </div>
+  const renderTemplates = (variant: "box" | "ai") => {
+    const isAi = variant === "ai";
+    const toastAi = () => toast.message(t("projects_template_ai_soon_toast"));
+    const nav = (starter: "empty" | "universal" | "consultation") => {
+      if (isAi) {
+        toastAi();
+        return;
+      }
+      void navigateNewProjectToEditor(starter);
+    };
+    const boxGate = !canProceed || creatingProject;
+    const emptyDisabled = creatingProject || subdomainCheck === "checking" || (!isAi && boxGate);
+    const pairDisabled = creatingProject || subdomainCheck === "checking" || (!isAi && boxGate);
 
-      <header className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">{t("projects_format_modal_title")}</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">{t("projects_format_modal_subtitle")}</p>
-      </header>
-
-      <section className="space-y-6" aria-labelledby="project-format-fields">
-        <span id="project-format-fields" className="sr-only">
-          {t("projects_format_modal_title")}
-        </span>
-
-        <div className="flex flex-col gap-4">
-          <div className="space-y-2">
-            <label htmlFor={nameFieldId} className="text-sm font-medium text-foreground">
-              {t("projects_format_name_label")} <span className="text-destructive">*</span>
-            </label>
-            <Input
-              id={nameFieldId}
-              value={displayName}
-              onBlur={onNameBlur}
-              onChange={(e) => setDisplayName(e.target.value)}
-              placeholder={t("projects_format_name_placeholder")}
-              autoComplete="off"
-              aria-invalid={nameMissing || nameTooShort}
-              className={cn((nameMissing || nameTooShort) && "border-destructive")}
-            />
-            {nameTooShort ? (
-              <p className="text-xs text-muted-foreground">{t("projects_name_too_short")}</p>
-            ) : null}
-            {nameMissing ? (
-              <p className="flex items-center gap-1 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_field_required")}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor={domainFieldId} className="text-sm font-medium text-foreground">
-              {t("projects_format_api_id_label")} <span className="text-destructive">*</span>
-            </label>
-            <div
-              className={cn(
-                "flex min-h-10 w-full items-stretch overflow-hidden rounded-md border border-input bg-background text-sm ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
-                (domainMissing || domainInvalid || domainTakenBlocking || subdomainCheck === "error") &&
-                  "border-destructive focus-within:ring-destructive"
-              )}
-            >
-              <Input
-                id={domainFieldId}
-                value={domainInput}
-                onChange={(e) => setDomainInput(formatSubdomainDraft(e.target.value))}
-                onBlur={() => setDomainInput(finalizeSubdomain(domainInput))}
-                placeholder={t("projects_format_api_id_placeholder")}
-                autoComplete="off"
-                spellCheck={false}
-                aria-invalid={domainMissing || domainInvalid || domainTakenBlocking || subdomainCheck === "error"}
-                className="min-w-0 flex-1 border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              />
-              <span className="flex shrink-0 items-center border-l border-input bg-muted/40 px-3 text-xs font-medium text-muted-foreground">
-                {LEMNITY_PUBLISH_SUFFIX}
-              </span>
-            </div>
-            {domainMissing ? (
-              <p className="flex items-center gap-1 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_field_required")}
-              </p>
-            ) : null}
-            {domainInvalid ? (
-              <p className="flex items-center gap-1 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_api_id_invalid")}
-              </p>
-            ) : null}
-            {domainValid && subdomainCheck === "checking" ? (
-              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
-                {t("projects_format_subdomain_checking")}
-              </p>
-            ) : null}
-            {domainValid && subdomainCheck === "available" ? (
-              <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600">
-                <Check className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_subdomain_available")}
-              </p>
-            ) : null}
-            {domainValid && subdomainCheck === "taken" ? (
-              <p className="flex items-center gap-1.5 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_subdomain_taken")}
-              </p>
-            ) : null}
-            {domainValid && subdomainCheck === "error" ? (
-              <p className="flex items-center gap-1 text-xs text-destructive">
-                <AlertCircle className="size-3.5 shrink-0" aria-hidden />
-                {t("projects_format_subdomain_check_failed")}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="space-y-4" aria-labelledby="project-summary-heading">
-        <h2 id="project-summary-heading" className="sr-only">
-          {t("projects_format_step2_title")}
-        </h2>
-
-        <Card className="gap-0 overflow-hidden py-0 shadow-sm ring-1 ring-border/60">
-          <CardContent className="divide-y divide-border/80 space-y-0 p-0">
-            <div className="flex items-start gap-3 px-4 py-3.5">
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <Tags className="size-4" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("projects_format_name_label")}
-                </p>
-                <p className="truncate text-sm font-medium text-foreground">
-                  {trimmedName || "—"}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-start gap-3 px-4 py-3.5">
-              <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                <Globe className="size-4" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1 space-y-0.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {t("projects_format_api_id_label")}
-                </p>
-                <p className="break-all font-mono text-[13px] font-medium tabular-nums text-foreground">
-                  {trimmedDomain ? `${trimmedDomain}${LEMNITY_PUBLISH_SUFFIX}` : "—"}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {NEW_PROJECT_AI_STEP_ENABLED ? (
-          <Button
-            type="button"
-            variant="outline"
-            disabled={creatingProject || !canProceed}
-            className="h-auto w-full flex-col items-start gap-1 py-4 text-left"
-            onClick={() => {
-              /* reserved */
-            }}
+    return (
+      <>
+        <header className="space-y-2 rounded-xl border border-border/60 bg-muted/25 px-4 py-4 sm:px-5 sm:py-5">
+          <h2
+            id={isAi ? "ai-page-templates-heading" : "new-page-templates-heading"}
+            className="text-xl font-semibold tracking-tight text-foreground"
           >
-            <span className="flex items-center gap-2 font-semibold">
-              <Bot className="size-4 shrink-0" />
-              {t("projects_new_via_ai")}
-            </span>
-            <span className="text-xs font-normal text-muted-foreground">{t("projects_new_via_ai_desc")}</span>
-          </Button>
-        ) : (
-          <Card className="pointer-events-none gap-0 overflow-hidden border-dashed border-muted-foreground/25 bg-muted/25 py-0 opacity-95 shadow-none">
-            <CardContent className="flex gap-4 p-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/60">
-                <Bot className="size-5" aria-hidden />
-              </span>
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-semibold text-foreground">{t("projects_new_via_ai")}</span>
-                  <Badge variant="secondary" className="font-semibold uppercase tracking-wide">
-                    {t("projects_new_via_ai_soon_badge")}
-                  </Badge>
-                </div>
-                <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_ai_desc")}</p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        <Card
-          role="button"
-          tabIndex={creatingProject || !canProceed ? -1 : 0}
-          onClick={() => {
-            if (!canProceed || creatingProject) return;
-            void navigateNewProjectToEditor("empty");
-          }}
-          onKeyDown={(e) => {
-            if (!canProceed || creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
-            e.preventDefault();
-            void navigateNewProjectToEditor("empty");
-          }}
-          className={cn(
-            "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,background]",
-            "cursor-pointer border-sky-200/90 bg-gradient-to-br from-sky-50 via-background to-violet-50/40",
-            "hover:border-sky-400/80 hover:from-sky-50/90 hover:shadow-md dark:border-sky-900/60 dark:from-sky-950/55 dark:to-violet-950/30 dark:hover:border-sky-700",
-            (!canProceed || creatingProject) && "pointer-events-none opacity-55"
-          )}
-        >
-          <CardContent className="flex gap-4 p-4">
-            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-900 dark:bg-sky-950/80 dark:text-sky-50">
-              {creatingProject ? (
-                <Loader2 className="size-5 shrink-0 animate-spin text-sky-800 dark:text-sky-200" aria-hidden />
-              ) : (
-                <LayoutTemplate className="size-5" aria-hidden />
-              )}
-            </span>
-            <div className="min-w-0 flex-1 space-y-1 self-center">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-foreground">{t("projects_new_via_box")}</span>
-                <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-                  {t("projects_format_step2_pick_box")}
-                  <ArrowRight className="size-3.5" aria-hidden />
-                </span>
-              </div>
-              <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_box_desc")}</p>
-              {!canProceed ? (
-                <p className="text-xs text-muted-foreground">{t("projects_template_box_card_hint")}</p>
-              ) : null}
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="space-y-5 border-t border-border/70 pt-10" aria-labelledby="new-page-templates-heading">
-        <header className="space-y-2">
-          <h2 id="new-page-templates-heading" className="text-xl font-semibold tracking-tight text-foreground">
-            {t("projects_new_page_title")}
+            {isAi ? t("projects_new_via_ai") : t("projects_new_page_title")}
           </h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">{t("projects_new_page_subtitle")}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            {isAi ? t("projects_new_via_ai_desc") : t("projects_new_page_subtitle")}
+          </p>
         </header>
 
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center gap-1 overflow-x-auto rounded-xl border border-border/50 bg-background/60 px-2 py-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {TEMPLATE_TAB_IDS.map((id) => (
             <Button
               key={id}
@@ -497,14 +291,9 @@ export function NewProjectPageWizard() {
           </Button>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className="flex flex-col gap-0 overflow-hidden py-0 shadow-sm">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
             <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div className="flex aspect-[4/3] items-center justify-center rounded-xl bg-muted/80">
-                <span className="flex size-24 items-center justify-center rounded-full bg-background text-4xl font-semibold text-muted-foreground shadow-inner ring-1 ring-border/70">
-                  T
-                </span>
-              </div>
               <div className="space-y-1">
                 <h3 className="font-semibold text-foreground">{t("projects_template_empty_title")}</h3>
                 <p className="text-sm text-muted-foreground">{t("projects_template_empty_desc")}</p>
@@ -513,15 +302,15 @@ export function NewProjectPageWizard() {
                 type="button"
                 variant="outline"
                 className="mt-auto w-full rounded-full font-semibold"
-                disabled={creatingProject || subdomainCheck === "checking"}
-                onClick={() => void navigateNewProjectToEditor("empty")}
+                disabled={emptyDisabled}
+                onClick={() => nav("empty")}
               >
                 {t("projects_template_select")}
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col gap-0 overflow-hidden py-0 shadow-sm">
+          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
             <CardContent className="flex flex-1 flex-col gap-4 p-4">
               <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-sky-500/15 via-fuchsia-500/15 to-amber-400/20">
                 <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
@@ -533,22 +322,27 @@ export function NewProjectPageWizard() {
                 </span>
               </div>
               <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">{t("projects_template_ai_title")}</h3>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-semibold text-foreground">{t("projects_template_ai_title")}</h3>
+                  <Badge variant="secondary" className="font-semibold uppercase tracking-wide">
+                    {t("projects_new_via_ai_soon_badge")}
+                  </Badge>
+                </div>
                 <p className="text-sm text-muted-foreground">{t("projects_template_ai_desc")}</p>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 className="mt-auto w-full rounded-full font-semibold"
-                disabled={creatingProject}
-                onClick={() => toast.message(t("projects_template_ai_soon_toast"))}
+                disabled
+                aria-disabled
               >
                 {t("projects_template_generate")}
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col gap-0 overflow-hidden py-0 shadow-sm">
+          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
             <CardContent className="flex flex-1 flex-col gap-4 p-4">
               <div
                 className="flex aspect-[4/3] flex-col justify-end rounded-xl bg-cover bg-center p-4 text-white shadow-inner ring-1 ring-border/40"
@@ -568,8 +362,8 @@ export function NewProjectPageWizard() {
                   type="button"
                   variant="outline"
                   className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={creatingProject || subdomainCheck === "checking"}
-                  onClick={() => void navigateNewProjectToEditor("universal")}
+                  disabled={pairDisabled}
+                  onClick={() => nav("universal")}
                 >
                   {t("projects_template_select")}
                 </Button>
@@ -586,7 +380,7 @@ export function NewProjectPageWizard() {
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col gap-0 overflow-hidden py-0 shadow-sm">
+          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
             <CardContent className="flex flex-1 flex-col gap-4 p-4">
               <div
                 className="flex aspect-[4/3] flex-col justify-end rounded-xl bg-cover bg-center p-4 text-white shadow-inner ring-1 ring-border/40"
@@ -606,8 +400,8 @@ export function NewProjectPageWizard() {
                   type="button"
                   variant="outline"
                   className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={creatingProject || subdomainCheck === "checking"}
-                  onClick={() => void navigateNewProjectToEditor("consultation")}
+                  disabled={pairDisabled}
+                  onClick={() => nav("consultation")}
                 >
                   {t("projects_template_select")}
                 </Button>
@@ -624,7 +418,314 @@ export function NewProjectPageWizard() {
             </CardContent>
           </Card>
         </div>
-      </section>
+      </>
+    );
+  };
+
+  return (
+    <div className="mx-auto w-full min-w-0 max-w-full px-4 py-8 pb-16 sm:px-6 lg:px-8">
+      <div className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-sky-500/15 bg-card shadow-xl shadow-sky-500/[0.07] ring-1 ring-border/50 dark:border-sky-400/15 dark:shadow-sky-950/20">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-20 -top-24 size-[22rem] rounded-full bg-gradient-to-br from-sky-400/25 via-sky-400/5 to-transparent blur-3xl dark:from-sky-500/20"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -bottom-28 -left-24 size-[24rem] rounded-full bg-gradient-to-tr from-violet-500/20 via-transparent to-transparent blur-3xl dark:from-violet-600/15"
+        />
+        <div className="relative flex flex-col gap-10 p-6 sm:p-8 md:p-10">
+          <header className="flex flex-col gap-5 border-b border-border/60 pb-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shrink-0 gap-2 border-border/80 bg-background/80 shadow-sm backdrop-blur-sm"
+                asChild
+              >
+                <Link href="/projects">
+                  <ArrowLeft className="size-4 shrink-0" aria-hidden />
+                  {t("projects_wizard_back_projects")}
+                </Link>
+              </Button>
+              <Badge
+                variant="secondary"
+                className="gap-1 border border-sky-500/20 bg-sky-500/10 font-semibold text-sky-800 shadow-sm dark:bg-sky-500/15 dark:text-sky-200"
+              >
+                <Sparkles className="size-3.5 opacity-90" aria-hidden />
+                Lemnity
+              </Badge>
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
+                {t("projects_format_modal_title")}
+              </h1>
+              <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
+                {t("projects_new_page_subtitle")}
+              </p>
+            </div>
+          </header>
+
+          <section aria-labelledby="project-format-fields">
+            <span id="project-format-fields" className="sr-only">
+              {t("projects_format_modal_title")}
+            </span>
+
+            <Card className="overflow-hidden border-border/70 bg-gradient-to-b from-background/90 to-muted/20 py-0 shadow-md ring-1 ring-border/40">
+              <CardContent className="flex flex-col gap-6 px-6 py-6 sm:px-8">
+                <div className="space-y-2">
+                  <label htmlFor={nameFieldId} className="text-sm font-medium text-foreground">
+                    {t("projects_format_name_label")} <span className="text-destructive">*</span>
+                  </label>
+                  <Input
+                    id={nameFieldId}
+                    value={displayName}
+                    onBlur={onNameBlur}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    placeholder={t("projects_format_name_placeholder")}
+                    autoComplete="off"
+                    aria-invalid={nameMissing || nameTooShort}
+                    className={cn(
+                      "h-11 border-border/80 bg-background/80 shadow-inner transition-[box-shadow,ring]",
+                      "focus-visible:ring-2 focus-visible:ring-sky-500/30",
+                      (nameMissing || nameTooShort) && "border-destructive"
+                    )}
+                  />
+                  {nameTooShort ? (
+                    <p className="text-xs text-muted-foreground">{t("projects_name_too_short")}</p>
+                  ) : null}
+                  {nameMissing ? (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_field_required")}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor={domainFieldId} className="flex items-center gap-2 text-sm font-medium text-foreground">
+                    <Globe className="size-3.5 shrink-0 text-sky-600 opacity-80 dark:text-sky-400" aria-hidden />
+                    {t("projects_format_api_id_label")} <span className="text-destructive">*</span>
+                  </label>
+                  <div
+                    className={cn(
+                      "flex min-h-11 w-full items-stretch overflow-hidden rounded-md border border-input bg-background/80 text-sm shadow-inner ring-offset-background transition-[box-shadow,ring]",
+                      "focus-within:ring-2 focus-within:ring-sky-500/30 focus-within:ring-offset-2",
+                      (domainMissing || domainInvalid || domainTakenBlocking || subdomainCheck === "error") &&
+                        "border-destructive focus-within:ring-destructive"
+                    )}
+                  >
+                    <Input
+                      id={domainFieldId}
+                      value={domainInput}
+                      onChange={(e) => setDomainInput(formatSubdomainDraft(e.target.value))}
+                      onBlur={() => setDomainInput(finalizeSubdomain(domainInput))}
+                      placeholder={t("projects_format_api_id_placeholder")}
+                      autoComplete="off"
+                      spellCheck={false}
+                      aria-invalid={
+                        domainMissing || domainInvalid || domainTakenBlocking || subdomainCheck === "error"
+                      }
+                      className="min-w-0 flex-1 border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                    <span className="flex shrink-0 items-center border-l border-input bg-sky-500/5 px-3 text-xs font-semibold text-sky-800 dark:bg-sky-950/40 dark:text-sky-200">
+                      {LEMNITY_PUBLISH_SUFFIX}
+                    </span>
+                  </div>
+                  {domainMissing ? (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_field_required")}
+                    </p>
+                  ) : null}
+                  {domainInvalid ? (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_api_id_invalid")}
+                    </p>
+                  ) : null}
+                  {domainValid && subdomainCheck === "checking" ? (
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 className="size-3.5 shrink-0 animate-spin" aria-hidden />
+                      {t("projects_format_subdomain_checking")}
+                    </p>
+                  ) : null}
+                  {domainValid && subdomainCheck === "available" ? (
+                    <p className="flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      <Check className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_subdomain_available")}
+                    </p>
+                  ) : null}
+                  {domainValid && subdomainCheck === "taken" ? (
+                    <p className="flex items-center gap-1.5 text-xs text-destructive">
+                      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_subdomain_taken")}
+                    </p>
+                  ) : null}
+                  {domainValid && subdomainCheck === "error" ? (
+                    <p className="flex items-center gap-1 text-xs text-destructive">
+                      <AlertCircle className="size-3.5 shrink-0" aria-hidden />
+                      {t("projects_format_subdomain_check_failed")}
+                    </p>
+                  ) : null}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="space-y-4" aria-labelledby="project-summary-heading">
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                <LayoutTemplate className="size-5" aria-hidden />
+              </span>
+              <div>
+                <h2 id="project-summary-heading" className="text-lg font-bold tracking-tight text-foreground">
+                  {t("projects_format_step2_title")}
+                </h2>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              {NEW_PROJECT_AI_STEP_ENABLED ? (
+                <Card
+                  role="button"
+                  tabIndex={creatingProject ? -1 : 0}
+                  aria-pressed={builderChoice === "ai"}
+                  onClick={() => {
+                    if (creatingProject) return;
+                    setBuilderChoice("ai");
+                  }}
+                  onKeyDown={(e) => {
+                    if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                    e.preventDefault();
+                    setBuilderChoice("ai");
+                  }}
+                  className={cn(
+                    "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                    "cursor-pointer border-violet-200/90 bg-gradient-to-br from-violet-50 via-background to-background",
+                    "hover:border-violet-400/80 hover:shadow-md dark:border-violet-900/55 dark:from-violet-950/40 dark:hover:border-violet-700",
+                    builderChoice === "ai" && "ring-2 ring-violet-500/35",
+                    creatingProject && "pointer-events-none opacity-55"
+                  )}
+                >
+                  <CardContent className="flex gap-4 p-4">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
+                      <Bot className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1 self-center">
+                      <span className="flex items-center gap-2 font-semibold text-foreground">
+                        {t("projects_new_via_ai")}
+                      </span>
+                      <p className="text-sm font-normal leading-snug text-muted-foreground">
+                        {t("projects_new_via_ai_desc")}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card
+                  role="button"
+                  tabIndex={creatingProject ? -1 : 0}
+                  aria-pressed={builderChoice === "ai"}
+                  onClick={() => {
+                    if (creatingProject) return;
+                    setBuilderChoice("ai");
+                  }}
+                  onKeyDown={(e) => {
+                    if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                    e.preventDefault();
+                    setBuilderChoice("ai");
+                  }}
+                  className={cn(
+                    "gap-0 overflow-hidden border-2 py-0 shadow-none transition-[border-color,box-shadow,ring]",
+                    "cursor-pointer border-dashed border-muted-foreground/30 bg-muted/25",
+                    "hover:border-muted-foreground/50 hover:bg-muted/35",
+                    builderChoice === "ai" &&
+                      "border-violet-500/70 bg-violet-50/40 ring-2 ring-violet-500/25 dark:bg-violet-950/25",
+                    creatingProject && "pointer-events-none opacity-55"
+                  )}
+                >
+                  <CardContent className="flex gap-4 p-4">
+                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/60">
+                      <Bot className="size-5" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">{t("projects_new_via_ai")}</span>
+                        <Badge variant="secondary" className="font-semibold uppercase tracking-wide">
+                          {t("projects_new_via_ai_soon_badge")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_ai_desc")}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "box"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("box");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("box");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-md transition-[border-color,box-shadow,background,ring]",
+                  "cursor-pointer border-sky-200/90 bg-gradient-to-br from-sky-50 via-background to-violet-50/40",
+                  "hover:border-sky-400/80 hover:from-sky-50/90 hover:shadow-lg dark:border-sky-900/60 dark:from-sky-950/55 dark:to-violet-950/30 dark:hover:border-sky-700",
+                  builderChoice === "box" && "ring-2 ring-sky-500/45 shadow-sky-500/10",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-900 dark:bg-sky-950/80 dark:text-sky-50">
+                    {creatingProject ? (
+                      <Loader2 className="size-5 shrink-0 animate-spin text-sky-800 dark:text-sky-200" aria-hidden />
+                    ) : (
+                      <LayoutTemplate className="size-5" aria-hidden />
+                    )}
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-semibold text-foreground">{t("projects_new_via_box")}</span>
+                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
+                        {t("projects_format_step2_pick_box")}
+                        <ArrowRight className="size-3.5" aria-hidden />
+                      </span>
+                    </div>
+                    <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_box_desc")}</p>
+                    {!canProceed ? (
+                      <p className="text-xs text-muted-foreground">{t("projects_template_box_card_hint")}</p>
+                    ) : null}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </section>
+
+          {builderChoice === "box" ? (
+            <section
+              className="space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6"
+              aria-labelledby="new-page-templates-heading"
+            >
+              {renderTemplates("box")}
+            </section>
+          ) : builderChoice === "ai" ? (
+            <section
+              className="space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6"
+              aria-labelledby="ai-page-templates-heading"
+            >
+              {renderTemplates("ai")}
+            </section>
+          ) : null}
+        </div>
+      </div>
     </div>
   );
 }

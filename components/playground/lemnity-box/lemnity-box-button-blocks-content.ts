@@ -34,6 +34,121 @@ const I_UP = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" vie
 
 const I_CHV = `<span style="opacity:.9;font-weight:700">›</span>`;
 
+/** Иконки для бокового меню BF701 (как в шапке HD17). */
+const F701_ICONS = {
+  home: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+  chat: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  bag: '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" x2="21" y1="6" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>',
+  phone:
+    '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
+  chev: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>',
+};
+
+const F701_TG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M21.94 7.17a2 2 0 0 0-2.07-.42l-16.03 6.2c-1.45.56-1.44 1.38-.26 1.74l4.1 1.28 1.53 4.69c.19.58.09.81-.47.48l-3.77-2.79-1.82 1.76c-.18.18-.33.33-.68.33l.26-3.66 14.43-13.36c.63-.56-.14-.87-.97-.48z"/></svg>';
+
+const F701_VK =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M15.07 2H8.93C3.33 2 2 3.33 2 8.93v6.14C2 20.67 3.33 22 8.93 22h6.14c5.6 0 6.93-1.33 6.93-6.93V8.93C22 3.33 20.67 2 15.07 2zm3.28 14.27h-1.46c-.55 0-.71-.45-1.69-1.47-.85-.79-1.23-.9-1.43-.9-.3 0-.37.08-.37.47v1.34c0 .34-.11.54-1 .54-1.46 0-3.08-.87-4.22-2.5-1.72-2.39-2.19-4.19-2.19-4.56 0-.2.08-.39.47-.39h1.46c.34 0 .47.16.6.54.66 1.93 1.77 3.62 2.23 3.62.17 0 .25-.08.25-.54v-2.07c-.05-.89-.52-1-.72-1.03.17-.11.37-.15.68-.15 1.27 0 2.88.77 3.77 2.19 1.42 2.22 1.81 3.99 1.81 4.29 0 .2-.08.39-.51.39z"/></svg>';
+
+const BF701_FLOAT_CSS = `<style>
+.leb-f701-host,.leb-f701-host *{box-sizing:border-box}
+.leb-f701-host{margin:0;padding:0;height:0;min-height:0;overflow:visible;background:transparent;border:0;pointer-events:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.leb-f701-host .leb-f701-cb{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.leb-f701-host .leb-f701-fab,.leb-f701-host .leb-f701-scrim,.leb-f701-host .leb-f701-panel{pointer-events:auto}
+.leb-f701-fab{
+  position:fixed;
+  z-index:9980;
+  margin:0;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:12px 20px;
+  background:#2563eb;
+  color:#fff;
+  font-weight:400;
+  font-size:15px;
+  border-radius:12px;
+  box-shadow:0 8px 24px rgba(37,99,235,.32);
+  border:0;
+  line-height:1.25;
+  max-width:calc(100vw - 80px);
+  text-align:center;
+}
+.leb-f701-fab:hover{opacity:.95}
+.leb-f701-fab,.leb-f701-fab:visited{color:#fff;text-decoration:none}
+.leb-f701-scrim{
+  position:fixed;
+  inset:0;
+  background:rgba(17,24,39,.55);
+  opacity:0;
+  visibility:hidden;
+  transition:opacity .28s ease,visibility .28s ease;
+  z-index:9978;
+  cursor:pointer;
+}
+.leb-f701-panel{
+  position:fixed;
+  top:0;
+  left:0;
+  width:min(360px,90vw);
+  height:100%;
+  background:#fff;
+  z-index:9979;
+  transform:translateX(-100%);
+  transition:transform .3s cubic-bezier(0.22,1,0.36,1);
+  overflow-y:auto;
+  box-shadow:8px 0 40px rgba(0,0,0,.12);
+  padding:56px 20px 28px;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+}
+.leb-f701-cb:checked ~ .leb-f701-scrim{opacity:1;visibility:visible}
+.leb-f701-cb:checked ~ .leb-f701-panel{transform:translateX(0)}
+.leb-f701-close{
+  position:absolute;
+  top:14px;
+  right:14px;
+  width:40px;
+  height:40px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:10px;
+  border:1px solid #e5e7eb;
+  background:#fff;
+  font-size:1.35rem;
+  line-height:1;
+  color:#374151;
+  cursor:pointer;
+}
+.leb-f701-row{display:flex;align-items:center;gap:12px;padding:12px 4px;font-weight:400;font-size:1rem;color:#111827;text-decoration:none;border-bottom:1px solid #f3f4f6}
+.leb-f701-row:hover{background:#fafafa}
+.leb-f701-row .leb-f701-mi{display:flex;align-items:center;gap:12px;color:#374151}
+.leb-f701-row .leb-f701-mi svg{flex-shrink:0;opacity:.85}
+.leb-f701-subcb{position:absolute;opacity:0;width:0;height:0;pointer-events:none}
+.leb-f701-acc{display:flex;align-items:center;justify-content:space-between;width:100%;cursor:pointer;padding:12px 4px;border-bottom:1px solid #f3f4f6;font-weight:400;font-size:1rem;color:#111827}
+.leb-f701-acc:hover{background:#fafafa}
+.leb-f701-acc-l{display:flex;align-items:center;gap:12px;color:#374151}
+.leb-f701-acc-chev{transition:transform .25s ease;display:flex;opacity:.65}
+.leb-f701-subcb:checked + .leb-f701-acc .leb-f701-acc-chev{transform:rotate(180deg)}
+.leb-f701-subwrap{max-height:0;overflow:hidden;transition:max-height .35s ease}
+.leb-f701-subcb:checked ~ .leb-f701-subwrap{max-height:520px}
+.leb-f701-subwrap a{display:block;padding:10px 12px 10px 36px;font-size:.9375rem;color:#4b5563;text-decoration:none;border-radius:8px;font-weight:400}
+.leb-f701-subwrap a:hover{background:#f3f4f6;color:#111827}
+.leb-f701-foot{margin-top:auto;padding-top:24px;display:flex;flex-direction:column;gap:16px}
+.leb-f701-foot p{margin:0;font-size:.875rem;color:#6b7280;line-height:1.45;font-weight:400}
+.leb-f701-footcta{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:12px 16px;border-radius:12px;background:#2563eb;color:#fff;font-weight:400;font-size:.9375rem;text-decoration:none;text-align:center}
+.leb-f701-footcta:hover{background:#1d4ed8;opacity:.95}
+.leb-f701-soc{display:flex;gap:12px;align-items:center}
+.leb-f701-soc a{display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:50%;background:#2563eb;color:#fff;text-decoration:none}
+.leb-f701-soc a:hover{opacity:.92}
+@media (prefers-reduced-motion:reduce){
+  .leb-f701-panel,.leb-f701-scrim,.leb-f701-subwrap,.leb-f701-acc-chev{transition:none!important}
+}
+</style>`;
+
 const IU = "https://images.unsplash.com";
 
 export const LEMNITY_BUTTON_BLOCK_VARIANTS = [
@@ -115,16 +230,39 @@ ${BTN_CSS}
   {
     id: "btn-bf701-submit-corner",
     badge: "BF701",
-    title: "Кнопка Submit в углу",
-    hint: "макет окна браузера, чёрная кнопка",
-    content: `<section data-gjs-name="Кнопки: submit угол" class="lemnity-btn-s lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px);background:#f8fafc;font-family:system-ui,sans-serif;">
+    title: "Боковое меню: фиксированная кнопка",
+    hint: "position:fixed — по умолчанию 40px от правого края и 20px снизу; измените inline-style у кнопки для левого угла или top:20px",
+    content: `<section data-gjs-name="Кнопки: боковое меню (fixed)" class="leb-f701-host lemnity-btn-s lemnity-section" style="margin:0;padding:0;">
 ${BTN_CSS}
-<div class="leb-mock-browser" style="max-width:720px;margin:0 auto">
-<div class="leb-mock-bar"><span class="leb-mock-dot"></span><span class="leb-mock-dot"></span><span class="leb-mock-dot"></span></div>
-<div style="position:relative;min-height:160px;padding:20px;background:#fff">
-<a href="#" style="position:absolute;top:16px;right:16px;display:inline-block;padding:12px 28px;background:#111;color:#fff;font-weight:700;font-size:13px;letter-spacing:.04em;text-transform:uppercase;border-radius:4px">Отправить</a>
+${BF701_FLOAT_CSS}
+<input type="checkbox" id="leb-f701-drawer" class="leb-f701-cb" aria-hidden="true" tabindex="-1"/>
+<label for="leb-f701-drawer" data-gjs-name="Плавающая кнопка" class="leb-f701-fab" style="position:fixed;right:40px;bottom:20px;top:auto;left:auto;" aria-label="Открыть меню">Меню</label>
+<label for="leb-f701-drawer" class="leb-f701-scrim" aria-hidden="true"></label>
+<aside class="leb-f701-panel" aria-label="Боковое меню">
+<label for="leb-f701-drawer" class="leb-f701-close" aria-label="Закрыть">×</label>
+<a href="#" class="leb-f701-row"><span class="leb-f701-mi">${F701_ICONS.home} Главная</span></a>
+<a href="#" class="leb-f701-row"><span class="leb-f701-mi">${F701_ICONS.chat} О нас</span></a>
+<input type="checkbox" id="leb-f701-sub" class="leb-f701-subcb" aria-hidden="true" tabindex="-1"/>
+<label for="leb-f701-sub" class="leb-f701-acc"><span class="leb-f701-acc-l">${F701_ICONS.bag} Продукция</span><span class="leb-f701-acc-chev">${F701_ICONS.chev}</span></label>
+<div class="leb-f701-subwrap">
+<a href="#">Каталог решений</a>
+<a href="#">Отраслевые кейсы</a>
+<a href="#">Документация</a>
+<a href="#">Обучение</a>
+<a href="#">Партнёрам</a>
+<a href="#">Поддержка</a>
+</div>
+<a href="#" class="leb-f701-row"><span class="leb-f701-mi">${F701_ICONS.phone} Контакты</span></a>
+<div class="leb-f701-foot">
+<p>Оставьте заявку на консультацию</p>
+<a href="#" class="leb-f701-footcta">Оставить заявку</a>
+<p>Есть вопросы? Напишите нам!</p>
+<div class="leb-f701-soc">
+<a href="https://t.me/" target="_blank" rel="noopener noreferrer" aria-label="Telegram">${F701_TG}</a>
+<a href="https://vk.com/" target="_blank" rel="noopener noreferrer" aria-label="ВКонтакте">${F701_VK}</a>
 </div>
 </div>
+</aside>
 </section>`,
   },
   {

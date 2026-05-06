@@ -397,6 +397,9 @@
   --gjs-arrow-color: #0f172a !important;
   --gjs-dark-text-shadow: transparent !important;
   --gjs-left-width: 290px;
+  --lemnity-gjs-views-container-w: 450px;
+  --lemnity-gjs-views-strip-w: 52px;
+  position: relative !important;
   font-family: var(--font-rubik), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--tilda-ink);
   background-color: #f8fafc;
@@ -459,13 +462,145 @@
   color: var(--tilda-ink);
 }
 
+/* До attach overlay контент правой колонки не показываем (нет класса на mount-хосте) */
+.lemnity-box-gjs-mount:not(.lemnity-right-panels-overlay-ready) .gjs-editor .gjs-pn-panel.gjs-pn-views-container {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .gjs-editor .gjs-pn-panel.gjs-pn-views-container {
-  width: 290px;
+  width: var(--lemnity-gjs-views-container-w);
+  position: absolute !important;
+  left: auto !important;
+  top: var(--lemnity-gjs-right-panels-top, 0) !important;
+  height: var(--lemnity-gjs-right-panels-height, 100%) !important;
+  right: 0 !important;
+  bottom: auto !important;
+  flex: none !important;
+  z-index: 28 !important;
+  box-sizing: border-box !important;
+  padding-top: 0 !important;
+  transition: right 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .gjs-editor .gjs-pn-panel.gjs-pn-views {
-  width: 290px;
-  min-width: 151px;
+  width: var(--lemnity-gjs-views-strip-w);
+  min-width: unset !important;
+  position: absolute !important;
+  left: auto !important;
+  top: var(--lemnity-gjs-right-panels-top, 0) !important;
+  height: var(--lemnity-gjs-right-panels-height, 100%) !important;
+  right: var(--lemnity-gjs-views-container-w) !important;
+  bottom: auto !important;
+  flex: none !important;
+  z-index: 27 !important;
+  opacity: 1;
+  transition:
+    right 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease;
+}
+
+/* Узкая полоса иконок «виды»: только по высоте строки устройств/кнопок, без «хвоста» на весь холст */
+.lemnity-box-gjs-mount.lemnity-right-panels-overlay-ready .gjs-editor .gjs-pn-panel.gjs-pn-views {
+  top: var(--lemnity-gjs-views-strip-top, var(--lemnity-gjs-right-panels-top, 0)) !important;
+  height: var(--lemnity-gjs-views-strip-height, var(--lemnity-gjs-right-panels-height, 100%)) !important;
+}
+
+.gjs-editor:not(.lemnity-right-panels-collapsed) .gjs-pn-panel.gjs-pn-views-container,
+.gjs-editor:not(.lemnity-right-panels-collapsed) .gjs-pn-panel.gjs-pn-views {
+  pointer-events: auto;
+}
+
+/* Свёрнуто: контент уезжает вправо и не участвует в отрисовке; полоска иконок — полупрозрачная, кликабельная */
+.gjs-editor.lemnity-right-panels-collapsed .gjs-pn-panel.gjs-pn-views-container {
+  right: calc(-1 * var(--lemnity-gjs-views-container-w)) !important;
+  visibility: hidden !important;
+  pointer-events: none;
+}
+
+.gjs-editor:not(.lemnity-right-panels-collapsed) .gjs-pn-panel.gjs-pn-views-container {
+  visibility: visible !important;
+}
+
+.gjs-editor.lemnity-right-panels-collapsed .gjs-pn-panel.gjs-pn-views {
+  right: var(--lemnity-gjs-views-container-w) !important;
+  opacity: 0.13;
+  pointer-events: auto;
+}
+
+/* После переноса кнопок в devices-c исходную панель views полностью убираем из раскладки */
+.lemnity-box-gjs-mount.lemnity-right-panels-overlay-ready .gjs-editor.lemnity-box-views-buttons-docked .gjs-pn-panel.gjs-pn-views {
+  display: none !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-height: 0 !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gjs-editor .gjs-pn-panel.gjs-pn-views-container,
+  .gjs-editor .gjs-pn-panel.gjs-pn-views {
+    transition: none !important;
+  }
+}
+
+/* Контейнер вида Grapes (классы + SM): даём высоту цепочке flex после absolute-позиционирования панели */
+.gjs-editor .gjs-pn-panel.gjs-pn-views-container > div {
+  min-height: 0;
+}
+
+.gjs-editor .gjs-pn-panel.gjs-pn-views-container.lemnity-gjs-views-container-with-header {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gjs-editor .lemnity-gjs-views-container-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+}
+
+.gjs-editor .lemnity-gjs-views-container-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.gjs-editor .lemnity-gjs-views-container-close {
+  min-width: 28px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  line-height: 1;
+  border-radius: 6px;
+}
+
+.gjs-editor .gjs-cv-canvas {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
 }
 
 .gjs-editor .gjs-pn-commands {
@@ -488,6 +623,15 @@
   flex-wrap: wrap;
   gap: 4px;
   width: 100%;
+}
+
+/* Иконки «виды» Grapes (настройки / слои / страницы) — справа от кнопки «Стили» в полосе устройств */
+.gjs-editor .gjs-pn-devices-c .gjs-pn-buttons .lemnity-gjs-views-toolbar-dock {
+  display: inline-flex !important;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-shrink: 0;
 }
 
 .gjs-editor .gjs-pn-buttons .gjs-pn-btn,
@@ -756,11 +900,49 @@
   background: var(--tilda-row-hover) !important;
 }
 
+.gjs-editor .gjs-layer-item {
+  display: flex !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.gjs-editor .gjs-layer-item-left {
+  display: flex !important;
+  align-items: center !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  overflow: hidden !important;
+}
+
+.gjs-editor .gjs-layer-caret {
+  flex-shrink: 0 !important;
+}
+
+/* Grapes выставляет ширину заголовка по измерению текста — делаем резиной внутри панели */
+.gjs-editor .gjs-layer-title-c {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  width: auto !important;
+  max-width: 100% !important;
+}
+
+.gjs-editor .gjs-layer-title {
+  display: block !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+}
+
 .gjs-editor .gjs-layer-item-right {
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
   flex-wrap: nowrap !important;
+  flex-shrink: 0 !important;
   min-width: 0;
 }
 
@@ -1159,13 +1341,36 @@
   box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
 }
 
-.gjs-editor .gjs-pn-devices-c .lemnity-box-blocks-toolbar-label {
+.gjs-editor .gjs-pn-devices-c .lemnity-box-styles-toolbar-label {
   display: inline-block;
   font-size: 13px;
   font-weight: 700;
   line-height: 1.2;
   color: #0f172a;
   white-space: nowrap;
+}
+
+/* Текстовая кнопка «Стили»: рядом с «Блоки» над холстом */
+.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn {
+  flex: 0 0 auto;
+  order: -1;
+  min-width: auto;
+  height: auto !important;
+  min-height: 28px;
+  margin-left: 8px !important;
+  padding: 4px 12px !important;
+  border-radius: 8px;
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn:hover {
+  background: #f8fafc !important;
+}
+
+.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn.gjs-pn-active {
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
 }
 
 /* Стандартная кнопка выхода из предпросмотра GrapesJS (вьюпорт): скрыта — выход через «Редактировать» в шапке */

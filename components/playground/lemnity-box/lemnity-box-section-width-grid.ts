@@ -19,10 +19,28 @@ function isDesktopLikeDevice(editor: Editor): boolean {
   return false;
 }
 
+/** Горизонтальные поля сетки редактора (совпадают с пунктиром). Реальная ширина «12 колонок» = 100% − 2×. */
+export const LEMNITY_GRID_OUTSIDE_GUTTER_PX = 40;
+
 const CANVAS_GRID_DOC_CSS = `
-/* Невидимая вертикальная сетка 12 колонок (только редактор) */
+/* Сетка 12 колонок в полосе контента (отступы по бокам 40px). Секции на всю ширину холста могут визуально
+   выходить за колонки; контент внутри удерживается правилами padding на section (см. ниже). */
 html[data-lemnity-grid12="on"] body {
   position: relative;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+html[data-lemnity-grid12="on"] body::before {
+  content: "";
+  position: fixed;
+  left: 40px;
+  right: 40px;
+  top: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 2147482900;
+  box-sizing: border-box;
   background-size: calc(100% / 12) 100%;
   background-image:
     repeating-linear-gradient(
@@ -32,14 +50,36 @@ html[data-lemnity-grid12="on"] body {
     );
 }
 
-html[data-lemnity-grid12="off"] body {
-  background-size: unset !important;
+html[data-lemnity-grid12="off"] body::before {
+  content: none !important;
   background-image: none !important;
 }
 
+html[data-lemnity-grid12="off"] body {
+  box-sizing: unset !important;
+}
+
 /*
- * ПК-режим: вертикальные направляющие (2px, чёрный пунктир) на границе контентной зоны:
- * отступ слева и справа по 40px от края холста.
+ * ПК: содержимое секций не шире «коридора» 40px + 12 колонок. Фон секции остаётся на всю ширину блока.
+ * !important обходит короткий inline-padding у шаблонов; вертикальные поля остаются из их стилей.
+ * Zero-block — вольный слой, поля не навязываем.
+ */
+html[data-lemnity-grid12="on"] body > section:not(.lemnity-zero-block),
+html[data-lemnity-grid12="on"] body > * > section:not(.lemnity-zero-block) {
+  box-sizing: border-box !important;
+  padding-left: 40px !important;
+  padding-right: 40px !important;
+}
+
+html[data-lemnity-grid12="off"] body > section:not(.lemnity-zero-block),
+html[data-lemnity-grid12="off"] body > * > section:not(.lemnity-zero-block) {
+  padding-left: unset !important;
+  padding-right: unset !important;
+  box-sizing: unset !important;
+}
+
+/*
+ * Пунктир по левому и правому краю полосы 12 колонок.
  */
 html[data-lemnity-grid12="on"]::before,
 html[data-lemnity-grid12="on"]::after {
@@ -86,10 +126,10 @@ html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
   );
 }
 html[data-lemnity-grid12="on"] .lemnity-zero-block::before {
-  left: 40px;
+  left: 0;
 }
 html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
-  right: 40px;
+  right: 0;
 }
 
 html[data-lemnity-grid12="off"]::before,
@@ -174,19 +214,31 @@ function walkEnsureResizable(root: Component | null | undefined, editor: Editor)
   children.forEach((child: Component) => walkEnsureResizable(child, editor));
 }
 
+/** Ширина контентной области элемента (clientWidth − собственные горизонтальные padding). */
+function contentBoxInnerWidth(el: HTMLElement | null | undefined): number {
+  if (!el) return 1;
+  const cw = el.clientWidth;
+  const st = getComputedStyle(el);
+  const pl = parseFloat(st.paddingLeft) || 0;
+  const pr = parseFloat(st.paddingRight) || 0;
+  const inner = cw - pl - pr;
+  return inner > 0 ? inner : (cw > 0 ? cw : 1);
+}
+
+/** Ширина родителя секции (холст), без вычитания боковых 40px: сетка считается как (W − 80px). */
 function parentContentWidth(sectionEl: HTMLElement | null | undefined, editor: Editor): number {
-  if (!sectionEl) return editor.Canvas?.getBody?.()?.clientWidth ?? 1;
+  const body = editor.Canvas?.getBody?.() ?? null;
+  if (!sectionEl) return contentBoxInnerWidth(body);
   const parent = sectionEl.parentElement;
-  const w =
-    parent?.clientWidth ??
-    editor.Canvas?.getBody?.()?.clientWidth ??
-    sectionEl.ownerDocument.documentElement.clientWidth ??
-    1;
-  return w > 0 ? w : 1;
+  if (parent) return contentBoxInnerWidth(parent);
+  return contentBoxInnerWidth(body);
 }
 
 function spanFromPixelWidth(wPx: number, parentW: number): number {
-  const n = Math.round((wPx / parentW) * 12);
+  const gutter = LEMNITY_GRID_OUTSIDE_GUTTER_PX * 2;
+  const gridInner = Math.max(1, parentW - gutter);
+  const innerW = Math.max(0, wPx - gutter);
+  const n = Math.round((innerW / gridInner) * 12);
   return Math.min(12, Math.max(1, n));
 }
 
@@ -216,11 +268,13 @@ export function applyLemnitySectionWidthLayout(component: Component) {
   const attrs = component.getAttributes();
   const span = readSpan(attrs);
   const align = readAlign(attrs);
+  const gutter2 = LEMNITY_GRID_OUTSIDE_GUTTER_PX * 2;
 
   if (span >= 12) {
     component.removeStyle("max-width");
   } else {
-    component.addStyle({ "max-width": `${(span / 12) * 100}%` });
+    /* Внешняя коробка может быть шире полосы контента; внутренняя ширина под контент ≈ span/12 от (100% − 80px). */
+    component.addStyle({ "max-width": `calc(${span} / 12 * (100% - ${gutter2}px) + ${gutter2}px)` });
   }
 
   component.addStyle({ "box-sizing": "border-box" });
