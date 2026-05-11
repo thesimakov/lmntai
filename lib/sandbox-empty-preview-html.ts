@@ -11,12 +11,12 @@ export const SANDBOX_EMPTY_PREVIEW_HTML = `<!DOCTYPE html>
 <title>Превью</title>
 <style>
   :root {
-    --bg0: #0c0c0f;
-    --bg1: #14141a;
-    --fg: rgba(250,250,252,.88);
-    --muted: rgba(250,250,252,.38);
-    --accent: #a855f7;
-    --accent2: #ec4899;
+    --bg0: #fafafa;
+    --bg1: #f4f4f5;
+    --fg: #18181b;
+    --muted: rgba(24, 24, 27, 0.55);
+    --accent: #7c3aed;
+    --accent2: #db2777;
   }
   * { box-sizing: border-box; }
   html, body {
@@ -35,8 +35,8 @@ export const SANDBOX_EMPTY_PREVIEW_HTML = `<!DOCTYPE html>
     align-items: center;
     justify-content: center;
     background:
-      radial-gradient(ellipse 80% 58% at 50% -12%, rgba(168,85,247,.28), transparent 55%),
-      radial-gradient(ellipse 70% 50% at 100% 100%, rgba(236,72,153,.14), transparent 50%),
+      radial-gradient(ellipse 80% 58% at 50% -12%, rgba(124,58,237,.14), transparent 55%),
+      radial-gradient(ellipse 70% 50% at 100% 100%, rgba(219,39,119,.1), transparent 50%),
       linear-gradient(180deg, var(--bg0), var(--bg1));
   }
   /* --- splash --- */
@@ -59,18 +59,18 @@ export const SANDBOX_EMPTY_PREVIEW_HTML = `<!DOCTYPE html>
     position: absolute;
     inset: 0;
     border-radius: 50%;
-    border: 1px solid rgba(168,85,247,.35);
+    border: 1px solid rgba(124,58,237,.42);
     animation: spin 12s linear infinite;
   }
   .ring:nth-child(2) {
     inset: 14%;
-    border-color: rgba(236,72,153,.28);
+    border-color: rgba(219,39,119,.38);
     animation-duration: 7s;
     animation-direction: reverse;
   }
   .ring:nth-child(3) {
     inset: 28%;
-    border-color: rgba(250,250,252,.08);
+    border-color: rgba(24,24,27,.09);
     animation-duration: 18s;
   }
   .core {
@@ -80,16 +80,16 @@ export const SANDBOX_EMPTY_PREVIEW_HTML = `<!DOCTYPE html>
     margin: -6px 0 0 -6px;
     border-radius: 50%;
     background: linear-gradient(135deg, var(--accent), var(--accent2));
-    box-shadow: 0 0 24px rgba(168,85,247,.55);
+    box-shadow: 0 0 20px rgba(124,58,237,.45), 0 0 8px rgba(219,39,119,.25);
     animation: pulse 1.6s ease-in-out infinite;
   }
   .grid {
     position: absolute;
     inset: 0;
-    opacity: .16;
+    opacity: .45;
     background-image:
-      linear-gradient(rgba(250,250,252,.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(250,250,252,.06) 1px, transparent 1px);
+      linear-gradient(rgba(24,24,27,.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(24,24,27,.05) 1px, transparent 1px);
     background-size: 24px 24px;
     mask-image: radial-gradient(ellipse 70% 70% at 50% 50%, black, transparent);
     pointer-events: none;
@@ -129,7 +129,7 @@ export const SANDBOX_EMPTY_PREVIEW_HTML = `<!DOCTYPE html>
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    border: 3px solid rgba(250,250,252,.12);
+    border: 3px solid rgba(24,24,27,.12);
     border-top-color: var(--accent);
     animation: spin 0.95s linear infinite;
   }

@@ -17,6 +17,7 @@ import { cmsRobotsDirectiveValue, injectCmsRobotsMetaIntoHtmlDocument } from "@/
 import { sanitizeSandboxHtml } from "@/lib/html-sanitizer";
 import { resolveCmsFormBridgeContextByProjectId } from "@/lib/cms-sandbox-form-sync";
 import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
+import { isLikelySandboxPreviewHtml } from "@/lib/sandbox-preview-html-detect";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -56,7 +57,7 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
   }
 
   const files = await sandboxManager.exportFiles(sandboxId);
-  let htmlRaw = files["index.html"] ?? "";
+  let htmlRaw = typeof files["index.html"] === "string" ? files["index.html"] : "";
 
   if (!htmlRaw.trim() && !sandboxId.startsWith("artifact_")) {
     const link = await prisma.manusSessionLink.findFirst({
@@ -69,7 +70,8 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
     }
   }
 
-  if (!htmlRaw.trim()) {
+  const looksLikePreview = htmlRaw.trim().length > 0 && isLikelySandboxPreviewHtml(htmlRaw);
+  if (!looksLikePreview) {
     htmlRaw = SANDBOX_EMPTY_PREVIEW_HTML;
   }
   let xRobotsTag: string | null = null;

@@ -10,6 +10,7 @@ import { injectLemnityAnchorsIntoHtmlDocument } from "@/lib/lemnity-anchor-runti
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
 import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
+import { isLikelySandboxPreviewHtml } from "@/lib/sandbox-preview-html-detect";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -24,7 +25,11 @@ async function respondWithHtml(projectId: string) {
   const files = await sandboxManager.exportFiles(projectId);
   const candidate = files["index.html"];
   const htmlRaw =
-    typeof candidate === "string" && candidate.trim().length > 0 ? candidate : SANDBOX_EMPTY_PREVIEW_HTML;
+    typeof candidate === "string" &&
+    candidate.trim().length > 0 &&
+    isLikelySandboxPreviewHtml(candidate)
+      ? candidate
+      : SANDBOX_EMPTY_PREVIEW_HTML;
   const html = injectLemnityAnchorsIntoHtmlDocument(
     injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw)),
   );
