@@ -31,6 +31,7 @@ model Project {
   manusCharges        ManusChatCharge[]
   virtualEntries      UserVirtualEntry[]
   cmsSite             CmsSite?
+  snapshots           ProjectSnapshot[]
 
   @@index([ownerId, updatedAt])
 }
@@ -67,6 +68,21 @@ model SandboxProjectState {
 
   @@index([ownerId, updatedAt])
   @@index([projectId, updatedAt])
+}
+
+/// Снимок HTML-состояния проекта после AI-генерации.
+model ProjectSnapshot {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  promptText  String
+  sandboxHtml String   @db.Text
+  sandboxCss  String   @db.Text @default("")
+  sandboxId   String?
+  versionNum  Int
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, createdAt])
 }
 
 /// Привязка хоста публикации к песочнице.
