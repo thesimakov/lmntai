@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -53,14 +54,14 @@ async function patchTeamMember(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const { id } = await params;
   const body = (await req.json().catch(() => null)) as { role?: string } | null;
   const role = parseRole(body?.role);
   if (!role) {
-    return new Response("Некорректная роль", { status: 400 });
+    return apiError("Некорректная роль", 400);
   }
 
   const exists = await prisma.teamInvitation.findFirst({
@@ -68,7 +69,7 @@ async function patchTeamMember(
     select: { id: true }
   });
   if (!exists) {
-    return new Response("Участник не найден", { status: 404 });
+    return apiError("Участник не найден", 404);
   }
 
   const row = await prisma.teamInvitation.update({
@@ -91,7 +92,7 @@ async function deleteTeamMember(
   void req;
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const { id } = await params;
@@ -100,7 +101,7 @@ async function deleteTeamMember(
     select: { id: true }
   });
   if (!exists) {
-    return new Response("Участник не найден", { status: 404 });
+    return apiError("Участник не найден", 404);
   }
 
   await prisma.teamInvitation.delete({ where: { id } });

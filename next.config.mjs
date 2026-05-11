@@ -11,6 +11,8 @@ const nextConfig = {
   /** Prisma обязан браться из `node_modules` после `generate`; иначе бандлер иногда подмешивает устаревший DMMF (нет `preferredEditor`). */
   serverExternalPackages: ["esbuild", "nodemailer", "@prisma/client"],
   experimental: {
+    /** Lucide — barrel + `sideEffects: false`; без этого в SSR/dev иногда ломается чанк: `Cannot read properties of undefined (reading 'call')`. */
+    optimizePackageImports: ["lucide-react"],
     /** У части сборок Next 15 dev падает с 500: SegmentViewNode / React Client Manifest. */
     devtoolSegmentExplorer: false,
     // Включение на проде (Next 14.2.x) у части деплоев давало в рантайме

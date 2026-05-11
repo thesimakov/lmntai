@@ -68,7 +68,7 @@ export const LEMNITY_FORM_BLOCK_VARIANTS = [
             <div><span class="lf-lab">Имя</span><input class="lf-inp" name="first_name" placeholder=""/></div>
             <div><span class="lf-lab">Фамилия</span><input class="lf-inp" name="last_name" placeholder=""/></div>
           </div>
-          <div style="margin-top:14px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" name="email" type="email" required placeholder="you@company.ru"/></div>
+          <div style="margin-top:14px"><span class="lf-lab">Электропочта *</span><input class="lf-inp" name="email" type="email" required placeholder="ivan@primer.ru"/></div>
           <button type="submit" class="lf-btn">Отправить</button>
         </form>
       </div>

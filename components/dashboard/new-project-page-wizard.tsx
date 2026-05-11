@@ -25,12 +25,11 @@ import { Input } from "@/components/ui/input";
 import { saveBuilderHandoff } from "@/lib/landing-handoff";
 import { clearLemnityBoxCanvasDraft } from "@/lib/lemnity-box-editor-persistence";
 import type { MessageKey } from "@/lib/i18n";
+import { buildPlaygroundBuildEditUrl } from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
 import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
-
-const NEW_PROJECT_AI_STEP_ENABLED = false;
 
 type BuilderChoice = "none" | "ai" | "box";
 
@@ -158,7 +157,7 @@ export function NewProjectPageWizard() {
     };
   }, [domainInput]);
 
-  const createProjectCell = useCallback(async (): Promise<string> => {
+  const createProjectCell = useCallback(async (preferredEditor: "box" | "build"): Promise<string> => {
     const subdomain = trimmedDomain;
 
     const res = await fetch("/api/projects", {
@@ -167,7 +166,7 @@ export function NewProjectPageWizard() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name: trimmedName,
-        preferredEditor: "box",
+        preferredEditor,
         subdomain
       })
     });
@@ -196,12 +195,47 @@ export function NewProjectPageWizard() {
       if (creatingProject) return;
       setCreatingProject(true);
       try {
-        const projectId = await createProjectCell();
+        const projectId = await createProjectCell("box");
         persistHandoff();
         clearLemnityBoxCanvasDraft();
         router.push(
           `/playground/box/editor?sandboxId=${encodeURIComponent(projectId)}&boxStarter=${encodeURIComponent(starter)}`
         );
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+        }
+      } catch (e) {
+        toastProjectCreateFailure(e, t("projects_create_failed"));
+      } finally {
+        setCreatingProject(false);
+      }
+    },
+    [
+      creatingProject,
+      createProjectCell,
+      domainValid,
+      nameValid,
+      persistHandoff,
+      router,
+      subdomainCheck,
+      t
+    ]
+  );
+
+  const navigateNewProjectToLemnityAiBuild = useCallback(
+    async (_starter: "empty" | "universal" | "consultation") => {
+      setAttemptedSubmit(true);
+      if (!nameValid || !domainValid || subdomainCheck !== "available") {
+        toast.message(t("projects_template_fix_form_toast"));
+        return;
+      }
+      if (creatingProject) return;
+      setCreatingProject(true);
+      try {
+        const projectId = await createProjectCell("build");
+        persistHandoff();
+        clearLemnityBoxCanvasDraft();
+        router.push(buildPlaygroundBuildEditUrl({ projectId }));
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
         }
@@ -237,17 +271,16 @@ export function NewProjectPageWizard() {
 
   const renderTemplates = (variant: "box" | "ai") => {
     const isAi = variant === "ai";
-    const toastAi = () => toast.message(t("projects_template_ai_soon_toast"));
     const nav = (starter: "empty" | "universal" | "consultation") => {
       if (isAi) {
-        toastAi();
+        void navigateNewProjectToLemnityAiBuild(starter);
         return;
       }
       void navigateNewProjectToEditor(starter);
     };
     const boxGate = !canProceed || creatingProject;
-    const emptyDisabled = creatingProject || subdomainCheck === "checking" || (!isAi && boxGate);
-    const pairDisabled = creatingProject || subdomainCheck === "checking" || (!isAi && boxGate);
+    const emptyDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
+    const pairDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
 
     return (
       <>
@@ -324,9 +357,6 @@ export function NewProjectPageWizard() {
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h3 className="font-semibold text-foreground">{t("projects_template_ai_title")}</h3>
-                  <Badge variant="secondary" className="font-semibold uppercase tracking-wide">
-                    {t("projects_new_via_ai_soon_badge")}
-                  </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">{t("projects_template_ai_desc")}</p>
               </div>
@@ -334,8 +364,8 @@ export function NewProjectPageWizard() {
                 type="button"
                 variant="outline"
                 className="mt-auto w-full rounded-full font-semibold"
-                disabled
-                aria-disabled
+                disabled={emptyDisabled}
+                onClick={() => nav("empty")}
               >
                 {t("projects_template_generate")}
               </Button>
@@ -586,81 +616,41 @@ export function NewProjectPageWizard() {
             </div>
 
             <div className="flex flex-col gap-4">
-              {NEW_PROJECT_AI_STEP_ENABLED ? (
-                <Card
-                  role="button"
-                  tabIndex={creatingProject ? -1 : 0}
-                  aria-pressed={builderChoice === "ai"}
-                  onClick={() => {
-                    if (creatingProject) return;
-                    setBuilderChoice("ai");
-                  }}
-                  onKeyDown={(e) => {
-                    if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
-                    e.preventDefault();
-                    setBuilderChoice("ai");
-                  }}
-                  className={cn(
-                    "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
-                    "cursor-pointer border-violet-200/90 bg-gradient-to-br from-violet-50 via-background to-background",
-                    "hover:border-violet-400/80 hover:shadow-md dark:border-violet-900/55 dark:from-violet-950/40 dark:hover:border-violet-700",
-                    builderChoice === "ai" && "ring-2 ring-violet-500/35",
-                    creatingProject && "pointer-events-none opacity-55"
-                  )}
-                >
-                  <CardContent className="flex gap-4 p-4">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
-                      <Bot className="size-5" aria-hidden />
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "ai"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("ai");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("ai");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                  "cursor-pointer border-violet-200/90 bg-gradient-to-br from-violet-50 via-background to-background",
+                  "hover:border-violet-400/80 hover:shadow-md dark:border-violet-900/55 dark:from-violet-950/40 dark:hover:border-violet-700",
+                  builderChoice === "ai" && "ring-2 ring-violet-500/35",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
+                    <Bot className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      {t("projects_new_via_ai")}
                     </span>
-                    <div className="min-w-0 flex-1 space-y-1 self-center">
-                      <span className="flex items-center gap-2 font-semibold text-foreground">
-                        {t("projects_new_via_ai")}
-                      </span>
-                      <p className="text-sm font-normal leading-snug text-muted-foreground">
-                        {t("projects_new_via_ai_desc")}
-                      </p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card
-                  role="button"
-                  tabIndex={creatingProject ? -1 : 0}
-                  aria-pressed={builderChoice === "ai"}
-                  onClick={() => {
-                    if (creatingProject) return;
-                    setBuilderChoice("ai");
-                  }}
-                  onKeyDown={(e) => {
-                    if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
-                    e.preventDefault();
-                    setBuilderChoice("ai");
-                  }}
-                  className={cn(
-                    "gap-0 overflow-hidden border-2 py-0 shadow-none transition-[border-color,box-shadow,ring]",
-                    "cursor-pointer border-dashed border-muted-foreground/30 bg-muted/25",
-                    "hover:border-muted-foreground/50 hover:bg-muted/35",
-                    builderChoice === "ai" &&
-                      "border-violet-500/70 bg-violet-50/40 ring-2 ring-violet-500/25 dark:bg-violet-950/25",
-                    creatingProject && "pointer-events-none opacity-55"
-                  )}
-                >
-                  <CardContent className="flex gap-4 p-4">
-                    <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-background text-muted-foreground shadow-inner ring-1 ring-border/60">
-                      <Bot className="size-5" aria-hidden />
-                    </span>
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-semibold text-foreground">{t("projects_new_via_ai")}</span>
-                        <Badge variant="secondary" className="font-semibold uppercase tracking-wide">
-                          {t("projects_new_via_ai_soon_badge")}
-                        </Badge>
-                      </div>
-                      <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_ai_desc")}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    <p className="text-sm font-normal leading-snug text-muted-foreground">
+                      {t("projects_new_via_ai_desc")}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card
                 role="button"

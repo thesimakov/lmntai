@@ -578,13 +578,13 @@ export function CTA() {
                     <p className="font-semibold text-slate-900">+7 (800) 555-35-35</p>
                   </div>
                 </a>
-                <a href="mailto:hello@webstudio.ru" className="flex items-center gap-4 rounded-xl bg-slate-50 p-4 transition-colors hover:bg-slate-100">
+                <a href="mailto:hello@example.com" className="flex items-center gap-4 rounded-xl bg-slate-50 p-4 transition-colors hover:bg-slate-100">
                   <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100">
                     <Mail className="h-5 w-5 text-violet-600" />
                   </div>
                   <div>
                     <p className="text-sm text-slate-500">Email</p>
-                    <p className="font-semibold text-slate-900">hello@webstudio.ru</p>
+                    <p className="font-semibold text-slate-900">hello@example.com</p>
                   </div>
                 </a>
                 <div className="flex items-center gap-4 rounded-xl bg-slate-50 p-4">
@@ -728,8 +728,8 @@ export function Footer() {
                 </a>
               </li>
               <li>
-                <a href="mailto:hello@webstudio.ru" className="text-sm text-slate-500 hover:text-slate-900">
-                  hello@webstudio.ru
+                <a href="mailto:hello@example.com" className="text-sm text-slate-500 hover:text-slate-900">
+                  hello@example.com
                 </a>
               </li>
               <li className="text-sm text-slate-500">Москва, ул. Примерная, 123</li>

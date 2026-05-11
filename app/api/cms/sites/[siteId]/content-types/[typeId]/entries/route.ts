@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
-import { requireCmsSiteAccess } from "@/lib/cms-core";
+import { apiError, apiGuardError } from "@/lib/api-response";
+import { requireCmsContentTypeAccess } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -14,10 +15,10 @@ async function listEntries(
 ) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId, typeId } = await params;
-  const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  const access = await requireCmsContentTypeAccess(siteId, typeId, guard.data.user.id);
+  if (!access) return apiError("Not found", 404);
 
   const entries = await prisma.cmsEntry.findMany({
     where: { siteId, contentTypeId: typeId },
@@ -59,10 +60,10 @@ async function createOrUpdateEntry(
   { params }: { params: Promise<{ siteId: string; typeId: string }> },
 ) {
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId, typeId } = await params;
-  const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  const access = await requireCmsContentTypeAccess(siteId, typeId, guard.data.user.id);
+  if (!access) return apiError("Not found", 404);
 
   const body = (await req.json().catch(() => null)) as {
     id?: string;
@@ -74,7 +75,7 @@ async function createOrUpdateEntry(
     .toLowerCase()
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
-  if (!slug) return new Response("slug is required", { status: 400 });
+  if (!slug) return apiError("slug is required", 400);
   const data = body?.data && typeof body.data === "object" ? body.data : {};
 
   try {
@@ -136,8 +137,8 @@ async function createOrUpdateEntry(
     });
   } catch (e) {
     const code = typeof e === "object" && e && "code" in e ? String((e as { code: unknown }).code) : "";
-    if (code === "P2002") return new Response("slug already exists", { status: 409 });
-    return new Response("Failed to save entry", { status: 500 });
+    if (code === "P2002") return apiError("slug already exists", 409);
+    return apiError("Failed to save entry", 500);
   }
 }
 

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
 import {
@@ -17,24 +18,24 @@ type RouteCtx = { params: Promise<{ id: string }> };
 async function patchBranding(req: NextRequest, ctx: RouteCtx): Promise<Response> {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
   const { id: routeId } = await ctx.params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   let body: { hideLemnityHeader?: unknown };
   try {
     body = (await req.json()) as { hideLemnityHeader?: unknown };
   } catch {
-    return new Response("Invalid JSON", { status: 400 });
+    return apiError("Invalid JSON", 400);
   }
   const hide = Boolean(body.hideLemnityHeader);
 
@@ -47,11 +48,11 @@ async function patchBranding(req: NextRequest, ctx: RouteCtx): Promise<Response>
     return Response.json({ hideLemnityHeader: hide });
   } catch (e) {
     if (e instanceof Error && e.message === "FORBIDDEN") {
-      return new Response("Forbidden", { status: 403 });
+      return apiError("Forbidden", 403);
     }
     const msg = getAuthDatabaseUserMessage(e);
     if (msg) {
-      return new Response(msg, { status: 503 });
+      return apiError(msg, 503);
     }
     throw e;
   }

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireAdminUser } from "@/lib/auth-guards";
+import { apiGuardError } from "@/lib/api-response";
 import { getGatewayConfig, requestRouterAIJson } from "@/lib/routerai-client";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -8,7 +9,7 @@ async function getRouterAiHealth(req: NextRequest) {
   void req;
   const guard = await requireAdminUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const startedAt = Date.now();

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiGuardError } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { normalizeProjectSubdomain } from "@/lib/project-context";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 async function checkSubdomain(req: NextRequest): Promise<Response> {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const raw = req.nextUrl.searchParams.get("subdomain")?.trim() ?? "";

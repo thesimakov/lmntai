@@ -1,4 +1,5 @@
 import { LEMNITY_ABOUT_BLOCK_VARIANTS } from "@/components/playground/lemnity-box/lemnity-box-about-blocks-content";
+import { LEMNITY_BENEFITS_BLOCK_VARIANTS } from "@/components/playground/lemnity-box/lemnity-box-benefits-blocks-content";
 import { LEMNITY_BASIC_WIDGET_BLOCK_VARIANTS, LEMNITY_ACCORDION_LIBRARY_BASIC_WIDGET_VARIANTS } from "@/components/playground/lemnity-box/lemnity-box-basic-widgets-blocks-content";
 import { LEMNITY_ACCORDION_BLOCK_VARIANTS } from "@/components/playground/lemnity-box/lemnity-box-accordion-blocks-content";
 import { LEMNITY_BUTTON_BLOCK_VARIANTS } from "@/components/playground/lemnity-box/lemnity-box-button-blocks-content";
@@ -52,6 +53,17 @@ export type LemnityBoxBlockLibraryEntry = {
   variants: LemnityBoxLibraryVariant[];
 };
 
+/** Фон для серии блоков УТП (офис / перегородки). */
+const HERO_USP_BG =
+  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=2000&q=80";
+
+const HERO_USP_COPY = {
+  h1: "Напишите ваше уникальное торговое предложение",
+  lead:
+    "В подзаголовке сайта раскройте суть вашего предложения, дополните его цифрами и фактами",
+  cta: "Оставить заявку",
+};
+
 /** Обложки (CR) + простые первые экраны — всё в одной библиотеке «Главный экран». */
 const LANDING_HERO_EXTRA_VARIANTS: LemnityBoxLibraryVariant[] = [
   {
@@ -88,6 +100,66 @@ const LANDING_HERO_EXTRA_VARIANTS: LemnityBoxLibraryVariant[] = [
   <p style="margin:0 auto;max-width:560px;font-size:17px;line-height:1.65;text-align:center;opacity:0.95;">Длиннее описание с акцентом на выгоды и атмосферу.</p>
 </section>`,
   },
+  {
+    id: "hero-usp-dark-center",
+    badge: "US01",
+    title: "УТП: тёмный фон, по центру",
+    hint: "фото офиса, затемнение, заголовок и зелёная кнопка",
+    content: `<section class="lemnity-section" data-gjs-name="Главный экран: УТП тёмный" style="position:relative;box-sizing:border-box;min-height:min(560px,85vh);display:flex;align-items:center;justify-content:center;padding:clamp(56px,8vw,96px) clamp(20px,4vw,32px);text-align:center;color:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#111 url(${HERO_USP_BG}) center/cover no-repeat;">
+  <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(17,24,39,0.55) 0%,rgba(15,23,42,0.82) 100%);pointer-events:none"></div>
+  <div style="position:relative;z-index:1;max-width:800px;margin:0 auto;">
+    <h1 style="margin:0 0 20px;font-size:clamp(1.65rem,4.2vw,2.75rem);font-weight:800;line-height:1.12;letter-spacing:-0.02em">${HERO_USP_COPY.h1}</h1>
+    <p style="margin:0 auto 28px;max-width:640px;font-size:clamp(1rem,2.1vw,1.15rem);line-height:1.65;opacity:0.92">${HERO_USP_COPY.lead}</p>
+    <a href="#" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 32px;background:#22c55e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 4px 24px rgba(34,197,94,0.35)">${HERO_USP_COPY.cta}</a>
+  </div>
+</section>`,
+  },
+  {
+    id: "hero-usp-light-image",
+    badge: "US02",
+    title: "УТП: светлый фон и фото",
+    hint: "заголовок, текст, широкое фото, кнопка под фото",
+    content: `<section class="lemnity-section" data-gjs-name="Главный экран: УТП светлый" style="margin:0;padding:clamp(48px,7vw,88px) clamp(18px,4vw,28px);background:#fff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#111;">
+  <div style="max-width:920px;margin:0 auto;text-align:center;">
+    <h1 style="margin:0 0 18px;font-size:clamp(1.6rem,4vw,2.5rem);font-weight:800;line-height:1.15;color:#0f172a">${HERO_USP_COPY.h1}</h1>
+    <p style="margin:0 auto 36px;max-width:680px;font-size:clamp(0.95rem,1.9vw,1.08rem);line-height:1.65;color:#475569">${HERO_USP_COPY.lead}</p>
+    <div style="position:relative;margin:0 auto;">
+      <img src="${HERO_USP_BG}" alt="" width="920" height="520" style="display:block;width:100%;max-height:min(52vh,480px);object-fit:cover;border-radius:0;box-shadow:0 20px 50px rgba(15,23,42,0.12);"/>
+      <div style="margin-top:-28px;position:relative;z-index:2;">
+        <a href="#" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 36px;background:#22c55e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px;box-shadow:0 8px 28px rgba(34,197,94,0.35)">${HERO_USP_COPY.cta}</a>
+      </div>
+    </div>
+  </div>
+</section>`,
+  },
+  {
+    id: "hero-usp-card-dark",
+    badge: "US03",
+    title: "УТП: белая карточка на фото",
+    hint: "карточка по центру на тёмном фоне",
+    content: `<section class="lemnity-section" data-gjs-name="Главный экран: УТП карточка" style="position:relative;box-sizing:border-box;min-height:min(540px,82vh);display:flex;align-items:center;justify-content:center;padding:clamp(40px,6vw,72px) clamp(18px,4vw,28px);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f172a url(${HERO_USP_BG}) center/cover no-repeat;">
+  <div style="position:absolute;inset:0;background:rgba(15,23,42,0.72);pointer-events:none"></div>
+  <div style="position:relative;z-index:1;width:100%;max-width:560px;margin:0 auto;background:#fff;padding:clamp(28px,5vw,44px) clamp(22px,4vw,36px);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.35);text-align:left;color:#111;">
+    <h1 style="margin:0 0 14px;font-size:clamp(1.35rem,3.2vw,1.85rem);font-weight:800;line-height:1.2">${HERO_USP_COPY.h1}</h1>
+    <p style="margin:0 0 22px;font-size:15px;line-height:1.65;color:#64748b">${HERO_USP_COPY.lead}</p>
+    <a href="#" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 26px;background:#22c55e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:14px">${HERO_USP_COPY.cta}</a>
+  </div>
+</section>`,
+  },
+  {
+    id: "hero-usp-split",
+    badge: "US04",
+    title: "УТП: текст слева, фото справа",
+    hint: "две колонки, на узком экране — столбик",
+    content: `<section class="lemnity-section" data-gjs-name="Главный экран: УТП сплит" style="margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:stretch;min-height:min(480px,78vh);font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#fff;color:#111;">
+  <div style="flex:1 1 320px;display:flex;flex-direction:column;justify-content:center;padding:clamp(40px,6vw,64px) clamp(24px,4vw,48px);box-sizing:border-box;max-width:100%;">
+    <h1 style="margin:0 0 16px;font-size:clamp(1.45rem,3.4vw,2rem);font-weight:800;line-height:1.18">${HERO_USP_COPY.h1}</h1>
+    <p style="margin:0 0 26px;font-size:15px;line-height:1.65;color:#64748b;max-width:520px">${HERO_USP_COPY.lead}</p>
+    <a href="#" style="align-self:flex-start;display:inline-flex;align-items:center;justify-content:center;padding:14px 28px;background:#22c55e;color:#fff;text-decoration:none;border-radius:8px;font-weight:700;font-size:15px">${HERO_USP_COPY.cta}</a>
+  </div>
+  <div style="flex:1 1 280px;min-height:260px;background:url(${HERO_USP_BG}) center/cover no-repeat"></div>
+</section>`,
+  },
 ];
 
 export const LEMNITY_BOX_BLOCK_LIBRARIES: Record<string, LemnityBoxBlockLibraryEntry> = {
@@ -110,6 +182,11 @@ export const LEMNITY_BOX_BLOCK_LIBRARIES: Record<string, LemnityBoxBlockLibraryE
     blockId: "lemnity-about",
     flyoutTitle: "О нас",
     variants: [...LEMNITY_ABOUT_BLOCK_VARIANTS],
+  },
+  "lemnity-benefits": {
+    blockId: "lemnity-benefits",
+    flyoutTitle: "Преимущества",
+    variants: [...LEMNITY_BENEFITS_BLOCK_VARIANTS],
   },
   "text-section": {
     blockId: "text-section",
@@ -192,6 +269,15 @@ export const LEMNITY_BOX_BLOCK_LIBRARIES: Record<string, LemnityBoxBlockLibraryE
         title: "HTML-секция",
         hint: "свой HTML/CSS/JS, см. «Настройка» у блока",
         content: `<section class="lemnity-section" data-gjs-name="HTML-секция"><div data-ln-editor-hint="1" role="note" style="display:flex;align-items:center;gap:12px;padding:12px 14px;margin:0 0 14px;border-radius:10px;background:#ecfdf5;border:1px solid #6ee7b7;color:#334155;font-size:13px;line-height:1.5;font-family:system-ui,sans-serif"><span aria-hidden="true" style="flex-shrink:0;width:42px;height:42px;border-radius:999px;background:#fff;border:1px solid #a7f3d0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:11px;color:#0f172a">&lt;HTML&gt;</span><span>Код будет выполнен на опубликованной странице. Чтобы добавить свой код нажмите на Настройка</span></div><div data-ln-html-embed="1" class="lemnity-html-root"></div></section>`,
+      },
+      {
+        id: "more-anchor",
+        badge: "Якорь",
+        title: "Якорь страницы",
+        hint: "метка для ссылок #id в меню и кнопках",
+        content: `<section class="lemnity-section" data-gjs-name="Якорь" style="margin:0;padding:clamp(12px,3vw,18px) clamp(14px,3vw,22px);background:transparent;">
+  <div data-ln-anchor="1" id="sec-block" class="lemnity-anchor"><div class="lemnity-anchor-editor-only" aria-hidden="true"></div></div>
+</section>`,
       },
       {
         id: "more-catalog-hint",

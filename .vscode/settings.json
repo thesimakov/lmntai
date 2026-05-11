@@ -1,0 +1,5 @@
+{
+    "git.addAICoAuthor": "all",
+    "terminal.integrated.tabs.defaultIcon": "github",
+    "chat.plugins.enabled": true
+}

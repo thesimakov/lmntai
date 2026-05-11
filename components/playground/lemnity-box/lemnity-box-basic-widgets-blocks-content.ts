@@ -37,9 +37,9 @@ export const LEMNITY_ACCORDION_LIBRARY_BASIC_WIDGET_VARIANTS = [
   {
     id: "bw-tabs",
     badge: "AC02",
-    title: "Tabs — три панели",
+    title: "Вкладки — три панели",
     hint: "переключение по клику (на опубликованной странице подключается небольшой скрипт)",
-    content: `<section data-gjs-name="Tabs" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Вкладки" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div class="lemnity-tab-widget" style="max-width:720px;margin:0 auto;" aria-label="Вкладки">
     <div class="lemnity-tab-head" role="tablist">
@@ -64,9 +64,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-accordion",
     badge: "AC03",
-    title: "Accordion (simple)",
-    hint: "details/summary",
-    content: `<section data-gjs-name="Accordion" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
+    title: "Аккордеон (простой)",
+    hint: "разметка details/summary",
+    content: `<section data-gjs-name="Аккордеон" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:10px;">
     ${["Первый пункт аккордеона", "Второй пункт аккордеона"]
@@ -93,18 +93,18 @@ export const LEMNITY_BASIC_WIDGET_BLOCK_VARIANTS = [
   {
     id: "bw-inner-section",
     badge: "BW01",
-    title: "Inner Section — две колонки",
+    title: "Внутренняя секция — две колонки",
     hint: "как внутренняя секция Elementor",
-    content: `<section data-gjs-name="Inner Section" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
+    content: `<section data-gjs-name="Внутренняя секция" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:1100px;margin:0 auto;">
     <div class="bw-row">
       <div class="bw-col">
-        <h3 style="margin:0 0 12px;font-size:20px;font-weight:700;">Колонка A</h3>
+        <h3 style="margin:0 0 12px;font-size:20px;font-weight:700;">Колонка А</h3>
         <p style="margin:0;font-size:15px;line-height:1.65;color:#475569;">Текст первой колонки. Замените заголовок и абзац.</p>
       </div>
       <div class="bw-col">
-        <h3 style="margin:0 0 12px;font-size:20px;font-weight:700;">Колонка B</h3>
+        <h3 style="margin:0 0 12px;font-size:20px;font-weight:700;">Колонка Б</h3>
         <p style="margin:0;font-size:15px;line-height:1.65;color:#475569;">Текст второй колонки.</p>
       </div>
     </div>
@@ -114,9 +114,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-container",
     badge: "BW02",
-    title: "Container — ограничитель ширины",
+    title: "Контейнер — ограничитель ширины",
     hint: "центрированный контейнер",
-    content: `<section data-gjs-name="Container" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;">
+    content: `<section data-gjs-name="Контейнер" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#f8fafc;color:#0f172a;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:720px;margin:0 auto;padding:clamp(24px,4vw,36px);background:#fff;border-radius:16px;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(15,23,42,.06);">
     <p style="margin:0;font-size:15px;line-height:1.65;color:#475569;">Контент внутри контейнера. Настройте max-width через стили секции при необходимости.</p>
@@ -126,9 +126,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-heading",
     badge: "BW03",
-    title: "Heading",
+    title: "Заголовок",
     hint: "заголовок и подзаголовок",
-    content: `<section data-gjs-name="Heading" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(32px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;text-align:center;">
+    content: `<section data-gjs-name="Заголовок" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(32px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;text-align:center;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:800px;margin:0 auto;">
     <p style="margin:0 0 8px;font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#64748b;">Подзаголовок</p>
@@ -139,9 +139,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-image",
     badge: "BW04",
-    title: "Image",
+    title: "Изображение",
     hint: "одно изображение",
-    content: `<section data-gjs-name="Image" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Изображение" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:920px;margin:0 auto;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
     <img src="${IMG.a}" alt="Пример изображения" width="920" height="520" style="width:100%;height:auto;object-fit:cover;"/>
@@ -151,9 +151,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-text-editor",
     badge: "BW05",
-    title: "Text Editor",
+    title: "Текстовый блок",
     hint: "несколько абзацев",
-    content: `<section data-gjs-name="Text Editor" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
+    content: `<section data-gjs-name="Текстовый блок" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:680px;margin:0 auto;">
     <p style="margin:0 0 16px;font-size:16px;line-height:1.75;color:#334155;">Первый абзац: расскажите о продукте или услуге простым языком.</p>
@@ -164,24 +164,24 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-video",
     badge: "BW06",
-    title: "Video",
+    title: "Видео",
     hint: "встраивание YouTube",
-    content: `<section data-gjs-name="Video" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#0f172a;color:#fff;">
+    content: `<section data-gjs-name="Видео" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#0f172a;color:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:900px;margin:0 auto;">
     <div style="position:relative;padding-bottom:56.25%;height:0;border-radius:12px;overflow:hidden;background:#000;">
       <iframe style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;" src="https://www.youtube-nocookie.com/embed/YE7VzlLtp-4" title="Видео" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
     </div>
-    <p style="margin:12px 0 0;font-size:13px;opacity:.75;text-align:center;">Замените ссылку на свой embed.</p>
+    <p style="margin:12px 0 0;font-size:13px;opacity:.75;text-align:center;">Замените ссылку на своё встроенное видео.</p>
   </div>
 </section>`,
   },
   {
     id: "bw-button",
     badge: "BW07",
-    title: "Button",
+    title: "Кнопка",
     hint: "основная кнопка",
-    content: `<section data-gjs-name="Button" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;text-align:center;">
+    content: `<section data-gjs-name="Кнопка" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;text-align:center;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:640px;margin:0 auto;">
     <a href="#" style="display:inline-flex;align-items:center;justify-content:center;padding:14px 28px;border-radius:999px;background:#2563eb;color:#fff;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 4px 14px rgba(37,99,235,.35);">Нажмите здесь</a>
@@ -191,9 +191,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-star-rating",
     badge: "BW08",
-    title: "Star Rating",
+    title: "Звёздный рейтинг",
     hint: "оценка звёздами",
-    content: `<section data-gjs-name="Star Rating" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#fff;text-align:center;">
+    content: `<section data-gjs-name="Звёздный рейтинг" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#fff;text-align:center;">
 ${BASIC_WIDGET_CSS}
   <div class="bw-stars" aria-label="Рейтинг 5 из 5">★★★★★</div>
   <p style="margin:10px 0 0;font-size:14px;color:#64748b;">4.9 из 5 · 128 отзывов</p>
@@ -202,9 +202,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-divider",
     badge: "BW09",
-    title: "Divider",
+    title: "Разделитель",
     hint: "линия-разделитель",
-    content: `<section data-gjs-name="Divider" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(16px,3vw,28px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Разделитель" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(16px,3vw,28px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:960px;margin:0 auto;">
     <hr style="border:0;height:2px;background:linear-gradient(90deg,transparent,#cbd5e1,transparent);margin:0;"/>
@@ -214,9 +214,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-google-maps",
     badge: "BW10",
-    title: "Google Maps",
+    title: "Карта Google",
     hint: "iframe карты",
-    content: `<section data-gjs-name="Google Maps" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f1f5f9;">
+    content: `<section data-gjs-name="Карта Google" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f1f5f9;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:960px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;height:320px;">
     <iframe title="Карта" src="https://maps.google.com/maps?q=Moscow&output=embed" style="width:100%;height:100%;border:0;"></iframe>
@@ -226,9 +226,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-icon",
     badge: "BW11",
-    title: "Icon",
+    title: "Иконка",
     hint: "иконка в круге",
-    content: `<section data-gjs-name="Icon" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) 16px;font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Иконка" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) 16px;font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="display:flex;justify-content:center;">
     <div class="bw-icon-circle" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/></svg></div>
@@ -238,9 +238,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-icon-box",
     badge: "BW12",
-    title: "Icon Box ×3",
+    title: "Блок с иконкой ×3",
     hint: "иконка, заголовок, текст",
-    content: `<section data-gjs-name="Icon Box" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
+    content: `<section data-gjs-name="Блок с иконкой" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;color:#0f172a;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:1040px;margin:0 auto;">
     <div class="bw-row">
@@ -260,9 +260,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-image-box",
     badge: "BW13",
-    title: "Image Box",
+    title: "Блок «изображение и текст»",
     hint: "изображение + текст",
-    content: `<section data-gjs-name="Image Box" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;">
+    content: `<section data-gjs-name="Блок с изображением" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:960px;margin:0 auto;">
     <div class="bw-row bw-row--center">
@@ -271,7 +271,7 @@ ${BASIC_WIDGET_CSS}
       </div>
       <div class="bw-col">
         <h3 style="margin:0 0 12px;font-size:22px;font-weight:800;">Заголовок рядом с фото</h3>
-        <p style="margin:0;font-size:15px;line-height:1.65;color:#475569;">Текст блока Image Box: замените изображение через медиатеку редактора.</p>
+        <p style="margin:0;font-size:15px;line-height:1.65;color:#475569;">Текст рядом с изображением: замените фото через медиатеку редактора.</p>
       </div>
     </div>
   </div>
@@ -280,9 +280,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-gallery",
     badge: "BW14",
-    title: "Basic Gallery",
+    title: "Простая галерея",
     hint: "сетка изображений",
-    content: `<section data-gjs-name="Gallery" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Галерея" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:960px;margin:0 auto;">
     <div class="bw-gallery">
@@ -296,9 +296,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-carousel",
     badge: "BW15",
-    title: "Image Carousel",
+    title: "Карусель изображений",
     hint: "горизонтальная прокрутка",
-    content: `<section data-gjs-name="Carousel" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
+    content: `<section data-gjs-name="Карусель" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:1000px;margin:0 auto;">
     <div class="bw-carousel">
@@ -312,9 +312,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-icon-list",
     badge: "BW16",
-    title: "Icon List",
+    title: "Список с иконками",
     hint: "список с маркерами",
-    content: `<section data-gjs-name="Icon List" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Список с иконками" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:560px;margin:0 auto;">
     <ul style="margin:0;padding:0;list-style:none;">
@@ -333,9 +333,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-counter",
     badge: "BW17",
-    title: "Counter",
+    title: "Счётчик",
     hint: "числа в ряд",
-    content: `<section data-gjs-name="Counter" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(32px,5vw,52px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#1e293b;color:#fff;">
+    content: `<section data-gjs-name="Счётчик" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(32px,5vw,52px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#1e293b;color:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:900px;margin:0 auto;">
     <div class="bw-row" style="text-align:center;">
@@ -358,9 +358,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-spacer",
     badge: "BW18",
-    title: "Spacer",
+    title: "Отступ",
     hint: "вертикальный отступ",
-    content: `<section data-gjs-name="Spacer" class="lemnity-basic-w lemnity-section" style="margin:0;padding:0;background:transparent;">
+    content: `<section data-gjs-name="Отступ" class="lemnity-basic-w lemnity-section" style="margin:0;padding:0;background:transparent;">
 ${BASIC_WIDGET_CSS}
   <div style="height:min(72px,12vw);min-height:32px;" aria-hidden="true"></div>
 </section>`,
@@ -368,9 +368,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-testimonial",
     badge: "BW19",
-    title: "Testimonial",
+    title: "Отзыв",
     hint: "цитата клиента",
-    content: `<section data-gjs-name="Testimonial" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fefce8;">
+    content: `<section data-gjs-name="Отзыв" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,5vw,56px) clamp(16px,3vw,28px);font-family:system-ui,sans-serif;background:#fefce8;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:720px;margin:0 auto;text-align:center;">
     <p style="margin:0;font-size:clamp(17px,2.5vw,21px);line-height:1.55;font-weight:600;color:#422006;">«Команда закрыла задачу в срок и с отличной коммуникацией. Рекомендуем.»</p>
@@ -381,14 +381,14 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-toggle",
     badge: "BW21",
-    title: "Toggle",
+    title: "Раскрывающийся блок",
     hint: "один раскрывающийся блок",
-    content: `<section data-gjs-name="Toggle" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Раскрывающийся блок" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:640px;margin:0 auto;">
     <details class="lemnity-details-widget" style="border:1px solid #e2e8f0;border-radius:10px;padding:4px 16px;background:#fafafa;">
       <summary style="cursor:pointer;font-weight:700;font-size:15px;padding:12px 0;">Показать подробности</summary>
-      <p style="margin:0;padding:0 0 14px;font-size:14px;line-height:1.65;color:#475569;">Скрытый текст виджета Toggle.</p>
+      <p style="margin:0;padding:0 0 14px;font-size:14px;line-height:1.65;color:#475569;">Скрытый текст этого блока.</p>
     </details>
   </div>
 </section>`,
@@ -396,9 +396,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-social-icons",
     badge: "BW22",
-    title: "Social Icons",
+    title: "Иконки соцсетей",
     hint: "иконки соцсетей",
-    content: `<section data-gjs-name="Social Icons" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#fff;text-align:center;">
+    content: `<section data-gjs-name="Иконки соцсетей" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) 16px;font-family:system-ui,sans-serif;background:#fff;text-align:center;">
 ${BASIC_WIDGET_CSS}
   <div class="bw-social" style="justify-content:center;">
     <a href="#" aria-label="Telegram">TG</a>
@@ -411,9 +411,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-progress",
     badge: "BW23",
-    title: "Progress Bar",
+    title: "Полоса прогресса",
     hint: "подпись и процент — двойной клик по тексту; длина полоски — выберите «Заполнение» и задайте width (%) в стилях",
-    content: `<section data-gjs-name="Progress Bar" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Полоса прогресса" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,44px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div data-gjs-name="Progress — блок" style="max-width:480px;margin:0 auto;">
     <div data-gjs-name="Progress — строка текста" style="display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px;font-size:13px;font-weight:600;color:#475569;">
@@ -429,9 +429,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-soundcloud",
     badge: "BW24",
-    title: "SoundCloud",
+    title: "Встраивание SoundCloud",
     hint: "встраивание трека",
-    content: `<section data-gjs-name="SoundCloud" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;">
+    content: `<section data-gjs-name="SoundCloud-плеер" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fafafa;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:700px;margin:0 auto;height:166px;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;background:#fff;">
     <iframe title="SoundCloud" width="100%" height="166" scrolling="no" frameborder="no" src="https://w.soundcloud.com/player/?url=https%3A//api.soundcloud.com/tracks/293&color=%232563eb"></iframe>
@@ -444,7 +444,7 @@ ${BASIC_WIDGET_CSS}
     badge: "BW25",
     title: "Shortcode (заглушка)",
     hint: "без WordPress — замените на HTML или виджет",
-    content: `<section data-gjs-name="Shortcode" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Шорткод" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:560px;margin:0 auto;padding:20px;border-radius:12px;border:2px dashed #cbd5e1;background:#f8fafc;text-align:center;">
     <p style="margin:0;font-size:14px;line-height:1.55;color:#475569;">В WordPress здесь был бы шорткод. В Lemnity Box вставьте нужный HTML или подключите форму/блок из каталога.</p>
@@ -467,9 +467,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-menu-anchor",
     badge: "BW27",
-    title: "Menu Anchor",
+    title: "Якорь меню",
     hint: "якорь для ссылок меню",
-    content: `<section data-gjs-name="Menu Anchor" class="lemnity-basic-w lemnity-section" style="margin:0;padding:12px 16px;font-family:system-ui,sans-serif;background:transparent;">
+    content: `<section data-gjs-name="Якорь меню" class="lemnity-basic-w lemnity-section" style="margin:0;padding:12px 16px;font-family:system-ui,sans-serif;background:transparent;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:960px;margin:0 auto;padding:10px 14px;border-radius:8px;background:#f1f5f9;font-size:12px;color:#64748b;display:flex;align-items:center;gap:10px;">
     <span style="font-weight:700;color:#334155;">Якорь:</span>
@@ -481,9 +481,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-alert",
     badge: "BW28",
-    title: "Alert",
+    title: "Уведомление",
     hint: "уведомление",
-    content: `<section data-gjs-name="Alert" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
+    content: `<section data-gjs-name="Уведомление" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(24px,4vw,40px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:640px;margin:0 auto;padding:16px 18px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a;font-size:14px;line-height:1.55;">
     <strong>Внимание:</strong> здесь важное сообщение для посетителей. Замените текст и при необходимости цвет фона.
@@ -493,9 +493,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-sidebar",
     badge: "BW29",
-    title: "Sidebar layout",
+    title: "Макет с сайдбаром",
     hint: "боковая колонка + контент",
-    content: `<section data-gjs-name="Sidebar" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
+    content: `<section data-gjs-name="Сайдбар и контент" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) clamp(16px,3vw,24px);font-family:system-ui,sans-serif;background:#f8fafc;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:1040px;margin:0 auto;">
     <div class="bw-row">
@@ -516,7 +516,7 @@ ${BASIC_WIDGET_CSS}
     badge: "BW30",
     title: "Text Path (упрощённо)",
     hint: "текст по кривой SVG",
-    content: `<section data-gjs-name="Text Path" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) 16px;font-family:system-ui,sans-serif;background:#111827;color:#fff;">
+    content: `<section data-gjs-name="Текст по траектории" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(28px,4vw,48px) 16px;font-family:system-ui,sans-serif;background:#111827;color:#fff;">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:640px;margin:0 auto;">
     <svg viewBox="0 0 400 120" width="100%" height="120" aria-label="Текст по траектории">
@@ -524,7 +524,7 @@ ${BASIC_WIDGET_CSS}
         <path id="bw-tp-curve" d="M 20 80 Q 200 20 380 80" fill="none"/>
       </defs>
       <text font-size="22" font-weight="800" fill="#fff">
-        <textPath href="#bw-tp-curve" startOffset="50%" text-anchor="middle">Lemnity · ваш бренд · motion</textPath>
+        <textPath href="#bw-tp-curve" startOffset="50%" text-anchor="middle">Lemnity · ваш бренд · движение</textPath>
       </text>
     </svg>
   </div>
@@ -533,9 +533,9 @@ ${BASIC_WIDGET_CSS}
   {
     id: "bw-link-in-bio",
     badge: "BW31",
-    title: "Link in Bio",
+    title: "Ссылки в профиле",
     hint: "профиль и кнопки-ссылки",
-    content: `<section data-gjs-name="Link in Bio" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,6vw,56px) 16px;font-family:system-ui,sans-serif;background:linear-gradient(165deg,#e0e7ff,#fdf4ff);">
+    content: `<section data-gjs-name="Ссылки в профиле" class="lemnity-basic-w lemnity-section" style="margin:0;padding:clamp(36px,6vw,56px) 16px;font-family:system-ui,sans-serif;background:linear-gradient(165deg,#e0e7ff,#fdf4ff);">
 ${BASIC_WIDGET_CSS}
   <div style="max-width:400px;margin:0 auto;text-align:center;">
     <div style="width:88px;height:88px;margin:0 auto 14px;border-radius:50%;overflow:hidden;border:3px solid #fff;box-shadow:0 8px 24px rgba(99,102,241,.25);">

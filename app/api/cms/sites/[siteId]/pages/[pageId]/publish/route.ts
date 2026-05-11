@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { requireCmsSiteAccess } from "@/lib/cms-core";
 import { syncCmsSandboxPreviewWithFormBridge } from "@/lib/cms-sandbox-form-sync";
 import { prisma } from "@/lib/prisma";
@@ -15,19 +16,19 @@ async function publishPage(
 ) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
 
   const { siteId, pageId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const page = await prisma.cmsPage.findFirst({
     where: { id: pageId, siteId },
     include: { draftRevision: true },
   });
-  if (!page) return new Response("Not found", { status: 404 });
+  if (!page) return apiError("Not found", 404);
   if (!page.draftRevisionId || !page.draftRevision) {
-    return new Response("Draft revision not found", { status: 400 });
+    return apiError("Draft revision not found", 400);
   }
 
   const updated = await prisma.$transaction(async (tx) => {

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireAdminUser } from "@/lib/auth-guards";
+import { apiGuardError } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import {
   buildTariffEconomics,
@@ -14,7 +15,7 @@ async function getAdminEconomics(req: NextRequest) {
   void req;
   const guard = await requireAdminUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const last30 = new Date();

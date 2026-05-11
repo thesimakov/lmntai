@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { randomBytes } from "crypto";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import {
   detectUploadImageMime,
   normalizeUploadImageMime,
@@ -23,41 +24,41 @@ const MAX_BYTES = 6 * 1024 * 1024;
 async function postUpload(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return Response.json({ error: "Unauthorized" }, { status: 401 });
+    return apiGuardError(guard);
   }
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return Response.json({ error: "Project not found" }, { status: 404 });
+    return apiError("Project not found", 404);
   }
   const sandboxId = project.id;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return apiError("Not found", 404);
   }
 
   let formData: FormData;
   try {
     formData = await req.formData();
   } catch {
-    return Response.json({ error: "Bad request" }, { status: 400 });
+    return apiError("Bad request", 400);
   }
 
   const file = formData.get("file");
   if (!(file instanceof File)) {
-    return Response.json({ error: "Missing file" }, { status: 400 });
+    return apiError("Missing file", 400);
   }
   if (file.size > MAX_BYTES) {
-    return Response.json({ error: "File too large" }, { status: 413 });
+    return apiError("File too large", 413);
   }
 
   const buf = Buffer.from(await file.arrayBuffer());
   const detectedMime = detectUploadImageMime(buf);
   if (!detectedMime) {
-    return Response.json({ error: "Unsupported image type" }, { status: 415 });
+    return apiError("Unsupported image type", 415);
   }
   const claimedMime = normalizeUploadImageMime(file.type);
   if (claimedMime && claimedMime !== detectedMime) {
-    return Response.json({ error: "MIME type mismatch" }, { status: 415 });
+    return apiError("MIME type mismatch", 415);
   }
   const mime = detectedMime;
   const ext = uploadImageExtensionFromMime(mime);
@@ -66,7 +67,7 @@ async function postUpload(req: NextRequest) {
   try {
     rowProjectId = await resolveProjectIdForImageAssetRow(guard.data.user.id, sandboxId);
   } catch {
-    return Response.json({ error: "Not found" }, { status: 404 });
+    return apiError("Not found", 404);
   }
   await setSandboxImageAsset(sandboxId, key, { mime, data: buf }, "upload", undefined, {
     dbProjectId: rowProjectId

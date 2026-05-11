@@ -119,30 +119,30 @@ export async function getSandboxShareHeaderBranding(projectId: string): Promise<
  */
 export async function setSandboxSharePublic(sandboxId: string, ownerId: string, isPublic: boolean): Promise<void> {
   const { fkProjectId, storageKey } = await resolveSandboxShareProjectIds(sandboxId, ownerId);
-  const existing = await prisma.sandboxShare.findFirst({
-    where: {
-      OR: [{ projectId: fkProjectId }, { sandboxId: storageKey }]
-    },
-    select: { ownerId: true }
-  });
-  if (existing && existing.ownerId !== ownerId) {
-    throw new Error("FORBIDDEN");
-  }
-  const owner = await prisma.user.findUnique({
-    where: { id: ownerId },
-    select: { plan: true }
-  });
-  const pro = isProOrTeamPlan(owner?.plan ?? "FREE");
-  await prisma.sandboxShare.upsert({
-    where: { projectId: fkProjectId },
-    create: {
-      projectId: fkProjectId,
-      sandboxId: storageKey,
-      ownerId,
-      isPublic,
-      hideLemnityHeader: pro ? true : false
-    },
-    update: { isPublic, sandboxId: storageKey }
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.sandboxShare.findFirst({
+      where: { OR: [{ projectId: fkProjectId }, { sandboxId: storageKey }] },
+      select: { ownerId: true },
+    });
+    if (existing && existing.ownerId !== ownerId) {
+      throw new Error("FORBIDDEN");
+    }
+    const owner = await tx.user.findUnique({
+      where: { id: ownerId },
+      select: { plan: true },
+    });
+    const pro = isProOrTeamPlan(owner?.plan ?? "FREE");
+    await tx.sandboxShare.upsert({
+      where: { projectId: fkProjectId },
+      create: {
+        projectId: fkProjectId,
+        sandboxId: storageKey,
+        ownerId,
+        isPublic,
+        hideLemnityHeader: pro,
+      },
+      update: { isPublic, sandboxId: storageKey },
+    });
   });
 }
 
@@ -159,24 +159,24 @@ export async function assertCanHideShareBranding(userId: string, hide: boolean):
 
 export async function setSandboxShareHideHeader(sandboxId: string, ownerId: string, hide: boolean): Promise<void> {
   const { fkProjectId, storageKey } = await resolveSandboxShareProjectIds(sandboxId, ownerId);
-  const existing = await prisma.sandboxShare.findFirst({
-    where: {
-      OR: [{ projectId: fkProjectId }, { sandboxId: storageKey }]
-    },
-    select: { ownerId: true }
-  });
-  if (existing && existing.ownerId !== ownerId) {
-    throw new Error("FORBIDDEN");
-  }
-  await prisma.sandboxShare.upsert({
-    where: { projectId: fkProjectId },
-    create: {
-      projectId: fkProjectId,
-      sandboxId: storageKey,
-      ownerId,
-      isPublic: false,
-      hideLemnityHeader: hide
-    },
-    update: { hideLemnityHeader: hide, sandboxId: storageKey }
+  await prisma.$transaction(async (tx) => {
+    const existing = await tx.sandboxShare.findFirst({
+      where: { OR: [{ projectId: fkProjectId }, { sandboxId: storageKey }] },
+      select: { ownerId: true },
+    });
+    if (existing && existing.ownerId !== ownerId) {
+      throw new Error("FORBIDDEN");
+    }
+    await tx.sandboxShare.upsert({
+      where: { projectId: fkProjectId },
+      create: {
+        projectId: fkProjectId,
+        sandboxId: storageKey,
+        ownerId,
+        isPublic: false,
+        hideLemnityHeader: hide,
+      },
+      update: { hideLemnityHeader: hide, sandboxId: storageKey },
+    });
   });
 }

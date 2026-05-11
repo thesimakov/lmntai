@@ -22,6 +22,10 @@ type Props = {
   canvasTopOptionsDockRef?: RefObject<HTMLDivElement | null>;
   /** Якорь в шапке для одного поля выбора вида (ПК / планшет / телефон). */
   canvasTopDeviceDockRef?: RefObject<HTMLDivElement | null>;
+  /** Callback fired when user requests opening a zero block in its dedicated editor page. */
+  onOpenZeroBlockEditor?: (blockId: string) => void;
+  /** Auto-enter editing mode for the first zero block on canvas load (used in zero editor page). */
+  autoActivateZeroBlock?: boolean;
 };
 
 export type LemnityBoxVisualEditorHandle = LemnityBoxCanvasEditorHandle;
@@ -36,6 +40,8 @@ export const LemnityBoxVisualEditor = forwardRef<LemnityBoxVisualEditorHandle, P
     onBlocksPanelOpenChange,
     canvasTopOptionsDockRef,
     canvasTopDeviceDockRef,
+    onOpenZeroBlockEditor,
+    autoActivateZeroBlock,
   },
   ref
 ) {
@@ -61,7 +67,9 @@ export const LemnityBoxVisualEditor = forwardRef<LemnityBoxVisualEditorHandle, P
     ...(canvasTopDeviceDockRef ? { canvasTopDeviceDockRef } : {}),
     ...(typeof onBlocksPanelOpenChange === "function"
       ? { blocksPanelOpen: blocksPanelOpen ?? true, onBlocksPanelOpenChange }
-      : {})
+      : {}),
+    ...(typeof onOpenZeroBlockEditor === "function" ? { onOpenZeroBlockEditor } : {}),
+    ...(autoActivateZeroBlock ? { autoActivateZeroBlock: true } : {}),
   };
 
   return (

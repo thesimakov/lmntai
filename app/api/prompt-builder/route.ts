@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
@@ -71,9 +72,7 @@ function getPromptBuilderFallbackQuestions(): string[] {
 
 async function postPromptBuilder(req: NextRequest) {
   if (isLemnityAiBridgeEnabledServer()) {
-    return new Response("Legacy /api/prompt-builder disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", {
-      status: 410
-    });
+    return apiError("Legacy /api/prompt-builder disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", 410);
   }
 
   try {
@@ -97,7 +96,7 @@ async function postPromptBuilder(req: NextRequest) {
       process.env.NODE_ENV === "development"
     ) {
       const ideaEarly = body?.idea?.trim();
-      if (!ideaEarly) return new Response("idea is required", { status: 400 });
+      if (!ideaEarly) return apiError("idea is required", 400);
       if (body?.mode === "questions") {
         return Response.json({ questions: getPromptBuilderFallbackQuestions(), fallback: true, noDb: true });
       }
@@ -114,19 +113,19 @@ async function postPromptBuilder(req: NextRequest) {
           noDb: true
         });
       }
-      return new Response("mode must be questions|compose", { status: 400 });
+      return apiError("mode must be questions|compose", 400);
     }
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const user = guard.data.user;
   const minPromptBalance = await getEffectivePromptBuilderMinimum(user.plan);
   if (!hasEnoughTokens(user, minPromptBalance)) {
-    return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+    return apiError("Insufficient tokens. Please upgrade your plan.", 402);
   }
 
   const idea = body?.idea?.trim();
-  if (!idea) return new Response("idea is required", { status: 400 });
+  if (!idea) return apiError("idea is required", 400);
   const kindCtx = isProjectKind(body?.projectKind)
     ? getProjectKindPromptBuilderContextRu(body.projectKind)
     : "";
@@ -181,7 +180,7 @@ ${resultModeHint}
         model: billedModel
       });
       if (!charge.charged && charge.reason === "insufficient_balance") {
-        return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+        return apiError("Insufficient tokens. Please upgrade your plan.", 402);
       }
 
       return Response.json({
@@ -255,7 +254,7 @@ ${resultModeHint}
         model: billedModel
       });
       if (!charge.charged && charge.reason === "insufficient_balance") {
-        return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+        return apiError("Insufficient tokens. Please upgrade your plan.", 402);
       }
 
       const usageOut = normalizeUsage(usage ?? fallbackUsage);
@@ -279,7 +278,7 @@ ${resultModeHint}
     }
   }
 
-  return new Response("mode must be questions|compose", { status: 400 });
+  return apiError("mode must be questions|compose", 400);
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     console.error("[api/prompt-builder]", err);

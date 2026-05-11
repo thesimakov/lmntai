@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { buildCmsPagePath, buildPageDocumentFromCanvas, normalizeCanvasSnapshot, normalizeCmsSlug, requireCmsSiteAccess } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -14,10 +15,10 @@ async function listPages(
 ) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId } = await params;
   const allowed = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!allowed) return new Response("Not found", { status: 404 });
+  if (!allowed) return apiError("Not found", 404);
 
   const pages = await prisma.cmsPage.findMany({
     where: { siteId },
@@ -40,7 +41,10 @@ async function listPages(
       sortOrder: p.sortOrder,
       seoTitle: p.seoTitle,
       seoDescription: p.seoDescription,
+      seoKeywords: p.seoKeywords,
+      seoCanonicalUrl: p.seoCanonicalUrl,
       noIndex: p.noIndex,
+      seoNoFollow: p.seoNoFollow,
       draftRevisionId: p.draftRevisionId,
       publishedRevisionId: p.publishedRevisionId,
       updatedAt: p.updatedAt.toISOString(),
@@ -55,10 +59,10 @@ async function createPage(
   { params }: { params: Promise<{ siteId: string }> },
 ) {
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const body = (await req.json().catch(() => null)) as {
     title?: string;
@@ -81,7 +85,7 @@ async function createPage(
       where: { id: parentId, siteId },
       select: { path: true },
     });
-    if (!parent) return new Response("Parent page not found", { status: 404 });
+    if (!parent) return apiError("Parent page not found", 404);
     parentPath = parent.path;
   }
   const path = isHome ? "/" : buildCmsPagePath(parentPath, slug);
@@ -140,8 +144,8 @@ async function createPage(
     });
   } catch (e) {
     const code = typeof e === "object" && e && "code" in e ? String((e as { code: unknown }).code) : "";
-    if (code === "P2002") return new Response("Path already exists", { status: 409 });
-    return new Response("Failed to create page", { status: 500 });
+    if (code === "P2002") return apiError("Path already exists", 409);
+    return apiError("Failed to create page", 500);
   }
 }
 

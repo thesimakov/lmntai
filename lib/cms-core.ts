@@ -66,6 +66,21 @@ export async function requireCmsSiteAccess(siteId: string, userId: string) {
   return { site, role: member.role };
 }
 
+/**
+ * Проверяет доступ к сайту И что typeId принадлежит этому сайту.
+ * Устраняет возможность cross-site создания CMS entries через чужой typeId.
+ */
+export async function requireCmsContentTypeAccess(siteId: string, typeId: string, userId: string) {
+  const access = await requireCmsSiteAccess(siteId, userId);
+  if (!access) return null;
+  const contentType = await prisma.cmsContentType.findFirst({
+    where: { id: typeId, siteId },
+    select: { id: true, apiKey: true, name: true },
+  });
+  if (!contentType) return null;
+  return { ...access, contentType };
+}
+
 export async function ensureCmsSiteForProject(projectId: string, ownerId: string) {
   const project = await prisma.project.findFirst({
     where: { id: projectId, ownerId },

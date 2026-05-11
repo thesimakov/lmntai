@@ -558,42 +558,41 @@
   min-height: 0;
 }
 
-.gjs-editor .gjs-pn-panel.gjs-pn-views-container.lemnity-gjs-views-container-with-header {
+/* Оверлей Lemnity: скролл у всей панели стилей без отдельной шапки над контентом */
+.lemnity-box-gjs-mount.lemnity-right-panels-overlay-ready .gjs-editor .gjs-pn-panel.gjs-pn-views-container {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Верх правой контент-панели: явное закрытие (иконки «виды» перенесены в полосу устройств). */
+.gjs-editor .lemnity-gjs-views-panel-actions {
+  position: sticky;
+  top: 0;
+  z-index: 3;
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.gjs-editor .lemnity-gjs-views-container-header {
-  display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  height: 36px;
-  min-height: 36px;
-  padding: 0 10px 0 12px;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffff;
+  gap: 6px;
+  padding: 4px 6px;
+  flex-shrink: 0;
+  background: var(--tilda-panel-bg) !important;
+  border-bottom: 1px solid var(--tilda-row-border) !important;
+  box-sizing: border-box;
 }
 
-.gjs-editor .lemnity-gjs-views-container-title {
-  font-size: 12px;
-  font-weight: 700;
-  color: #0f172a;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.gjs-editor .gjs-pn-btn.lemnity-gjs-views-panel-close {
+  min-width: 2rem !important;
+  min-height: 2rem !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  color: var(--tilda-ink-muted) !important;
 }
 
-.gjs-editor .lemnity-gjs-views-container-close {
-  min-width: 28px;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  line-height: 1;
-  border-radius: 6px;
+.gjs-editor .gjs-pn-btn.lemnity-gjs-views-panel-close:hover,
+.gjs-editor .gjs-pn-btn.lemnity-gjs-views-panel-close:focus-visible {
+  color: var(--tilda-ink) !important;
+  background: var(--tilda-row-hover) !important;
 }
 
 .gjs-editor .gjs-cv-canvas {
@@ -625,7 +624,7 @@
   width: 100%;
 }
 
-/* Иконки «виды» Grapes (настройки / слои / страницы) — справа от кнопки «Стили» в полосе устройств */
+/* Иконки «виды» Grapes (настройки / слои / стили и т.д.) — в полосе устройств рядом с выбором брейкпоинта */
 .gjs-editor .gjs-pn-devices-c .gjs-pn-buttons .lemnity-gjs-views-toolbar-dock {
   display: inline-flex !important;
   align-items: center;
@@ -1171,6 +1170,14 @@
   min-width: min-content;
 }
 
+.playground-box-options-dock .lemnity-preview-mode-label-btn {
+  color: rgba(255, 255, 255, 0.94) !important;
+}
+
+.playground-box-options-dock .lemnity-preview-mode-label-btn:hover {
+  color: #fff !important;
+}
+
 .gjs-editor .gjs-pn-btn[data-gjs-instant-tip],
 .playground-box-options-dock .gjs-pn-btn[data-gjs-instant-tip] {
   position: relative;
@@ -1317,60 +1324,61 @@
   color: #475569;
 }
 
-/* Текстовая кнопка «Блоки»: слева в полосе устройств над холстом */
+/* Кнопка каталога блоков (+): акцент темы (заметнее обычной «нейтральной» иконки) */
 .gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn {
   flex: 0 0 auto;
   order: -1;
-  min-width: auto;
-  height: auto !important;
-  min-height: 28px;
+  box-sizing: border-box;
+  width: 30px;
+  min-width: 30px;
+  height: 30px !important;
+  min-height: 30px;
   margin-left: 8px !important;
   margin-right: auto !important;
-  padding: 4px 12px !important;
+  padding: 0 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 8px;
-  background: #fff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  background: hsl(var(--accent)) !important;
+  border: 1px solid hsl(var(--primary) / 0.28) !important;
+  box-shadow:
+    0 1px 2px hsl(var(--primary) / 0.08),
+    inset 0 1px 0 hsl(0 0% 100% / 0.55);
+  color: hsl(var(--primary)) !important;
+}
+
+.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn .lemnity-box-blocks-toolbar-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
 }
 
 .gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn:hover {
-  background: #f8fafc !important;
+  background: hsl(var(--accent)) !important;
+  border-color: hsl(var(--primary) / 0.42) !important;
+  color: hsl(var(--primary)) !important;
+  filter: brightness(0.98);
 }
 
 .gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn.gjs-pn-active {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+  background: hsl(var(--accent)) !important;
+  border-color: hsl(var(--ring) / 0.65) !important;
+  box-shadow:
+    0 0 0 2px hsl(var(--ring) / 0.38),
+    0 1px 2px hsl(var(--primary) / 0.1);
+  color: hsl(var(--primary)) !important;
 }
 
-.gjs-editor .gjs-pn-devices-c .lemnity-box-styles-toolbar-label {
-  display: inline-block;
-  font-size: 13px;
-  font-weight: 700;
-  line-height: 1.2;
-  color: #0f172a;
-  white-space: nowrap;
+.dark .gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn {
+  box-shadow:
+    0 1px 2px hsl(0 0% 0% / 0.35),
+    inset 0 1px 0 hsl(0 0% 100% / 0.06);
 }
 
-/* Текстовая кнопка «Стили»: рядом с «Блоки» над холстом */
-.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn {
-  flex: 0 0 auto;
-  order: -1;
-  min-width: auto;
-  height: auto !important;
-  min-height: 28px;
-  margin-left: 8px !important;
-  padding: 4px 12px !important;
-  border-radius: 8px;
-  background: #fff !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
-}
-
-.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn:hover {
-  background: #f8fafc !important;
-}
-
-.gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-styles-toolbar-btn.gjs-pn-active {
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+.dark .gjs-editor .gjs-pn-devices-c .gjs-pn-btn.lemnity-box-blocks-toolbar-btn:hover {
+  filter: brightness(1.06);
 }
 
 /* Стандартная кнопка выхода из предпросмотра GrapesJS (вьюпорт): скрыта — выход через «Редактировать» в шапке */
@@ -1644,6 +1652,66 @@
   font-size: 13px;
   font-weight: 800;
   color: #0f172a !important;
+}
+
+.gjs-editor .lemnity-span12-full-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  cursor: pointer;
+  user-select: none;
+}
+
+.gjs-editor .lemnity-span12-full-toggle {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 5px;
+  border: 2px solid #64748b;
+  background: #ffffff;
+  cursor: pointer;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.gjs-editor .lemnity-span12-full-toggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(251, 113, 133, 0.45);
+}
+
+.gjs-editor .lemnity-span12-full-toggle--on {
+  border-color: #fb7185;
+  background: linear-gradient(180deg, rgba(251, 113, 133, 0.98), #fb7185);
+}
+
+.gjs-editor .lemnity-span12-full-toggle--on::after {
+  content: "";
+  display: block;
+  width: 4px;
+  height: 8px;
+  margin-top: -2px;
+  border: solid #ffffff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.gjs-editor .lemnity-span12-full-row .lemnity-span12-full-text {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  color: #334155 !important;
 }
 
 /* GrapesJS: боковые ручки (cl/cr) — форма pill, общий вид для всех блоков редактора */

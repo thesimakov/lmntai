@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError } from "@/lib/api-response";
 import { isSvgMime } from "@/lib/image-content-validation";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
@@ -18,7 +19,7 @@ async function getSandboxImage(
   const { id: routeId, key } = await params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const guard = await requireDbUser();
@@ -40,12 +41,12 @@ async function getSandboxImage(
     canRead = publicOk;
   }
   if (!canRead) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const asset = await getSandboxImageAsset(sandboxId, key);
   if (!asset) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const headers: Record<string, string> = {

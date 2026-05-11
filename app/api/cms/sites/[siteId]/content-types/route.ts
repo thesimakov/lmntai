@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { requireCmsSiteAccess } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -14,10 +15,10 @@ async function listContentTypes(
 ) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const rows = await prisma.cmsContentType.findMany({
     where: { siteId },
@@ -58,10 +59,10 @@ async function createContentType(
   { params }: { params: Promise<{ siteId: string }> },
 ) {
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const body = (await req.json().catch(() => null)) as {
     apiKey?: string;
@@ -75,7 +76,7 @@ async function createContentType(
     .toLowerCase()
     .replace(/[^a-z0-9_]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  if (!apiKey) return new Response("apiKey is required", { status: 400 });
+  if (!apiKey) return apiError("apiKey is required", 400);
   const name = body?.name?.trim() || apiKey;
   const fields = Array.isArray(body?.fields) ? body.fields : [];
 
@@ -114,8 +115,8 @@ async function createContentType(
     return Response.json({ contentTypeId: created.id }, { status: 201 });
   } catch (e) {
     const code = typeof e === "object" && e && "code" in e ? String((e as { code: unknown }).code) : "";
-    if (code === "P2002") return new Response("apiKey already exists", { status: 409 });
-    return new Response("Failed to create content type", { status: 500 });
+    if (code === "P2002") return apiError("apiKey already exists", 409);
+    return apiError("Failed to create content type", 500);
   }
 }
 

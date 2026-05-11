@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
 import { claimReferralForUser } from "@/lib/referrals";
 import { REFERRAL_COOKIE_KEY } from "@/lib/referrals-constants";
 import { prisma } from "@/lib/prisma";
@@ -10,7 +11,7 @@ import { withApiLogging } from "@/lib/with-api-logging";
 async function claimReferral(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
   if (session.user.demoOffline) {
     return NextResponse.json({ status: "skipped_demo" });
@@ -29,7 +30,7 @@ async function claimReferral(req: NextRequest) {
     select: { id: true }
   });
   if (!user) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
 
   const result = await claimReferralForUser(user.id, code);

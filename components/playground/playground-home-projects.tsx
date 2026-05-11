@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ExternalLink, LayoutGrid, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Pencil, Plus, Settings2, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useI18n } from "@/components/i18n-provider";
@@ -116,39 +116,38 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
   return (
     <section
       className={cn(
-        "mx-0 min-w-0 w-full max-w-none rounded-none bg-muted/15 px-4 py-4 md:px-5 md:py-5",
+        "mx-0 min-w-0 w-full max-w-none rounded-xl border border-slate-200/90 bg-white px-4 py-5 shadow-sm md:px-6 md:py-6",
         className
       )}
       aria-labelledby="playground-home-projects-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 gap-y-3">
-        <h2 id="playground-home-projects-heading" className="text-lg font-semibold tracking-tight text-foreground">
+        <h2 id="playground-home-projects-heading" className="text-lg font-semibold tracking-tight text-slate-900">
           {t("projects_title")}
         </h2>
         <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-2.5">
           <Button
             type="button"
             size="sm"
-            className="h-9 shrink-0 gap-2 px-3 font-semibold shadow-sm"
+            className="h-9 shrink-0 gap-2 border-0 bg-[#0061FF] px-3 font-semibold text-white shadow-sm hover:bg-[#0056e6]"
             onClick={() => router.push("/projects/new")}
           >
             <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
             {t("projects_add")}
           </Button>
-          <Button variant="secondary" size="sm" className="h-9 shrink-0 gap-2 border border-border px-3 font-semibold shadow-sm" asChild>
-            <Link href="/playground/cms">
-              <LayoutGrid className="size-4 shrink-0" aria-hidden />
-              {t("playground_home_open_cms")}
-            </Link>
-          </Button>
-          <Button variant="outline" size="sm" className="h-9 shrink-0 text-muted-foreground" asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 shrink-0 border-rose-200/90 bg-rose-50 text-rose-700 hover:bg-rose-100/90"
+            asChild
+          >
             <Link href="/projects">{t("projects_more")}</Link>
           </Button>
         </div>
       </div>
 
       {loading ? (
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
+        <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
           <Loader2 className="h-4 w-4 animate-spin shrink-0" aria-hidden />
           {t("loading")}
         </div>
@@ -162,29 +161,44 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
       ) : projects.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">{t("empty_projects")}</p>
       ) : (
-        <ul className="mt-4 grid gap-2 sm:gap-3">
+        <ul className="mt-4 grid gap-3 sm:gap-3.5">
           {projects.map((project) => (
             <li
               key={project.id}
-              className="flex flex-col gap-3 rounded-xl border border-border/80 bg-background/80 p-3 sm:flex-row sm:items-center sm:gap-4 dark:bg-background/40"
+              className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-3.5 shadow-sm sm:flex-row sm:items-center sm:gap-4"
             >
               <div className="min-w-0 flex-1 space-y-1">
-                <p className="truncate font-medium text-foreground">{project.name}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate font-medium text-slate-900">{project.name}</p>
+                <p className="text-xs text-slate-600">
                   {t("projects_created_label")}: {formatCreatedAt(project.createdAt)}
                 </p>
                 <Link
                   href={project.openUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex max-w-full items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  className="inline-flex max-w-full items-center gap-1 text-xs font-semibold text-[#0061FF] hover:underline"
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span className="truncate">{t("projects_open")}</span>
                 </Link>
               </div>
               <div className="flex shrink-0 flex-wrap items-center gap-2 sm:justify-end">
-                <Button asChild size="sm" variant="secondary" className="gap-1.5">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-slate-200 hover:bg-slate-50"
+                >
+                  <Link href={`/playground/cms?projectId=${encodeURIComponent(project.id)}`}>
+                    <Settings2 className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                    {t("projects_cms_manage")}
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="gap-1.5 border-0 bg-orange-500 font-semibold text-white hover:bg-orange-600"
+                >
                   <Link href={project.editUrl}>
                     <Pencil className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     {t("projects_edit")}
@@ -194,7 +208,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
                   type="button"
                   size="icon"
                   variant="outline"
-                  className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  className="h-9 w-9 shrink-0 border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
                   disabled={deletingId === project.id}
                   aria-label={t("projects_delete_aria")}
                   onClick={() => void deleteProject(project)}

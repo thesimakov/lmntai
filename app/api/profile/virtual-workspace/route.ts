@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiGuardError } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { getUserVirtualWorkspaceSummary } from "@/lib/user-virtual-storage";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -8,7 +9,7 @@ import { withApiLogging } from "@/lib/with-api-logging";
 async function getVirtualWorkspace(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const takeRaw = Number(req.nextUrl.searchParams.get("take") ?? 25);

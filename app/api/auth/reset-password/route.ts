@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { apiError } from "@/lib/api-response";
 import { consumePasswordReset } from "@/lib/password-reset-service";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -10,7 +11,7 @@ async function postReset(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return Response.json({ ok: false, error: "bad_request" }, { status: 400 });
+    return apiError("bad_request", 400);
   }
   const token =
     typeof body === "object" && body && "token" in body ? String((body as { token?: unknown }).token ?? "") : "";
@@ -27,7 +28,7 @@ async function postReset(req: NextRequest) {
       : result.code === "weak_password"
         ? "weak_password"
         : "invalid_token";
-  return Response.json({ ok: false, error: err }, { status: 400 });
+  return apiError(err, 400);
 }
 
 export const POST = withApiLogging("/api/auth/reset-password", postReset);

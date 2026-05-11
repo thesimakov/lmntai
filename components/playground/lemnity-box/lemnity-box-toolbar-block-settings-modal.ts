@@ -1,6 +1,7 @@
 import type { Component, Editor } from "grapesjs";
 
 const CMD_SETTINGS = "lemnity-block-settings-modal";
+const CMD_ZERO_BLOCK_SETTINGS = "lemnity-zero-block-open-settings-window";
 const TB_SETTINGS_ID = "lemnity-block-settings";
 
 const GEAR_SVG =
@@ -95,6 +96,28 @@ function resolveComponentDisplayName(comp: Component): string {
   return tag || "Блок";
 }
 
+function readComponentClasses(comp: Component): string[] {
+  const cls = comp.getClasses?.();
+  if (Array.isArray(cls)) return cls.map(String);
+  if (typeof cls === "string") return cls.split(/\s+/).filter(Boolean);
+  return [];
+}
+
+function isZeroBlockSection(comp: Component | null | undefined): boolean {
+  if (!comp) return false;
+  if (String(comp.get?.("tagName") ?? "").toLowerCase() !== "section") return false;
+  return readComponentClasses(comp).includes("lemnity-zero-block");
+}
+
+function hasZeroBlockAncestor(comp: Component | null | undefined): boolean {
+  let cursor = comp ?? null;
+  while (cursor) {
+    if (isZeroBlockSection(cursor)) return true;
+    cursor = cursor.parent?.() ?? null;
+  }
+  return false;
+}
+
 function getTraitsRootEl(editor: Editor): HTMLElement | null {
   const tv = editor.Traits?.getTraitsViewer?.() as unknown as { el?: HTMLElement } | undefined;
   const el = tv?.el;
@@ -178,6 +201,14 @@ function openBlockSettingsModal(editor: Editor) {
       attributes: { class: "lemnity-box-settings-modal-dialog" },
     });
     return;
+  }
+
+  if (hasZeroBlockAncestor(selected)) {
+    const commands = editor.Commands as unknown as { get?: (id: string) => unknown };
+    if (commands.get?.(CMD_ZERO_BLOCK_SETTINGS)) {
+      editor.runCommand(CMD_ZERO_BLOCK_SETTINGS);
+      return;
+    }
   }
 
   editor.Traits?.select?.(selected);

@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { getEffectiveTeamSeatLimit } from "@/lib/platform-plan-settings";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -69,7 +70,7 @@ async function getTeam(req: NextRequest) {
   void req;
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const owner = await prisma.user.findUnique({
@@ -77,7 +78,7 @@ async function getTeam(req: NextRequest) {
     select: { id: true, email: true, name: true, avatar: true, plan: true }
   });
   if (!owner) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
 
   const rows = await prisma.teamInvitation.findMany({
@@ -121,27 +122,24 @@ async function getTeam(req: NextRequest) {
 async function postTeam(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const ownerId = guard.data.user.id;
   const ownerEmail = guard.data.user.email.toLowerCase();
   const teamSeatLimit = await getEffectiveTeamSeatLimit(guard.data.user.plan);
   if (teamSeatLimit <= 0) {
-    return new Response(
-      "Команда с приглашениями доступна на тарифе Team. Оформите подписку в разделе «Тарифы».",
-      { status: 403 }
-    );
+    return apiError("Команда с приглашениями доступна на тарифе Team. Оформите подписку в разделе «Тарифы».", 403);
   }
   const body = (await req.json().catch(() => null)) as { email?: string; role?: string } | null;
   const email = body?.email?.trim().toLowerCase() ?? "";
   const role = parseRole(body?.role) ?? "EDITOR";
 
   if (!isValidEmail(email)) {
-    return new Response("Введите корректный email", { status: 400 });
+    return apiError("Введите корректный email", 400);
   }
   if (email === ownerEmail) {
-    return new Response("Владелец уже находится в команде", { status: 400 });
+    return apiError("Владелец уже находится в команде", 400);
   }
 
   const existing = await prisma.teamInvitation.findUnique({
@@ -150,9 +148,7 @@ async function postTeam(req: NextRequest) {
   if (!existing) {
     const memberSlotsUsed = (await prisma.teamInvitation.count({ where: { userId: ownerId } })) + 1;
     if (memberSlotsUsed >= teamSeatLimit) {
-      return new Response(`Достигнут лимит тарифа Team: до ${teamSeatLimit} участников, включая вас.`, {
-        status: 400
-      });
+      return apiError(`Достигнут лимит тарифа Team: до ${teamSeatLimit} участников, включая вас.`, 400);
     }
   }
 

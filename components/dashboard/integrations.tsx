@@ -154,7 +154,6 @@ const DEFAULT_WIDGET_SCRIPT = `<script
 const PRO_REQUIRED_INTEGRATION_IDS = new Set([
   "telegram",
   "yandex-metrika",
-  "web-forms",
   "spreadsheets",
   "crm",
 ])
@@ -248,7 +247,7 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
             key: "spreadsheetUrl",
             label: "Sheet URL or ID",
             placeholder: "https://docs.google.com/spreadsheets/d/…",
-            help: "Google Sheets link or workbook identifier."
+            help: "Google Sheets link or workbook identifier. Mirroring CMS form submissions uses the webhook in Playground → CMS → Leads."
           },
           {
             key: "sheetTab",
@@ -377,7 +376,7 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
             key: "spreadsheetUrl",
             label: "Пайванд ё ID",
             placeholder: "https://docs.google.com/…",
-            help: "Google Sheets ё санҷиши файл."
+            help: "Пайванди Google Sheets барои хотира; вебҳуки шаклҳои CMS дар Playground → CMS → Дархостҳо нигоҳ доред."
           },
           {
             key: "sheetTab",
@@ -505,7 +504,7 @@ function buildSettingsConfig(lang: UiLanguage): Record<string, IntegrationSettin
           key: "spreadsheetUrl",
           label: "Таблица (ссылка или ID)",
           placeholder: "https://docs.google.com/spreadsheets/d/…",
-          help: "Google Sheets или идентификатор книги Excel/OneDrive в вашей связке."
+          help: "Ссылка для справки; вебхук для живых заявок сайта CMS сохраняйте в Playground → CMS → Заявки."
         },
         {
           key: "sheetTab",

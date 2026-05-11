@@ -1,5 +1,6 @@
 import type { CmsFormBridgeContext } from "@/lib/cms-form-bridge";
 import { injectCmsFormBridgeIntoFullHtml } from "@/lib/cms-form-bridge";
+import { cmsRobotsMetaTag } from "@/lib/cms-html-robots-meta";
 import type { LemnityBoxCanvasContent } from "@/lib/lemnity-box-editor-schema";
 import { prepareLemnityBoxBodyHtmlForPublish } from "@/lib/lemnity-box-html-embed-expand";
 
@@ -14,9 +15,16 @@ function escapeHtmlAttr(value: string) {
 /** Сборка полного `index.html` для записи в песочницу из снимка GrapesJS. */
 export function buildLemnityBoxIndexHtml(
   content: LemnityBoxCanvasContent,
-  options?: { title?: string; cmsFormBridge?: CmsFormBridgeContext }
+  options?: {
+    title?: string;
+    cmsFormBridge?: CmsFormBridgeContext;
+    /** Директивы для поисковиков по настройкам страницы CMS */
+    seoNoIndex?: boolean | null;
+    seoNoFollow?: boolean | null;
+  },
 ): string {
   const title = (options?.title ?? "Lemnity Box").trim() || "Lemnity Box";
+  const robotsLine = cmsRobotsMetaTag(options?.seoNoIndex, options?.seoNoFollow);
   const { html, css } = content;
   const bodyHtml = prepareLemnityBoxBodyHtmlForPublish(html);
   const bridge = options?.cmsFormBridge;
@@ -26,7 +34,7 @@ export function buildLemnityBoxIndexHtml(
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtmlAttr(title)}</title>
-<style>
+${robotsLine}<style>
 ${css}
 </style>
 </head>

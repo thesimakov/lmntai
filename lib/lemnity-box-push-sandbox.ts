@@ -10,11 +10,18 @@ import { buildVisualSavePatchBody } from "@/lib/visual-save-client-body";
 export async function pushLemnityBoxCanvasToSandbox(
   sandboxId: string,
   content: LemnityBoxCanvasContent,
-  options?: { title?: string; cmsFormBridge?: CmsFormBridgeContext }
+  options?: {
+    title?: string;
+    cmsFormBridge?: CmsFormBridgeContext;
+    seoNoIndex?: boolean | null;
+    seoNoFollow?: boolean | null;
+  },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const docHtml = buildLemnityBoxIndexHtml(content, {
     title: options?.title,
     cmsFormBridge: options?.cmsFormBridge,
+    seoNoIndex: options?.seoNoIndex,
+    seoNoFollow: options?.seoNoFollow,
   });
   let body: BodyInit;
   let headers: HeadersInit;

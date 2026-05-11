@@ -21,6 +21,7 @@ import {
 } from "@/lib/preview-share";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
+import { LINK_COPIED_RESET_MS } from "@/lib/editor-constants";
 
 type BuildSharePopoverProps = {
   sandboxId: string | null;
@@ -30,6 +31,8 @@ type BuildSharePopoverProps = {
   t: (key: MessageKey) => string;
   /** Кастомная кнопка-триггер (Radix asChild). По умолчанию — компактная кнопка «Поделиться». */
   trigger?: ReactElement<HTMLAttributes<HTMLElement>>;
+  /** Доп. классы для кнопки-триггера по умолчанию (например светлый вид на синей шапке). */
+  triggerClassName?: string;
 };
 
 /**
@@ -41,7 +44,8 @@ export function BuildSharePopover({
   shareIsPublic,
   onShareIsPublicChange,
   t,
-  trigger
+  trigger,
+  triggerClassName
 }: BuildSharePopoverProps) {
   const [open, setOpen] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -131,7 +135,7 @@ export function BuildSharePopover({
     const ok = await copyTextToClipboard(url);
     if (ok) {
       setLinkCopied(true);
-      window.setTimeout(() => setLinkCopied(false), 3000);
+      window.setTimeout(() => setLinkCopied(false), LINK_COPIED_RESET_MS);
       toast.success(t("playground_build_share_link_copied_toast"));
     } else {
       toast.error(t("playground_toast_copy_failed"));
@@ -145,7 +149,7 @@ export function BuildSharePopover({
       type="button"
       variant="outline"
       size="sm"
-      className="h-8 min-w-0 max-w-full shrink rounded-lg px-2 sm:px-3"
+      className={cn("h-8 min-w-0 max-w-full shrink rounded-lg px-2 sm:px-3", triggerClassName)}
       aria-label={t("playground_build_share_label")}
     >
       {t("playground_build_share_label")}

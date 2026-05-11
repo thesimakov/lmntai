@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { apiError } from "@/lib/api-response";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -19,7 +20,7 @@ async function getPublishedEntries(
     where: { siteId, apiKey: contentTypeApiKey },
     select: { id: true, apiKey: true, name: true },
   });
-  if (!contentType) return new Response("Not found", { status: 404 });
+  if (!contentType) return apiError("Not found", 404);
 
   const entries = await prisma.cmsEntry.findMany({
     where: slug

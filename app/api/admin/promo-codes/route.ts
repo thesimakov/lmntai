@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireAdminUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { normalizePromoCode } from "@/lib/promo-service";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -13,7 +14,7 @@ async function list(req: NextRequest) {
   void req;
   const g = await requireAdminUser();
   if (!g.ok) {
-    return new Response(g.message, { status: g.status });
+    return apiGuardError(g);
   }
   const rows = await prisma.promoCode.findMany({ orderBy: { createdAt: "desc" } });
   return Response.json({ items: rows });
@@ -42,31 +43,31 @@ function parsePlans(input: string[] | null | undefined): import("@prisma/client"
 async function create(req: NextRequest) {
   const g = await requireAdminUser();
   if (!g.ok) {
-    return new Response(g.message, { status: g.status });
+    return apiGuardError(g);
   }
   const b = (await req.json().catch(() => null)) as BodyCreate | null;
   const code = normalizePromoCode(typeof b?.code === "string" ? b.code : "");
   if (!code) {
-    return Response.json({ error: "code_required" }, { status: 400 });
+    return apiError("code_required", 400);
   }
   const kind = b?.kind === "BONUS_TOKENS" || b?.kind === "DISCOUNT" ? b.kind : null;
   if (!kind) {
-    return Response.json({ error: "invalid_kind" }, { status: 400 });
+    return apiError("invalid_kind", 400);
   }
   if (kind === "DISCOUNT") {
     const p = b?.discountPercent;
     if (typeof p !== "number" || p < 1 || p > 100) {
-      return Response.json({ error: "invalid_discount" }, { status: 400 });
+      return apiError("invalid_discount", 400);
     }
   } else {
     const t = b?.bonusTokens;
     if (typeof t !== "number" || t < 1) {
-      return Response.json({ error: "invalid_tokens" }, { status: 400 });
+      return apiError("invalid_tokens", 400);
     }
   }
   const existing = await prisma.promoCode.findUnique({ where: { code } });
   if (existing) {
-    return Response.json({ error: "duplicate" }, { status: 409 });
+    return apiError("duplicate", 409);
   }
   const row = await prisma.promoCode.create({
     data: {

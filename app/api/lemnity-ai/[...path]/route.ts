@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import {
   buildLemnityAiUpstreamUrl,
@@ -339,16 +340,16 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   }
 
   if (!isLemnityAiBridgeEnabledServer()) {
-    return new Response("Lemnity AI bridge is disabled", { status: 404 });
+    return apiError("Lemnity AI bridge is disabled", 404);
   }
 
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
   const user = guard.data.user;
   if (!path?.length) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   if (path[0] === "artifacts" && path.length === 2 && req.method === "PATCH") {
@@ -356,7 +357,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     try {
       await ensureUserCanEditLemnityArtifact(user.id, artifactId);
     } catch {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     let bodyText: string;
     try {
@@ -364,7 +365,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       const decoded = decodeVisualSavePatchBuffer(rawBuf, req.headers.get("content-encoding"));
       bodyText = decoded.toString("utf8");
     } catch {
-      return new Response("Bad request", { status: 400 });
+      return apiError("Bad request", 400);
     }
     const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
       method: "PATCH",
@@ -382,7 +383,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     try {
       await ensureUserCanEditLemnityArtifact(user.id, artifactId);
     } catch {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     const upstream = await fetch(buildLemnityAiUpstreamUrl(toUpstreamApiPath(path)), {
       method: "GET",
@@ -428,11 +429,11 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       }
       return passthrough(upstream);
     }
-    return new Response("Method not allowed", { status: 405 });
+    return apiError("Method not allowed", 405);
   }
 
   if (path[0] !== "sessions" || path.length < 2) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   if (path[1] === "shared" && path.length === 3 && req.method === "GET") {
@@ -445,16 +446,16 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   const requestProjectId = req.headers.get("x-project-id")?.trim() ?? "";
   if (resolvedProject) {
     if (resolvedProject.id !== upstreamSessionId) {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
   } else if (!requestProjectId || requestProjectId !== upstreamSessionId) {
-    return new Response("project_id is required and must match session id", { status: 400 });
+    return apiError("project_id is required and must match session id", 400);
   }
   try {
     await ensureLemnityAiSessionOwnership(user.id, upstreamSessionId);
   } catch (error) {
     if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_NOT_FOUND") {
-      return new Response("Session not found", { status: 404 });
+      return apiError("Session not found", 404);
     }
     throw error;
   }
@@ -502,7 +503,7 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
   if (tail[0] === "chat" && req.method === "POST") {
     const minStreamBalance = await getEffectiveStreamMinimum(user.plan);
     if (!hasEnoughTokens(user, minStreamBalance)) {
-      return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+      return apiError("Insufficient tokens. Please upgrade your plan.", 402);
     }
     await syncLemnityAiSessionSummary({
       userId: user.id,

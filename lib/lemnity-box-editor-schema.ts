@@ -59,12 +59,28 @@ export type LemnityBoxCanvasContent = {
   css: string;
 };
 
+/** Настройки страничной сетки (общие для стандартных блоков и Zero Block). */
+export type PageGridConfig = {
+  columns: number;
+  marginPx: number;
+  /** Отступ между колонками. 0 = совпадает со стандартной 12-колоночной сеткой. */
+  gutterPx: number;
+};
+
+export const PAGE_GRID_DEFAULTS: PageGridConfig = {
+  columns: 12,
+  marginPx: 40,
+  gutterPx: 0,
+};
+
 export type PageDocument = {
   version: 1;
   title: string;
   blocks: BlockNode[];
   /** Сохранённые данные конструктора; ключ в JSON сохранён исторически. */
   grapesjs?: LemnityBoxCanvasContent;
+  /** Настройки страничной сетки (единая для стандартных и Zero Block). */
+  gridConfig?: PageGridConfig;
 };
 
 export function createId(prefix = "blk") {

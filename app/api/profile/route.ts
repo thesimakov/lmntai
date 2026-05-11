@@ -7,6 +7,7 @@ import { MONTHLY_TOKEN_ALLOWANCE, normalizePlanId } from "@/lib/plan-config";
 import { prisma } from "@/lib/prisma";
 import { fetchUserStarterPaidUntilById } from "@/lib/user-starter-paid-until-raw";
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { generateApiKey } from "@/lib/api-keys";
 import { ensureUserReferralCode } from "@/lib/referrals";
 import { REFERRAL_BONUS_TOKENS } from "@/lib/referrals-constants";
@@ -55,7 +56,7 @@ async function getProfile(req: NextRequest) {
   void req;
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   if (session.user.demoOffline) {
@@ -83,7 +84,7 @@ async function getProfile(req: NextRequest) {
   });
 
   if (!core) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
 
   let user: typeof core & { starterPaidUntil: Date | null } = {
@@ -163,18 +164,16 @@ export const GET = withApiLogging("/api/profile", getProfile);
 async function patchProfile(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   if (session.user.demoOffline) {
-    return new Response("Профиль без базы данных недоступен для сохранения. Запустите PostgreSQL.", {
-      status: 503
-    });
+    return apiError("Профиль без базы данных недоступен для сохранения. Запустите PostgreSQL.", 503);
   }
 
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const body = (await req.json().catch(() => null)) as
@@ -206,23 +205,23 @@ export const PATCH = withApiLogging("/api/profile", patchProfile);
 async function postProfile(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   if (session.user.demoOffline) {
-    return new Response("API-ключ без базы данных недоступен. Запустите PostgreSQL.", { status: 503 });
+    return apiError("API-ключ без базы данных недоступен. Запустите PostgreSQL.", 503);
   }
 
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
 
   if (action !== "generate-api-key") {
-    return new Response("Unknown action", { status: 400 });
+    return apiError("Unknown action", 400);
   }
 
   const apiKey = generateApiKey();

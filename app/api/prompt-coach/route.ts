@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import {
   buildPromptCoachSystemPrompt,
@@ -43,7 +44,7 @@ async function postPromptCoach(req: NextRequest) {
       .filter((m) => m.content.length > 0);
 
     if (!messages.length) {
-      return new Response("messages must include at least one user or assistant entry", { status: 400 });
+      return apiError("messages must include at least one user or assistant entry", 400);
     }
 
     if (!guard.ok) {
@@ -56,13 +57,13 @@ async function postPromptCoach(req: NextRequest) {
         const demo = coachOfflineDemoReply(messages, kind);
         return Response.json({ ...demo, fallback: true, noDb: true });
       }
-      return new Response(guard.message, { status: guard.status });
+      return apiGuardError(guard);
     }
 
     const user = guard.data.user;
     const minPromptBalance = await getEffectivePromptBuilderMinimum(user.plan);
     if (!hasEnoughTokens(user, minPromptBalance)) {
-      return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+      return apiError("Insufficient tokens. Please upgrade your plan.", 402);
     }
 
     const idea = body?.idea?.trim() ?? "";
@@ -123,7 +124,7 @@ async function postPromptCoach(req: NextRequest) {
         model: billedModel
       });
       if (!charge.charged && charge.reason === "insufficient_balance") {
-        return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+        return apiError("Insufficient tokens. Please upgrade your plan.", 402);
       }
 
       const usageOut = normalizeUsage(usage ?? fallbackUsage);

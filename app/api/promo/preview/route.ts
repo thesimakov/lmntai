@@ -4,6 +4,7 @@ import { type BillingPeriod } from "@/lib/pricing-billing";
 import { buildPlanPromoPreview, normalizePromoCode, resolvePromoForPreview } from "@/lib/promo-service";
 import { formatCurrencyMinor, referralCurrencyForLanguage } from "@/lib/referrals-currency";
 import { parseUiLanguage } from "@/lib/i18n";
+import { apiError } from "@/lib/api-response";
 import { withApiLogging } from "@/lib/with-api-logging";
 import { localeForLanguage } from "@/lib/pricing-display";
 
@@ -18,7 +19,7 @@ async function postPreview(req: NextRequest) {
   const code = typeof body?.code === "string" ? body.code : "";
   const period = body?.billingPeriod;
   if (!period || !PERIODS.includes(period as BillingPeriod)) {
-    return Response.json({ error: "invalid_period" }, { status: 400 });
+    return apiError("invalid_period", 400);
   }
   const lang = parseUiLanguage(body?.lang) ?? "ru";
   const currency = referralCurrencyForLanguage(lang);

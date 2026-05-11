@@ -14,28 +14,29 @@ import {
   fetchUserStarterPaidUntilById,
   setUserStarterPaidUntilById,
 } from "@/lib/user-starter-paid-until-raw";
+import { apiError } from "@/lib/api-response";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 async function postBillingWebhook(req: NextRequest) {
   const secret = process.env.BILLING_WEBHOOK_SECRET;
   if (!secret) {
-    return new Response("Billing webhook is not configured", { status: 503 });
+    return apiError("Billing webhook is not configured", 503);
   }
 
   const raw = await req.text().catch(() => "");
   if (!raw) {
-    return new Response("Empty body", { status: 400 });
+    return apiError("Empty body", 400);
   }
 
   const signature = req.headers.get("x-lemnity-signature");
   const signatureOk = verifyBillingSignature(raw, signature, secret);
   if (!signatureOk) {
-    return new Response("Invalid signature", { status: 401 });
+    return apiError("Invalid signature", 401);
   }
 
   const payload = parseBillingPayload(raw);
   if (!payload) {
-    return new Response("Invalid payload", { status: 400 });
+    return apiError("Invalid payload", 400);
   }
 
   if (!markBillingEventStarted(payload.eventId)) {
@@ -46,7 +47,7 @@ async function postBillingWebhook(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: payload.email } });
     if (!user) {
       markBillingEventRollback(payload.eventId);
-      return new Response("User not found", { status: 404 });
+      return apiError("User not found", 404);
     }
 
     if (payload.tokens > 0) {

@@ -98,6 +98,12 @@ model CmsSite {
   ownerId       String
   name          String
   defaultLocale String   @default("ru")
+  /// HTTPS webhook (Zapier/Make и т.п.): каждая новая заявка с формы дублируется POST JSON сюда после записи в БД.
+  formSubmissionWebhookUrl String?
+  /// Пользовательские колонки канбана заявок: JSON [{ id: "col_…", label: "…" }] (три базовые колонки зашиты в приложении).
+  formSubmissionKanbanColumns Json?
+  /// Полный текст robots.txt; null — использовать автогенерацию для опубликованного сайта.
+  robotsTxtOverride        String?  @db.Text
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -146,7 +152,10 @@ model CmsPage {
   sortOrder         Int      @default(0)
   seoTitle          String?
   seoDescription    String?
+  seoKeywords       String?
+  seoCanonicalUrl   String?
   noIndex           Boolean  @default(false)
+  seoNoFollow       Boolean  @default(false)
   draftRevisionId   String?  @unique
   publishedRevisionId String? @unique
   createdAt         DateTime @default(now())
@@ -168,15 +177,16 @@ model CmsPage {
 
 /// Ревизия страницы (draft/published/scheduled).
 model CmsPageRevision {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   pageId      String
   siteId      String
   authorId    String
   version     Int
-  status      String   @default("draft")
+  status      String    @default("draft")
   label       String?
   content     Json
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
+  deletedAt   DateTime?
 
   page        CmsPage  @relation("CmsPageToRevision", fields: [pageId], references: [id], onDelete: Cascade)
   site        CmsSite  @relation(fields: [siteId], references: [id], onDelete: Cascade)
@@ -186,6 +196,7 @@ model CmsPageRevision {
 
   @@unique([pageId, version])
   @@index([pageId, createdAt])
+  @@index([pageId, deletedAt])
   @@index([siteId, status, createdAt])
 }
 
@@ -319,13 +330,33 @@ model CmsFormSubmission {
   formName  String?
   fields    Json
   meta      Json?
+  /// Колонка канбана: new | in_progress | done | col_… (из formSubmissionKanbanColumns сайта).
+  kanbanColumnKey String @default("new")
   createdAt DateTime @default(now())
 
   site CmsSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
   page CmsPage? @relation(fields: [pageId], references: [id], onDelete: SetNull)
 
   @@index([siteId, createdAt])
+  @@index([siteId, kanbanColumnKey])
   @@index([pageId, createdAt])
+}
+
+model WebhookDeliveryLog {
+  id           String    @id @default(cuid())
+  siteId       String
+  submissionId String
+  url          String
+  attempt      Int       @default(1)
+  status       String    @default("pending")
+  httpStatus   Int?
+  error        String?   @db.Text
+  nextRetryAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([siteId, createdAt])
+  @@index([status, nextRetryAt])
 }
 
 model User {

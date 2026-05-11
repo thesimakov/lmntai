@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { appendUserVirtualEntry } from "@/lib/user-virtual-storage";
@@ -46,24 +46,39 @@ export async function logRequestEntry(input: {
     const search = truncate(url.search || undefined, 2000);
     const bodyPreview = input.bodyPreview ? truncate(input.bodyPreview, MAX_PREVIEW) : undefined;
     const error = input.error ? truncate(input.error, 4000) : undefined;
-    await prisma.requestLog.create({
-      data: {
-        method: input.req.method,
-        pathname: input.pathname,
-        search,
-        statusCode: input.statusCode,
-        durationMs: input.durationMs,
-        userId: input.userId ?? undefined,
-        ip: getClientIp(input.req),
-        userAgent: truncate(input.req.headers.get("user-agent"), 512),
-        referer: truncate(input.req.headers.get("referer"), 512),
-        bodyPreview,
-        error
-      }
+
+    let userId = input.userId ?? undefined;
+
+    const dataForLog = (uid: string | undefined): Prisma.RequestLogUncheckedCreateInput => ({
+      method: input.req.method,
+      pathname: input.pathname,
+      search,
+      statusCode: input.statusCode,
+      durationMs: input.durationMs,
+      userId: uid,
+      ip: getClientIp(input.req),
+      userAgent: truncate(input.req.headers.get("user-agent"), 512),
+      referer: truncate(input.req.headers.get("referer"), 512),
+      bodyPreview,
+      error
     });
-    if (input.userId) {
+
+    try {
+      await prisma.requestLog.create({ data: dataForLog(userId) });
+    } catch (err) {
+      const fkBroken =
+        err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2003" && Boolean(userId);
+      if (fkBroken) {
+        userId = undefined;
+        await prisma.requestLog.create({ data: dataForLog(undefined) });
+      } else {
+        throw err;
+      }
+    }
+
+    if (userId) {
       await appendUserVirtualEntry({
-        userId: input.userId,
+        userId,
         kind: "request",
         content: {
           method: input.req.method,

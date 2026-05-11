@@ -1,12 +1,22 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { buildCmsPagePath, buildPageDocumentFromCanvas, normalizeCanvasSnapshot, normalizeCmsPath, normalizeCmsSlug, requireCmsSiteAccess } from "@/lib/cms-core";
+import { syncCmsSandboxPreviewWithFormBridge } from "@/lib/cms-sandbox-form-sync";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+function seoStringFromBody(v: unknown): string | null | undefined {
+  if (v === undefined) return undefined;
+  if (v === null) return null;
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  return s === "" ? null : s;
+}
 
 async function getPage(
   req: NextRequest,
@@ -14,10 +24,10 @@ async function getPage(
 ) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId, pageId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const page = await prisma.cmsPage.findFirst({
     where: { id: pageId, siteId },
@@ -26,7 +36,7 @@ async function getPage(
       publishedRevision: true,
     },
   });
-  if (!page) return new Response("Not found", { status: 404 });
+  if (!page) return apiError("Not found", 404);
 
   return Response.json({
     page: {
@@ -40,7 +50,10 @@ async function getPage(
       sortOrder: page.sortOrder,
       seoTitle: page.seoTitle,
       seoDescription: page.seoDescription,
+      seoKeywords: page.seoKeywords,
+      seoCanonicalUrl: page.seoCanonicalUrl,
       noIndex: page.noIndex,
+      seoNoFollow: page.seoNoFollow,
       createdAt: page.createdAt.toISOString(),
       updatedAt: page.updatedAt.toISOString(),
       draftRevisionId: page.draftRevisionId,
@@ -56,10 +69,10 @@ async function patchPage(
   { params }: { params: Promise<{ siteId: string; pageId: string }> },
 ) {
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const { siteId, pageId } = await params;
   const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
-  if (!access) return new Response("Not found", { status: 404 });
+  if (!access) return apiError("Not found", 404);
 
   const body = (await req.json().catch(() => null)) as {
     title?: string;
@@ -67,7 +80,10 @@ async function patchPage(
     path?: string;
     seoTitle?: string | null;
     seoDescription?: string | null;
+    seoKeywords?: string | null;
+    seoCanonicalUrl?: string | null;
     noIndex?: boolean;
+    seoNoFollow?: boolean;
     isHome?: boolean;
     content?: unknown;
   } | null;
@@ -84,7 +100,7 @@ async function patchPage(
       draftRevisionId: true,
     },
   });
-  if (!page) return new Response("Not found", { status: 404 });
+  if (!page) return apiError("Not found", 404);
 
   const nextTitle = body?.title?.trim() || page.title;
   const nextSlug = body?.slug ? normalizeCmsSlug(body.slug) : page.slug;
@@ -111,7 +127,7 @@ async function patchPage(
       let draftRevisionId = page.draftRevisionId;
       if (body && "content" in body) {
         const last = await tx.cmsPageRevision.findFirst({
-          where: { pageId: page.id },
+          where: { pageId: page.id, deletedAt: null },
           orderBy: { version: "desc" },
           select: { version: true },
         });
@@ -130,18 +146,37 @@ async function patchPage(
         draftRevisionId = createdRevision.id;
       }
 
+      const pageUpdate: {
+        title: string;
+        slug: string;
+        path: string;
+        seoTitle?: string | null;
+        seoDescription?: string | null;
+        seoKeywords?: string | null;
+        seoCanonicalUrl?: string | null;
+        noIndex?: boolean;
+        seoNoFollow?: boolean;
+        isHome: boolean;
+        draftRevisionId?: string | null;
+      } = {
+        title: nextTitle,
+        slug: nextSlug,
+        path: nextPath,
+        isHome: setHome,
+      };
+      pageUpdate.draftRevisionId = draftRevisionId;
+      if (body) {
+        if ("seoTitle" in body) pageUpdate.seoTitle = seoStringFromBody(body.seoTitle) ?? null;
+        if ("seoDescription" in body) pageUpdate.seoDescription = seoStringFromBody(body.seoDescription) ?? null;
+        if ("seoKeywords" in body) pageUpdate.seoKeywords = seoStringFromBody(body.seoKeywords) ?? null;
+        if ("seoCanonicalUrl" in body) pageUpdate.seoCanonicalUrl = seoStringFromBody(body.seoCanonicalUrl) ?? null;
+        if ("noIndex" in body && typeof body.noIndex === "boolean") pageUpdate.noIndex = body.noIndex;
+        if ("seoNoFollow" in body && typeof body.seoNoFollow === "boolean") pageUpdate.seoNoFollow = body.seoNoFollow;
+      }
+
       return tx.cmsPage.update({
         where: { id: page.id },
-        data: {
-          title: nextTitle,
-          slug: nextSlug,
-          path: nextPath,
-          seoTitle: body?.seoTitle ?? undefined,
-          seoDescription: body?.seoDescription ?? undefined,
-          noIndex: typeof body?.noIndex === "boolean" ? body.noIndex : undefined,
-          isHome: setHome,
-          draftRevisionId: draftRevisionId ?? undefined,
-        },
+        data: pageUpdate,
         include: { draftRevision: true, publishedRevision: true },
       });
     });
@@ -153,6 +188,12 @@ async function patchPage(
         slug: updated.slug,
         path: updated.path,
         isHome: updated.isHome,
+        seoTitle: updated.seoTitle,
+        seoDescription: updated.seoDescription,
+        seoKeywords: updated.seoKeywords,
+        seoCanonicalUrl: updated.seoCanonicalUrl,
+        noIndex: updated.noIndex,
+        seoNoFollow: updated.seoNoFollow,
         draftRevisionId: updated.draftRevisionId,
         publishedRevisionId: updated.publishedRevisionId,
         draftContent: updated.draftRevision?.content ?? null,
@@ -162,10 +203,71 @@ async function patchPage(
     });
   } catch (e) {
     const code = typeof e === "object" && e && "code" in e ? String((e as { code: unknown }).code) : "";
-    if (code === "P2002") return new Response("Path already exists", { status: 409 });
-    return new Response("Failed to update page", { status: 500 });
+    if (code === "P2002") return apiError("Path already exists", 409);
+    return apiError("Failed to update page", 500);
   }
+}
+
+async function deletePage(
+  req: NextRequest,
+  { params }: { params: Promise<{ siteId: string; pageId: string }> },
+) {
+  void req;
+  const guard = await requireDbUser();
+  if (!guard.ok) return apiGuardError(guard);
+  const { siteId, pageId } = await params;
+  const access = await requireCmsSiteAccess(siteId, guard.data.user.id);
+  if (!access) return apiError("Not found", 404);
+
+  const page = await prisma.cmsPage.findFirst({
+    where: { id: pageId, siteId },
+    select: { id: true, isHome: true },
+  });
+  if (!page) return apiError("Not found", 404);
+
+  await prisma.$transaction(async (tx) => {
+    if (page.isHome) {
+      const successor = await tx.cmsPage.findFirst({
+        where: { siteId, NOT: { id: page.id } },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+        select: { id: true },
+      });
+      if (successor) {
+        await tx.cmsPage.updateMany({
+          where: { siteId, isHome: true },
+          data: { isHome: false },
+        });
+        await tx.cmsPage.update({
+          where: { id: successor.id },
+          data: { isHome: true },
+        });
+      }
+    }
+
+    await tx.cmsPage.update({
+      where: { id: page.id },
+      data: { draftRevisionId: null, publishedRevisionId: null },
+    });
+    await tx.cmsPageRevision.updateMany({
+      where: { pageId: page.id, deletedAt: null },
+      data: { deletedAt: new Date() },
+    });
+    await tx.cmsPage.delete({
+      where: { id: page.id },
+    });
+  });
+
+  const sandboxPreviewSync = await syncCmsSandboxPreviewWithFormBridge({ siteId });
+  if (!sandboxPreviewSync.ok) {
+    console.error("[cms delete page] sandbox preview sync failed", sandboxPreviewSync.message);
+  }
+
+  return Response.json({
+    ok: true,
+    sandboxPreviewSync,
+  });
 }
 
 export const GET = withApiLogging("/api/cms/sites/[siteId]/pages/[pageId]", getPage);
 export const PATCH = withApiLogging("/api/cms/sites/[siteId]/pages/[pageId]", patchPage);
+export const DELETE = withApiLogging("/api/cms/sites/[siteId]/pages/[pageId]", deletePage);

@@ -1,9 +1,8 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -11,6 +10,7 @@ import { BuildPublishDialog } from "@/components/playground/build-publish-dialog
 import { BuildSharePopover } from "@/components/playground/build-share-popover";
 import { PlaygroundSharePublishActions } from "@/components/playground/build-topbar";
 import { LemnityBoxVisualEditor, type LemnityBoxVisualEditorHandle } from "@/components/playground/lemnity-box-visual-editor";
+import { PlaygroundStudioChrome } from "@/components/playground/playground-studio-chrome";
 import { PageTransition } from "@/components/page-transition";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import { mergeLemnityBoxSectionMotionCss } from "@/lib/lemnity-box-section-motio
 import { pushLemnityBoxCanvasToSandbox } from "@/lib/lemnity-box-push-sandbox";
 import { readBuilderHandoff } from "@/lib/landing-handoff";
 import { resolvePublishOpenUrl, resolveShareablePreviewUrl } from "@/lib/preview-share";
+import { startZeroBlockSession, extractZeroBlockSection } from "@/lib/lemnity-zero-block-session";
 
 const BOX_TEMPLATE_BOOTSTRAP_JSON = {
   universal: "/box-templates/wpriver-saveweb/grapes-bootstrap.json",
@@ -37,9 +38,11 @@ function isRemoteBoxStarter(param: string | null): param is RemoteBoxStarter {
 export default function PlaygroundLemnityBoxEditorPage() {
   const { t } = useI18n();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { data: session } = useSession();
   const [editorFailed, setEditorFailed] = useState(false);
   const onInitError = useCallback(() => setEditorFailed(true), []);
+  const [canvasKey, setCanvasKey] = useState(0);
 
   const sandboxId = searchParams.get("sandboxId")?.trim() || null;
   const projectIdParam = searchParams.get("projectId")?.trim() || null;
@@ -236,6 +239,27 @@ export default function PlaygroundLemnityBoxEditorPage() {
     t,
   ]);
 
+  const handleOpenZeroBlockEditor = useCallback(async (blockId: string) => {
+    if (typeof window === "undefined") return;
+    const snap = canvasRef.current?.flushCanvasSnapshot();
+    if (!snap) { toast.error(t("build_box_status_error")); return; }
+    writeLemnityBoxCanvasDraft(snap);
+    const sectionHtml = extractZeroBlockSection(snap.html, blockId);
+    if (!sectionHtml) { toast.error("Нулевой блок не найден в документе"); return; }
+    startZeroBlockSession({
+      blockId,
+      sectionHtml,
+      fullHtml: snap.html,
+      css: snap.css,
+      returnUrl: window.location.href,
+      ...(cmsMode && cmsSiteId ? { cmsSiteId } : {}),
+      ...(cmsMode && cmsPageId ? { cmsPageId } : {}),
+      ...(effectiveSandboxId ? { cmsProjectId: effectiveSandboxId } : {}),
+      ...(cmsMode ? { cmsPagePath } : {}),
+    });
+    router.push(`/playground/box/editor/zero?blockId=${encodeURIComponent(blockId)}`);
+  }, [cmsMode, cmsPageId, cmsPagePath, cmsSiteId, effectiveSandboxId, router, t]);
+
   const handlePublishConfirm = useCallback(
     async (detail: { openUrl: string }) => {
       if (typeof window === "undefined") return;
@@ -276,6 +300,17 @@ export default function PlaygroundLemnityBoxEditorPage() {
     }
   }, [effectiveSandboxId]);
 
+  // After returning from zero block editor: force canvas remount to pick up patched localStorage draft
+  useEffect(() => {
+    const saved = searchParams.get("zeroBlockSaved");
+    if (!saved) return;
+    setCanvasKey((k) => k + 1);
+    // Clean the URL param without re-navigating
+    const url = new URL(window.location.href);
+    url.searchParams.delete("zeroBlockSaved");
+    window.history.replaceState(null, "", url.toString());
+  }, [searchParams]);
+
   useEffect(() => {
     if (!cmsMode || !cmsSiteId || !cmsPageId) {
       setCmsLoading(false);
@@ -304,59 +339,57 @@ export default function PlaygroundLemnityBoxEditorPage() {
   return (
     <PageTransition>
       <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-2">
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-background px-1 pb-3 pt-0.5">
-          <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2">
-            <Button type="button" variant="ghost" size="sm" className="h-9 w-fit shrink-0 gap-2 px-2" asChild>
-              <Link href="/playground">
-                <ArrowLeft className="h-4 w-4" />
-                {t("playground_box_editor_back")}
-              </Link>
-            </Button>
-            {cmsHeaderPageTitle ? (
-              <span
-                className="min-w-0 max-w-[min(50vw,24rem)] truncate text-sm font-medium text-foreground"
-                title={cmsHeaderPageTitle}
-              >
-                {cmsHeaderPageTitle}
+        <PlaygroundStudioChrome
+          backHref="/playground"
+          backLabel={t("playground_box_editor_back")}
+          contextLine={
+            cmsHeaderPageTitle ? (
+              <span className="truncate text-white/95" title={cmsHeaderPageTitle}>
+                · {cmsHeaderPageTitle}
               </span>
-            ) : null}
-          </div>
-
-          <PlaygroundSharePublishActions
-            leadingSlot={
-              <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-1.5 sm:gap-2">
-                <div
-                  ref={canvasDeviceDockRef}
-                  className="playground-box-device-dock flex min-w-0 shrink-0 items-center"
-                  aria-label="Вид макета"
-                />
-                <div
-                  ref={canvasOptionsDockRef}
-                  className="playground-box-options-dock flex min-w-0 shrink-0 flex-wrap items-center gap-0.5"
-                  aria-label="Режимы редактора"
-                />
-              </div>
-            }
-            sandboxId={effectiveSandboxId}
-            onSave={handleSave}
-            saveDisabled={savePending}
-            savePending={savePending}
-            shareMenu={
-              cmsMode ? null : (
-                <BuildSharePopover
-                  sandboxId={effectiveSandboxId}
-                  hasPreview={hasPreview}
-                  shareIsPublic={shareIsPublic}
-                  onShareIsPublicChange={setShareIsPublic}
-                  t={t}
-                />
-              )
-            }
-            onPublish={handlePublishOpen}
-            publishDisabled={publishDisabled}
-            showStudioMenu={false}
-          />
-        </header>
+            ) : null
+          }
+          endSlot={
+            <div className="max-w-[100vw] sm:max-w-none">
+              <PlaygroundSharePublishActions
+                blueBarChrome
+                leadingSlot={
+                  <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
+                    <div
+                      ref={canvasDeviceDockRef}
+                      className="playground-box-device-dock flex min-w-0 shrink-0 items-center [&_button]:border-white/30 [&_button]:bg-white/10 [&_button]:hover:bg-white/20"
+                      aria-label="Вид макета"
+                    />
+                    <div
+                      ref={canvasOptionsDockRef}
+                      className="playground-box-options-dock flex min-w-0 shrink-0 flex-wrap items-center gap-0.5 [&_button]:border-white/30 [&_button]:bg-white/10 [&_button]:hover:bg-white/20"
+                      aria-label="Режимы редактора"
+                    />
+                  </div>
+                }
+                sandboxId={effectiveSandboxId}
+                onSave={handleSave}
+                saveDisabled={savePending}
+                savePending={savePending}
+                shareMenu={
+                  cmsMode ? null : (
+                    <BuildSharePopover
+                      sandboxId={effectiveSandboxId}
+                      hasPreview={hasPreview}
+                      shareIsPublic={shareIsPublic}
+                      onShareIsPublicChange={setShareIsPublic}
+                      t={t}
+                      triggerClassName="border-white/40 bg-white/15 !text-white shadow-none hover:bg-white/25 hover:!text-white [&_svg]:!text-white"
+                    />
+                  )
+                }
+                onPublish={handlePublishOpen}
+                publishDisabled={publishDisabled}
+                showStudioMenu={false}
+              />
+            </div>
+          }
+        />
 
         {editorFailed ? <p className="shrink-0 text-sm text-destructive">{t("build_box_status_error")}</p> : null}
         {cmsLoading ? <p className="shrink-0 text-sm text-muted-foreground">Загрузка CMS-страницы…</p> : null}
@@ -374,6 +407,7 @@ export default function PlaygroundLemnityBoxEditorPage() {
             </div>
           ) : (
             <LemnityBoxVisualEditor
+            key={canvasKey}
             ref={canvasRef}
             canvasTopDeviceDockRef={canvasDeviceDockRef}
             canvasTopOptionsDockRef={canvasOptionsDockRef}
@@ -385,6 +419,7 @@ export default function PlaygroundLemnityBoxEditorPage() {
             className="h-full min-h-[360px] w-full flex-1"
             onInitError={onInitError}
             onCanvasChange={() => setReadyForPublish(false)}
+            onOpenZeroBlockEditor={handleOpenZeroBlockEditor}
             />
           )}
         </div>

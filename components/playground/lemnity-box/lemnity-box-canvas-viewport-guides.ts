@@ -128,7 +128,7 @@ export function attachLemnityBoxCanvasViewportGuides(editor: Editor): () => void
 
   const onLoadFrame = () => bindDocument();
 
-const onFrameUnload = () => {
+  const onFrameUnload = () => {
     teardownDomObservers();
   };
 

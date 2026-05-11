@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { listLemnityAiSessionsForUser } from "@/lib/lemnity-ai-session-links";
 import { prisma } from "@/lib/prisma";
@@ -22,7 +23,7 @@ async function getProjects(req: NextRequest) {
   void req;
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   try {
@@ -152,7 +153,7 @@ async function getProjects(req: NextRequest) {
 async function postProject(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const body = (await req.json().catch(() => null)) as {
@@ -163,7 +164,7 @@ async function postProject(req: NextRequest) {
 
   const projectGate = await checkProjectCreationAllowed(guard.data.user.id, guard.data.user.plan);
   if (!projectGate.ok) {
-    return new Response(projectGate.message, { status: projectGate.status });
+    return apiError(projectGate.message, projectGate.status);
   }
   const name = sanitizeProjectTitleForUser(body?.name?.trim() || "") || "New project";
 

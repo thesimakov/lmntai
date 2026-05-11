@@ -64,7 +64,10 @@ async function getPublishedPages(
       isHome: p.isHome,
       seoTitle: p.seoTitle,
       seoDescription: p.seoDescription,
+      seoKeywords: p.seoKeywords,
+      seoCanonicalUrl: p.seoCanonicalUrl,
       noIndex: p.noIndex,
+      seoNoFollow: p.seoNoFollow,
       publishedAt: p.publishedRevision?.createdAt?.toISOString() ?? null,
       content: enrichPublishedContent(p.publishedRevision?.content ?? null, {
         siteId,

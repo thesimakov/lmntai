@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
 import { parseUiLanguage } from "@/lib/i18n";
 import { OFFLINE_DEMO_USER_ID } from "@/lib/offline-demo-auth";
 import { prisma } from "@/lib/prisma";
@@ -29,7 +30,7 @@ function maskEmail(email: string | null | undefined): string | null {
 async function getReferralWallet(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
 
   const url = new URL(req.url);
@@ -61,7 +62,7 @@ async function getReferralWallet(req: NextRequest) {
     }
   });
   if (!user) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
 
   const [wallet, recentEarnings, withdrawals] = await Promise.all([

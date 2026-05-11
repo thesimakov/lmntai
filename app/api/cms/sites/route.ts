@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { ensureCmsSiteForProject } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -11,7 +12,7 @@ export const runtime = "nodejs";
 async function listSites(req: NextRequest) {
   void req;
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
 
   const userId = guard.data.user.id;
   const rows = await prisma.cmsSite.findMany({
@@ -40,18 +41,18 @@ async function listSites(req: NextRequest) {
 
 async function createOrEnsureSite(req: NextRequest) {
   const guard = await requireDbUser();
-  if (!guard.ok) return new Response(guard.message, { status: guard.status });
+  if (!guard.ok) return apiGuardError(guard);
   const body = (await req.json().catch(() => null)) as { projectId?: string } | null;
   const projectId = body?.projectId?.trim();
-  if (!projectId) return new Response("projectId is required", { status: 400 });
+  if (!projectId) return apiError("projectId is required", 400);
 
   try {
     const site = await ensureCmsSiteForProject(projectId, guard.data.user.id);
     return Response.json({ siteId: site.id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    if (msg === "PROJECT_NOT_FOUND") return new Response("Not found", { status: 404 });
-    return new Response(msg || "Error", { status: 500 });
+    if (msg === "PROJECT_NOT_FOUND") return apiError("Not found", 404);
+    return apiError(msg || "Error", 500);
   }
 }
 

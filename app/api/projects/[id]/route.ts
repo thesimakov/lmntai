@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { deleteLemnityAiSessionForUser } from "@/lib/lemnity-ai-session-links";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
@@ -14,18 +15,18 @@ async function deleteProject(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const { id: raw } = await params;
   const routeProjectId = typeof raw === "string" ? decodeURIComponent(raw) : "";
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeProjectId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const id = resolvedProject?.id ?? routeProjectId;
   if (!id || id.length > 500) {
-    return new Response("Invalid project id", { status: 400 });
+    return apiError("Invalid project id", 400);
   }
 
   const userId = guard.data.user.id;
@@ -34,14 +35,14 @@ async function deleteProject(
     await deleteLemnityAiSessionForUser(userId, id);
     const cellRemoved = await deleteProjectCellForOwner(id, userId);
     if (!cellRemoved) {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     return new Response(null, { status: 204 });
   }
 
   const allowed = await sandboxManager.canAccess(id, userId);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   await destroySandbox(id);
   await deleteProjectCellForOwner(id, userId);

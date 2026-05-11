@@ -1,10 +1,12 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError } from "@/lib/api-response";
 import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
+import { injectLemnityAnchorsIntoHtmlDocument } from "@/lib/lemnity-anchor-runtime";
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -16,11 +18,13 @@ const MAX_VISUAL_EDIT_HTML_CHARS = 50_000_000;
 async function respondWithHtml(projectId: string) {
   const previewUrl = await sandboxManager.getPreviewUrl(projectId);
   if (!previewUrl) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const files = await sandboxManager.exportFiles(projectId);
   const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
-  const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
+  const html = injectLemnityAnchorsIntoHtmlDocument(
+    injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw)),
+  );
   return new Response(html, {
     headers: {
       "Content-Type": "text/html; charset=utf-8",
@@ -32,7 +36,7 @@ async function respondWithHtml(projectId: string) {
 async function getCurrentSandbox(req: NextRequest) {
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return apiError("Project not found", 404);
   }
   const url = new URL(req.url);
   const format = url.searchParams.get("format");
@@ -50,14 +54,14 @@ async function getCurrentSandbox(req: NextRequest) {
   }
 
   if (format === "json") {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const publicOk =
     (await isSandboxLinkPublic(project.id).catch(() => false)) &&
     (await sandboxManager.hasSandboxPersistent(project.id).catch(() => false));
   if (!publicOk) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   return respondWithHtml(project.id);
 }
@@ -65,15 +69,15 @@ async function getCurrentSandbox(req: NextRequest) {
 async function patchCurrentSandbox(req: NextRequest) {
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return apiError("Project not found", 404);
   }
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
   const allowed = await sandboxManager.canAccess(project.id, guard.data.user.id);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
@@ -92,18 +96,18 @@ async function patchCurrentSandbox(req: NextRequest) {
           : null;
     }
   } catch {
-    return new Response("Bad request", { status: 400 });
+    return apiError("Bad request", 400);
   }
   if (htmlRaw == null) {
-    return new Response("Bad request", { status: 400 });
+    return apiError("Bad request", 400);
   }
   if (htmlRaw.length > MAX_VISUAL_EDIT_HTML_CHARS) {
-    return new Response("Payload too large", { status: 413 });
+    return apiError("Payload too large", 413);
   }
 
   const updatedAt = await sandboxManager.updateIndexHtml(project.id, htmlRaw).catch(() => null);
   if (updatedAt == null) {
-    return new Response("Error", { status: 500 });
+    return apiError("Error", 500);
   }
   return new Response(null, {
     status: 204,

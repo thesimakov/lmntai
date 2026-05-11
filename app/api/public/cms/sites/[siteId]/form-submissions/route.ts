@@ -1,6 +1,11 @@
 import type { NextRequest } from "next/server";
 
 import { normalizeCmsFormSubmissionFields } from "@/lib/cms-form-submissions-server";
+import {
+  normalizeFormSubmissionWebhookUrl,
+  type FormSubmissionWebhookPayload,
+} from "@/lib/cms-form-submission-webhook";
+import { dispatchFormSubmissionWebhookWithLogging } from "@/lib/cms-form-submission-webhook-queue";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -24,7 +29,7 @@ async function postSubmission(
   const { siteId } = await params;
   const site = await prisma.cmsSite.findUnique({
     where: { id: siteId },
-    select: { id: true },
+    select: { id: true, formSubmissionWebhookUrl: true },
   });
   if (!site) {
     return new Response(JSON.stringify({ ok: false, error: "not_found" }), {
@@ -88,6 +93,34 @@ async function postSubmission(
     },
     select: { id: true, createdAt: true },
   });
+
+  const hookRaw = site.formSubmissionWebhookUrl;
+  const hookUrl =
+    typeof hookRaw === "string" && hookRaw.trim() ? normalizeFormSubmissionWebhookUrl(hookRaw) : null;
+  if (hookUrl) {
+    const payload: FormSubmissionWebhookPayload = {
+      event: "cms_form_submission",
+      submissionId: row.id,
+      siteId,
+      pageId,
+      pagePath,
+      formName,
+      fields,
+      createdAt: row.createdAt.toISOString(),
+      meta: {
+        userAgent: ua,
+        ip: fwd,
+      },
+    };
+    void dispatchFormSubmissionWebhookWithLogging({
+      url: hookUrl,
+      payload,
+      siteId,
+      submissionId: row.id,
+    }).catch((e) =>
+      console.error("[cms_form_submission_webhook_queue]", e instanceof Error ? e.message : String(e)),
+    );
+  }
 
   return Response.json(
     { ok: true, id: row.id, createdAt: row.createdAt.toISOString() },

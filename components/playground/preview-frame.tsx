@@ -1,8 +1,9 @@
 "use client";
 
 import JSZip from "jszip";
-import { Download, ExternalLink, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
+import { Download, ExternalLink, LayoutTemplate, Monitor, Presentation, Smartphone, Tablet } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import {
@@ -103,6 +104,8 @@ type PreviewFrameProps = {
   previewVariant?: "default" | "document";
   /** Сделать превью доступным по /share/{id} перед открытием «Просмотр» во вкладке. */
   ensurePublicShareForPreviewTab?: () => Promise<boolean>;
+  /** Показать кнопку «Открыть в редакторе» (Lemnity Box). */
+  showOpenInBox?: boolean;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -118,9 +121,11 @@ export function PreviewFrame({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  ensurePublicShareForPreviewTab
+  ensurePublicShareForPreviewTab,
+  showOpenInBox = false,
 }: PreviewFrameProps) {
   const { t } = useI18n();
+  const router = useRouter();
   const [deviceMode, setDeviceMode] = useState<DeviceMode>("desktop");
   const [exportTask, setExportTask] = useState<ExportTask>(null);
   const [savePending, setSavePending] = useState(false);
@@ -826,6 +831,18 @@ export function PreviewFrame({
             <Button size="sm" className="h-8" onClick={() => void handleExportZip()} disabled={exportBusy}>
               <Download className="h-4 w-4" />
               {exportTask === "zip" ? "…" : t("build_export_zip")}
+            </Button>
+          ) : null}
+          {showOpenInBox && !isPptx && !sandboxId.startsWith("artifact_") ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8"
+              type="button"
+              onClick={() => router.push(`/playground/box/editor?sandboxId=${encodeURIComponent(sandboxId)}&fromBuild=1`)}
+            >
+              <LayoutTemplate className="h-4 w-4" />
+              Открыть в редакторе
             </Button>
           ) : null}
           {!isPptx ? (

@@ -35,7 +35,7 @@ export function attachLemnityBoxPreviewModeLabel(
   textBtn.type = "button";
   textBtn.className = "lemnity-preview-mode-label-btn";
   textBtn.style.cssText =
-    "font-size:12px;line-height:1.25;font-weight:600;color:#334155;background:transparent;border:none;cursor:pointer;padding:2px 6px 2px 2px;white-space:nowrap;font-family:inherit;";
+    "font-size:12px;line-height:1.25;font-weight:600;color:inherit;background:transparent;border:none;cursor:pointer;padding:2px 6px 2px 2px;white-space:nowrap;font-family:inherit;";
 
   previewEl.parentElement.insertBefore(wrap, previewEl);
   wrap.appendChild(textBtn);

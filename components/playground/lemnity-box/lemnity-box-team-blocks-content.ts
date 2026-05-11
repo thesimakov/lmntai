@@ -332,9 +332,9 @@ export const LEMNITY_TEAM_BLOCK_VARIANTS = [
   {
     id: "team-meet-cards",
     badge: "TM07",
-    title: "Карточки Meet our team",
+    title: "Карточки «Познакомьтесь с командой»",
     hint: "скругления и подпись под фото",
-    content: `${TEAM_RESPONSIVE_CSS}<section data-gjs-name="Команда: карточки meet" class="lemnity-team-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(16px,4vw,28px);background:#f1f5f9;">
+    content: `${TEAM_RESPONSIVE_CSS}<section data-gjs-name="Команда: карточки знакомства" class="lemnity-team-s lemnity-section" style="margin:0;padding:clamp(40px,6vw,80px) clamp(16px,4vw,28px);background:#f1f5f9;">
   <div class="lt-intro">
     <h2>Познакомьтесь с командой</h2>
     <p>Люди, которые превращают задачи в понятные шаги и результат.</p>
@@ -344,7 +344,7 @@ export const LEMNITY_TEAM_BLOCK_VARIANTS = [
       <div class="lt-meet-ph"><img src="${P.m3}" alt="" width="400" height="300"/></div>
       <div class="lt-meet-ft">
         <p class="lt-mn">Марк Обей</p>
-        <p class="lt-mr">CEO / управляющий директор</p>
+        <p class="lt-mr">Генеральный директор</p>
       </div>
     </article>
     <article class="lt-meet-card">
@@ -358,7 +358,7 @@ export const LEMNITY_TEAM_BLOCK_VARIANTS = [
       <div class="lt-meet-ph"><img src="${P.m1}" alt="" width="400" height="300"/></div>
       <div class="lt-meet-ft">
         <p class="lt-mn">Джеймс Миллер</p>
-        <p class="lt-mr">QA engineer</p>
+        <p class="lt-mr">Инженер по качеству</p>
       </div>
     </article>
     <article class="lt-meet-card">

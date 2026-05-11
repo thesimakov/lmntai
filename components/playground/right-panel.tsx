@@ -45,6 +45,8 @@ type RightPanelProps = {
   previewVariant?: "default" | "document";
   /** Перед открытием «Просмотр» в новой вкладке — сделать ссылку публичной и открыть /share/{id} с плашкой «Публичное превью». */
   ensurePublicShareForPreviewTab?: () => Promise<boolean>;
+  /** Показать кнопку «Открыть в редакторе» (Lemnity Box). */
+  showOpenInBox?: boolean;
 };
 
 function IdleTypingHint() {
@@ -239,7 +241,8 @@ export function RightPanel({
   presentationPdfExport = null,
   presentationExportsPaid = false,
   previewVariant = "default",
-  ensurePublicShareForPreviewTab
+  ensurePublicShareForPreviewTab,
+  showOpenInBox = false,
 }: RightPanelProps) {
   const previewFrame = previewUrl && sandboxId && (
     <LemnityAiPreviewChrome>
@@ -256,6 +259,7 @@ export function RightPanel({
         presentationExportsPaid={presentationExportsPaid}
         previewVariant={previewVariant}
         ensurePublicShareForPreviewTab={ensurePublicShareForPreviewTab}
+        showOpenInBox={showOpenInBox}
       />
     </LemnityAiPreviewChrome>
   );

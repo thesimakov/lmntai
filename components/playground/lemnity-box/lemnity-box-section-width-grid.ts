@@ -1,4 +1,5 @@
 import type { Component, Editor, TraitProperties } from "grapesjs";
+import { buildZbGridCss, readPageGridFromDoc, resolveZbGridConfig, ZB_GRID_OVERLAY_STYLE_ID } from "@/lib/zero-block-grid";
 
 /** Стили только в документе iframe редактора. */
 export const BLOCK_GRID_DOC_STYLE_ID = "lemnity-block-grid-12-doc";
@@ -156,6 +157,33 @@ export function syncBlockGridOverlay(editor: Editor) {
   }
   tag.textContent = CANVAS_GRID_DOC_CSS;
   html.setAttribute("data-lemnity-grid12", isDesktopLikeDevice(editor) ? "on" : "off");
+  syncZeroBlockGridOverlays(editor);
+}
+
+/** Пересчитывает и инжектирует CSS колонок для каждого zero block на холсте.
+ *  Zero blocks без кастомных настроек наследуют страничную сетку из атрибутов <html>. */
+export function syncZeroBlockGridOverlays(editor: Editor) {
+  const doc = editor.Canvas.getDocument();
+  if (!doc) return;
+  let styleTag = doc.getElementById(ZB_GRID_OVERLAY_STYLE_ID) as HTMLStyleElement | null;
+  if (!styleTag) {
+    styleTag = doc.createElement("style");
+    styleTag.id = ZB_GRID_OVERLAY_STYLE_ID;
+    doc.head.appendChild(styleTag);
+  }
+  const pageGrid = readPageGridFromDoc(doc.documentElement);
+  const sections = doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block[data-ln-zero-id]");
+  let css = "";
+  sections.forEach((section) => {
+    const blockId = section.getAttribute("data-ln-zero-id");
+    if (!blockId) return;
+    const attrs: Record<string, string> = {};
+    for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+    const config = resolveZbGridConfig(attrs, pageGrid);
+    const w = section.clientWidth;
+    if (w > 0) css += buildZbGridCss(blockId, w, config) + "\n";
+  });
+  styleTag.textContent = css;
 }
 
 function readSpan(attrs: Record<string, string>): number {
@@ -336,6 +364,7 @@ export function scheduleLemnityCanvasLayoutRefresh(editor: Editor) {
     walkSectionsApply(wrap);
     lockInlineStylesInSections(wrap);
     ensureRootBlocksDraggable(wrap);
+    syncZeroBlockGridOverlays(editor);
   });
 }
 

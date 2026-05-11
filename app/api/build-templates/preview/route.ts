@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { formatBuildTemplateBlock, getBuildTemplateBySlug } from "@/lib/build-templates";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
@@ -14,14 +15,14 @@ async function postBuildTemplatePreview(req: NextRequest) {
   try {
     const guard = await requireDbUser();
     if (!guard.ok) {
-      return Response.json({ error: guard.message }, { status: guard.status });
+      return apiGuardError(guard);
     }
 
     let body: { slug?: string; projectId?: string };
     try {
       body = (await req.json()) as { slug?: string; projectId?: string };
     } catch {
-      return Response.json({ error: "Invalid JSON" }, { status: 400 });
+      return apiError("Invalid JSON", 400);
     }
 
     const slug = typeof body.slug === "string" ? body.slug.trim() : "";
@@ -38,15 +39,15 @@ async function postBuildTemplatePreview(req: NextRequest) {
     const projectId = resolvedProject?.id ?? requestedProjectId;
 
     if (!slug) {
-      return Response.json({ error: "slug required" }, { status: 400 });
+      return apiError("slug required", 400);
     }
     if (!projectId) {
-      return Response.json({ error: "project_id required" }, { status: 400 });
+      return apiError("project_id required", 400);
     }
 
     const t = await getBuildTemplateBySlug(slug);
     if (!t) {
-      return Response.json({ error: "Template not found" }, { status: 404 });
+      return apiError("Template not found", 404);
     }
 
     try {
@@ -54,7 +55,7 @@ async function postBuildTemplatePreview(req: NextRequest) {
       if (!alreadyOwned) {
         const projectGate = await checkProjectCreationAllowed(guard.data.user.id, guard.data.user.plan);
         if (!projectGate.ok) {
-          return Response.json({ error: projectGate.message }, { status: projectGate.status });
+          return apiError(projectGate.message, projectGate.status);
         }
       }
 
@@ -70,7 +71,7 @@ async function postBuildTemplatePreview(req: NextRequest) {
 
       return Response.json({ previewUrl, sandboxId });
     } catch (e) {
-      return Response.json({ error: unknownToErrorMessage(e) }, { status: 502 });
+      return apiError(unknownToErrorMessage(e), 502);
     }
   } catch (e) {
     return Response.json({ error: unknownToErrorMessage(e) }, { status: 502 });

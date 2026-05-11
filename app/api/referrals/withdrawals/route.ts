@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
 import { parseUiLanguage } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import {
@@ -29,10 +30,10 @@ function parseAmountMinor(payload: { amountMinor?: unknown; amount?: unknown }):
 async function createWithdrawal(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
   if (session.user.demoOffline) {
-    return new Response("Недоступно в демо-режиме без БД", { status: 503 });
+    return apiError("Недоступно в демо-режиме без БД", 503);
   }
 
   const body = (await req.json().catch(() => null)) as
@@ -53,10 +54,10 @@ async function createWithdrawal(req: NextRequest) {
   const details = typeof body?.details === "string" ? body.details.trim() : "";
 
   if (!amountMinor || amountMinor < REFERRAL_WITHDRAWAL_MIN_MINOR) {
-    return new Response("Amount is below minimum threshold", { status: 400 });
+    return apiError("Amount is below minimum threshold", 400);
   }
   if (details.length > 2_000) {
-    return new Response("Details are too long", { status: 400 });
+    return apiError("Details are too long", 400);
   }
 
   const user = await prisma.user.findUnique({
@@ -64,7 +65,7 @@ async function createWithdrawal(req: NextRequest) {
     select: { id: true, isPartner: true }
   });
   if (!user) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
   if (!canRequestWithdrawal(user.isPartner)) {
     return Response.json(
@@ -107,7 +108,7 @@ async function createWithdrawal(req: NextRequest) {
     return Response.json({ ok: true, request: result });
   } catch (error) {
     if (error instanceof Error && error.message === "INSUFFICIENT_BALANCE") {
-      return new Response("Insufficient referral wallet balance", { status: 400 });
+      return apiError("Insufficient referral wallet balance", 400);
     }
     throw error;
   }

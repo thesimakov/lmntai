@@ -45,10 +45,17 @@ function NextUIRouterProvider({
 }
 
 export function Providers({ children, initialLang, session }: ProvidersProps) {
+  const isProd = process.env.NODE_ENV === "production";
   /* Явный basePath: иначе клиент берёт path из NEXTAUTH_URL; при некорректном URL приложения
      запросы уходят не на /api/auth/* → HTML вместо JSON → CLIENT_FETCH_ERROR. */
   return (
-    <SessionProvider session={session} basePath="/api/auth">
+    <SessionProvider
+      session={session}
+      basePath="/api/auth"
+      /* В dev частый сценарий: фокус окна → refetch сессии пока сервер перезапускается → «Failed to fetch». */
+      refetchOnWindowFocus={isProd}
+      refetchWhenOffline={false}
+    >
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <NextUIRouterProvider locale={initialLang}>
           <I18nProvider initialLang={initialLang}>

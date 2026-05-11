@@ -887,7 +887,8 @@ export default function PromptBuildPage() {
             event_id: eventId,
             agent_hint: agentHint,
             project_kind: projectKind ?? undefined,
-            ...(effectiveBuildTemplateSlug ? { build_template_slug: effectiveBuildTemplateSlug } : {})
+            ...(effectiveBuildTemplateSlug ? { build_template_slug: effectiveBuildTemplateSlug } : {}),
+            ...(sandboxId && !sandboxId.startsWith("artifact_") ? { sandbox_id: sandboxId } : {})
           }),
           signal: controller.signal
         });
@@ -2095,7 +2096,7 @@ export default function PromptBuildPage() {
 
   return (
     <PageTransition>
-      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-muted/40">
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-transparent">
         <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-row items-stretch">
           <div
             className={cn(
@@ -2376,6 +2377,14 @@ export default function PromptBuildPage() {
                   presentationExportsPaid={hasCustomDomainAccess}
                   previewVariant={tab === "document" ? "document" : "default"}
                   ensurePublicShareForPreviewTab={ensurePublicShareForPreviewTab}
+                  showOpenInBox={
+                    mode === "preview" &&
+                    Boolean(sandboxId) &&
+                    !sandboxId?.startsWith("artifact_") &&
+                    projectKind !== "presentation" &&
+                    projectKind !== "resume" &&
+                    projectKind !== "lovable"
+                  }
                 />
               </div>
 

@@ -35,7 +35,9 @@ export const PROJECT_KINDS = [
   "design",
   "visitcard",
   /** React + Vite-стек (как lovable.dev): многофайловый TSX, превью через сборку. */
-  "lovable"
+  "lovable",
+  /** Монолитный HTML для импорта в Lemnity Box (GrapesJS): section-блоки, Tailwind CDN, без React. */
+  "box_html"
 ] as const;
 
 export type ProjectKind = (typeof PROJECT_KINDS)[number];
@@ -51,13 +53,13 @@ function detectWorkingLanguage(text: string): "ru" | "en" {
  */
 function isMultifileViteOutput(kind: ProjectKind | null): boolean {
   if (kind == null) return true;
-  if (kind === "presentation" || kind === "resume") return false;
+  if (kind === "presentation" || kind === "resume" || kind === "box_html") return false;
   return true;
 }
 
 /** Превью через esbuild (многофайловый React); иначе — монолитный HTML. */
 export function shouldUseLovableBundler(projectKind?: ProjectKind | null): boolean {
-  if (projectKind === "resume" || projectKind === "presentation") return false;
+  if (projectKind === "resume" || projectKind === "presentation" || projectKind === "box_html") return false;
   return true;
 }
 
@@ -143,6 +145,18 @@ export function buildRouterGenerationPrompt(
           "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
           "Include the site footer bar (copyright + privacy placeholder; Lemnity link) when the app has a footer — no «Собрано»/build date in the layout."
         ];
+      case "box_html":
+        return [
+          "Deliverable: **Clean semantic HTML page** intended to be imported into **Lemnity Box** (GrapesJS visual editor).",
+          "Output: one complete HTML5 document. Link Tailwind CDN in `<head>`: `<script src=\"https://cdn.tailwindcss.com\"></script>`. No React, no JSX, no bundled JS.",
+          "Structure: one top-level `<section>` per logical page area (hero, features, pricing, footer, etc.). Each section must have `class=\"lemnity-section\"` and a unique `id` like `section-hero`, `section-features`, etc.",
+          "Use only **class-based styling** (Tailwind utilities). Avoid inline `style` attributes on layout-critical elements — GrapesJS reads class attributes for editing.",
+          "Semantic HTML: `<h1>`–`<h3>` for headings, `<p>` for text, `<a>` for links, `<button>` for CTAs, `<ul>/<li>` for lists, `<img>` for images.",
+          "Images: use stable URLs — Wikimedia Commons `https://upload.wikimedia.org/wikipedia/commons/…` with attribution, or Picsum `https://picsum.photos/seed/<word>/width/height`, or Unsplash with credit. All `<img>` must have `alt` text.",
+          "Do NOT include interactive JavaScript beyond basic anchor navigation. No SPAs, no React hydration, no WebSocket.",
+          "Footer: include `class=\"lemnity-section\"` `<footer>` with copyright left and «Сделано на Lemnity» link right.",
+          "Apply the global site-footer bar rules (copyright + privacy placeholder left; «Сделано на Lemnity» right)."
+        ];
       default:
         return [
           "Deliverable: **Landing or web interface** as a **multi-file** React+TS app (Vite/Lovable style) unless the user asked only for a static one-file HTML.",
@@ -197,7 +211,9 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
     visitcard:
       "цифровая визитка, компактный экран, контакты и ссылки. Фон/фото при необходимости — Commons / Picsum / Unsplash с подписью.",
     lovable:
-      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Commons / Picsum / Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity)."
+      "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Commons / Picsum / Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity).",
+    box_html:
+      "монолитный HTML-файл для импорта в **Lemnity Box** (визуальный редактор): секции `<section class=\"lemnity-section\">`, Tailwind CDN, без React и JSX. Каждая секция — логический блок страницы (hero, features, pricing, footer). Только класс-стилизация (без `style=\"…\"` на ключевых элементах), семантические теги, стабильные URL изображений (Commons / Picsum / Unsplash). Никакого интерактивного JS."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }

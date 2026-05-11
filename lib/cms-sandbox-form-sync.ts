@@ -13,6 +13,8 @@ export type CmsPublishedLandingSnapshot = {
   ctx: CmsFormBridgeContext;
   grapesjs: LemnityBoxCanvasContent;
   title: string;
+  noIndex?: boolean;
+  seoNoFollow?: boolean;
 };
 
 function pageDocFromContent(content: unknown): PageDocument | null {
@@ -77,6 +79,8 @@ export async function loadCmsPublishedLandingForFormBridge(
       id: true,
       path: true,
       title: true,
+      noIndex: true,
+      seoNoFollow: true,
       publishedRevision: { select: { content: true } },
     },
   });
@@ -93,6 +97,8 @@ export async function loadCmsPublishedLandingForFormBridge(
     },
     grapesjs: doc.grapesjs,
     title: page.title.trim() || "Страница",
+    noIndex: page.noIndex,
+    seoNoFollow: page.seoNoFollow,
   };
 }
 
@@ -135,6 +141,8 @@ export async function syncCmsSandboxPreviewWithFormBridge(input: {
   const html = buildLemnityBoxIndexHtml(snap.grapesjs, {
     title: snap.title,
     cmsFormBridge: snap.ctx,
+    seoNoIndex: snap.noIndex,
+    seoNoFollow: snap.seoNoFollow,
   });
 
   try {

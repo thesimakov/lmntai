@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError } from "@/lib/api-response";
 import { isSvgMime } from "@/lib/image-content-validation";
 import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getSandboxImageAsset } from "@/lib/sandbox-image-assets";
@@ -17,7 +18,7 @@ async function getSandboxImage(
 ) {
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return apiError("Project not found", 404);
   }
   const { key } = await params;
   const sandboxId = project.id;
@@ -37,12 +38,12 @@ async function getSandboxImage(
     canRead = publicOk;
   }
   if (!canRead) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const asset = await getSandboxImageAsset(sandboxId, key);
   if (!asset) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const headers: Record<string, string> = {

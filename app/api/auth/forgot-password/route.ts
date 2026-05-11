@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 
+import { apiError } from "@/lib/api-response";
 import { requestPasswordReset } from "@/lib/password-reset-service";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -10,11 +11,19 @@ async function postForgot(req: NextRequest) {
   try {
     body = await req.json();
   } catch {
-    return Response.json({ ok: true }, { status: 200 });
+    return apiError("Invalid JSON", 400);
   }
-  const email = typeof body === "object" && body && "email" in body ? String((body as { email?: unknown }).email ?? "") : "";
-  await requestPasswordReset(email);
-  return Response.json({ ok: true }, { status: 200 });
+  const email =
+    typeof body === "object" && body && "email" in body
+      ? String((body as { email?: unknown }).email ?? "")
+      : "";
+  try {
+    await requestPasswordReset(email);
+  } catch (e) {
+    console.error("[forgot-password] requestPasswordReset failed", e);
+    return apiError("Internal error", 500);
+  }
+  return Response.json({ ok: true });
 }
 
 export const POST = withApiLogging("/api/auth/forgot-password", postForgot);

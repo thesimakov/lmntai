@@ -4,11 +4,15 @@ export type PreferredPlaygroundEditor = "build" | "box";
 export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroundEditor | undefined {
   if (raw === "box") return "box";
   if (raw === "build") return "build";
+  /** Старое значение в БД и клиентах → трактуем как build. */
+  if (raw === "webstudio") return "build";
   return undefined;
 }
 
 export function normalizePreferredPlaygroundEditor(raw: string | null | undefined): PreferredPlaygroundEditor {
-  return raw === "box" ? "box" : "build";
+  if (raw === "box") return "box";
+  if (raw === "webstudio") return "build";
+  return "build";
 }
 
 /** Публичная страница сборки AI (чат + превью). */

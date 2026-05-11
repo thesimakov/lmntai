@@ -17,18 +17,33 @@ import { attachTildaInsertZones } from "@/components/playground/lemnity-box/lemn
 import { attachLemnityBoxBlockSettings } from "@/components/playground/lemnity-box/lemnity-box-block-settings-traits";
 import { attachLemnityBoxElementQuickTraits } from "@/components/playground/lemnity-box/lemnity-box-element-quick-traits";
 import { attachLemnityBoxComponentScopedStyles } from "@/components/playground/lemnity-box/lemnity-box-component-scoped-styles";
+import { attachLemnityBoxAnchorComponent } from "@/components/playground/lemnity-box/lemnity-box-anchor-component";
 import { attachLemnityBoxHtmlEmbed } from "@/components/playground/lemnity-box/lemnity-box-html-embed-component";
-import { attachLemnityBoxSectionWidthGrid } from "@/components/playground/lemnity-box/lemnity-box-section-width-grid";
+import { attachLemnityBoxSectionWidthGrid, syncZeroBlockGridOverlays } from "@/components/playground/lemnity-box/lemnity-box-section-width-grid";
+import {
+  readZbGridConfig,
+  zbGridConfigToAttrs,
+  ZB_GRID_DEFAULTS,
+  snapXToZbGrid,
+  snapYToZbGrid,
+  pxToColSpan,
+  colSpanToPx,
+  writePageGridToDoc,
+  resolveZbGridConfig,
+  readPageGridFromDoc,
+} from "@/lib/zero-block-grid";
 import { attachLemnityBoxCanvasViewportGuides } from "@/components/playground/lemnity-box/lemnity-box-canvas-viewport-guides";
 import { attachLemnityBoxLayerActions } from "@/components/playground/lemnity-box/lemnity-box-layer-actions";
-import { attachLemnityBoxEditorRightPanelsOverlay } from "@/components/playground/lemnity-box/lemnity-box-editor-right-panels-overlay";
+import { attachLemnityBoxEditorRightPanelsOverlay, collapseLemnityRightPanelsFromEditor } from "@/components/playground/lemnity-box/lemnity-box-editor-right-panels-overlay";
 import { attachLemnityBoxStyleManagerChoiceDropdowns } from "@/components/playground/lemnity-box/lemnity-box-style-manager-dropdowns";
 import { mountPlaygroundBoxDeviceMenu } from "@/components/playground/lemnity-box/lemnity-box-device-dock-menu";
 import { registerLemnityBoxToolbarSiblingMoves } from "@/components/playground/lemnity-box/lemnity-box-toolbar-sibling-moves";
 import { registerLemnityBoxBlockSettingsToolbar } from "@/components/playground/lemnity-box/lemnity-box-toolbar-block-settings-modal";
+import { PAGE_GRID_DEFAULTS } from "@/lib/lemnity-box-editor-schema";
 import type { BlockNode, JsonStyle, LemnityBoxCanvasContent, PageDocument, ZeroElement } from "@/lib/lemnity-box-editor-schema";
 import type { BoxImageLibraryResponse } from "@/lib/box-image-library-types";
 import { lemnityBoxEditorMessagesRu } from "@/lib/lemnity-box-locale-ru";
+import { attachLemnityAnchorsToCanvasFrame } from "@/lib/lemnity-anchor-runtime";
 import { attachLemnityCarouselNavToCanvasFrame } from "@/lib/lemnity-carousel-nav-runtime";
 import { attachLemnityDetailsTabsToCanvasFrame } from "@/lib/lemnity-details-tabs-runtime";
 import {
@@ -37,6 +52,13 @@ import {
 } from "@/lib/lemnity-box-section-motion";
 import { PageTransitionBuildLoader } from "@/components/playground/page-transition-build-loader";
 import { useI18n } from "@/components/i18n-provider";
+import {
+  ZERO_BLOCK_BASE_TOP_PX,
+  ZERO_BLOCK_STEP_Y_PX,
+  ZERO_BLOCK_BASE_LEFT_PX,
+  ZERO_BLOCK_STEP_X_PX,
+  ZERO_BLOCK_COLUMNS,
+} from "@/lib/editor-constants";
 
 import "grapesjs/dist/css/grapes.min.css";
 
@@ -57,6 +79,12 @@ export type LemnityBoxCanvasEditorProps = {
   /** Управление боковой панелью блоков извне (опционально). Если не задано — только панель GrapesJS и Escape. */
   blocksPanelOpen?: boolean;
   onBlocksPanelOpenChange?: (open: boolean) => void;
+  /** Вызывается когда пользователь хочет открыть нулевой блок в выделенной странице редактора. */
+  onOpenZeroBlockEditor?: (blockId: string) => void;
+  /** Автоматически активирует режим редактирования первого нулевого блока после загрузки холста. */
+  autoActivateZeroBlock?: boolean;
+  /** UI нулевого блока в iframe: minimal — только «Редактировать», без нижней панели и «+». По умолчанию minimal, кроме autoActivateZeroBlock. */
+  zeroBlockCanvasUi?: "minimal" | "full";
 };
 
 export type LemnityBoxCanvasEditorHandle = {
@@ -96,6 +124,17 @@ function sectionOpen(sectionStyle: string) {
 }
 
 const ZERO_BLOCK_RUNTIME_STYLE_ID = "lemnity-zero-block-runtime-style";
+const ZERO_BLOCK_SETTINGS_COMMAND = "lemnity-zero-block-open-settings-window";
+const ZERO_BLOCK_RESIZE_HANDLES = {
+  tl: true,
+  tc: true,
+  tr: true,
+  cl: true,
+  cr: true,
+  bl: true,
+  bc: true,
+  br: true,
+} as const;
 type ZeroBlockInsertKind =
   | "text"
   | "image"
@@ -105,41 +144,109 @@ type ZeroBlockInsertKind =
   | "html"
   | "tooltip"
   | "form"
-  | "gallery";
+  | "gallery"
+  | "vector";
 
-function ensureZeroBlockRuntimeStyles(doc: Document) {
-  if (doc.getElementById(ZERO_BLOCK_RUNTIME_STYLE_ID)) return;
-  const style = doc.createElement("style");
-  style.id = ZERO_BLOCK_RUNTIME_STYLE_ID;
-  style.textContent = `
+type ZeroBlockCanvasInlineUi = "minimal" | "full";
+
+const ZERO_BLOCK_RUNTIME_CSS_MINIMAL = `
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block:not([data-ln-zero-editing="1"]) [data-ln-zero-save]{display:none!important}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-save]{display:flex!important}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-ui="menu"],
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-ui="picker"],
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-ui="toolbar-bottom"]{display:none!important}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-ui="toolbar"]{opacity:0;pointer-events:none;transition:opacity 0.18s}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block:hover [data-ln-zero-ui="toolbar"]{opacity:1;pointer-events:auto}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-open-editor]{pointer-events:auto;cursor:pointer;opacity:1}
+html[data-ln-zero-inline="minimal"] .lemnity-zero-block [data-ln-zero-open-editor][data-loading]{opacity:0.65;pointer-events:none;cursor:default}
+`;
+
+function syncZeroBlockRuntimeStyles(doc: Document, inlineUi: ZeroBlockCanvasInlineUi) {
+  doc.documentElement.setAttribute("data-ln-zero-inline", inlineUi);
+  let style = doc.getElementById(ZERO_BLOCK_RUNTIME_STYLE_ID) as HTMLStyleElement | null;
+  if (!style) {
+    style = doc.createElement("style");
+    style.id = ZERO_BLOCK_RUNTIME_STYLE_ID;
+    doc.head.appendChild(style);
+  }
+  const base = `
+/* === Zero Block base === */
 .lemnity-zero-block{position:relative}
-.lemnity-zero-block [data-ln-zero-ui="toolbar"]{position:sticky;top:0;left:0;z-index:32;display:flex;justify-content:flex-end;padding:10px 12px;background:linear-gradient(180deg,rgba(248,250,252,.98),rgba(248,250,252,.72));border-bottom:1px dashed #dbe3ef}
-.lemnity-zero-block [data-ln-zero-ui="toolbar"] button{pointer-events:auto}
-.lemnity-zero-block [data-ln-zero-edit]{border:1px solid #cbd5e1;border-radius:9px;background:#fff;padding:8px 12px;font:600 13px/1.1 system-ui,sans-serif;color:#0f172a;cursor:pointer}
-.lemnity-zero-block [data-ln-zero-edit]:hover{background:#f8fafc}
-.lemnity-zero-block [data-ln-zero-ui="backdrop"]{display:none}
-.lemnity-zero-block [data-ln-zero-ui="menu"]{display:none}
-.lemnity-zero-block [data-ln-zero-ui="inspector"]{display:none}
-.lemnity-zero-block[data-ln-zero-editing="1"]{position:fixed!important;inset:6vh 5vw auto 5vw!important;height:88vh!important;max-height:88vh!important;min-height:560px!important;z-index:10020!important;overflow:auto!important;box-shadow:0 26px 80px rgba(15,23,42,.32);border-radius:16px;border:1px solid #d5deeb;background-color:#fff}
-.lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-ui="backdrop"]{display:block;position:fixed;inset:0;z-index:-1;background:rgba(15,23,42,.42)}
-.lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-ui="menu"]{display:flex;position:fixed;left:calc(5vw + 20px);top:calc(6vh + 16px);z-index:36;flex-direction:column;gap:10px}
-.lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-ui="inspector"]{display:block;position:fixed;right:calc(5vw + 20px);top:calc(6vh + 16px);z-index:36;width:268px;max-width:min(88vw,268px);border:1px solid #d5deeb;border-radius:12px;background:#fff;box-shadow:0 14px 34px rgba(15,23,42,.2);padding:12px}
-.lemnity-zero-block [data-ln-zero-plus]{width:80px;height:80px;border:none;border-radius:999px;background:#f26b4f;color:#fff;font-size:54px;line-height:1;cursor:pointer;box-shadow:0 16px 38px rgba(242,107,79,.33)}
-.lemnity-zero-block [data-ln-zero-plus]:hover{transform:translateY(-1px)}
-.lemnity-zero-block [data-ln-zero-ui="picker"]{display:none;width:390px;max-width:min(90vw,390px);background:#fff;border:1px solid #d7dde7;border-radius:12px;box-shadow:0 18px 45px rgba(15,23,42,.2);padding:14px 0}
+.lemnity-zero-block .lemnity-zero-canvas{position:relative;width:100%;min-height:100%;box-sizing:border-box}
+.lemnity-zero-block[data-ln-zero-editing="1"]{outline:2px solid #f26b4f;outline-offset:-2px}
+
+/* === Top-right toolbar: «Редактировать» всегда на основном холсте (minimal); в full — только в режиме редактирования === */
+.lemnity-zero-block [data-ln-zero-ui="toolbar"]{display:flex;position:absolute;top:10px;right:10px;z-index:50;align-items:center;gap:6px}
+html[data-ln-zero-inline="full"] .lemnity-zero-block:not([data-ln-zero-editing="1"]) [data-ln-zero-ui="toolbar"]{display:none!important}
+.lemnity-zero-block [data-ln-zero-open-editor]{display:flex;align-items:center;gap:6px;border:none;border-radius:8px;background:#f26b4f;color:#fff;padding:6px 14px;font:600 12.5px/1 system-ui,sans-serif;cursor:pointer;transition:background .12s}
+.lemnity-zero-block [data-ln-zero-open-editor]:hover{background:#e85a3e}
+.lemnity-zero-block [data-ln-zero-save]{display:flex;align-items:center;gap:6px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#0f172a;padding:6px 14px;font:600 12.5px/1 system-ui,sans-serif;cursor:pointer;transition:background .12s}
+.lemnity-zero-block [data-ln-zero-save]:hover{background:#f8fafc}
+.lemnity-zero-block[data-ln-zero-saving="1"] [data-ln-zero-save]{background:#f1f5f9}
+.lemnity-zero-block [data-ln-zero-edit]{display:none}
+
+/* === Top-left "+" menu === */
+.lemnity-zero-block [data-ln-zero-ui="menu"]{display:none;position:absolute;top:12px;left:12px;z-index:50}
+.lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-ui="menu"]{display:block}
+
+/* Plus button */
+.lemnity-zero-block [data-ln-zero-plus]{width:36px;height:36px;border:none;border-radius:50%;background:#f26b4f;color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 10px rgba(242,107,79,.4);transition:transform .12s,box-shadow .12s}
+.lemnity-zero-block [data-ln-zero-plus]:hover{transform:scale(1.07);box-shadow:0 5px 16px rgba(242,107,79,.52)}
+
+/* Picker dropdown */
+.lemnity-zero-block [data-ln-zero-ui="picker"]{display:none;position:absolute;top:calc(100% + 8px);left:0;z-index:60;min-width:220px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 8px 28px rgba(15,23,42,.14);padding:5px 0;overflow:hidden}
 .lemnity-zero-block[data-ln-zero-menu-open="1"] [data-ln-zero-ui="picker"]{display:block}
-.lemnity-zero-block [data-ln-zero-row]{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 18px}
-.lemnity-zero-block [data-ln-zero-add]{width:100%;display:flex;align-items:center;justify-content:space-between;background:transparent;border:none;color:#0f172a;font:500 40px/1.2 system-ui,sans-serif;cursor:pointer;padding:3px 0}
-.lemnity-zero-block [data-ln-zero-add] span:last-child{font-size:12px;font-weight:700;color:#9ca3af;border:1px solid #e5e7eb;border-radius:7px;padding:3px 8px;min-width:24px;text-align:center}
-.lemnity-zero-block [data-ln-zero-sep]{height:1px;background:#edf1f6;margin:7px 0}
+
+/* Picker rows and items */
+.lemnity-zero-block [data-ln-zero-row]{padding:1px 6px}
+.lemnity-zero-block [data-ln-zero-add]{width:100%;display:flex;align-items:center;gap:9px;border:none;background:transparent;color:#0f172a;font:500 13.5px/1 system-ui,sans-serif;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left}
+.lemnity-zero-block [data-ln-zero-add]:hover{background:#f8fafc}
+.lemnity-zero-block [data-ln-zero-add] .ln-icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#64748b}
+.lemnity-zero-block [data-ln-zero-add] .ln-label{flex:1}
+.lemnity-zero-block [data-ln-zero-add] .ln-kbd{font:700 11px/1 system-ui,sans-serif;color:#9ca3af;background:#f1f5f9;border:1px solid #e5e7eb;border-radius:5px;padding:2px 7px;min-width:20px;text-align:center}
+.lemnity-zero-block [data-ln-zero-sep]{height:1px;background:#f1f5f9;margin:4px 0}
+
+/* === Inspector: hidden (position info via GrapesJS panels) === */
+.lemnity-zero-block [data-ln-zero-ui="inspector"]{display:none!important}
+
+/* === Backdrop: hidden in inline mode === */
+.lemnity-zero-block [data-ln-zero-ui="backdrop"]{display:none!important}
+
+/* === Bottom floating toolbar (Tilda-style pill) === */
+.lemnity-zero-block [data-ln-zero-ui="toolbar-bottom"]{display:none;position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:50;background:#fff;border:1px solid rgba(15,23,42,.1);border-radius:999px;padding:5px 10px;gap:2px;box-shadow:0 4px 18px rgba(15,23,42,.13),0 1px 3px rgba(15,23,42,.07);white-space:nowrap}
+.lemnity-zero-block[data-ln-zero-editing="1"] [data-ln-zero-ui="toolbar-bottom"]{display:flex;align-items:center}
+
+/* Toolbar tool buttons */
+.lemnity-zero-block [data-ln-zero-tool]{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:#64748b;border-radius:8px;cursor:pointer;transition:background .1s,color .1s;flex-shrink:0}
+.lemnity-zero-block [data-ln-zero-tool]:hover{background:#f1f5f9;color:#0f172a}
+.lemnity-zero-block [data-ln-zero-tool][data-ln-active]{background:#f26b4f;color:#fff}
+.lemnity-zero-block [data-ln-zero-tool-sep]{width:1px;height:20px;background:#e2e8f0;margin:0 4px;flex-shrink:0}
+
+/* Inspector fields (kept for API compat) */
 .lemnity-zero-block [data-ln-zero-inspector-title]{margin:0 0 10px;color:#0f172a;font:700 13px/1.2 system-ui,sans-serif}
 .lemnity-zero-block [data-ln-zero-grid]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .lemnity-zero-block [data-ln-zero-field-wrap]{display:flex;flex-direction:column;gap:5px}
 .lemnity-zero-block [data-ln-zero-field-wrap] label{font:600 11px/1 system-ui,sans-serif;color:#64748b;letter-spacing:.02em}
 .lemnity-zero-block [data-ln-zero-field]{height:34px;border:1px solid #d5deeb;border-radius:8px;padding:0 9px;font:600 13px/1 system-ui,sans-serif;color:#0f172a;background:#fff}
 .lemnity-zero-block [data-ln-zero-field]:disabled{background:#f8fafc;color:#94a3b8}
+
+/* === Grid settings panel === */
+.lemnity-zero-block [data-ln-zero-ui="grid-panel"]{display:none;position:absolute;bottom:72px;left:50%;transform:translateX(-50%);z-index:52;background:#fff;border:1px solid rgba(15,23,42,.1);border-radius:12px;padding:14px 16px;box-shadow:0 8px 28px rgba(15,23,42,.14);min-width:230px;white-space:nowrap}
+.lemnity-zero-block[data-ln-zb-grid-panel="1"][data-ln-zero-editing="1"] [data-ln-zero-ui="grid-panel"]{display:block}
+.lemnity-zero-block [data-ln-grid-title]{margin:0 0 10px;font:700 12px/1.2 system-ui,sans-serif;color:#0f172a}
+.lemnity-zero-block [data-ln-grid-rows]{display:flex;flex-direction:column;gap:7px}
+.lemnity-zero-block [data-ln-grid-row]{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lemnity-zero-block [data-ln-grid-label]{font:600 11px/1 system-ui,sans-serif;color:#64748b;letter-spacing:.03em;flex:1}
+.lemnity-zero-block [data-ln-grid-num]{width:56px;height:28px;border:1px solid #d5deeb;border-radius:6px;padding:0 7px;font:600 12px/1 system-ui,sans-serif;color:#0f172a;text-align:right;background:#fff;flex-shrink:0}
+.lemnity-zero-block [data-ln-grid-toggle-btn]{height:26px;border:1px solid #d5deeb;border-radius:100px;padding:0 10px;font:600 11px/1 system-ui,sans-serif;color:#64748b;background:#f8fafc;cursor:pointer;transition:background .1s,color .1s,border-color .1s;flex-shrink:0}
+.lemnity-zero-block [data-ln-grid-toggle-btn][data-ln-active]{background:#6366f1;color:#fff;border-color:#6366f1}
+.lemnity-zero-block [data-ln-col-info]{display:none;margin-top:10px;padding-top:10px;border-top:1px solid #f1f5f9}
+.lemnity-zero-block [data-ln-col-info].active{display:block}
+.lemnity-zero-block [data-ln-col-info-title]{margin:0 0 8px;font:600 11px/1.2 system-ui,sans-serif;color:#64748b;letter-spacing:.03em}
+.lemnity-zero-canvas{position:relative}
+.lemnity-zero-canvas::before,.lemnity-zero-canvas::after{content:none;pointer-events:none}
 `;
-  doc.head.appendChild(style);
+  style.textContent = base + (inlineUi === "minimal" ? ZERO_BLOCK_RUNTIME_CSS_MINIMAL : "");
 }
 
 function findZeroBlockModelByElement(editor: Editor, sectionEl: HTMLElement): Component | null {
@@ -151,13 +258,17 @@ function findZeroBlockModelByElement(editor: Editor, sectionEl: HTMLElement): Co
 }
 
 function nextZeroBlockCoordinates(sectionEl: HTMLElement): { top: number; left: number } {
-  const children = Array.from(sectionEl.children).filter((node) => {
+  const canvas = sectionEl.querySelector<HTMLElement>(":scope > .lemnity-zero-canvas") ?? sectionEl;
+  const children = Array.from(canvas.children).filter((node) => {
     if (!(node instanceof HTMLElement)) return false;
     if (node.getAttribute("data-ln-editor-hint") === "1") return false;
     return true;
   });
   const idx = children.length;
-  return { top: 120 + idx * 28, left: 32 + (idx % 5) * 14 };
+  return {
+    top: ZERO_BLOCK_BASE_TOP_PX + idx * ZERO_BLOCK_STEP_Y_PX,
+    left: ZERO_BLOCK_BASE_LEFT_PX + (idx % ZERO_BLOCK_COLUMNS) * ZERO_BLOCK_STEP_X_PX,
+  };
 }
 
 function zeroBlockMarkup(kind: ZeroBlockInsertKind, top: number, left: number): string {
@@ -185,15 +296,33 @@ function zeroBlockMarkup(kind: ZeroBlockInsertKind, top: number, left: number): 
   if (kind === "form") {
     return `<form method="post" action="#" style="position:absolute;top:${top}px;left:${left}px;width:320px;max-width:320px;padding:14px;border:1px solid #d1d5db;border-radius:12px;background:#fff;display:grid;gap:8px;"><input name="name" placeholder="Имя" style="padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;" /><input name="email" type="email" placeholder="Email" style="padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;" /><button type="submit" style="padding:9px 12px;border:none;border-radius:8px;background:#0f172a;color:#fff;font-weight:700;">Отправить</button></form>`;
   }
+  if (kind === "vector") {
+    return `<svg style="position:absolute;top:${top}px;left:${left}px;overflow:visible;" width="120" height="80" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 60 C 40 10, 80 10, 110 60" stroke="#0f172a" stroke-width="2.5" stroke-linecap="round"/></svg>`;
+  }
   return `<div style="position:absolute;top:${top}px;left:${left}px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;width:320px;"><img src="https://images.unsplash.com/photo-1497366754035-f200968a6e72" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;" /><img src="https://images.unsplash.com/photo-1489515217757-5fd1be406fef" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;" /><img src="https://images.unsplash.com/photo-1504384308090-c894fdcc538d" alt="" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:10px;" /></div>`;
 }
 
 function appendZeroBlockElement(editor: Editor, sectionEl: HTMLElement, kind: ZeroBlockInsertKind) {
   const sectionModel = findZeroBlockModelByElement(editor, sectionEl);
   if (!sectionModel) return;
+  lockZeroBlockSectionInStructure(sectionModel);
+  const canvasModel = ensureZeroBlockInnerCanvas(sectionModel) ?? sectionModel;
   const { top, left } = nextZeroBlockCoordinates(sectionEl);
-  sectionModel.append(zeroBlockMarkup(kind, top, left) as never);
+  canvasModel.append(zeroBlockMarkup(kind, top, left) as never);
   editor.select(sectionModel);
+}
+
+function forceSaveZeroBlock(editor: Editor, sectionEl: HTMLElement) {
+  const sectionModel = findZeroBlockModelByElement(editor, sectionEl);
+  if (sectionModel) editor.select(sectionModel);
+  editor.refresh?.();
+  const triggerEditor = editor as Editor & { trigger?: (event: string) => void };
+  triggerEditor.trigger?.("update");
+  sectionEl.setAttribute("data-ln-zero-saving", "1");
+  const timerHost = sectionEl.ownerDocument.defaultView;
+  timerHost?.setTimeout(() => {
+    if (sectionEl.isConnected) sectionEl.removeAttribute("data-ln-zero-saving");
+  }, 900);
 }
 
 function closeAllZeroBlockEditors(doc: Document) {
@@ -212,10 +341,15 @@ function parsePxLike(value: unknown): number {
   return 0;
 }
 
-function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void {
+function attachZeroBlockEditorRuntime(
+  editor: Editor,
+  win: Window | undefined,
+  getOnOpenZeroBlockEditor: () => ((blockId: string) => void) | undefined,
+  zeroInlineUi: ZeroBlockCanvasInlineUi,
+): () => void {
   const doc = win?.document;
   if (!doc) return () => {};
-  ensureZeroBlockRuntimeStyles(doc);
+  syncZeroBlockRuntimeStyles(doc, zeroInlineUi);
 
   const readSelectedForActiveSection = (): Component | null => {
     const selected = editor.getSelected?.() ?? null;
@@ -246,32 +380,103 @@ function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void 
       else if (key === "w") field.value = String(parsePxLike(style.width));
       else if (key === "h") field.value = String(parsePxLike(style.height));
     });
+    syncColInfo();
+  };
+
+  const syncGridPanel = (section: HTMLElement) => {
+    const panel = section.querySelector<HTMLElement>("[data-ln-zero-ui='grid-panel']");
+    if (!panel) return;
+    const attrs: Record<string, string> = {};
+    for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+    const config = readZbGridConfig(attrs);
+    const colsInput = panel.querySelector<HTMLInputElement>("[data-ln-grid-field='cols']");
+    const marginInput = panel.querySelector<HTMLInputElement>("[data-ln-grid-field='margin']");
+    const gutterInput = panel.querySelector<HTMLInputElement>("[data-ln-grid-field='gutter']");
+    const visibleBtn = panel.querySelector<HTMLElement>("[data-ln-grid-toggle='visible']");
+    const snapBtn = panel.querySelector<HTMLElement>("[data-ln-grid-toggle='snap']");
+    if (colsInput) colsInput.value = String(config.columns);
+    if (marginInput) marginInput.value = String(config.marginPx);
+    if (gutterInput) gutterInput.value = String(config.gutterPx);
+    if (visibleBtn) {
+      visibleBtn.textContent = config.visible ? "Вкл" : "Выкл";
+      if (config.visible) visibleBtn.setAttribute("data-ln-active", "1");
+      else visibleBtn.removeAttribute("data-ln-active");
+    }
+    if (snapBtn) {
+      snapBtn.textContent = config.snapEnabled ? "Вкл" : "Выкл";
+      if (config.snapEnabled) snapBtn.setAttribute("data-ln-active", "1");
+      else snapBtn.removeAttribute("data-ln-active");
+    }
+  };
+
+  const syncColInfo = () => {
+    doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block[data-ln-zb-grid-panel='1'][data-ln-zero-editing='1']").forEach((section) => {
+      const colInfo = section.querySelector<HTMLElement>("[data-ln-col-info]");
+      if (!colInfo) return;
+      const selected = readSelectedForActiveSection();
+      if (!selected || !section.contains(selected.getEl?.() ?? null)) {
+        colInfo.classList.remove("active");
+        return;
+      }
+      const attrs: Record<string, string> = {};
+      for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+      const config = readZbGridConfig(attrs);
+      const sectionWidth = section.clientWidth || 0;
+      const style = (selected.getStyle?.() ?? {}) as Record<string, unknown>;
+      const { col, span } = pxToColSpan(parsePxLike(style.left), parsePxLike(style.width), sectionWidth, config);
+      const colInput = colInfo.querySelector<HTMLInputElement>("[data-ln-grid-field='col']");
+      const spanInput = colInfo.querySelector<HTMLInputElement>("[data-ln-grid-field='span']");
+      if (colInput) colInput.value = String(col);
+      if (spanInput) spanInput.value = String(span);
+      colInfo.classList.add("active");
+    });
+  };
+
+  const saveAndCloseSection = (section: HTMLElement) => {
+    forceSaveZeroBlock(editor, section);
+    section.removeAttribute("data-ln-zero-editing");
+    section.removeAttribute("data-ln-zero-menu-open");
+  };
+
+  const setActiveToolInSection = (section: HTMLElement, toolName: string) => {
+    section.querySelectorAll<HTMLElement>("[data-ln-zero-tool]").forEach((btn) => btn.removeAttribute("data-ln-active"));
+    const btn = section.querySelector<HTMLElement>(`[data-ln-zero-tool="${toolName}"]`);
+    if (btn) btn.setAttribute("data-ln-active", "1");
   };
 
   const onClick = (event: MouseEvent) => {
     const target = event.target as HTMLElement | null;
     if (!target) return;
 
-    const editButton = target.closest<HTMLElement>("[data-ln-zero-edit]");
-    if (editButton) {
+    // "Редактировать" — open zero block in dedicated editor page
+    const openEditorButton = target.closest<HTMLElement>("[data-ln-zero-open-editor]");
+    if (openEditorButton) {
       event.preventDefault();
       event.stopPropagation();
-      const section = editButton.closest<HTMLElement>("section.lemnity-zero-block");
+      const section = openEditorButton.closest<HTMLElement>("section.lemnity-zero-block");
       if (!section) return;
-      if (section.getAttribute("data-ln-zero-editing") === "1") {
-        section.removeAttribute("data-ln-zero-editing");
-        section.removeAttribute("data-ln-zero-menu-open");
-        return;
+      const blockId = section.getAttribute("data-ln-zero-id") ?? "";
+      const openFn = getOnOpenZeroBlockEditor?.();
+      if (blockId && openFn) {
+        openEditorButton.setAttribute("data-loading", "1");
+        openEditorButton.textContent = "Загрузка…";
+        openFn(blockId);
       }
-      closeAllZeroBlockEditors(doc);
-      section.setAttribute("data-ln-zero-editing", "1");
-      section.setAttribute("data-ln-zero-menu-open", "0");
-      const sectionModel = findZeroBlockModelByElement(editor, section);
-      if (sectionModel) editor.select(sectionModel);
-      queueMicrotask(syncInspectorUi);
       return;
     }
 
+    // Save / Готово button
+    const saveButton = target.closest<HTMLElement>("[data-ln-zero-save]");
+    if (saveButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = saveButton.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      saveAndCloseSection(section);
+      return;
+    }
+
+    // Legacy close button (backdrop)
     const closeButton = target.closest<HTMLElement>("[data-ln-zero-close]");
     if (closeButton) {
       event.preventDefault();
@@ -283,6 +488,7 @@ function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void 
       return;
     }
 
+    // "+" button toggles picker
     const plusButton = target.closest<HTMLElement>("[data-ln-zero-plus]");
     if (plusButton) {
       event.preventDefault();
@@ -294,6 +500,46 @@ function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void 
       return;
     }
 
+    // "More" toolbar button toggles picker (same as "+")
+    const moreButton = target.closest<HTMLElement>("[data-ln-zero-tool='more']");
+    if (moreButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = moreButton.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      const open = section.getAttribute("data-ln-zero-menu-open") === "1";
+      section.setAttribute("data-ln-zero-menu-open", open ? "0" : "1");
+      return;
+    }
+
+    // Toolbar tool buttons that add elements directly
+    const toolAddButton = target.closest<HTMLElement>("[data-ln-zero-tool-add]");
+    if (toolAddButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = toolAddButton.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      const kind = String(toolAddButton.getAttribute("data-ln-zero-tool-add") ?? "") as ZeroBlockInsertKind;
+      const toolName = toolAddButton.getAttribute("data-ln-zero-tool") ?? "";
+      setActiveToolInSection(section, toolName);
+      appendZeroBlockElement(editor, section, kind);
+      section.setAttribute("data-ln-zero-menu-open", "0");
+      queueMicrotask(syncInspectorUi);
+      return;
+    }
+
+    // Select tool — no element added, just set active
+    const selectButton = target.closest<HTMLElement>("[data-ln-zero-tool='select']");
+    if (selectButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = selectButton.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      setActiveToolInSection(section, "select");
+      return;
+    }
+
+    // Picker "add" buttons
     const addButton = target.closest<HTMLElement>("[data-ln-zero-add]");
     if (addButton) {
       event.preventDefault();
@@ -307,29 +553,97 @@ function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void 
       return;
     }
 
-    const activeSection = doc.querySelector<HTMLElement>("section.lemnity-zero-block[data-ln-zero-editing='1']");
-    if (!activeSection) return;
-    if (!activeSection.contains(target)) return;
-    if (target.closest("[data-ln-zero-ui]")) return;
-    let node: HTMLElement | null = target;
-    while (node && node.parentElement !== activeSection) {
-      node = node.parentElement;
+    // Grid tool button — toggle grid settings panel
+    const gridButton = target.closest<HTMLElement>("[data-ln-zero-tool='grid']");
+    if (gridButton) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = gridButton.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      const open = section.getAttribute("data-ln-zb-grid-panel") === "1";
+      section.setAttribute("data-ln-zb-grid-panel", open ? "0" : "1");
+      if (!open) {
+        setActiveToolInSection(section, "grid");
+        syncGridPanel(section);
+        queueMicrotask(syncColInfo);
+      } else {
+        setActiveToolInSection(section, "select");
+      }
+      return;
     }
-    if (!node) return;
-    const sectionModel = findZeroBlockModelByElement(editor, activeSection);
-    if (!sectionModel) return;
-    let picked: Component | null = null;
-    sectionModel.components?.().forEach?.((child: Component) => {
-      if (picked) return;
-      if (child.getEl?.() === node) picked = child;
-    });
-    if (picked) {
-      editor.select(picked);
-      queueMicrotask(syncInspectorUi);
+
+    // Grid toggle buttons (visible / snap)
+    const gridToggle = target.closest<HTMLElement>("[data-ln-grid-toggle]");
+    if (gridToggle) {
+      event.preventDefault();
+      event.stopPropagation();
+      const section = gridToggle.closest<HTMLElement>("section.lemnity-zero-block");
+      if (!section) return;
+      const sectionModel = findZeroBlockModelByElement(editor, section);
+      if (!sectionModel) return;
+      const attrs: Record<string, string> = {};
+      for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+      const config = readZbGridConfig(attrs);
+      const which = gridToggle.getAttribute("data-ln-grid-toggle");
+      if (which === "visible") config.visible = !config.visible;
+      else if (which === "snap") config.snapEnabled = !config.snapEnabled;
+      sectionModel.setAttributes?.(zbGridConfigToAttrs(config));
+      queueMicrotask(() => {
+        syncZeroBlockGridOverlays(editor);
+        syncGridPanel(section);
+      });
+      return;
+    }
+
+    // Auto-enter editing mode when clicking inside a zero block (full UI only)
+    const zeroSection = target.closest<HTMLElement>("section.lemnity-zero-block");
+    if (zeroInlineUi === "full" && zeroSection && !target.closest("[data-ln-zero-ui]")) {
+      if (zeroSection.getAttribute("data-ln-zero-editing") !== "1") {
+        closeAllZeroBlockEditors(doc);
+        ensureZeroBlockUi(zeroSection);
+        zeroSection.setAttribute("data-ln-zero-editing", "1");
+        const sectionModel = findZeroBlockModelByElement(editor, zeroSection);
+        if (sectionModel) editor.select(sectionModel);
+        queueMicrotask(syncInspectorUi);
+        return;
+      }
+      // Close picker when clicking canvas area (not a UI element)
+      zeroSection.setAttribute("data-ln-zero-menu-open", "0");
+      // Select child element
+      let node: HTMLElement | null = target;
+      while (node && node.parentElement !== zeroSection) {
+        node = node.parentElement;
+      }
+      if (!node) return;
+      const sectionModel = findZeroBlockModelByElement(editor, zeroSection);
+      if (!sectionModel) return;
+      let picked: Component | null = null;
+      sectionModel.components?.().forEach?.((child: Component) => {
+        if (picked) return;
+        if (child.getEl?.() === node) picked = child;
+      });
+      if (picked) {
+        editor.select(picked);
+        queueMicrotask(syncInspectorUi);
+      }
+      return;
+    }
+
+    // Click outside any zero block — close active editor
+    const activeSection = doc.querySelector<HTMLElement>("section.lemnity-zero-block[data-ln-zero-editing='1']");
+    if (activeSection && !zeroSection) {
+      saveAndCloseSection(activeSection);
     }
   };
 
   const onKeyDown = (event: KeyboardEvent) => {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+      const active = doc.querySelector<HTMLElement>("section.lemnity-zero-block[data-ln-zero-editing='1']");
+      if (!active) return;
+      event.preventDefault();
+      saveAndCloseSection(active);
+      return;
+    }
     if (event.key !== "Escape") return;
     closeAllZeroBlockEditors(doc);
   };
@@ -337,18 +651,66 @@ function attachZeroBlockEditorRuntime(editor: Editor, win?: Window): () => void 
   const onInput = (event: Event) => {
     const target = event.target as HTMLInputElement | null;
     if (!target || target.tagName !== "INPUT") return;
-    const key = target.getAttribute("data-ln-zero-field");
-    if (!key) return;
-    const selected = readSelectedForActiveSection();
-    if (!selected) return;
-    const value = Number.parseFloat(target.value);
+
+    // Inspector X/Y/W/H fields
+    const zeroFieldKey = target.getAttribute("data-ln-zero-field");
+    if (zeroFieldKey) {
+      const selected = readSelectedForActiveSection();
+      if (!selected) return;
+      const value = Number.parseFloat(target.value);
+      if (!Number.isFinite(value)) return;
+      const stylePatch: Record<string, string> = { position: "absolute" };
+      if (zeroFieldKey === "x") stylePatch.left = `${Math.round(value)}px`;
+      else if (zeroFieldKey === "y") stylePatch.top = `${Math.round(value)}px`;
+      else if (zeroFieldKey === "w") stylePatch.width = `${Math.max(1, Math.round(value))}px`;
+      else if (zeroFieldKey === "h") stylePatch.height = `${Math.max(1, Math.round(value))}px`;
+      selected.addStyle(stylePatch);
+      return;
+    }
+
+    // Grid settings fields
+    const gridFieldKey = target.getAttribute("data-ln-grid-field");
+    if (!gridFieldKey) return;
+
+    const section = target.closest<HTMLElement>("section.lemnity-zero-block");
+    if (!section) return;
+
+    // col/span fields: update the selected element's position
+    if (gridFieldKey === "col" || gridFieldKey === "span") {
+      const selected = readSelectedForActiveSection();
+      if (!selected) return;
+      const attrs: Record<string, string> = {};
+      for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+      const config = readZbGridConfig(attrs);
+      const sectionWidth = section.clientWidth || 0;
+      const style = (selected.getStyle?.() ?? {}) as Record<string, unknown>;
+      const { col: curCol, span: curSpan } = pxToColSpan(parsePxLike(style.left), parsePxLike(style.width), sectionWidth, config);
+      const value = parseInt(target.value, 10);
+      if (!Number.isFinite(value)) return;
+      const col = gridFieldKey === "col" ? Math.max(1, value) : curCol;
+      const span = gridFieldKey === "span" ? Math.max(1, value) : curSpan;
+      const { x, w } = colSpanToPx(col, span, sectionWidth, config);
+      selected.addStyle({ left: `${x}px`, width: `${w}px` });
+      queueMicrotask(syncColInfo);
+      return;
+    }
+
+    // Grid config fields: update section attributes
+    const sectionModel = findZeroBlockModelByElement(editor, section);
+    if (!sectionModel) return;
+    const attrs: Record<string, string> = {};
+    for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
+    const config = readZbGridConfig(attrs);
+    const value = parseInt(target.value, 10);
     if (!Number.isFinite(value)) return;
-    const stylePatch: Record<string, string> = { position: "absolute" };
-    if (key === "x") stylePatch.left = `${Math.round(value)}px`;
-    else if (key === "y") stylePatch.top = `${Math.round(value)}px`;
-    else if (key === "w") stylePatch.width = `${Math.max(1, Math.round(value))}px`;
-    else if (key === "h") stylePatch.height = `${Math.max(1, Math.round(value))}px`;
-    selected.addStyle(stylePatch);
+    if (gridFieldKey === "cols") config.columns = Math.min(24, Math.max(1, value));
+    else if (gridFieldKey === "margin") config.marginPx = Math.max(0, value);
+    else if (gridFieldKey === "gutter") config.gutterPx = Math.max(0, value);
+    sectionModel.setAttributes?.(zbGridConfigToAttrs(config));
+    queueMicrotask(() => {
+      syncZeroBlockGridOverlays(editor);
+      syncColInfo();
+    });
   };
 
   const onSelectionChange = () => queueMicrotask(syncInspectorUi);
@@ -375,9 +737,72 @@ function readComponentClasses(component: Component): string[] {
 }
 
 function isZeroBlockSectionComponent(component: Component | null | undefined): boolean {
-  if (!component) return false;
+  if (!component?.get) return false;
   if (String(component.get("tagName") ?? "").toLowerCase() !== "section") return false;
   return readComponentClasses(component).includes("lemnity-zero-block");
+}
+
+const ZERO_CANVAS_CLASS = "lemnity-zero-canvas";
+
+function isZeroBlockCanvasComponent(c: Component | null | undefined): boolean {
+  if (!c?.get) return false;
+  if (String(c.get("tagName") ?? "").toLowerCase() !== "div") return false;
+  if (readComponentClasses(c).includes(ZERO_CANVAS_CLASS)) return true;
+  const attrs = (c.getAttributes?.() ?? {}) as Record<string, string>;
+  return attrs["data-ln-zero-canvas"] === "1";
+}
+
+function shouldStayOnZeroSectionDirectChild(component: Component): boolean {
+  const tag = String(component.get?.("tagName") ?? "").toLowerCase();
+  if (tag === "style") return true;
+  const attrs = (component.getAttributes?.() ?? {}) as Record<string, string>;
+  if (attrs["data-ln-editor-hint"] === "1") return true;
+  if (isZeroBlockCanvasComponent(component)) return true;
+  return false;
+}
+
+/** Холст слоёв внутри секции: координаты absolute совпадают с коридором 12 колонок (padding секции). */
+function ensureZeroBlockInnerCanvas(section: Component | null | undefined): Component | null {
+  if (!section || !isZeroBlockSectionComponent(section)) return null;
+  const coll = section.components?.();
+  if (!coll) return null;
+
+  let existing: Component | null = null;
+  coll.forEach?.((child: Component) => {
+    if (isZeroBlockCanvasComponent(child)) existing = child;
+  });
+  if (existing) return existing;
+
+  const toMove: Component[] = [];
+  coll.forEach?.((child: Component) => {
+    if (!shouldStayOnZeroSectionDirectChild(child)) toMove.push(child);
+  });
+
+  section.append(
+    `<div class="${ZERO_CANVAS_CLASS}" data-ln-zero-canvas="1" data-gjs-name="Zero canvas" style="position:relative;width:100%;min-height:100%;box-sizing:border-box;"></div>`,
+  );
+
+  let canvas: Component | null = null;
+  section.components()?.forEach?.((child: Component) => {
+    if (isZeroBlockCanvasComponent(child)) canvas = child;
+  });
+  if (!canvas) return null;
+
+  (canvas as Component).set(
+    {
+      draggable: false,
+      copyable: false,
+      removable: false,
+      layerable: false,
+      highlightable: false,
+    } as never,
+  );
+
+  toMove.forEach((ch) => {
+    if (ch.parent() === section) (canvas as Component).append(ch);
+  });
+
+  return canvas;
 }
 
 function hasZeroBlockAncestor(component: Component | null | undefined): boolean {
@@ -389,13 +814,85 @@ function hasZeroBlockAncestor(component: Component | null | undefined): boolean 
   return false;
 }
 
-function placeZeroBlockChildFreely(component: Component) {
-  const parent = component.parent?.();
-  if (!parent || !isZeroBlockSectionComponent(parent)) return;
+function findZeroBlockSectionAncestor(component: Component | null | undefined): Component | null {
+  let cursor = component;
+  while (cursor) {
+    if (isZeroBlockSectionComponent(cursor)) return cursor;
+    cursor = cursor.parent?.() ?? null;
+  }
+  return null;
+}
+
+function openZeroBlockSettingsWindow(editor: Editor): boolean {
+  const selected = editor.getSelected?.() ?? null;
+  const zeroSection = findZeroBlockSectionAncestor(selected);
+  if (!zeroSection) return false;
+  lockZeroBlockSectionInStructure(zeroSection);
+  const sectionEl = zeroSection.getEl?.();
+  if (!(sectionEl instanceof HTMLElement)) return false;
+  const doc = sectionEl.ownerDocument;
+  const mode =
+    (doc.documentElement.getAttribute("data-ln-zero-inline") as ZeroBlockCanvasInlineUi | null) || "minimal";
+  syncZeroBlockRuntimeStyles(doc, mode);
+  ensureZeroBlockUi(sectionEl);
+  closeAllZeroBlockEditors(doc);
+  sectionEl.setAttribute("data-ln-zero-editing", "1");
+  editor.select(zeroSection);
+  return true;
+}
+
+function lockZeroBlockSectionInStructure(section: Component | null | undefined) {
+  if (!section || !isZeroBlockSectionComponent(section)) return;
+  if (section.get("draggable") !== false) section.set("draggable", false);
+  const attrs = (section.getAttributes?.() ?? {}) as Record<string, string>;
+  if (!attrs["data-ln-zero-id"]) {
+    section.setAttributes?.({ "data-ln-zero-id": `zb_${Math.random().toString(36).slice(2, 10)}` });
+  }
+  // Initialize default grid config if not yet set
+  if (!attrs["data-ln-zb-grid"]) {
+    section.setAttributes?.(zbGridConfigToAttrs(ZB_GRID_DEFAULTS));
+  }
+  ensureZeroBlockInnerCanvas(section);
+}
+
+function ensureZeroBlockChildResizable(component: Component) {
+  if (!hasZeroBlockAncestor(component)) return;
   if (String(component.get("tagName") ?? "").toLowerCase() === "style") return;
   if (component.getAttributes?.()["data-ln-editor-hint"] === "1") return;
+  component.set("resizable", { ...ZERO_BLOCK_RESIZE_HANDLES } as never);
+}
 
-  const siblings = parent.components?.();
+function placeZeroBlockChildFreely(component: Component) {
+  const zeroSection = findZeroBlockSectionAncestor(component);
+  if (!zeroSection) return;
+
+  lockZeroBlockSectionInStructure(zeroSection);
+  const canvas = ensureZeroBlockInnerCanvas(zeroSection);
+
+  if (
+    canvas &&
+    !shouldStayOnZeroSectionDirectChild(component) &&
+    !isZeroBlockCanvasComponent(component) &&
+    component.parent() === zeroSection
+  ) {
+    canvas.append(component);
+  }
+
+  if (String(component.get("tagName") ?? "").toLowerCase() === "style") return;
+  if (component.getAttributes?.()["data-ln-editor-hint"] === "1") return;
+  if (isZeroBlockCanvasComponent(component)) return;
+
+  ensureZeroBlockChildResizable(component);
+
+  const draggable = component.get("draggable");
+  if (draggable !== ".lemnity-zero-block") {
+    component.set("draggable", ".lemnity-zero-block");
+  }
+
+  const layoutParent = component.parent?.() ?? null;
+  if (!layoutParent || !isZeroBlockCanvasComponent(layoutParent)) return;
+
+  const siblings = layoutParent.components?.();
   let order = 0;
   siblings?.forEach?.((child: Component) => {
     if (child === component) return;
@@ -405,15 +902,20 @@ function placeZeroBlockChildFreely(component: Component) {
   });
 
   const currentStyle = (component.getStyle?.() ?? {}) as Record<string, unknown>;
+  // Also check raw style attribute — getStyle() may return {} during component:add
+  // before GrapesJS transfers inline styles into its model (timing issue on load).
+  const rawStyleAttr = ((component.getAttributes?.() ?? {}) as Record<string, string>).style ?? "";
+  const hasPositioningInRawStyle = /\b(position|top|left|right|bottom)\s*:/i.test(rawStyleAttr);
   const hasManualPlacement =
     currentStyle.position != null ||
     currentStyle.top != null ||
     currentStyle.left != null ||
     currentStyle.right != null ||
-    currentStyle.bottom != null;
+    currentStyle.bottom != null ||
+    hasPositioningInRawStyle;
 
   if (hasManualPlacement) {
-    if (String(currentStyle.position ?? "") !== "absolute") {
+    if (String(currentStyle.position ?? "") !== "absolute" && !hasPositioningInRawStyle) {
       component.addStyle({ position: "absolute" });
     }
     return;
@@ -432,52 +934,161 @@ function placeZeroBlockChildFreely(component: Component) {
 
 function normalizeZeroBlockChildren(root: Component | null | undefined) {
   if (!root?.find) return;
-  if (isZeroBlockSectionComponent(root)) {
-    root.components?.().forEach?.((child: Component) => {
+  const runSection = (sec: Component) => {
+    lockZeroBlockSectionInStructure(sec);
+    const canvas = ensureZeroBlockInnerCanvas(sec);
+    const host = canvas?.components?.() ?? sec.components?.();
+    host?.forEach?.((child: Component) => {
       placeZeroBlockChildFreely(child);
     });
+  };
+  if (isZeroBlockSectionComponent(root)) {
+    runSection(root);
     return;
   }
   root.find("section.lemnity-zero-block").forEach((section) => {
-    (section as Component).components?.().forEach?.((child: Component) => {
-      placeZeroBlockChildFreely(child);
-    });
+    runSection(section as Component);
   });
 }
 
+function removeZeroBlockLegacyHint(sectionEl: HTMLElement) {
+  sectionEl
+    .querySelectorAll<HTMLElement>(":scope > [data-ln-editor-hint='1']:not([data-ln-zero-ui])")
+    .forEach((node) => node.remove());
+}
+
 function ensureZeroBlockUi(sectionEl: HTMLElement) {
+  removeZeroBlockLegacyHint(sectionEl);
   if (sectionEl.querySelector("[data-ln-zero-ui='toolbar']")) return;
 
-  const toolbar = sectionEl.ownerDocument.createElement("div");
-  toolbar.setAttribute("data-ln-zero-ui", "toolbar");
-  toolbar.setAttribute("data-ln-editor-hint", "1");
-  toolbar.innerHTML =
-    '<button type="button" data-ln-zero-edit="1" aria-label="Редактировать Zero Block">Редактировать</button>';
+  const doc = sectionEl.ownerDocument;
 
-  const backdrop = sectionEl.ownerDocument.createElement("div");
+  // Backdrop — kept for API compat, hidden via CSS
+  const backdrop = doc.createElement("div");
   backdrop.setAttribute("data-ln-zero-ui", "backdrop");
   backdrop.setAttribute("data-ln-editor-hint", "1");
   backdrop.setAttribute("data-ln-zero-close", "1");
 
-  const menu = sectionEl.ownerDocument.createElement("div");
+  // Top-right toolbar: "Открыть редактор" + "Готово"
+  const toolbar = doc.createElement("div");
+  toolbar.setAttribute("data-ln-zero-ui", "toolbar");
+  toolbar.setAttribute("data-ln-editor-hint", "1");
+  toolbar.innerHTML = `
+    <button type="button" data-ln-zero-open-editor="1" aria-label="Открыть нулевой блок в отдельном редакторе">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><path d="M5.5 1H2a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V7.5"/><polyline points="8 1 12 1 12 5"/><line x1="12" y1="1" x2="6" y2="7"/></svg>
+      Редактировать
+    </button>
+    <button type="button" data-ln-zero-save="1" aria-label="Завершить редактирование нулевого блока">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="1.5 7 5 10.5 11.5 2.5"/></svg>
+      Готово
+    </button>`;
+
+  // Top-left "+" button + picker dropdown
+  const menu = doc.createElement("div");
   menu.setAttribute("data-ln-zero-ui", "menu");
   menu.setAttribute("data-ln-editor-hint", "1");
   menu.innerHTML = `
-    <button type="button" data-ln-zero-plus="1" aria-label="Добавить элемент">+</button>
-    <div data-ln-zero-ui="picker" role="menu" aria-label="Элементы Zero Block">
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="text">Текст<span>T</span></button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="image">Изображение<span>I</span></button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="shape">Шейп<span>R</span></button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="button">Кнопка<span>B</span></button></div>
+    <button type="button" data-ln-zero-plus="1" aria-label="Добавить элемент">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/></svg>
+    </button>
+    <div data-ln-zero-ui="picker" role="menu" aria-label="Добавить элемент">
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="text" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M3 3h10v2H9.5v8h-3V5H3V3z"/></svg></span>
+          <span class="ln-label">Текст</span><span class="ln-kbd">T</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="image" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M1.5 10l3.5-4 3 3 2-2L14.5 11"/><circle cx="5" cy="6" r="1.2" fill="currentColor" stroke="none"/></svg></span>
+          <span class="ln-label">Изображение</span><span class="ln-kbd">I</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="shape" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/></svg></span>
+          <span class="ln-label">Шейп</span><span class="ln-kbd">R</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="button" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="4.5" width="13" height="7" rx="3.5"/><line x1="5" y1="8" x2="11" y2="8" stroke-width="1.3" stroke-linecap="round"/></svg></span>
+          <span class="ln-label">Кнопка</span><span class="ln-kbd">B</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="vector" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13C5 9 8 8 10 7s3-3 1-5"/><circle cx="10" cy="2.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="13" r="1.5" fill="currentColor" stroke="none"/></svg></span>
+          <span class="ln-label">Вектор</span><span class="ln-kbd">P</span>
+        </button>
+      </div>
       <div data-ln-zero-sep></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="video">Видео</button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="html">HTML</button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="tooltip">Тултип</button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="form">Форма</button></div>
-      <div data-ln-zero-row><button type="button" data-ln-zero-add="gallery">Галерея</button></div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="video" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><polygon points="4,2.5 14,8 4,13.5"/><rect x="1" y="2.5" width="2.5" height="11" rx="1"/></svg></span>
+          <span class="ln-label">Видео</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="html" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5,5 2,8 5,11"/><polyline points="11,5 14,8 11,11"/><line x1="9.5" y1="3" x2="6.5" y2="13"/></svg></span>
+          <span class="ln-label">HTML</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="tooltip" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="2" width="13" height="9" rx="2"/><path d="M5.5 11.5l2 2.5 2-2.5"/></svg></span>
+          <span class="ln-label">Тултип</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="form" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1.5" y="2.5" width="13" height="3.5" rx="1"/><rect x="1.5" y="8.5" width="13" height="3.5" rx="1"/><line x1="14" y1="14" x2="1.5" y2="14" stroke-width="1.3"/></svg></span>
+          <span class="ln-label">Форма</span>
+        </button>
+      </div>
+      <div data-ln-zero-row>
+        <button type="button" data-ln-zero-add="gallery" role="menuitem">
+          <span class="ln-icon"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg></span>
+          <span class="ln-label">Галерея</span>
+        </button>
+      </div>
     </div>`;
 
-  const inspector = sectionEl.ownerDocument.createElement("div");
+  // Bottom floating pill toolbar
+  const toolbarBottom = doc.createElement("div");
+  toolbarBottom.setAttribute("data-ln-zero-ui", "toolbar-bottom");
+  toolbarBottom.setAttribute("data-ln-editor-hint", "1");
+  toolbarBottom.innerHTML = `
+    <button type="button" data-ln-zero-tool="select" data-ln-active title="Выбрать">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M3 1.5l9 6-4.5 1.5-1 4.5L3 1.5z"/></svg>
+    </button>
+    <button type="button" data-ln-zero-tool="text" data-ln-zero-tool-add="text" title="Текст (T)">
+      <svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M2 2.5h11v2H8.5v8H6.5V4.5H2V2.5z"/></svg>
+    </button>
+    <button type="button" data-ln-zero-tool="image" data-ln-zero-tool-add="image" title="Изображение (I)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M1.5 10l3.5-4 3 3 2-2L14.5 11"/><circle cx="5" cy="6" r="1.2" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <button type="button" data-ln-zero-tool="shape" data-ln-zero-tool-add="shape" title="Шейп (R)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2.5"/></svg>
+    </button>
+    <button type="button" data-ln-zero-tool="button" data-ln-zero-tool-add="button" title="Кнопка (B)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="4.5" width="13" height="7" rx="3.5"/><line x1="5" y1="8" x2="11" y2="8" stroke-width="1.3" stroke-linecap="round"/></svg>
+    </button>
+    <button type="button" data-ln-zero-tool="vector" data-ln-zero-tool-add="vector" title="Вектор (P)">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13C5 9 8 8 10 7s3-3 1-5"/><circle cx="10" cy="2.5" r="1.5" fill="currentColor" stroke="none"/><circle cx="3" cy="13" r="1.5" fill="currentColor" stroke="none"/></svg>
+    </button>
+    <div data-ln-zero-tool-sep></div>
+    <button type="button" data-ln-zero-tool="more" title="Больше элементов">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6.5l4 3.5 4-3.5"/></svg>
+    </button>
+    <div data-ln-zero-tool-sep></div>
+    <button type="button" data-ln-zero-tool="grid" title="Настройки сетки">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="1" y="1" width="5.5" height="5.5" rx="1"/><rect x="9.5" y="1" width="5.5" height="5.5" rx="1"/><rect x="1" y="9.5" width="5.5" height="5.5" rx="1"/><rect x="9.5" y="9.5" width="5.5" height="5.5" rx="1"/></svg>
+    </button>`;
+
+  // Inspector — kept for API compat, hidden via CSS
+  const inspector = doc.createElement("div");
   inspector.setAttribute("data-ln-zero-ui", "inspector");
   inspector.setAttribute("data-ln-editor-hint", "1");
   inspector.innerHTML = `
@@ -489,15 +1100,60 @@ function ensureZeroBlockUi(sectionEl: HTMLElement) {
       <div data-ln-zero-field-wrap><label>H</label><input type="number" step="1" data-ln-zero-field="h" placeholder="0" /></div>
     </div>`;
 
-  sectionEl.prepend(menu);
+  // Grid settings panel
+  const gridPanel = doc.createElement("div");
+  gridPanel.setAttribute("data-ln-zero-ui", "grid-panel");
+  gridPanel.setAttribute("data-ln-editor-hint", "1");
+  gridPanel.innerHTML = `
+    <p data-ln-grid-title>Сетка</p>
+    <div data-ln-grid-rows>
+      <div data-ln-grid-row>
+        <span data-ln-grid-label>Колонки</span>
+        <input type="number" min="1" max="24" step="1" data-ln-grid-num data-ln-grid-field="cols" value="12" />
+      </div>
+      <div data-ln-grid-row>
+        <span data-ln-grid-label>Отступ, px</span>
+        <input type="number" min="0" max="200" step="1" data-ln-grid-num data-ln-grid-field="margin" value="40" />
+      </div>
+      <div data-ln-grid-row>
+        <span data-ln-grid-label>Гаттер, px</span>
+        <input type="number" min="0" max="100" step="1" data-ln-grid-num data-ln-grid-field="gutter" value="20" />
+      </div>
+      <div data-ln-grid-row>
+        <span data-ln-grid-label>Сетка</span>
+        <button type="button" data-ln-grid-toggle-btn data-ln-grid-toggle="visible" data-ln-active>Вкл</button>
+      </div>
+      <div data-ln-grid-row>
+        <span data-ln-grid-label>Прилипание</span>
+        <button type="button" data-ln-grid-toggle-btn data-ln-grid-toggle="snap" data-ln-active>Вкл</button>
+      </div>
+    </div>
+    <div data-ln-col-info>
+      <p data-ln-col-info-title>ПОЗИЦИЯ В СЕТКЕ</p>
+      <div data-ln-grid-rows>
+        <div data-ln-grid-row>
+          <span data-ln-grid-label>Колонка</span>
+          <input type="number" min="1" step="1" data-ln-grid-num data-ln-grid-field="col" value="1" />
+        </div>
+        <div data-ln-grid-row>
+          <span data-ln-grid-label>Ширина (кол.)</span>
+          <input type="number" min="1" step="1" data-ln-grid-num data-ln-grid-field="span" value="1" />
+        </div>
+      </div>
+    </div>`;
+
+  sectionEl.prepend(gridPanel);
+  sectionEl.prepend(toolbarBottom);
   sectionEl.prepend(inspector);
+  sectionEl.prepend(menu);
   sectionEl.prepend(toolbar);
   sectionEl.prepend(backdrop);
 }
 
-function mountZeroBlockUiInFrame(editor: Editor, win?: Window) {
+function mountZeroBlockUiInFrame(editor: Editor, win: Window | undefined, zeroInlineUi: ZeroBlockCanvasInlineUi) {
   const doc = win?.document;
   if (!doc) return;
+  syncZeroBlockRuntimeStyles(doc, zeroInlineUi);
   const sections = doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block");
   sections.forEach((section) => {
     ensureZeroBlockUi(section);
@@ -513,11 +1169,11 @@ function blockToHtml(block: BlockNode): string {
   const sectionStyle = style ? ` style="${escapeHtml(style)}"` : "";
 
   if (block.type === "text") {
-    return `${sectionOpen(sectionStyle)}><div>${escapeHtml(prop(block, "text", "Text"))}</div></section>`;
+    return `${sectionOpen(sectionStyle)}><div>${escapeHtml(prop(block, "text", "Текст"))}</div></section>`;
   }
 
   if (block.type === "cover") {
-    return `${sectionOpen(sectionStyle)}><h1>${escapeHtml(prop(block, "title", "Hero title"))}</h1><p>${escapeHtml(prop(block, "subtitle"))}</p><a href="#">${escapeHtml(prop(block, "buttonLabel", "Start"))}</a></section>`;
+    return `${sectionOpen(sectionStyle)}><h1>${escapeHtml(prop(block, "title", "Заголовок обложки"))}</h1><p>${escapeHtml(prop(block, "subtitle"))}</p><a href="#">${escapeHtml(prop(block, "buttonLabel", "Начать"))}</a></section>`;
   }
 
   if (block.type === "image") {
@@ -530,11 +1186,11 @@ function blockToHtml(block: BlockNode): string {
   }
 
   if (block.type === "button") {
-    return `${sectionOpen(sectionStyle)}><a href="${escapeHtml(prop(block, "href", "#"))}">${escapeHtml(prop(block, "label", "Button"))}</a></section>`;
+    return `${sectionOpen(sectionStyle)}><a href="${escapeHtml(prop(block, "href", "#"))}">${escapeHtml(prop(block, "label", "Кнопка"))}</a></section>`;
   }
 
   if (block.type === "form") {
-    return `${sectionOpen(sectionStyle)}><form method="post" action="#"><h2>${escapeHtml(prop(block, "title", "Form"))}</h2><input name="name" placeholder="Имя" /><input name="email" type="email" placeholder="Email" /><button type="submit">${escapeHtml(prop(block, "buttonLabel", "Отправить"))}</button></form></section>`;
+    return `${sectionOpen(sectionStyle)}><form method="post" action="#"><h2>${escapeHtml(prop(block, "title", "Форма"))}</h2><input name="name" placeholder="Имя" /><input name="email" type="email" placeholder="Электропочта" /><button type="submit">${escapeHtml(prop(block, "buttonLabel", "Отправить"))}</button></form></section>`;
   }
 
   if (block.type === "columns") {
@@ -551,7 +1207,7 @@ function blockToHtml(block: BlockNode): string {
           return `<img src="${escapeHtml(element.props.src ?? "")}" alt=""${styleAttr} />`;
         }
         if (element.type === "button") {
-          return `<button type="button"${styleAttr}>${escapeHtml(element.props.label ?? "Button")}</button>`;
+          return `<button type="button"${styleAttr}>${escapeHtml(element.props.label ?? "Кнопка")}</button>`;
         }
         return `<div${styleAttr}>${escapeHtml(element.props.text ?? "")}</div>`;
       })
@@ -584,10 +1240,9 @@ input { display: block; width: 100%; margin: 12px 0; padding: 12px 14px; border:
 
 /** Если экспорт редактора сильно короче импортированного бандла (парсер/фильтрация), не теряем CSS шаблона при сохранении. */
 function buildPersistedCanvasCss(seedCss: string, editorCss: string): string {
-  const n = seedCss.length;
-  const m = editorCss.length;
-  if (n < 8000) return editorCss;
-  if (m >= n * 0.85) return editorCss;
+  // Always preserve seed CSS — it contains standard-block template styles.
+  // Discarding it causes style loss on reload and after zero-block editor return.
+  if (!seedCss) return editorCss;
   return `${seedCss}\n/* —gjs-export— */\n${editorCss}`;
 }
 
@@ -600,10 +1255,17 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
     canvasTopOptionsDockRef,
     blocksPanelOpen: blocksPanelOpenProp,
     onBlocksPanelOpenChange,
+    onOpenZeroBlockEditor,
+    autoActivateZeroBlock,
+    zeroBlockCanvasUi,
   },
   ref
 ) {
   const { t, lang } = useI18n();
+  const zeroInlineUi: ZeroBlockCanvasInlineUi =
+    autoActivateZeroBlock ? "full" : (zeroBlockCanvasUi ?? "minimal");
+  const zeroInlineUiRef = useRef(zeroInlineUi);
+  zeroInlineUiRef.current = zeroInlineUi;
   const tRef = useRef(t);
   tRef.current = t;
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -615,6 +1277,8 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
   const syncTimerRef = useRef<number | null>(null);
   const onChangeRef = useRef(onChange);
   const onInitErrorRef = useRef(onInitError);
+  const onOpenZeroBlockEditorRef = useRef(onOpenZeroBlockEditor);
+  onOpenZeroBlockEditorRef.current = onOpenZeroBlockEditor;
   const initialContentRef = useRef<LemnityBoxCanvasContent | null>(bootstrapDocument.grapesjs ?? null);
   const starterContentRef = useRef<LemnityBoxCanvasContent>(createStarterContent(bootstrapDocument));
   const [libraryBlockId, setLibraryBlockId] = useState<string | null>(null);
@@ -718,14 +1382,32 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
     let detachZeroBlockRuntime: (() => void) | undefined;
 
     async function initEditor() {
-      if (!containerRef.current || !blocksRef.current || editorRef.current) return;
+      const refsReady = () => Boolean(containerRef.current?.isConnected && blocksRef.current?.isConnected);
+
+      if (editorRef.current) return;
+
+      for (let i = 0; i < 60 && mounted && !editorRef.current; i++) {
+        if (refsReady()) break;
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+      }
+
+      if (!mounted) return;
+
+      if (!refsReady() || editorRef.current) {
+        setCanvasBooting(false);
+        onInitErrorRef.current?.();
+        return;
+      }
       try {
         const [{ default: grapesjs }, { default: presetWebpage }, { default: basicBlocks }] = await Promise.all([
           import("grapesjs"),
           import("grapesjs-preset-webpage"),
           import("grapesjs-blocks-basic"),
         ]);
-        if (!mounted || !containerRef.current || !blocksRef.current) {
+        if (!mounted) return;
+        if (!refsReady()) {
+          setCanvasBooting(false);
+          if (!editorRef.current) onInitErrorRef.current?.();
           return;
         }
 
@@ -735,7 +1417,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           css: mergeLemnityBoxSectionMotionCss(rawInitial.css),
         };
         const editor = grapesjs.init({
-          container: containerRef.current,
+          container: containerRef.current!,
           height: "100%",
           keepUnusedStyles: true,
           storageManager: false,
@@ -750,7 +1432,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
             messages: { ru: lemnityBoxEditorMessagesRu },
           },
           blockManager: {
-            appendTo: blocksRef.current,
+            appendTo: blocksRef.current!,
             appendOnClick: true,
           },
           assetManager: {
@@ -771,6 +1453,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           plugins: [
             (ed: Editor) => {
               attachLemnityBoxHtmlEmbed(ed);
+              attachLemnityBoxAnchorComponent(ed);
             },
             (ed: Editor) =>
               presetWebpage(ed, {
@@ -823,6 +1506,34 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
         editor.on("component:selected", syncDragModeForSelection);
         editor.on("component:deselected", syncDragModeForSelection);
 
+        // Snap elements to zero block grid on drag end
+        editor.on("component:drag:end" as never, ((draggedComponent: Component) => {
+          if (!hasZeroBlockAncestor(draggedComponent)) return;
+          const zeroSection = findZeroBlockSectionAncestor(draggedComponent);
+          if (!zeroSection) return;
+          const attrs = (zeroSection.getAttributes?.() ?? {}) as Record<string, string>;
+          const sectionEl = zeroSection.getEl?.();
+          if (!(sectionEl instanceof HTMLElement)) return;
+          const sectionWidth = sectionEl.clientWidth;
+          if (!sectionWidth) return;
+          const canvasDoc = sectionEl.ownerDocument;
+          const pageGrid = readPageGridFromDoc(canvasDoc?.documentElement ?? null);
+          const config = resolveZbGridConfig(attrs, pageGrid);
+          if (!config.snapEnabled) return;
+          // For sections without custom grid override, snap against canvas width so
+          // column positions align with the standard page-level grid.
+          const hasCustomGrid = attrs["data-ln-zb-cols"] != null;
+          const snapWidth = hasCustomGrid ? sectionWidth : (canvasDoc?.body?.clientWidth ?? sectionWidth);
+          const currentStyle = (draggedComponent.getStyle?.() ?? {}) as Record<string, unknown>;
+          const x = parsePxLike(currentStyle.left);
+          const y = parsePxLike(currentStyle.top);
+          const snappedX = snapXToZbGrid(x, snapWidth, config);
+          const snappedY = snapYToZbGrid(y, config.snapEnabled);
+          if (snappedX !== x || snappedY !== y) {
+            draggedComponent.addStyle({ left: `${snappedX}px`, top: `${snappedY}px` });
+          }
+        }) as never);
+
         editor.on(
           "component:add",
           (model: Component, opts?: { action?: string }) => {
@@ -843,11 +1554,28 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
                 if (!list.includes("lemnity-section")) {
                   model.addClass("lemnity-section");
                 }
+                if (list.includes("lemnity-zero-block")) {
+                  lockZeroBlockSectionInStructure(model);
+                  requestAnimationFrame(() => {
+                    const sectionEl = model.getEl?.();
+                    if (sectionEl instanceof HTMLElement) {
+                      const doc = sectionEl.ownerDocument;
+                      syncZeroBlockRuntimeStyles(doc, zeroInlineUiRef.current);
+                      ensureZeroBlockUi(sectionEl);
+                    }
+                  });
+                }
               }
             }
 
             placeZeroBlockChildFreely(model);
             queueMicrotask(syncDragModeForSelection);
+
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                collapseLemnityRightPanelsFromEditor(editor);
+              });
+            });
 
             const pending = pendingWrapperInsertIdxRef.current;
             if (pending == null) return;
@@ -875,6 +1603,11 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
             setBlocksPanelOpenRef.current(next);
           },
         });
+        editor.Commands.add(ZERO_BLOCK_SETTINGS_COMMAND, {
+          run(ed: Editor) {
+            return openZeroBlockSettingsWindow(ed);
+          },
+        });
 
         editor.BlockManager.add("landing-hero", {
           label: "Главный экран",
@@ -895,6 +1628,11 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           label: "О нас",
           category: "Секции",
           content: `<section class="lemnity-section"><h2>О нас</h2><p>Клик — выберите макет блока «О нас» в панели справа.</p></section>`,
+        });
+        editor.BlockManager.add("lemnity-benefits", {
+          label: "Преимущества",
+          category: "Секции",
+          content: `<section class="lemnity-section"><h2>Преимущества</h2><p>Клик — выберите макет блока «Преимущества» в панели справа.</p></section>`,
         });
         editor.BlockManager.add("text-section", {
           label: "Текст",
@@ -942,9 +1680,9 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           content: `<section class="lemnity-section"><h2>Ещё</h2><p>Клик — дополнительные подсказки и макеты в панели справа.</p></section>`,
         });
         editor.BlockManager.add("lemnity-zero-block", {
-          label: "Zero Block",
+          label: "Нулевой блок",
           category: "Секции",
-          content: `<section class="lemnity-section lemnity-zero-block" data-gjs-name="Zero Block" style="position:relative;min-height:min(520px,78vh);width:100%;margin:0;overflow:visible;box-sizing:border-box;background:#fff;background-image:linear-gradient(to right,#f1f5f9 1px,transparent 1px),linear-gradient(to bottom,#f1f5f9 1px,transparent 1px);background-size:22px 22px;border:1px solid #e2e8f0"><div data-ln-editor-hint="1" style="pointer-events:none;margin:0;padding:10px 14px;font-family:system-ui,sans-serif;font-size:12px;line-height:1.45;color:#64748b;text-align:center;border-bottom:1px dashed #e2e8f0;background:rgba(248,250,252,.97)">Зона свободной вёрстки (как Zero Block в Tilda): перетаскивайте элементы из каталога и при необходимости задайте им позицию в стилях.</div></section>`,
+          content: `<section class="lemnity-section lemnity-zero-block" data-gjs-name="Нулевой блок" style="position:relative;min-height:min(520px,78vh);width:100%;margin:0;overflow:visible;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0"><div class="lemnity-zero-canvas" data-ln-zero-canvas="1" data-gjs-name="Zero canvas" style="position:relative;width:100%;min-height:100%;box-sizing:border-box"></div></section>`,
         });
         editor.BlockManager.add("image", {
           label: "Изображение",
@@ -974,10 +1712,16 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
         const attachCarouselNavToIframe = () => {
           const win = editor.Canvas.getFrameEl()?.contentWindow ?? undefined;
           attachLemnityCarouselNavToCanvasFrame(win);
+          attachLemnityAnchorsToCanvasFrame(win);
           attachLemnityDetailsTabsToCanvasFrame(win);
-          mountZeroBlockUiInFrame(editor, win);
+          mountZeroBlockUiInFrame(editor, win, zeroInlineUiRef.current);
           detachZeroBlockRuntime?.();
-          detachZeroBlockRuntime = attachZeroBlockEditorRuntime(editor, win);
+          detachZeroBlockRuntime = attachZeroBlockEditorRuntime(
+            editor,
+            win,
+            () => onOpenZeroBlockEditorRef.current,
+            zeroInlineUiRef.current,
+          );
         };
 
         editor.on("canvas:frame:load:body", (payload: unknown) => {
@@ -985,10 +1729,16 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           const win = frameWin ?? editor.Canvas.getFrameEl()?.contentWindow ?? undefined;
           injectLemnityBoxSectionMotionIntoCanvas(win);
           attachLemnityCarouselNavToCanvasFrame(win);
+          attachLemnityAnchorsToCanvasFrame(win);
           attachLemnityDetailsTabsToCanvasFrame(win);
-          mountZeroBlockUiInFrame(editor, win);
+          mountZeroBlockUiInFrame(editor, win, zeroInlineUiRef.current);
           detachZeroBlockRuntime?.();
-          detachZeroBlockRuntime = attachZeroBlockEditorRuntime(editor, win);
+          detachZeroBlockRuntime = attachZeroBlockEditorRuntime(
+            editor,
+            win,
+            () => onOpenZeroBlockEditorRef.current,
+            zeroInlineUiRef.current,
+          );
         });
 
         const wireInstantTooltips = () => applyLemnityBoxInstantPanelTooltips(editor, containerRef.current);
@@ -996,13 +1746,15 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
         const mountLemnityBlocksToolbarButton = () => {
           const devicesPanel = editor.Panels.getPanel("devices-c");
           if (!devicesPanel || editor.Panels.getButton("devices-c", "lemnity-blocks-toggle")) return;
+          const blocksToolbarTitle = String(editor.t("panels.buttons.titles.lemnity-blocks-toolbar"));
           editor.Panels.addButton("devices-c", {
             id: "lemnity-blocks-toggle",
             className: "gjs-pn-btn lemnity-box-blocks-toolbar-btn",
             command: "open-blocks",
-            label: '<span class="lemnity-box-blocks-toolbar-label">Блоки</span>',
+            label: `<span class="lemnity-box-blocks-toolbar-icon" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></span>`,
             attributes: {
-              title: String(editor.t("panels.buttons.titles.lemnity-blocks-toolbar")),
+              title: blocksToolbarTitle,
+              "aria-label": blocksToolbarTitle,
             },
             togglable: true,
             active: blocksPanelOpenRef.current,
@@ -1025,7 +1777,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
 
           editorMount
             .querySelectorAll<HTMLElement>(
-              ".gjs-pn-devices-c .gjs-pn-buttons > .gjs-pn-btn:not(.lemnity-box-blocks-toolbar-btn):not(.lemnity-box-styles-toolbar-btn)"
+              ".gjs-pn-devices-c .gjs-pn-buttons > .gjs-pn-btn:not(.lemnity-box-blocks-toolbar-btn)"
             )
             .forEach((btn) => btn.style.setProperty("display", "none"));
 
@@ -1114,8 +1866,14 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
             mountCanvasDeviceDock();
             mountCanvasOptionsPanelDock();
             attachCarouselNavToIframe();
+
+            const frameDoc = editor.Canvas.getFrameEl()?.contentDocument;
+            if (frameDoc?.documentElement) {
+              writePageGridToDoc(frameDoc.documentElement, bootstrapDocument.gridConfig ?? PAGE_GRID_DEFAULTS);
+            }
+
             injectLemnityBoxSectionMotionIntoCanvas(editor.Canvas.getFrameEl()?.contentWindow ?? undefined);
-            mountZeroBlockUiInFrame(editor, editor.Canvas.getFrameEl()?.contentWindow ?? undefined);
+            mountZeroBlockUiInFrame(editor, editor.Canvas.getFrameEl()?.contentWindow ?? undefined, zeroInlineUiRef.current);
             wireInstantTooltips();
             const bmCats = editor.BlockManager.getCategories() as unknown as {
               models?: Array<{ set(k: string, v: unknown): void }>;
@@ -1141,6 +1899,14 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
             editor.Panels.getButton("views", "open-blocks")?.set("active", blocksPanelOpenRef.current, syncOpts);
             editor.Panels.getButton("devices-c", "lemnity-blocks-toggle")?.set("active", blocksPanelOpenRef.current, syncOpts);
             syncContent();
+
+            if (autoActivateZeroBlock) {
+              const firstSection = frameDoc?.querySelector<HTMLElement>("section.lemnity-zero-block");
+              if (firstSection) {
+                ensureZeroBlockUi(firstSection);
+                firstSection.setAttribute("data-ln-zero-editing", "1");
+              }
+            }
           });
         });
 

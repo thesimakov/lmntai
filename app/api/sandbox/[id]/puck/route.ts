@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -15,17 +16,17 @@ async function getPuck(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiGuardError(guard);
   }
   const { id: routeId } = await params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const files = await sandboxManager.exportFiles(sandboxId);
   const raw = files["puck.json"];
@@ -45,42 +46,42 @@ async function putPuck(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiGuardError(guard);
   }
   const { id: routeId } = await params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   let body: unknown;
   try {
     body = await req.json();
   } catch {
-    return new Response("Bad JSON", { status: 400 });
+    return apiError("Bad JSON", 400);
   }
   if (!body || typeof body !== "object" || !("data" in body)) {
-    return new Response("Expected { data: object }", { status: 400 });
+    return apiError("Expected { data: object }", 400);
   }
   const { data } = body as { data: unknown };
   let json: string;
   try {
     json = JSON.stringify(data);
   } catch {
-    return new Response("Invalid data", { status: 400 });
+    return apiError("Invalid data", 400);
   }
   if (json.length > MAX_PUCK_JSON_CHARS) {
-    return new Response("Payload too large", { status: 413 });
+    return apiError("Payload too large", 413);
   }
   try {
     await sandboxManager.updatePuckJson(sandboxId, json);
   } catch (e) {
     const message = e instanceof Error ? e.message : "Error";
-    return new Response(message, { status: 400 });
+    return apiError(message, 400);
   }
   return new Response(null, { status: 204 });
 }

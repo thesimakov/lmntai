@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import {
   bindPublishHost,
@@ -23,17 +24,17 @@ async function withOwner(
 ): Promise<Response> {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
   const { id: routeId } = await params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   return work({ sandboxId, user: { id: guard.data.user.id, plan: guard.data.user.plan } });
 }
@@ -67,7 +68,7 @@ async function postPublishDomain(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ sandboxId, user }) => {
     const body = (await req.json().catch(() => null)) as { host?: string } | null;
     const hostRaw = body?.host?.trim() ?? "";
-    if (!hostRaw) return new Response("host is required", { status: 400 });
+    if (!hostRaw) return apiError("host is required", 400);
 
     const bound = await bindPublishHost({
       ownerId: user.id,
@@ -102,7 +103,7 @@ async function deletePublishDomain(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ user }) => {
     const body = (await req.json().catch(() => null)) as { host?: string } | null;
     const hostRaw = body?.host?.trim() ?? "";
-    if (!hostRaw) return new Response("host is required", { status: 400 });
+    if (!hostRaw) return apiError("host is required", 400);
     const unbound = await unbindPublishHost({ ownerId: user.id, hostRaw });
     if (!unbound.ok) {
       return Response.json({ error: unbound.code }, { status: unbound.code === "invalid_host" ? 400 : 409 });
@@ -115,7 +116,7 @@ async function putPublishDomain(req: NextRequest, ctx: RouteCtx) {
   return withOwner(req, ctx, async ({ user }) => {
     const body = (await req.json().catch(() => null)) as { host?: string } | null;
     const hostRaw = body?.host?.trim() ?? "";
-    if (!hostRaw) return new Response("host is required", { status: 400 });
+    if (!hostRaw) return apiError("host is required", 400);
     const verified = await verifyPublishHost({ ownerId: user.id, hostRaw });
     if (!verified.ok) {
       const codeToStatus: Record<string, number> = {

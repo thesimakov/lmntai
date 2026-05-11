@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { exportProject } from "@/lib/project-export";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -10,11 +11,11 @@ export const runtime = "nodejs";
 async function getCurrentProjectExport(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return apiError("Project not found", 404);
   }
   try {
     const archive = await exportProject(project.id, guard.data.user.id);
@@ -28,7 +29,7 @@ async function getCurrentProjectExport(req: NextRequest) {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "PROJECT_NOT_FOUND") {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     throw error;
   }

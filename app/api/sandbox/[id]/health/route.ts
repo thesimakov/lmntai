@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -13,17 +14,17 @@ async function getSandboxHealth(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiGuardError(guard);
   }
   const { id: routeId } = await params;
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && routeId !== resolvedProject.id) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const sandboxId = resolvedProject?.id ?? routeId;
   const allowed = await sandboxManager.canAccess(sandboxId, guard.data.user.id);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const health = await sandboxManager.diagnoseSandboxState(sandboxId);

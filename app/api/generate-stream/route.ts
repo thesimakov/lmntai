@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { resolveAgentForTask } from "@/lib/agent-models";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { requestRouterAIStream } from "@/lib/routerai-client";
@@ -31,21 +32,19 @@ function sse(controller: ReadableStreamDefaultController, payload: unknown) {
 
 async function postGenerateStream(req: NextRequest) {
   if (isLemnityAiBridgeEnabledServer()) {
-    return new Response("Legacy /api/generate-stream disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", {
-      status: 410
-    });
+    return apiError("Legacy /api/generate-stream disabled in Lemnity AI bridge mode. Use /api/lemnity-ai/sessions/:id/chat", 410);
   }
 
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
 
   const user = guard.data.user;
 
   const minStreamBalance = await getEffectiveStreamMinimum(user.plan);
   if (!hasEnoughTokens(user, minStreamBalance)) {
-    return new Response("Insufficient tokens. Please upgrade your plan.", { status: 402 });
+    return apiError("Insufficient tokens. Please upgrade your plan.", 402);
   }
 
   const body = (await req.json().catch(() => null)) as
@@ -53,16 +52,16 @@ async function postGenerateStream(req: NextRequest) {
     | null;
   const rawPrompt = body?.prompt?.trim();
   if (!rawPrompt) {
-    return new Response("Prompt is required", { status: 400 });
+    return apiError("Prompt is required", 400);
   }
   const requestedProjectId = typeof body?.projectId === "string" ? body.projectId.trim() : "";
   const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject && requestedProjectId && requestedProjectId !== resolvedProject.id) {
-    return new Response("Project mismatch for current domain", { status: 404 });
+    return apiError("Project mismatch for current domain", 404);
   }
   const projectId = resolvedProject?.id ?? requestedProjectId;
   if (!projectId) {
-    return new Response("project_id is required", { status: 400 });
+    return apiError("project_id is required", 400);
   }
 
   const pk = isProjectKind(body?.projectKind) ? body.projectKind : undefined;
@@ -89,7 +88,7 @@ async function postGenerateStream(req: NextRequest) {
   if (!alreadyOwned) {
     const projectGate = await checkProjectCreationAllowed(user.id, user.plan);
     if (!projectGate.ok) {
-      return new Response(projectGate.message, { status: projectGate.status });
+      return apiError(projectGate.message, projectGate.status);
     }
   }
 

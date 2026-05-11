@@ -46,6 +46,8 @@ type PlaygroundSharePublishActionsProps = {
   onSave?: () => void | Promise<void>;
   saveDisabled?: boolean;
   savePending?: boolean;
+  /** Синяя шапка PlaygroundStudioChrome: читаемый светлый текст и фон кнопок. */
+  blueBarChrome?: boolean;
 };
 
 /**
@@ -61,11 +63,16 @@ export function PlaygroundSharePublishActions({
   leadingSlot = null,
   onSave,
   saveDisabled = false,
-  savePending = false
+  savePending = false,
+  blueBarChrome = false
 }: PlaygroundSharePublishActionsProps) {
   const [taskFilesOpen, setTaskFilesOpen] = useState(false);
   const { t } = useI18n();
   const router = useRouter();
+
+  const blueBtn =
+    "border-white/40 bg-white/15 !text-white shadow-sm hover:bg-white/25 hover:!text-white [&_svg]:!text-white";
+  const blueGhostIcon = "!text-white hover:bg-white/15 hover:!text-white";
 
   return (
     <>
@@ -74,16 +81,22 @@ export function PlaygroundSharePublishActions({
         {onSave ? (
           <Button
             type="button"
-            variant="secondary"
+            variant={blueBarChrome ? "outline" : "secondary"}
             size="sm"
-            className="h-8 min-w-0 shrink-0 gap-1.5 rounded-lg px-2 sm:px-3"
+            className={cn(
+              "h-8 min-w-0 shrink-0 gap-1.5 rounded-lg px-2 sm:px-3",
+              blueBarChrome && cn(blueBtn, "border shadow-none"),
+            )}
             disabled={saveDisabled || savePending}
             aria-label={t("playground_box_save")}
             onClick={() => void onSave()}
           >
             {savePending ? (
               <span
-                className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent"
+                className={cn(
+                  "h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-t-transparent",
+                  blueBarChrome ? "border-white/55" : "border-muted-foreground",
+                )}
                 aria-hidden
               />
             ) : (
@@ -132,7 +145,7 @@ export function PlaygroundSharePublishActions({
           type="button"
           variant="ghost"
           size="icon"
-          className="h-8 w-8 shrink-0 text-muted-foreground"
+          className={cn("h-8 w-8 shrink-0 text-muted-foreground", blueBarChrome && blueGhostIcon)}
           disabled={publishDisabled}
           aria-label={t("build_aria_github_sandbox")}
           onClick={onPublish}
@@ -143,7 +156,11 @@ export function PlaygroundSharePublishActions({
         <Button
           type="button"
           size="sm"
-          className="h-8 min-w-0 shrink-0 rounded-lg px-2 sm:px-3"
+          className={cn(
+            "h-8 min-w-0 shrink-0 rounded-lg px-2 sm:px-3",
+            blueBarChrome &&
+              "!border-0 bg-white !text-[#1547b3] shadow-sm hover:bg-white/90 hover:!text-[#0d3d9e] [&_svg]:!text-[#1547b3]",
+          )}
           disabled={publishDisabled}
           onClick={onPublish}
           aria-label={t("build_aria_publish_open")}

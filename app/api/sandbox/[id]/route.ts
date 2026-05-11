@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError } from "@/lib/api-response";
 import { lemnityAiUpstreamFetch } from "@/lib/lemnity-ai-upstream-client";
 import { prisma } from "@/lib/prisma";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
@@ -8,9 +9,12 @@ import { isSandboxLinkPublic } from "@/lib/sandbox-share-db";
 import { userCanAccessPreviewAssetStorage } from "@/lib/sandbox-preview-asset-access";
 import { sandboxManager } from "@/lib/sandbox-manager";
 import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body";
+import { injectLemnityAnchorsIntoHtmlDocument } from "@/lib/lemnity-anchor-runtime";
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
 import { injectCmsFormBridgeIntoHtmlDocument } from "@/lib/cms-form-bridge";
+import { cmsRobotsDirectiveValue, injectCmsRobotsMetaIntoHtmlDocument } from "@/lib/cms-html-robots-meta";
+import { sanitizeSandboxHtml } from "@/lib/html-sanitizer";
 import { resolveCmsFormBridgeContextByProjectId } from "@/lib/cms-sandbox-form-sync";
 import { withApiLogging } from "@/lib/with-api-logging";
 
@@ -26,9 +30,11 @@ async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
         method: "GET",
         headers: { Accept: "text/html" }
       });
-      if (!upstream.ok) return new Response("Not found", { status: 404 });
+      if (!upstream.ok) return apiError("Not found", 404);
       const htmlRaw = await upstream.text();
-      const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
+      const html = injectLemnityAnchorsIntoHtmlDocument(
+        injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw)),
+      );
       return new Response(html, {
         headers: {
           "Content-Type": upstream.headers.get("content-type") ?? "text/html; charset=utf-8",
@@ -36,7 +42,7 @@ async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
         }
       });
     } catch {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
   }
   return respondWithHtml(sandboxId);
@@ -45,24 +51,38 @@ async function respondWithPublishedHtml(sandboxId: string): Promise<Response> {
 async function respondWithHtml(sandboxId: string): Promise<Response> {
   const previewUrl = await sandboxManager.getPreviewUrl(sandboxId);
   if (!previewUrl) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   const files = await sandboxManager.exportFiles(sandboxId);
   let htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  let xRobotsTag: string | null = null;
   if (!sandboxId.startsWith("artifact_")) {
     const bridgeCtx = await resolveCmsFormBridgeContextByProjectId(sandboxId);
     if (bridgeCtx) {
       htmlRaw = injectCmsFormBridgeIntoHtmlDocument(htmlRaw, bridgeCtx);
+      const seoPage = await prisma.cmsPage.findFirst({
+        where: { id: bridgeCtx.pageId, siteId: bridgeCtx.siteId },
+        select: { noIndex: true, seoNoFollow: true },
+      });
+      htmlRaw = injectCmsRobotsMetaIntoHtmlDocument(htmlRaw, {
+        noIndex: seoPage?.noIndex,
+        noFollow: seoPage?.seoNoFollow,
+      });
+      xRobotsTag = cmsRobotsDirectiveValue(seoPage?.noIndex, seoPage?.seoNoFollow);
     }
   }
-  const html = injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw));
-  return new Response(html, {
-    headers: {
-      "Content-Type": "text/html; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
-  });
+  const html = injectLemnityAnchorsIntoHtmlDocument(
+    injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw)),
+  );
+  const headers: Record<string, string> = {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store",
+  };
+  if (xRobotsTag) {
+    headers["X-Robots-Tag"] = xRobotsTag;
+  }
+  return new Response(html, { headers });
 }
 
 /** На опубликованном поддомене middleware передаёт проект; путь `/api/sandbox/artifact_*` должен сопоставляться с previewArtifactId сессии. */
@@ -75,12 +95,12 @@ async function resolveSandboxIdForRequest(req: NextRequest, routeId: string): Pr
         select: { id: true }
       });
       if (!row) {
-        return new Response("Not found", { status: 404 });
+        return apiError("Not found", 404);
       }
       return { sandboxId: routeId };
     }
     if (routeId !== resolvedProject.id) {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     return { sandboxId: resolvedProject.id };
   }
@@ -106,7 +126,7 @@ async function getSandbox(
     if (allowed) {
       if (format === "json") {
         if (sandboxId.startsWith("artifact_")) {
-          return new Response("Not found", { status: 404 });
+          return apiError("Not found", 404);
         }
         const files = await sandboxManager.exportFiles(sandboxId);
         return Response.json({ files });
@@ -117,7 +137,7 @@ async function getSandbox(
 
   // Экспорт файлов — только владелец (авторизованный)
   if (format === "json") {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   // HTML превью без входа — если песочница опубликована
@@ -132,7 +152,7 @@ async function getSandbox(
     publicOk = false;
   }
   if (!publicOk) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   return respondWithPublishedHtml(sandboxId);
@@ -144,7 +164,7 @@ async function patchSandbox(
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
   const { id: routeId } = await params;
   const resolved = await resolveSandboxIdForRequest(req, routeId);
@@ -154,10 +174,10 @@ async function patchSandbox(
   const { sandboxId } = resolved;
   const allowed = await userCanAccessPreviewAssetStorage(guard.data.user.id, sandboxId);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   if (sandboxId.startsWith("artifact_")) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
 
   try {
@@ -165,10 +185,10 @@ async function patchSandbox(
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     if (msg === "PROJECT_NOT_FOUND") {
-      return new Response("Not found", { status: 404 });
+      return apiError("Not found", 404);
     }
     console.error("[PATCH /api/sandbox/[id]] ensureSandboxStateForOwnedProject", e);
-    return new Response(msg || "Error", { status: 500 });
+    return apiError(msg || "Error", 500);
   }
 
   const contentType = req.headers.get("content-type")?.toLowerCase() ?? "";
@@ -187,20 +207,22 @@ async function patchSandbox(
           : null;
     }
   } catch {
-    return new Response("Bad request", { status: 400 });
+    return apiError("Bad request", 400);
   }
   if (htmlRaw == null) {
-    return new Response("Bad request", { status: 400 });
+    return apiError("Bad request", 400);
   }
   if (htmlRaw.length > MAX_VISUAL_EDIT_HTML_CHARS) {
-    return new Response("Payload too large", { status: 413 });
+    return apiError("Payload too large", 413);
   }
+
+  const htmlSanitized = sanitizeSandboxHtml(htmlRaw);
 
   let updatedAt: number;
   try {
-    updatedAt = await sandboxManager.updateIndexHtml(sandboxId, htmlRaw);
+    updatedAt = await sandboxManager.updateIndexHtml(sandboxId, htmlSanitized);
   } catch (e) {
-    return new Response((e as Error).message ?? "Error", { status: 500 });
+    return apiError((e as Error).message ?? "Error", 500);
   }
   return new Response(null, {
     status: 204,

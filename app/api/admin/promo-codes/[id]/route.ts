@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireAdminUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { normalizePromoCode } from "@/lib/promo-service";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
@@ -33,13 +34,13 @@ function parsePlans(input: string[] | null | undefined): import("@prisma/client"
 async function putOne(req: NextRequest, { params }: Ctx) {
   const g = await requireAdminUser();
   if (!g.ok) {
-    return new Response(g.message, { status: g.status });
+    return apiGuardError(g);
   }
   const { id } = await params;
   const b = (await req.json().catch(() => null)) as BodyUpdate | null;
   const row = await prisma.promoCode.findUnique({ where: { id } });
   if (!row) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   const kind = b?.kind === "BONUS_TOKENS" || b?.kind === "DISCOUNT" ? b.kind : row.kind;
   const code =
@@ -47,7 +48,7 @@ async function putOne(req: NextRequest, { params }: Ctx) {
   if (code !== row.code) {
     const taken = await prisma.promoCode.findUnique({ where: { code } });
     if (taken) {
-      return Response.json({ error: "duplicate" }, { status: 409 });
+      return apiError("duplicate", 409);
     }
   }
   let discountPercent = kind === "DISCOUNT" ? row.discountPercent : null;
@@ -63,10 +64,10 @@ async function putOne(req: NextRequest, { params }: Ctx) {
     bonusTokens = b.bonusTokens ?? row.bonusTokens;
   }
   if (kind === "DISCOUNT" && (typeof discountPercent !== "number" || discountPercent < 1 || discountPercent > 100)) {
-    return Response.json({ error: "invalid_discount" }, { status: 400 });
+    return apiError("invalid_discount", 400);
   }
   if (kind === "BONUS_TOKENS" && (typeof bonusTokens !== "number" || bonusTokens < 1)) {
-    return Response.json({ error: "invalid_tokens" }, { status: 400 });
+    return apiError("invalid_tokens", 400);
   }
   const updated = await prisma.promoCode.update({
     where: { id },
@@ -88,13 +89,13 @@ async function putOne(req: NextRequest, { params }: Ctx) {
 async function deleteOne(_req: NextRequest, { params }: Ctx) {
   const g = await requireAdminUser();
   if (!g.ok) {
-    return new Response(g.message, { status: g.status });
+    return apiGuardError(g);
   }
   const { id } = await params;
   try {
     await prisma.promoCode.delete({ where: { id } });
   } catch {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   return new Response(null, { status: 204 });
 }

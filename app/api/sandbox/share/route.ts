@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { requireDbUser } from "@/lib/auth-guards";
+import { apiError, apiGuardError } from "@/lib/api-response";
 import { requireProjectFromRequest } from "@/lib/project-domain-resolution";
 import { getAuthDatabaseUserMessage } from "@/lib/prisma-auth-errors";
 import { prisma } from "@/lib/prisma";
@@ -13,15 +14,15 @@ export const runtime = "nodejs";
 async function withOwner(req: NextRequest, work: (arg: { projectId: string; userId: string }) => Promise<Response>) {
   const guard = await requireDbUser();
   if (!guard.ok) {
-    return new Response(guard.message, { status: guard.status });
+    return apiGuardError(guard);
   }
   const project = await requireProjectFromRequest(req).catch(() => null);
   if (!project) {
-    return new Response("Project not found", { status: 404 });
+    return apiError("Project not found", 404);
   }
   const allowed = await sandboxManager.canAccess(project.id, guard.data.user.id);
   if (!allowed) {
-    return new Response("Not found", { status: 404 });
+    return apiError("Not found", 404);
   }
   return work({ projectId: project.id, userId: guard.data.user.id });
 }
@@ -59,11 +60,11 @@ async function postShare(req: NextRequest) {
       return Response.json({ isPublic: true });
     } catch (e) {
       if (e instanceof Error && e.message === "FORBIDDEN") {
-        return new Response("Forbidden", { status: 403 });
+        return apiError("Forbidden", 403);
       }
       const msg = getAuthDatabaseUserMessage(e);
       if (msg) {
-        return new Response(msg, { status: 503 });
+        return apiError(msg, 503);
       }
       throw e;
     }
@@ -77,11 +78,11 @@ async function deleteShare(req: NextRequest) {
       return Response.json({ isPublic: false });
     } catch (e) {
       if (e instanceof Error && e.message === "FORBIDDEN") {
-        return new Response("Forbidden", { status: 403 });
+        return apiError("Forbidden", 403);
       }
       const msg = getAuthDatabaseUserMessage(e);
       if (msg) {
-        return new Response(msg, { status: 503 });
+        return apiError(msg, 503);
       }
       throw e;
     }

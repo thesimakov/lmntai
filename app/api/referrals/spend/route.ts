@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 
 import { getSafeServerSession } from "@/lib/auth";
+import { apiError } from "@/lib/api-response";
 import { parseUiLanguage } from "@/lib/i18n";
 import { prisma } from "@/lib/prisma";
 import { referralCurrencyForLanguage } from "@/lib/referrals-currency";
@@ -18,10 +19,10 @@ import { withApiLogging } from "@/lib/with-api-logging";
 async function spendReferralWallet(req: NextRequest) {
   const session = await getSafeServerSession();
   if (!session?.user?.email) {
-    return new Response("Unauthorized", { status: 401 });
+    return apiError("Unauthorized", 401);
   }
   if (session.user.demoOffline) {
-    return new Response("Недоступно в демо-режиме без БД", { status: 503 });
+    return apiError("Недоступно в демо-режиме без БД", 503);
   }
 
   const body = (await req.json().catch(() => null)) as
@@ -29,7 +30,7 @@ async function spendReferralWallet(req: NextRequest) {
     | null;
   const packId = parseTokenPackId(body?.packId);
   if (!packId) {
-    return new Response("Unknown pack", { status: 400 });
+    return apiError("Unknown pack", 400);
   }
 
   const lang = parseUiLanguage(body?.lang) ?? "ru";
@@ -42,7 +43,7 @@ async function spendReferralWallet(req: NextRequest) {
     select: { id: true }
   });
   if (!user) {
-    return new Response("User not found", { status: 404 });
+    return apiError("User not found", 404);
   }
 
   try {

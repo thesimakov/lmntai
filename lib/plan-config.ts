@@ -45,7 +45,16 @@ export function getMonthlyTokenAllowance(plan: PlanId): number {
 }
 
 export function getMaxActiveProjectsForPlan(rawPlan: string | null | undefined): number {
-  return MAX_ACTIVE_PROJECTS_BY_PLAN[normalizePlanId(rawPlan)];
+  const plan = normalizePlanId(rawPlan);
+  const base = MAX_ACTIVE_PROJECTS_BY_PLAN[plan];
+  if (process.env.NODE_ENV === "development" && plan === "FREE") {
+    const raw = process.env.LMNTAI_DEV_MAX_ACTIVE_PROJECTS_FREE?.trim();
+    if (raw && /^\d+$/.test(raw)) {
+      const n = parseInt(raw, 10);
+      if (n >= 1) return Math.max(base, n);
+    }
+  }
+  return base;
 }
 
 export function planAllowsTeamSeats(rawPlan: string | null | undefined): boolean {
