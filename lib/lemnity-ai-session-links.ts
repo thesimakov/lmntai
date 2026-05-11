@@ -46,31 +46,50 @@ export function asLemnityAiListItem(link: {
   };
 }
 
-export async function createLemnityAiSessionLink(userId: string, upstreamSessionId: string) {
-  try {
-    await upsertProjectCell({
-      projectId: upstreamSessionId,
-      ownerId: userId,
-      name: "Lemnity AI Session"
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
-      throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
-    }
-    throw error;
-  }
-  const existing = await prisma.manusSessionLink.findUnique({
+/**
+ * Связывает upstream-сессию с пользователем.
+ * Если передан `hostProjectId` (реальный `Project.id` из дашборда), связь попадает в ту же строку —
+ * превью `/api/sandbox/{projectId}` и `previewArtifactId` совпадают с проектом в билдере.
+ */
+export async function createLemnityAiSessionLink(
+  userId: string,
+  upstreamSessionId: string,
+  opts?: { hostProjectId?: string | null }
+) {
+  const hostPid = opts?.hostProjectId?.trim() || "";
+
+  const existingByManus = await prisma.manusSessionLink.findUnique({
     where: { manusSessionId: upstreamSessionId }
   });
-  if (existing) {
-    if (existing.userId !== userId) {
+  if (existingByManus) {
+    if (existingByManus.userId !== userId) {
       throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
     }
-    return existing;
+    return existingByManus;
   }
+
+  if (hostPid) {
+    await prisma.manusSessionLink.deleteMany({
+      where: { userId, projectId: hostPid }
+    });
+  } else {
+    try {
+      await upsertProjectCell({
+        projectId: upstreamSessionId,
+        ownerId: userId,
+        name: "Lemnity AI Session"
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
+        throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
+      }
+      throw error;
+    }
+  }
+
   return prisma.manusSessionLink.create({
     data: {
-      projectId: upstreamSessionId,
+      projectId: hostPid || upstreamSessionId,
       userId,
       manusSessionId: upstreamSessionId
     }
@@ -83,6 +102,14 @@ export async function listLemnityAiSessionsForUser(userId: string) {
     orderBy: [{ updatedAt: "desc" }]
   });
   return rows.map(asLemnityAiListItem);
+}
+
+/** Одна привязка Lemnity AI ↔ Project (ManusSessionLink.projectId = Project.id). */
+export async function listLemnityAiSessionsForProject(userId: string, projectId: string) {
+  const row = await prisma.manusSessionLink.findFirst({
+    where: { userId, projectId }
+  });
+  return row ? [asLemnityAiListItem(row)] : [];
 }
 
 export async function getLemnityAiSessionForUser(userId: string, upstreamSessionId: string) {
@@ -143,23 +170,30 @@ export async function syncLemnityAiSessionSummary(input: {
       ? input.previewArtifactId.trim()
       : undefined;
 
-  try {
-    await upsertProjectCell({
-      projectId: input.upstreamSessionId,
-      ownerId: input.userId,
-      name: input.title?.trim() || "Lemnity AI Session"
-    });
-  } catch (error) {
-    if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
-      throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
+  const existingLink = await prisma.manusSessionLink.findUnique({
+    where: { manusSessionId: input.upstreamSessionId }
+  });
+  const dashboardLinked =
+    Boolean(existingLink && existingLink.projectId !== input.upstreamSessionId);
+
+  if (!dashboardLinked) {
+    try {
+      await upsertProjectCell({
+        projectId: input.upstreamSessionId,
+        ownerId: input.userId,
+        name: input.title?.trim() || "Lemnity AI Session"
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "PROJECT_OWNERSHIP_CONFLICT") {
+        throw new Error("LEMNITY_AI_SESSION_ALREADY_OWNED");
+      }
+      throw error;
     }
-    throw error;
   }
 
   await prisma.manusSessionLink.upsert({
     where: { manusSessionId: input.upstreamSessionId },
     update: {
-      projectId: input.upstreamSessionId,
       userId: input.userId,
       title: input.title ?? undefined,
       latestMessage: input.latestMessage ?? undefined,

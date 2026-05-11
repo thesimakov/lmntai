@@ -10,10 +10,121 @@ import {
   projectImageGalleryMediaPath,
   projectImageGalleryReadmePath
 } from "@/lib/project-image-gallery";
+import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
+import {
+  extractLatestLemnityAiArtifactSandboxIdFromSessionEvents,
+  sandboxFileMapLooksLikeJsonNotFound,
+  textLooksLikeJsonApiNotFoundBody
+} from "@/lib/lemnity-ai-bridge-session-artifact";
+import { readStoredLemnityBuildManusSessionId } from "@/lib/lemnity-ai-build-session-storage";
 import { cn } from "@/lib/utils";
+
+type BridgeSessionsListEnvelope = {
+  code?: number;
+  data?: {
+    sessions?: Array<{
+      session_id?: string;
+      project_id?: string;
+      preview_artifact_id?: string | null;
+    }>;
+  };
+};
+
+/**
+ * Восстанавливаем manus session id: сначала строка по Project.id, затем полный список пользователя.
+ * Логирует HTTP/код/число строк — без этого невозможно отличить «нет строк в Prisma» от 401/404 моста.
+ */
+async function fetchManusSessionIdForEmptySandboxRepair(projectId: string): Promise<string | null> {
+  // #region agent log
+  const logListProbe = (data: Record<string, unknown>) => {
+    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+      body: JSON.stringify({
+        sessionId: "9424d5",
+        runId: "repair-v10",
+        hypothesisId: "H_project_scope_sessions",
+        location: "build-code.tsx:fetchManusSessionIdForEmptySandboxRepair",
+        message: "manus_session_list_probe",
+        data,
+        timestamp: Date.now()
+      })
+    }).catch(() => {});
+  };
+  // #endregion
+
+  async function loadSessions(url: string) {
+    const res = await fetch(url, { method: "GET", credentials: "include" });
+    const text = await res.text();
+    let envelope: BridgeSessionsListEnvelope = {};
+    try {
+      envelope = JSON.parse(text) as BridgeSessionsListEnvelope;
+    } catch {
+      /* не JSON — оставляем envelope пустым */
+    }
+    const sessions = Array.isArray(envelope.data?.sessions) ? envelope.data!.sessions! : [];
+    return { res, envelope, sessions, textHead: text.slice(0, 200) };
+  }
+
+  const scopedUrl = `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions?projectId=${encodeURIComponent(projectId)}`;
+  let { res, envelope, sessions, textHead } = await loadSessions(scopedUrl);
+  let tried: "project_param" | "project_then_all" = "project_param";
+
+  const usable = res.ok && envelope.code === 0 && sessions.length > 0;
+  if (!usable) {
+    const fullUrl = `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`;
+    const second = await loadSessions(fullUrl);
+    tried = "project_then_all";
+    res = second.res;
+    envelope = second.envelope;
+    sessions = second.sessions;
+    textHead = second.textHead;
+  }
+
+  const ok = res.ok && envelope.code === 0 && sessions.length > 0;
+  // #region agent log
+  logListProbe({
+    projectId,
+    tried,
+    httpStatus: res.status,
+    apiCode: envelope.code ?? null,
+    sessionCount: sessions.length,
+    textHead: sessions.length ? "ok" : textHead
+  });
+  // #endregion
+
+  if (!ok) return null;
+
+  const byProject = sessions.find(
+    (s) => typeof s.project_id === "string" && s.project_id === projectId
+  );
+  const withArtifact = sessions.find(
+    (s) =>
+      typeof s.preview_artifact_id === "string" && s.preview_artifact_id.trim().startsWith("artifact_")
+  );
+  const pick = byProject ?? withArtifact ?? sessions[0];
+  const id = typeof pick?.session_id === "string" ? pick.session_id.trim() : "";
+
+  // #region agent log
+  logListProbe({
+    projectId,
+    tried,
+    pickKind: byProject ? "by_project" : withArtifact ? "artifact" : "first",
+    chosenPrefix: id ? id.slice(0, 14) : null
+  });
+  // #endregion
+
+  return id || null;
+}
 
 type BuildCodeProps = {
   sandboxId: string | null;
+  /** Превью из состояния страницы (для отладочных логов несогласованности id) */
+  bridgePreviewUrl?: string | null;
+  /** При «отравленной» песочнице пробуем восстановить HTML из события preview (artifact_*) */
+  bridgeSessionRepair?: {
+    upstreamSessionId: string;
+  } | null;
   /** Если артефакт — бинарный (.pptx), исходник в редакторе не показываем */
   artifactMimeType?: string | null;
   className?: string;
@@ -46,7 +157,13 @@ function sortFileKeys(
   });
 }
 
-export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeProps) {
+export function BuildCode({
+  sandboxId,
+  bridgePreviewUrl,
+  bridgeSessionRepair,
+  artifactMimeType,
+  className
+}: BuildCodeProps) {
   const { t } = useI18n();
   const [files, setFiles] = useState<Record<string, string>>({});
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
@@ -92,10 +209,31 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
     setIsPptxArtifact(false);
     try {
       if (sandboxId.startsWith("artifact_")) {
-        const res = await fetch(`/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`);
+        const artifactUrl = `/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`;
+        const res = await fetch(artifactUrl);
+        const errBody = !res.ok ? await res.text() : "";
+        // #region agent log
+        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+          body: JSON.stringify({
+            sessionId: "9424d5",
+            runId: "repair-v3",
+            hypothesisId: "H1_H5",
+            location: "build-code.tsx:loadSandboxFiles:artifact",
+            message: "artifact_fetch",
+            data: {
+              sandboxId,
+              url: artifactUrl,
+              status: res.status,
+              bodyPreview: errBody ? errBody.slice(0, 240) : "ok"
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
         if (!res.ok) {
-          const msg = await res.text();
-          throw new Error(msg || res.statusText);
+          throw new Error(errBody || res.statusText);
         }
         const ct = res.headers.get("content-type") || "";
         if (ct.includes("presentationml") || ct.includes("ms-powerpoint")) {
@@ -108,19 +246,183 @@ export function BuildCode({ sandboxId, artifactMimeType, className }: BuildCodeP
         setSelectedPath("index.html");
         return;
       }
-      const res = await fetch(`/api/sandbox/${sandboxId}?format=json`);
+      const sandboxUrl = `/api/sandbox/${sandboxId}?format=json`;
+      const res = await fetch(sandboxUrl);
+      const errBody = !res.ok ? await res.text() : "";
       if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || res.statusText);
+        throw new Error(errBody || res.statusText);
       }
       const data = (await res.json()) as { files?: Record<string, string> };
-      setFiles(data.files ?? {});
+      let filesOut: Record<string, string> = { ...(data.files ?? {}) };
+
+      const poison = sandboxFileMapLooksLikeJsonNotFound(filesOut);
+      const keyCount = Object.keys(filesOut).length;
+      const baseRecoveryNeeds =
+        !sandboxId.startsWith("artifact_") &&
+        (poison || (keyCount === 0 && Boolean(bridgePreviewUrl?.trim())));
+      let upstreamForRepair = bridgeSessionRepair?.upstreamSessionId?.trim() ?? "";
+      let repairFromListFallback = false;
+      /** Без привязки к fullParity: при пустой песочнице пробуем Prisma‑список сессий; при выключенном мосту GET просто вернёт 404. */
+      if (!upstreamForRepair && baseRecoveryNeeds) {
+        upstreamForRepair = (await fetchManusSessionIdForEmptySandboxRepair(sandboxId)) ?? "";
+        repairFromListFallback = Boolean(upstreamForRepair);
+      }
+      const shouldTrySessionArtifactRecovery = Boolean(upstreamForRepair) && baseRecoveryNeeds;
+      const ks = Object.keys(filesOut).slice(0, 10);
+      const sampleHeads: Record<string, string> = {};
+      for (const k of ks) {
+        const raw = filesOut[k];
+        if (typeof raw === "string") sampleHeads[k] = raw.slice(0, 160);
+      }
+      // #region agent log
+      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+        body: JSON.stringify({
+          sessionId: "9424d5",
+          runId: "repair-v9",
+          hypothesisId: "H_list_fallback",
+          location: "build-code.tsx:loadSandboxFiles:sandbox_json",
+          message: "sandbox_json_parsed_probe",
+          data: {
+            sandboxId,
+            bridgePreviewUrl: bridgePreviewUrl ?? null,
+            url: sandboxUrl,
+            status: res.status,
+            bridgeRepairConfigured: Boolean(bridgeSessionRepair),
+            repairUpstreamSessionId: upstreamForRepair || null,
+            repairFromListFallback,
+            storedManusPrefix: readStoredLemnityBuildManusSessionId()?.slice(0, 12) ?? null,
+            keyCount,
+            poisonWide: poison,
+            tryArtifactRecovery: shouldTrySessionArtifactRecovery,
+            sampleHeads
+          },
+          timestamp: Date.now()
+        })
+      }).catch(() => {});
+      // #endregion
+
+      if (shouldTrySessionArtifactRecovery) {
+        const sessRes = await fetch(
+          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(upstreamForRepair)}`,
+          {
+            method: "GET",
+            credentials: "include",
+            /* На зарезервированном хосте без Host→project API требует заголовок (route.ts). На поддомене проекта резолв всё равно идёт по Host первым. */
+            headers: { "X-Project-Id": upstreamForRepair }
+          }
+        );
+        const sessBodyText = await sessRes.text();
+        let artifactId: string | null = null;
+        if (sessRes.ok) {
+          try {
+            const envelope = JSON.parse(sessBodyText) as { data?: { events?: unknown } };
+            artifactId = extractLatestLemnityAiArtifactSandboxIdFromSessionEvents(envelope?.data?.events);
+          } catch {
+            artifactId = null;
+          }
+        }
+        // #region agent log
+        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+          body: JSON.stringify({
+            sessionId: "9424d5",
+            runId: "repair-v9",
+            hypothesisId: "H_session_not_sandbox_id",
+            location: "build-code.tsx:loadSandboxFiles:repair",
+            message: "sandbox_poison_session_lookup",
+            data: {
+              repairFromListFallback,
+              sessionGetOk: sessRes.ok,
+              sessionHttpStatus: sessRes.status,
+              bodySnippet: sessBodyText.slice(0, 120),
+              artifactId: artifactId ?? null,
+              sandboxVsRepairUpstreamEqual: sandboxId === upstreamForRepair,
+              sandboxPrefix: sandboxId?.slice(0, 14) ?? null,
+              repairUpstreamPrefix: upstreamForRepair.slice(0, 14)
+            },
+            timestamp: Date.now()
+          })
+        }).catch(() => {});
+        // #endregion
+
+        if (artifactId?.startsWith("artifact_")) {
+          const artUrl = `/api/lemnity-ai/artifacts/${encodeURIComponent(artifactId)}`;
+          const ar = await fetch(artUrl);
+          const artErr = !ar.ok ? await ar.text() : "";
+          if (ar.ok) {
+            const ct = ar.headers.get("content-type") || "";
+            if (!ct.includes("presentationml") && !ct.includes("ms-powerpoint")) {
+              const text = await ar.text();
+              if (text.trim().length > 0 && !textLooksLikeJsonApiNotFoundBody(text)) {
+                filesOut = { "index.html": text };
+                // #region agent log
+                fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+                  body: JSON.stringify({
+                    sessionId: "9424d5",
+                    runId: "repair-v9",
+                    hypothesisId: "poison_fallback",
+                    location: "build-code.tsx:loadSandboxFiles:repair",
+                    message: "sandbox_poison_repaired_from_artifact",
+                    data: { artifactId, htmlChars: text.length, repairFromListFallback },
+                    timestamp: Date.now()
+                  })
+                }).catch(() => {});
+                // #endregion
+              }
+            }
+          } else {
+            // #region agent log
+            fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+              body: JSON.stringify({
+                sessionId: "9424d5",
+                runId: "repair-v9",
+                hypothesisId: "poison_fallback",
+                location: "build-code.tsx:loadSandboxFiles:repair",
+                message: "sandbox_poison_artifact_fetch_failed",
+                data: { artifactId, status: ar.status, bodyPreview: artErr.slice(0, 120) },
+                timestamp: Date.now()
+              })
+            }).catch(() => {});
+            // #endregion
+          }
+        } else {
+          // #region agent log
+          fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
+            body: JSON.stringify({
+              sessionId: "9424d5",
+              runId: "repair-v9",
+              hypothesisId: "poison_fallback",
+              location: "build-code.tsx:loadSandboxFiles:repair",
+              message: "sandbox_recovery_missing_artifact_id",
+              data: {
+                repairFromListFallback,
+                sessionGetOk: sessRes.ok,
+                artifactProbe: artifactId ?? null,
+                upstreamSessionIdPrefix: upstreamForRepair.slice(0, 12)
+              },
+              timestamp: Date.now()
+            })
+          }).catch(() => {});
+          // #endregion
+        }
+      }
+
+      setFiles(filesOut);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Ошибка загрузки");
     } finally {
       setLoading(false);
     }
-  }, [sandboxId, artifactMimeType]);
+  }, [sandboxId, bridgePreviewUrl, bridgeSessionRepair, artifactMimeType]);
 
   useEffect(() => {
     void loadSandboxFiles();

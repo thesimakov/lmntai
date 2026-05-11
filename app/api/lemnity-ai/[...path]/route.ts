@@ -15,6 +15,7 @@ import {
   deleteLemnityAiSessionForUser,
   ensureLemnityAiSessionOwnership,
   ensureUserCanEditLemnityArtifact,
+  listLemnityAiSessionsForProject,
   listLemnityAiSessionsForUser,
   syncLemnityAiSessionSummary
 } from "@/lib/lemnity-ai-session-links";
@@ -27,6 +28,7 @@ import { hasEnoughTokens } from "@/lib/token-manager";
 import { estimateUsageFromText } from "@/lib/token-billing";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
+import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -396,7 +398,10 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
 
   if (path.length === 1 && path[0] === "sessions") {
     if (req.method === "GET") {
-      const sessions = await listLemnityAiSessionsForUser(user.id);
+      const projectIdFilter = req.nextUrl.searchParams.get("projectId")?.trim();
+      const sessions = projectIdFilter
+        ? await listLemnityAiSessionsForProject(user.id, projectIdFilter)
+        : await listLemnityAiSessionsForUser(user.id);
       return Response.json({ code: 0, msg: "success", data: { sessions } });
     }
     if (req.method === "POST") {
@@ -419,7 +424,17 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       const sessionId = envelope?.data?.session_id;
       if (upstream.ok && envelope?.code === 0 && typeof sessionId === "string" && sessionId) {
         try {
-          await createLemnityAiSessionLink(user.id, sessionId);
+          const hostRaw = req.headers.get("x-lemnity-host-project-id")?.trim() ?? "";
+          const hostRow =
+            hostRaw.length > 0
+              ? await prisma.project.findFirst({
+                  where: { id: hostRaw, ownerId: user.id },
+                  select: { id: true }
+                })
+              : null;
+          await createLemnityAiSessionLink(user.id, sessionId, {
+            hostProjectId: hostRow?.id ?? undefined
+          });
         } catch (error) {
           if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_ALREADY_OWNED") {
             return Response.json({ code: 409, msg: "Session already linked to another user", data: null }, { status: 409 });
@@ -460,10 +475,36 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     throw error;
   }
 
+  const hostMigrateRaw = req.headers.get("x-lemnity-host-project-id")?.trim() ?? "";
+  const hostMigrateProject =
+    hostMigrateRaw &&
+    hostMigrateRaw !== upstreamSessionId &&
+    (await prisma.project.findFirst({
+      where: { id: hostMigrateRaw, ownerId: user.id },
+      select: { id: true }
+    }));
+
   const tail = path.slice(2);
   const upstreamPath = toUpstreamApiPath(path);
 
   if (tail.length === 0 && req.method === "GET") {
+    if (hostMigrateProject) {
+      await prisma.manusSessionLink.deleteMany({
+        where: {
+          userId: user.id,
+          projectId: hostMigrateProject.id,
+          manusSessionId: { not: upstreamSessionId }
+        }
+      });
+      try {
+        await prisma.manusSessionLink.update({
+          where: { manusSessionId: upstreamSessionId },
+          data: { projectId: hostMigrateProject.id }
+        });
+      } catch {
+        /* гонка / строка уже с нужным projectId */
+      }
+    }
     const upstream = await lemnityAiUpstreamFetch(upstreamPath, { method: "GET" });
     const envelope = await readLemnityAiUpstreamEnvelope<BridgeUpstreamSessionData>(upstream.clone());
     if (upstream.ok && envelope?.code === 0 && envelope.data) {

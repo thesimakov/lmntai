@@ -30,10 +30,14 @@ import {
   readBuilderHandoff,
   saveBuilderHandoff
 } from "@/lib/landing-handoff";
+import {
+  readStoredLemnityBuildManusSessionId,
+  writeStoredLemnityBuildManusSessionId
+} from "@/lib/lemnity-ai-build-session-storage";
 import { rememberBuildSessionForPuckReturn } from "@/lib/lemnity-puck-build-nav";
 import { useLemnityAiBridgeFromServer } from "@/hooks/use-lemnity-ai-bridge-from-server";
 import {
-  deriveSandboxIdFromAppPreviewUrl,
+  coalesceSandboxIdFromBridgePreview,
   resolvePublishOpenUrl,
   resolveShareablePreviewUrl
 } from "@/lib/preview-share";
@@ -252,6 +256,8 @@ export default function PromptBuildPage() {
   const [coachSlowHint, setCoachSlowHint] = useState(false);
   const [lemnityAiSessionId, setLemnityAiSessionId] = useState<string | null>(requestedSessionId);
   const [sessionNeedsResync, setSessionNeedsResync] = useState(false);
+  /** Истинный upstream session id (manusSessionId), не смешивать с sandboxId из превью (может быть project/storage id). */
+  const activeLemnityAiBridgeSessionRef = useRef<string | null>(requestedSessionId?.trim() || null);
   const leftWidthBeforeCollapseRef = useRef(400);
   const togglePlaygroundLeftRail = useCallback(() => {
     setLeftCollapsed((v) => {
@@ -289,6 +295,31 @@ export default function PromptBuildPage() {
     }
     return false;
   }, [sandboxId, previewUrl, previewArtifactMime]);
+
+  /** Совпадает с coalesce SandboxId событий моста: артефакт из previewUrl побеждает устаревший uuid в state. */
+  const codePanelSandboxId = useMemo(
+    () => coalesceSandboxIdFromBridgePreview({ previewUrl, sandboxId }) ?? sandboxId,
+    [previewUrl, sandboxId]
+  );
+
+  const buildCodeBridgeSessionRepair = useMemo(() => {
+    if (!shouldUseLemnityAiBridge) return null;
+    const fromState =
+      typeof lemnityAiSessionId === "string" && lemnityAiSessionId.trim() ? lemnityAiSessionId.trim() : "";
+    const fromRef = activeLemnityAiBridgeSessionRef.current?.trim() ?? "";
+    const fromStored = readStoredLemnityBuildManusSessionId()?.trim() ?? "";
+    const upstreamSessionId = fromState || fromRef || fromStored;
+    if (!upstreamSessionId) return null;
+    return { upstreamSessionId };
+  }, [shouldUseLemnityAiBridge, lemnityAiSessionId, sandboxId, isGenerating]);
+
+  useEffect(() => {
+    const s = lemnityAiSessionId?.trim();
+    if (s) {
+      activeLemnityAiBridgeSessionRef.current = s;
+      writeStoredLemnityBuildManusSessionId(s);
+    }
+  }, [lemnityAiSessionId]);
 
   const beginInterfaceBuildTiming = useCallback(() => {
     interfaceBuildStartedAtRef.current = Date.now();
@@ -391,10 +422,7 @@ export default function PromptBuildPage() {
     try {
       setPublishPending(true);
       if (!shareIsPublic) {
-        let res = await fetch("/api/sandbox/share", { method: "POST" });
-        if (res.status === 404) {
-          res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
-        }
+        const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
         if (!res.ok) {
           const msg = await res.text();
           toast.error(msg || t("playground_build_share_error_instant"));
@@ -425,10 +453,7 @@ export default function PromptBuildPage() {
   const ensurePublicShareForPreviewTab = useCallback(async () => {
     if (!sandboxId) return false;
     if (shareIsPublic) return true;
-    let res = await fetch("/api/sandbox/share", { method: "POST" });
-    if (res.status === 404) {
-      res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
-    }
+    const res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, { method: "POST" });
     if (!res.ok) return false;
     setShareIsPublic(true);
     return true;
@@ -624,6 +649,20 @@ export default function PromptBuildPage() {
     [createMessageId, t]
   );
 
+  const bridgeSessionRequestHeaders = useCallback((forSessionId: string) => {
+    const sid = forSessionId.trim();
+    const hostRaw =
+      hostProjectIdRef.current?.trim() ||
+      sandboxIdReserveRef.current?.trim() ||
+      pendingProjectIdRef.current?.trim() ||
+      "";
+    const hostHeader =
+      hostRaw && hostRaw !== sid && !hostRaw.startsWith("artifact_") ? hostRaw : "";
+    const headers: Record<string, string> = { "X-Project-Id": sid };
+    if (hostHeader) headers["X-Lemnity-Host-Project-Id"] = hostHeader;
+    return headers;
+  }, []);
+
   const loadLemnityAiSession = useCallback(
     async (sessionId: string) => {
       try {
@@ -632,11 +671,8 @@ export default function PromptBuildPage() {
           `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sessionId)}`,
           {
             method: "GET",
-            headers: hostProjectId
-              ? undefined
-              : {
-                  "X-Project-Id": sessionId
-                }
+            credentials: "include",
+            headers: bridgeSessionRequestHeaders(sessionId)
           }
         );
         if (!res.ok) return;
@@ -696,10 +732,7 @@ export default function PromptBuildPage() {
         type BridgePreviewPick = typeof lastPreviewFromSlice;
         const coerceBridgePreview = (raw: BridgePreviewPick): BridgePreviewPick => {
           if (!raw?.previewUrl) return undefined;
-          const sid =
-            typeof raw.sandboxId === "string" && raw.sandboxId.trim()
-              ? raw.sandboxId.trim()
-              : deriveSandboxIdFromAppPreviewUrl(raw.previewUrl);
+          const sid = coalesceSandboxIdFromBridgePreview(raw);
           return sid ? { ...raw, sandboxId: sid } : undefined;
         };
         const coercedSlice = coerceBridgePreview(lastPreviewFromSlice);
@@ -721,6 +754,11 @@ export default function PromptBuildPage() {
           } else if (liveSse && liveSse !== loadedSbx) {
             // Уже пришла более новая песочница по стриму; в GET ещё старый last preview — не откатывать UI.
           } else {
+            const streamSid = sessionId.trim();
+            if (streamSid) {
+              activeLemnityAiBridgeSessionRef.current = streamSid;
+              writeStoredLemnityBuildManusSessionId(streamSid);
+            }
             templatePreviewSandboxIdRef.current = null;
             setPreviewUrl(lastPreview.previewUrl);
             setSandboxId(lastPreview.sandboxId);
@@ -790,17 +828,29 @@ export default function PromptBuildPage() {
         // ignore
       }
     },
-    [applyStreamLog, hostProjectId, resetStreamLog, t]
+    [applyStreamLog, bridgeSessionRequestHeaders, resetStreamLog, t]
   );
 
   const ensureLemnityAiSession = useCallback(async (): Promise<
     { ok: true; sessionId: string } | { ok: false; message: string }
   > => {
-    if (lemnityAiSessionId) return { ok: true, sessionId: lemnityAiSessionId };
+    if (lemnityAiSessionId) {
+      const s = lemnityAiSessionId.trim();
+      if (s) {
+        activeLemnityAiBridgeSessionRef.current = s;
+        writeStoredLemnityBuildManusSessionId(s);
+        return { ok: true, sessionId: s };
+      }
+    }
     try {
+      const host =
+        pendingProjectIdRef.current?.trim() ||
+        hostProjectIdRef.current?.trim() ||
+        "";
       const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, {
         method: "PUT",
-        credentials: "include"
+        credentials: "include",
+        headers: host ? { "X-Lemnity-Host-Project-Id": host } : undefined
       });
       if (res.status === 403) {
         const j = (await res.json().catch(() => null)) as {
@@ -820,6 +870,8 @@ export default function PromptBuildPage() {
       const envelope = (await res.json()) as LemnityAiBridgeEnvelope<{ session_id?: string }>;
       const createdId = envelope?.data?.session_id;
       if (!createdId) return { ok: false, message: t("playground_session_create_error") };
+      activeLemnityAiBridgeSessionRef.current = createdId;
+      writeStoredLemnityBuildManusSessionId(createdId);
       setLemnityAiSessionId(createdId);
       router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
       return { ok: true, sessionId: createdId };
@@ -852,6 +904,9 @@ export default function PromptBuildPage() {
       setStage("generating");
       setProgress(10);
       setStreamArtifactChars(0);
+      /* Как handleGenerate: иначе после сбоя стрима остаётся старый previewUrl (шаблон) и при mode=idle виден iframe с «Empty». */
+      templatePreviewSandboxIdRef.current = null;
+      setPreviewUrl(null);
       setPreviewArtifactMime(null);
       setPreviewDownloadFilename(null);
       setPresentationPdfExport(null);
@@ -878,7 +933,7 @@ export default function PromptBuildPage() {
             "Content-Type": "application/json",
             Accept: "text/event-stream",
             "X-LMNT-UI-Lang": lang,
-            ...(hostProjectId ? {} : { "X-Project-Id": sid })
+            "X-Project-Id": sid
           },
           credentials: "include",
           body: JSON.stringify({
@@ -1045,13 +1100,19 @@ export default function PromptBuildPage() {
 
             if (ev === "preview") {
               const data = JSON.parse(chunk.data) as LemnityAiPreviewEvent;
-              if (data.previewUrl && data.sandboxId) {
+              const coalescedSandboxId = coalesceSandboxIdFromBridgePreview(data);
+              if (data.previewUrl && coalescedSandboxId) {
+                const streamSid = sid.trim();
+                if (streamSid) {
+                  activeLemnityAiBridgeSessionRef.current = streamSid;
+                  writeStoredLemnityBuildManusSessionId(streamSid);
+                }
                 interfaceBuildGotPreviewRef.current = true;
-                lastSsePreviewSandboxIdRef.current = String(data.sandboxId);
+                lastSsePreviewSandboxIdRef.current = String(coalescedSandboxId);
                 templatePreviewSandboxIdRef.current = null;
                 setPreviewUrl(data.previewUrl);
-                setSandboxId(data.sandboxId);
-                emitSandboxFilesUpdated(data.sandboxId);
+                setSandboxId(coalescedSandboxId);
+                emitSandboxFilesUpdated(coalescedSandboxId);
                 setPreviewArtifactMime(typeof data.mimeType === "string" ? data.mimeType : null);
                 setPreviewDownloadFilename(typeof data.filename === "string" ? data.filename : null);
                 const pe = data.pdfExport;
@@ -1157,8 +1218,7 @@ export default function PromptBuildPage() {
       push,
       pushBridgeAssistantMessage,
       t,
-      lang,
-      hostProjectId
+      lang
     ]
   );
 
@@ -1532,11 +1592,7 @@ export default function PromptBuildPage() {
           {
             method: "GET",
             credentials: "include",
-            headers: hostProjectId
-              ? undefined
-              : {
-                  "X-Project-Id": lemnityAiSessionId
-                }
+            headers: { "X-Project-Id": lemnityAiSessionId }
           }
         );
       } catch {
@@ -1547,7 +1603,7 @@ export default function PromptBuildPage() {
     return () => {
       cancelled = true;
     };
-  }, [sandboxId, lemnityAiSessionId, shouldUseLemnityAiBridge, hostProjectId]);
+  }, [sandboxId, lemnityAiSessionId, shouldUseLemnityAiBridge]);
 
   useEffect(() => {
     if (!promptCoachLoading) {
@@ -2423,8 +2479,10 @@ export default function PromptBuildPage() {
               >
                 <BuildCode
                   className="min-h-0 flex-1"
-                  sandboxId={sandboxId}
+                  sandboxId={codePanelSandboxId}
                   artifactMimeType={previewArtifactMime}
+                  bridgePreviewUrl={previewUrl}
+                  bridgeSessionRepair={buildCodeBridgeSessionRepair}
                 />
               </div>
             </div>

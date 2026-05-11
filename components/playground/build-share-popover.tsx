@@ -53,16 +53,12 @@ export function BuildSharePopover({
 
   const shareMode = shareIsPublic ? "public" : "private" as "private" | "public";
 
-  const fetchShareApi = useCallback(
-    async (init?: RequestInit): Promise<Response> => {
-      let res = await fetch("/api/sandbox/share", init);
-      if (res.status === 404 && sandboxId) {
-        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, init);
-      }
-      return res;
-    },
-    [sandboxId]
-  );
+  const fetchShareApi = useCallback(async (init?: RequestInit): Promise<Response> => {
+    if (sandboxId) {
+      return fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share`, init);
+    }
+    return fetch("/api/sandbox/share", init);
+  }, [sandboxId]);
 
   const refreshState = useCallback(async () => {
     if (!sandboxId) {

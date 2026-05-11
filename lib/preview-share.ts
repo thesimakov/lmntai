@@ -53,6 +53,23 @@ export function deriveSandboxIdFromAppPreviewUrl(previewUrl: string | null | und
   return null;
 }
 
+/**
+ * Событие моста может отдавать «чужой» sandboxId (например uuid сессии), тогда как previewUrl указывает на artifact_*.
+ * Для превью и вкладки «Код» id артефакта из URL важнее.
+ */
+export function coalesceSandboxIdFromBridgePreview(preview: {
+  previewUrl?: string | null;
+  sandboxId?: string | null;
+}): string | null {
+  const url = typeof preview.previewUrl === "string" ? preview.previewUrl.trim() : "";
+  const rawSid = typeof preview.sandboxId === "string" ? preview.sandboxId.trim() : "";
+  const fromUrl = url ? deriveSandboxIdFromAppPreviewUrl(url) : null;
+  if (typeof fromUrl === "string" && fromUrl.startsWith("artifact_")) return fromUrl;
+  if (rawSid.length > 0) return rawSid;
+  if (typeof fromUrl === "string" && fromUrl.length > 0) return fromUrl;
+  return null;
+}
+
 export async function copyTextToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);

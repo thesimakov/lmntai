@@ -280,8 +280,8 @@ export function RightPanel({
     );
   }
 
-  /** Готовая сборка: показываем файл/превью, даже если mode ещё «idle» (рассинхрон или после ошибки сброса режима). */
-  if (previewUrl && sandboxId) {
+  /** Готовая сборка: iframe только в явном режиме preview (не показывать устаревший URL при idle после ошибки стрима). */
+  if (previewUrl && sandboxId && mode === "preview") {
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden">
         {previewFrame}

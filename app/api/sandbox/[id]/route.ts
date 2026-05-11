@@ -16,6 +16,7 @@ import { injectCmsFormBridgeIntoHtmlDocument } from "@/lib/cms-form-bridge";
 import { cmsRobotsDirectiveValue, injectCmsRobotsMetaIntoHtmlDocument } from "@/lib/cms-html-robots-meta";
 import { sanitizeSandboxHtml } from "@/lib/html-sanitizer";
 import { resolveCmsFormBridgeContextByProjectId } from "@/lib/cms-sandbox-form-sync";
+import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -55,7 +56,22 @@ async function respondWithHtml(sandboxId: string): Promise<Response> {
   }
 
   const files = await sandboxManager.exportFiles(sandboxId);
-  let htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  let htmlRaw = files["index.html"] ?? "";
+
+  if (!htmlRaw.trim() && !sandboxId.startsWith("artifact_")) {
+    const link = await prisma.manusSessionLink.findFirst({
+      where: { projectId: sandboxId },
+      select: { previewArtifactId: true }
+    });
+    const aid = typeof link?.previewArtifactId === "string" ? link.previewArtifactId.trim() : "";
+    if (aid.startsWith("artifact_")) {
+      return respondWithPublishedHtml(aid);
+    }
+  }
+
+  if (!htmlRaw.trim()) {
+    htmlRaw = SANDBOX_EMPTY_PREVIEW_HTML;
+  }
   let xRobotsTag: string | null = null;
   if (!sandboxId.startsWith("artifact_")) {
     const bridgeCtx = await resolveCmsFormBridgeContextByProjectId(sandboxId);

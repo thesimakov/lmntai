@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { Sidebar } from "@/components/sidebar";
-import { StarterCabinetWall } from "@/components/dashboard/starter-cabinet-wall";
+import { DashboardStarterGate } from "@/components/dashboard/dashboard-starter-gate";
 import { getSafeServerSession } from "@/lib/auth";
 import { getStarterCabinetWallState } from "@/lib/starter-cabinet-server";
 
@@ -25,7 +25,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Sidebar />
         <main className="glass mx-0 flex h-[calc(100vh-2rem)] min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-3xl border p-[30px] [scrollbar-gutter:stable]">
           <div className="flex w-full min-w-0 flex-col overflow-x-hidden">
-            {wall.show ? <StarterCabinetWall message={wall.message ?? ""} /> : children}
+            <DashboardStarterGate wall={wall}>{children}</DashboardStarterGate>
           </div>
         </main>
       </div>

@@ -875,8 +875,7 @@ export const sandboxManager = {
     if (isLemnityAiSandboxDockerEnabled()) {
       return getDockerPreviewUrl(sandboxId);
     }
-    const exists = memoryStore.get(sandboxId) ?? (await hydrateMemoryStateFromDb(sandboxId));
-    if (!exists) return null;
+    /* Без строки SandboxProjectState exportFiles уже отдаёт {} с 200 (?format=json), а прежний null здесь давал document 404 на том же id. */
     return `/api/sandbox/${sandboxId}`;
   },
 

@@ -9,6 +9,7 @@ import { decodeVisualSavePatchBuffer } from "@/lib/visual-save-decode-patch-body
 import { injectLemnityAnchorsIntoHtmlDocument } from "@/lib/lemnity-anchor-runtime";
 import { injectCarouselNavIntoHtmlDocument } from "@/lib/lemnity-carousel-nav-runtime";
 import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-runtime";
+import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
 import { withApiLogging } from "@/lib/with-api-logging";
 
 export const runtime = "nodejs";
@@ -21,7 +22,9 @@ async function respondWithHtml(projectId: string) {
     return apiError("Not found", 404);
   }
   const files = await sandboxManager.exportFiles(projectId);
-  const htmlRaw = files["index.html"] ?? "<html><body>Empty</body></html>";
+  const candidate = files["index.html"];
+  const htmlRaw =
+    typeof candidate === "string" && candidate.trim().length > 0 ? candidate : SANDBOX_EMPTY_PREVIEW_HTML;
   const html = injectLemnityAnchorsIntoHtmlDocument(
     injectDetailsTabsIntoHtmlDocument(injectCarouselNavIntoHtmlDocument(htmlRaw)),
   );

@@ -127,11 +127,10 @@ export function BuildSettings({
 
   const fetchShareApi = useCallback(
     async (suffix: "" | "/branding", init?: RequestInit): Promise<Response> => {
-      let res = await fetch(`/api/sandbox/share${suffix}`, init);
-      if (res.status === 404 && sandboxId) {
-        res = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share${suffix}`, init);
+      if (sandboxId) {
+        return fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}/share${suffix}`, init);
       }
-      return res;
+      return fetch(`/api/sandbox/share${suffix}`, init);
     },
     [sandboxId]
   );
