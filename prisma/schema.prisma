@@ -32,6 +32,7 @@ model Project {
   virtualEntries      UserVirtualEntry[]
   cmsSite             CmsSite?
   snapshots           ProjectSnapshot[]
+  teamSavedBlocks     UserSavedBlock[]
 
   @@index([ownerId, updatedAt])
 }
@@ -809,11 +810,13 @@ model AuthEventLog {
   @@index([userId, createdAt])
 }
 
+/// Сохранённый блок пользователя: личный (teamProjectId null) или командный (привязан к Project).
 model UserSavedBlock {
   id            String   @id @default(cuid())
   userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   teamProjectId String?
+  teamProject   Project? @relation(fields: [teamProjectId], references: [id], onDelete: Cascade)
   name          String
   blockType     String
   htmlContent   String   @db.Text
