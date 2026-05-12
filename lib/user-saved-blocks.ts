@@ -106,21 +106,16 @@ export async function renameUserBlock(
   userId: string,
   name: string,
 ): Promise<boolean> {
-  const row = await prisma.userSavedBlock.findFirst({
+  const result = await prisma.userSavedBlock.updateMany({
     where: { id, userId },
-    select: { id: true },
+    data: { name },
   });
-  if (!row) return false;
-  await prisma.userSavedBlock.update({ where: { id }, data: { name } });
-  return true;
+  return result.count > 0;
 }
 
 export async function deleteUserBlock(id: string, userId: string): Promise<boolean> {
-  const row = await prisma.userSavedBlock.findFirst({
+  const result = await prisma.userSavedBlock.deleteMany({
     where: { id, userId },
-    select: { id: true },
   });
-  if (!row) return false;
-  await prisma.userSavedBlock.delete({ where: { id } });
-  return true;
+  return result.count > 0;
 }

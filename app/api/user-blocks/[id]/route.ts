@@ -6,6 +6,7 @@ import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { withApiLogging } from "@/lib/with-api-logging";
 import { parseBody } from "@/lib/api-schemas";
 import { getUserBlockById, renameUserBlock, deleteUserBlock } from "@/lib/user-saved-blocks";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,6 +23,16 @@ async function getBlock(
 
   const { id } = await params;
   const projectId = new URL(req.url).searchParams.get("projectId") ?? undefined;
+
+  // Verify project ownership before granting team-scope access
+  if (projectId) {
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, ownerId: user.id },
+      select: { id: true },
+    });
+    if (!project) return apiError("Not found", 404);
+  }
+
   const block = await getUserBlockById(id, user.id, projectId);
   if (!block) return apiError("Not found", 404);
   return apiOk({ block });

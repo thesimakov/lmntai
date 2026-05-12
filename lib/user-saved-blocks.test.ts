@@ -8,6 +8,8 @@ vi.mock("@/lib/prisma", () => ({
       findFirst: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      updateMany: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     project: {
@@ -35,6 +37,8 @@ const mockPrisma = prisma as unknown as {
     findFirst: ReturnType<typeof vi.fn>;
     update: ReturnType<typeof vi.fn>;
     delete: ReturnType<typeof vi.fn>;
+    updateMany: ReturnType<typeof vi.fn>;
+    deleteMany: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
   };
   project: { findFirst: ReturnType<typeof vi.fn> };
@@ -165,18 +169,17 @@ describe("getUserBlockById", () => {
 
 describe("renameUserBlock", () => {
   it("returns false when block not found", async () => {
-    mockPrisma.userSavedBlock.findFirst.mockResolvedValue(null);
+    mockPrisma.userSavedBlock.updateMany.mockResolvedValue({ count: 0 });
     const result = await renameUserBlock("no-id", "user1", "New Name");
     expect(result).toBe(false);
   });
 
   it("updates name and returns true", async () => {
-    mockPrisma.userSavedBlock.findFirst.mockResolvedValue({ id: "b1" });
-    mockPrisma.userSavedBlock.update.mockResolvedValue({});
+    mockPrisma.userSavedBlock.updateMany.mockResolvedValue({ count: 1 });
     const result = await renameUserBlock("b1", "user1", "New Name");
     expect(result).toBe(true);
-    expect(mockPrisma.userSavedBlock.update).toHaveBeenCalledWith({
-      where: { id: "b1" },
+    expect(mockPrisma.userSavedBlock.updateMany).toHaveBeenCalledWith({
+      where: { id: "b1", userId: "user1" },
       data: { name: "New Name" },
     });
   });
@@ -184,14 +187,13 @@ describe("renameUserBlock", () => {
 
 describe("deleteUserBlock", () => {
   it("returns false when block not found", async () => {
-    mockPrisma.userSavedBlock.findFirst.mockResolvedValue(null);
+    mockPrisma.userSavedBlock.deleteMany.mockResolvedValue({ count: 0 });
     const result = await deleteUserBlock("no-id", "user1");
     expect(result).toBe(false);
   });
 
   it("deletes and returns true when found", async () => {
-    mockPrisma.userSavedBlock.findFirst.mockResolvedValue({ id: "b1" });
-    mockPrisma.userSavedBlock.delete.mockResolvedValue({});
+    mockPrisma.userSavedBlock.deleteMany.mockResolvedValue({ count: 1 });
     const result = await deleteUserBlock("b1", "user1");
     expect(result).toBe(true);
   });
