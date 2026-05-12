@@ -1,6 +1,12 @@
 "use client";
 
-import type { AssetsCustomData, Component, Editor } from "grapesjs";
+import type {
+  AssetsCustomData,
+  Component,
+  Editor,
+  RichTextEditorConfig,
+  RichTextEditorOptions,
+} from "grapesjs";
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState, type RefObject } from "react";
 import { LemnityBoxBlockLibraryFlyout } from "@/components/playground/lemnity-box/lemnity-box-block-library-flyout";
 import {
@@ -63,6 +69,28 @@ import {
 } from "@/lib/editor-constants";
 
 import "grapesjs/dist/css/grapes.min.css";
+
+/**
+ * GrapesJS подключает обработчик клика к кнопке RTE только если `state(rte, doc) >= 0`.
+ * У действия `wrap` по умолчанию при выделении внутри SPAN возвращается DISABLED (-1) — клик не
+ * регистрируется при включении RTE и при смене выделения не переустанавливается (обновляются
+ * только CSS‑классы кнопки).
+ */
+const GJS_RTE_ACTIVE = 1;
+const GJS_RTE_INACTIVE = 0;
+
+function grapesRteWrapToolbarState(
+  rte: { selection(): Selection },
+  _doc: Document,
+): number {
+  void _doc;
+  const sel = rte.selection?.();
+  if (!sel) return GJS_RTE_INACTIVE;
+  const pa = sel.anchorNode?.parentNode;
+  const pf = sel.focusNode?.parentNode;
+  if (pa?.nodeName === "SPAN" || pf?.nodeName === "SPAN") return GJS_RTE_ACTIVE;
+  return GJS_RTE_INACTIVE;
+}
 
 const PRESET_WEBPAGE_BLOCK_RU: Record<string, { label: string; category?: string }> = {
   "link-block": { label: "Блок со ссылкой", category: "Макет" },
@@ -803,26 +831,45 @@ function ensureZeroBlockInnerCanvas(section: Component | null | undefined): Comp
   );
 
   toMove.forEach((ch) => {
-    if (ch.parent() === section) (canvas as Component).append(ch);
+    if (getGrapesComponentParent(ch) === section) (canvas as Component).append(ch);
   });
 
   return canvas;
 }
 
+/**
+ * GrapesJS иногда хранит родителя как метод `parent()`, иногда как ссылку на модель.
+ * Выражение `component.parent?.()` падает, если `parent` — не функция.
+ */
+function getGrapesComponentParent(component: Component | null | undefined): Component | null {
+  if (!component) return null;
+  const raw = component as unknown as { parent?: unknown };
+  const p = raw.parent;
+  if (typeof p === "function") {
+    try {
+      return (p as (this: typeof component) => Component | null | undefined).call(component) ?? null;
+    } catch {
+      return null;
+    }
+  }
+  if (p && typeof p === "object") return p as Component;
+  return null;
+}
+
 function hasZeroBlockAncestor(component: Component | null | undefined): boolean {
-  let cursor = component;
+  let cursor: Component | null | undefined = component;
   while (cursor) {
     if (isZeroBlockSectionComponent(cursor)) return true;
-    cursor = cursor.parent?.() ?? null;
+    cursor = getGrapesComponentParent(cursor);
   }
   return false;
 }
 
 function findZeroBlockSectionAncestor(component: Component | null | undefined): Component | null {
-  let cursor = component;
+  let cursor: Component | null | undefined = component;
   while (cursor) {
     if (isZeroBlockSectionComponent(cursor)) return cursor;
-    cursor = cursor.parent?.() ?? null;
+    cursor = getGrapesComponentParent(cursor);
   }
   return null;
 }
@@ -877,7 +924,7 @@ function placeZeroBlockChildFreely(component: Component) {
     canvas &&
     !shouldStayOnZeroSectionDirectChild(component) &&
     !isZeroBlockCanvasComponent(component) &&
-    component.parent() === zeroSection
+    getGrapesComponentParent(component) === zeroSection
   ) {
     canvas.append(component);
   }
@@ -893,7 +940,7 @@ function placeZeroBlockChildFreely(component: Component) {
     component.set("draggable", ".lemnity-zero-block");
   }
 
-  const layoutParent = component.parent?.() ?? null;
+  const layoutParent = getGrapesComponentParent(component);
   if (!layoutParent || !isZeroBlockCanvasComponent(layoutParent)) return;
 
   const siblings = layoutParent.components?.();
@@ -1461,6 +1508,16 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
               },
             },
           },
+          richTextEditor: {
+            actions: [
+              "bold",
+              "italic",
+              "underline",
+              "strikethrough",
+              "link",
+              { name: "wrap", state: grapesRteWrapToolbarState },
+            ] as NonNullable<RichTextEditorOptions["actions"]>,
+          } as RichTextEditorConfig,
           plugins: [
             (ed: Editor) => {
               attachLemnityBoxHtmlEmbed(ed);
@@ -1557,7 +1614,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
               return;
             }
             const wrap = editor.getWrapper();
-            if (wrap && model.parent() === wrap) {
+            if (wrap && getGrapesComponentParent(model) === wrap) {
               const tag = String(model.get("tagName") ?? "").toLowerCase();
               if (tag === "section") {
                 const cls = model.getClasses?.();
@@ -1594,7 +1651,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
 
             const pending = pendingWrapperInsertIdxRef.current;
             if (pending == null) return;
-            if (!wrap || model.parent() !== wrap) return;
+            if (!wrap || getGrapesComponentParent(model) !== wrap) return;
 
             pendingWrapperInsertIdxRef.current = null;
 

@@ -16,7 +16,6 @@ import {
   sandboxFileMapLooksLikeJsonNotFound,
   textLooksLikeJsonApiNotFoundBody
 } from "@/lib/lemnity-ai-bridge-session-artifact";
-import { readStoredLemnityBuildManusSessionId } from "@/lib/lemnity-ai-build-session-storage";
 import { cn } from "@/lib/utils";
 
 type BridgeSessionsListEnvelope = {
@@ -31,28 +30,9 @@ type BridgeSessionsListEnvelope = {
 };
 
 /**
- * Восстанавливаем manus session id: сначала строка по Project.id, затем полный список пользователя.
- * Логирует HTTP/код/число строк — без этого невозможно отличить «нет строк в Prisma» от 401/404 моста.
+ * Восстанавливаем manus session id: сначала запрос с `projectId`, затем полный список сессий моста.
  */
 async function fetchManusSessionIdForEmptySandboxRepair(projectId: string): Promise<string | null> {
-  // #region agent log
-  const logListProbe = (data: Record<string, unknown>) => {
-    fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-      body: JSON.stringify({
-        sessionId: "9424d5",
-        runId: "repair-v10",
-        hypothesisId: "H_project_scope_sessions",
-        location: "build-code.tsx:fetchManusSessionIdForEmptySandboxRepair",
-        message: "manus_session_list_probe",
-        data,
-        timestamp: Date.now()
-      })
-    }).catch(() => {});
-  };
-  // #endregion
-
   async function loadSessions(url: string) {
     const res = await fetch(url, { method: "GET", credentials: "include" });
     const text = await res.text();
@@ -82,16 +62,6 @@ async function fetchManusSessionIdForEmptySandboxRepair(projectId: string): Prom
   }
 
   const ok = res.ok && envelope.code === 0 && sessions.length > 0;
-  // #region agent log
-  logListProbe({
-    projectId,
-    tried,
-    httpStatus: res.status,
-    apiCode: envelope.code ?? null,
-    sessionCount: sessions.length,
-    textHead: sessions.length ? "ok" : textHead
-  });
-  // #endregion
 
   if (!ok) return null;
 
@@ -104,15 +74,6 @@ async function fetchManusSessionIdForEmptySandboxRepair(projectId: string): Prom
   );
   const pick = byProject ?? withArtifact ?? sessions[0];
   const id = typeof pick?.session_id === "string" ? pick.session_id.trim() : "";
-
-  // #region agent log
-  logListProbe({
-    projectId,
-    tried,
-    pickKind: byProject ? "by_project" : withArtifact ? "artifact" : "first",
-    chosenPrefix: id ? id.slice(0, 14) : null
-  });
-  // #endregion
 
   return id || null;
 }
@@ -212,26 +173,6 @@ export function BuildCode({
         const artifactUrl = `/api/lemnity-ai/artifacts/${encodeURIComponent(sandboxId)}`;
         const res = await fetch(artifactUrl);
         const errBody = !res.ok ? await res.text() : "";
-        // #region agent log
-        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-          body: JSON.stringify({
-            sessionId: "9424d5",
-            runId: "repair-v3",
-            hypothesisId: "H1_H5",
-            location: "build-code.tsx:loadSandboxFiles:artifact",
-            message: "artifact_fetch",
-            data: {
-              sandboxId,
-              url: artifactUrl,
-              status: res.status,
-              bodyPreview: errBody ? errBody.slice(0, 240) : "ok"
-            },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
         if (!res.ok) {
           throw new Error(errBody || res.statusText);
         }
@@ -268,40 +209,6 @@ export function BuildCode({
         repairFromListFallback = Boolean(upstreamForRepair);
       }
       const shouldTrySessionArtifactRecovery = Boolean(upstreamForRepair) && baseRecoveryNeeds;
-      const ks = Object.keys(filesOut).slice(0, 10);
-      const sampleHeads: Record<string, string> = {};
-      for (const k of ks) {
-        const raw = filesOut[k];
-        if (typeof raw === "string") sampleHeads[k] = raw.slice(0, 160);
-      }
-      // #region agent log
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-        body: JSON.stringify({
-          sessionId: "9424d5",
-          runId: "repair-v9",
-          hypothesisId: "H_list_fallback",
-          location: "build-code.tsx:loadSandboxFiles:sandbox_json",
-          message: "sandbox_json_parsed_probe",
-          data: {
-            sandboxId,
-            bridgePreviewUrl: bridgePreviewUrl ?? null,
-            url: sandboxUrl,
-            status: res.status,
-            bridgeRepairConfigured: Boolean(bridgeSessionRepair),
-            repairUpstreamSessionId: upstreamForRepair || null,
-            repairFromListFallback,
-            storedManusPrefix: readStoredLemnityBuildManusSessionId()?.slice(0, 12) ?? null,
-            keyCount,
-            poisonWide: poison,
-            tryArtifactRecovery: shouldTrySessionArtifactRecovery,
-            sampleHeads
-          },
-          timestamp: Date.now()
-        })
-      }).catch(() => {});
-      // #endregion
 
       if (shouldTrySessionArtifactRecovery) {
         const sessRes = await fetch(
@@ -323,96 +230,19 @@ export function BuildCode({
             artifactId = null;
           }
         }
-        // #region agent log
-        fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-          body: JSON.stringify({
-            sessionId: "9424d5",
-            runId: "repair-v9",
-            hypothesisId: "H_session_not_sandbox_id",
-            location: "build-code.tsx:loadSandboxFiles:repair",
-            message: "sandbox_poison_session_lookup",
-            data: {
-              repairFromListFallback,
-              sessionGetOk: sessRes.ok,
-              sessionHttpStatus: sessRes.status,
-              bodySnippet: sessBodyText.slice(0, 120),
-              artifactId: artifactId ?? null,
-              sandboxVsRepairUpstreamEqual: sandboxId === upstreamForRepair,
-              sandboxPrefix: sandboxId?.slice(0, 14) ?? null,
-              repairUpstreamPrefix: upstreamForRepair.slice(0, 14)
-            },
-            timestamp: Date.now()
-          })
-        }).catch(() => {});
-        // #endregion
 
         if (artifactId?.startsWith("artifact_")) {
           const artUrl = `/api/lemnity-ai/artifacts/${encodeURIComponent(artifactId)}`;
           const ar = await fetch(artUrl);
-          const artErr = !ar.ok ? await ar.text() : "";
           if (ar.ok) {
             const ct = ar.headers.get("content-type") || "";
             if (!ct.includes("presentationml") && !ct.includes("ms-powerpoint")) {
               const text = await ar.text();
               if (text.trim().length > 0 && !textLooksLikeJsonApiNotFoundBody(text)) {
                 filesOut = { "index.html": text };
-                // #region agent log
-                fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-                  body: JSON.stringify({
-                    sessionId: "9424d5",
-                    runId: "repair-v9",
-                    hypothesisId: "poison_fallback",
-                    location: "build-code.tsx:loadSandboxFiles:repair",
-                    message: "sandbox_poison_repaired_from_artifact",
-                    data: { artifactId, htmlChars: text.length, repairFromListFallback },
-                    timestamp: Date.now()
-                  })
-                }).catch(() => {});
-                // #endregion
               }
             }
-          } else {
-            // #region agent log
-            fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-              body: JSON.stringify({
-                sessionId: "9424d5",
-                runId: "repair-v9",
-                hypothesisId: "poison_fallback",
-                location: "build-code.tsx:loadSandboxFiles:repair",
-                message: "sandbox_poison_artifact_fetch_failed",
-                data: { artifactId, status: ar.status, bodyPreview: artErr.slice(0, 120) },
-                timestamp: Date.now()
-              })
-            }).catch(() => {});
-            // #endregion
           }
-        } else {
-          // #region agent log
-          fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "9424d5" },
-            body: JSON.stringify({
-              sessionId: "9424d5",
-              runId: "repair-v9",
-              hypothesisId: "poison_fallback",
-              location: "build-code.tsx:loadSandboxFiles:repair",
-              message: "sandbox_recovery_missing_artifact_id",
-              data: {
-                repairFromListFallback,
-                sessionGetOk: sessRes.ok,
-                artifactProbe: artifactId ?? null,
-                upstreamSessionIdPrefix: upstreamForRepair.slice(0, 12)
-              },
-              timestamp: Date.now()
-            })
-          }).catch(() => {});
-          // #endregion
         }
       }
 

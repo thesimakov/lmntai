@@ -40,27 +40,6 @@ async function resolveProjectForHost(req: NextRequest, host: string) {
 }
 
 export async function middleware(req: NextRequest) {
-  // #region agent log
-  {
-    const p = req.nextUrl.pathname;
-    if (p === "/" || p.startsWith("/playground")) {
-      const rawHost = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
-      fetch("http://127.0.0.1:7420/ingest/7b0f12de-0977-4309-8ea6-029840641bbc", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "75cd2e" },
-        body: JSON.stringify({
-          sessionId: "75cd2e",
-          runId: "pre-clean",
-          hypothesisId: "H-cache",
-          location: "middleware.ts:entry",
-          message: "mw_document_path",
-          data: { pathname: p, normalizedHost: normalizeHost(rawHost) },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-    }
-  }
-  // #endregion
   if (req.nextUrl.pathname.startsWith("/api/publish/resolve")) {
     return NextResponse.next();
   }
