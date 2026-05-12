@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
+import { AiEditorShell } from "@/components/ai-editor";
 import { AgentChat, type ChatMessage } from "@/components/playground/agent-chat";
 import { BuildCode } from "@/components/playground/build-code";
 import { BuildPublishDialog } from "@/components/playground/build-publish-dialog";
@@ -61,6 +62,7 @@ import {
   formatLemnityBridgeErrorBody,
   looksLikeHtmlGatewayGarbage
 } from "@/lib/lemnity-bridge-error-format";
+import { useBuildEditorStore, type ProjectSnapshotMeta } from "@/lib/stores/use-build-editor-store";
 
 type LemnityAiBridgeEnvelope<T> = {
   code: number;
@@ -283,6 +285,12 @@ export default function PromptBuildPage() {
     applyEvent: applyStreamLog,
     markStreamFinished
   } = useBuildStreamLog();
+
+  const {
+    setVersions,
+    prependVersion,
+    setCurrentVersionId,
+  } = useBuildEditorStore();
 
   const visualEditPersist = useMemo(() => {
     if (!sandboxId || typeof previewUrl !== "string") return false;
@@ -1133,6 +1141,33 @@ export default function PromptBuildPage() {
                     ? "✅ Презентация PowerPoint (.pptx) готова — скачай файл справа. Напиши, что поменять в содержании или структуре слайдов."
                     : "✅ Превью готово. Можешь написать, что изменить — я обновлю сборку следующим шагом."
                 );
+                // Save version snapshot after successful generation
+                void (async () => {
+                  try {
+                    const htmlRes = await fetch(`/api/sandbox/${encodeURIComponent(String(coalescedSandboxId))}`);
+                    if (!htmlRes.ok) return;
+                    const sandboxHtml = await htmlRes.text();
+                    const snapRes = await fetch(`/api/projects/${encodeURIComponent(sid)}/snapshots`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        promptText: messagePayload.slice(0, 500),
+                        sandboxHtml,
+                        sandboxCss: "",
+                        sandboxId: String(coalescedSandboxId),
+                      }),
+                    });
+                    if (snapRes.ok) {
+                      const { snapshot } = (await snapRes.json()) as {
+                        snapshot: ProjectSnapshotMeta;
+                      };
+                      prependVersion(snapshot);
+                      setCurrentVersionId(snapshot.id);
+                    }
+                  } catch {
+                    // don't break the main flow
+                  }
+                })();
               }
             }
           } catch {
@@ -1712,6 +1747,19 @@ export default function PromptBuildPage() {
     shouldUseLemnityAiBridge
   ]);
 
+  // Load version history on mount
+  useEffect(() => {
+    const pid = pendingProjectIdRef.current?.trim() || lemnityAiSessionId?.trim();
+    if (!pid) return;
+    fetch(`/api/projects/${pid}/snapshots`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data: { snapshots?: ProjectSnapshotMeta[] } | null) => {
+        if (data?.snapshots) setVersions(data.snapshots);
+      })
+      .catch(() => {/* silent */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   function pushRecent(item: string, opts?: { templateSlug?: string }) {
     try {
       const key = "lemnity.recent";
@@ -1963,6 +2011,33 @@ export default function PromptBuildPage() {
           emitSandboxFilesUpdated(eventData.sandboxId);
           setMode("preview");
           push("assistant", "✅ Превью готово. Можешь написать, что изменить — я внесу правки следующим шагом.");
+          // Save version snapshot after successful generation
+          void (async () => {
+            try {
+              const htmlRes = await fetch(`/api/sandbox/${encodeURIComponent(eventData.sandboxId)}`);
+              if (!htmlRes.ok) return;
+              const sandboxHtml = await htmlRes.text();
+              const snapRes = await fetch(`/api/projects/${encodeURIComponent(projectId)}/snapshots`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  promptText: prompt.slice(0, 500),
+                  sandboxHtml,
+                  sandboxCss: "",
+                  sandboxId: eventData.sandboxId,
+                }),
+              });
+              if (snapRes.ok) {
+                const { snapshot } = (await snapRes.json()) as {
+                  snapshot: ProjectSnapshotMeta;
+                };
+                prependVersion(snapshot);
+                setCurrentVersionId(snapshot.id);
+              }
+            } catch {
+              // don't break the main flow
+            }
+          })();
         }
         if (eventData.type === "error") {
           push(
@@ -2147,27 +2222,31 @@ export default function PromptBuildPage() {
     push("assistant", "⌛ Дождись завершения текущего шага и повтори запрос.");
   }
 
+  const handleVersionRestoreHtml = useCallback((html: string, _css: string) => {
+    const blob = new Blob([html], { type: "text/html" });
+    const blobUrl = URL.createObjectURL(blob);
+    setPreviewUrl(blobUrl);
+    setMode("preview");
+  }, []);
+
   /** Левая колонка чата («Сборка промпта»): скрываем при сворачивании или при активном каталожном шаблоне сборки */
   const leftPromptRailHidden = leftCollapsed || Boolean(buildTemplate);
 
-  return (
-    <PageTransition>
-      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-transparent">
-        <div className="flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-row items-stretch">
-          <div
-            className={cn(
-              "relative z-30 min-h-0 shrink-0 grow-0 overflow-visible border-r border-border bg-background",
-              "transition-[width,min-width,max-width,opacity] duration-300 ease-in-out motion-reduce:transition-none"
-            )}
-            aria-hidden={leftPromptRailHidden}
-            style={{
-              width: leftPromptRailHidden ? 0 : leftWidth,
-              minWidth: leftPromptRailHidden ? 0 : 280,
-              maxWidth: leftPromptRailHidden ? 0 : 560,
-              opacity: leftPromptRailHidden ? 0 : 1,
-              pointerEvents: leftPromptRailHidden ? "none" : "auto"
-            }}
-          >
+  const chatSlot = (
+    <div
+      className={cn(
+        "relative z-30 min-h-0 shrink-0 grow-0 overflow-visible border-r border-border bg-background",
+        "transition-[width,min-width,max-width,opacity] duration-300 ease-in-out motion-reduce:transition-none"
+      )}
+      aria-hidden={leftPromptRailHidden}
+      style={{
+        width: leftPromptRailHidden ? 0 : leftWidth,
+        minWidth: leftPromptRailHidden ? 0 : 280,
+        maxWidth: leftPromptRailHidden ? 0 : 560,
+        opacity: leftPromptRailHidden ? 0 : 1,
+        pointerEvents: leftPromptRailHidden ? "none" : "auto"
+      }}
+    >
             <AgentChat
               variant="studio"
               title={header}
@@ -2364,7 +2443,9 @@ export default function PromptBuildPage() {
               </div>
             ) : null}
           </div>
+  );
 
+  const previewSlot = (
           <section className="flex min-h-0 min-w-0 flex-1 flex-col bg-muted/30">
             <BuildPreviewChrome
               tab={tab}
@@ -2487,7 +2568,20 @@ export default function PromptBuildPage() {
               </div>
             </div>
           </section>
-        </div>
+  );
+
+  return (
+    <PageTransition>
+      <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-transparent">
+        <AiEditorShell
+          projectName={header ?? "Проект"}
+          projectId={lemnityAiSessionId ?? ""}
+          isGenerating={isGenerating}
+          onSubmitPrompt={(prompt) => { void onSend(prompt); }}
+          onVersionRestoreHtml={handleVersionRestoreHtml}
+          chatSlot={chatSlot}
+          previewSlot={previewSlot}
+        />
       </div>
       <BuildPublishDialog
         open={publishDialogOpen}
