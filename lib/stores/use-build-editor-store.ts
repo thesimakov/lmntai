@@ -40,7 +40,25 @@ interface TemplateSlice {
   setSelectedTemplateId: (id: string | null) => void;
 }
 
-type BuildEditorStore = SessionSlice & UiSlice & TemplateSlice;
+// --- Version slice ---
+export type ProjectSnapshotMeta = {
+  id: string;
+  versionNum: number;
+  promptText: string;
+  createdAt: string; // ISO
+};
+
+interface VersionSlice {
+  currentVersionId: string | null;
+  versions: ProjectSnapshotMeta[];
+  selectedElementId: string | null;
+  setCurrentVersionId: (id: string | null) => void;
+  setVersions: (versions: ProjectSnapshotMeta[]) => void;
+  prependVersion: (version: ProjectSnapshotMeta) => void;
+  setSelectedElementId: (id: string | null) => void;
+}
+
+type BuildEditorStore = SessionSlice & UiSlice & TemplateSlice & VersionSlice;
 
 export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   // Session
@@ -68,4 +86,13 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   selectedTemplateId: null,
   setTemplateDialogOpen: (templateDialogOpen) => set({ templateDialogOpen }),
   setSelectedTemplateId: (selectedTemplateId) => set({ selectedTemplateId }),
+
+  // Version
+  currentVersionId: null,
+  versions: [],
+  selectedElementId: null,
+  setCurrentVersionId: (currentVersionId) => set({ currentVersionId }),
+  setVersions: (versions) => set({ versions }),
+  prependVersion: (version) => set((s) => ({ versions: [version, ...s.versions] })),
+  setSelectedElementId: (selectedElementId) => set({ selectedElementId }),
 }));
