@@ -19,6 +19,7 @@ import type {
   ZbAnimationConfig,
 } from "@/lib/zero-block-editor/types";
 import { useState, useCallback } from "react";
+import { zbNewId } from "@/lib/zero-block-editor/defaults";
 
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
@@ -599,29 +600,30 @@ function FormPanel({ el }: { el: ZbElement }) {
   const { updateElementProps } = useZbEditorStore();
   const p = el.props as unknown as ZbFormProps;
   const u = (patch: Partial<ZbFormProps>) => updateElementProps(el.id, patch as Record<string, unknown>);
+  const fields = p.fields ?? [];
 
   const addField = () => {
-    if (p.fields.length >= 10) return;
+    if (fields.length >= 10) return;
     const newField: ZbFormField = {
-      id: `field_${Date.now()}`,
+      id: zbNewId(),
       fieldType: "input",
       label: "Новое поле",
       required: false,
       placeholder: "",
     };
-    u({ fields: [...p.fields, newField] });
+    u({ fields: [...fields, newField] });
   };
 
   const updateField = (idx: number, patch: Partial<ZbFormField>) => {
-    u({ fields: p.fields.map((f, i) => (i === idx ? { ...f, ...patch } : f)) });
+    u({ fields: fields.map((f, i) => (i === idx ? { ...f, ...patch } : f)) });
   };
 
   const removeField = (idx: number) => {
-    u({ fields: p.fields.filter((_, i) => i !== idx) });
+    u({ fields: fields.filter((_, i) => i !== idx) });
   };
 
   const moveField = (idx: number, dir: -1 | 1) => {
-    const arr = [...p.fields];
+    const arr = [...fields];
     const swapIdx = idx + dir;
     if (swapIdx < 0 || swapIdx >= arr.length) return;
     [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
@@ -631,12 +633,12 @@ function FormPanel({ el }: { el: ZbElement }) {
   return (
     <>
       <Group label="Поля">
-        {p.fields.length === 0 ? (
+        {fields.length === 0 ? (
           <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "8px 0" }}>
             Нет полей — нажмите + Поле
           </div>
         ) : (
-          p.fields.map((field, idx) => (
+          fields.map((field, idx) => (
             <div
               key={field.id}
               style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}
@@ -660,8 +662,8 @@ function FormPanel({ el }: { el: ZbElement }) {
                 >↑</button>
                 <button
                   onClick={() => moveField(idx, 1)}
-                  disabled={idx === p.fields.length - 1}
-                  style={{ width: 22, height: 22, border: "1px solid #e2e8f0", borderRadius: 4, background: "#fff", cursor: idx === p.fields.length - 1 ? "default" : "pointer", fontSize: 11, flexShrink: 0 }}
+                  disabled={idx === fields.length - 1}
+                  style={{ width: 22, height: 22, border: "1px solid #e2e8f0", borderRadius: 4, background: "#fff", cursor: idx === fields.length - 1 ? "default" : "pointer", fontSize: 11, flexShrink: 0 }}
                 >↓</button>
                 <button
                   onClick={() => removeField(idx)}
@@ -682,13 +684,13 @@ function FormPanel({ el }: { el: ZbElement }) {
         )}
         <button
           onClick={addField}
-          disabled={p.fields.length >= 10}
-          title={p.fields.length >= 10 ? "Максимум 10 полей" : undefined}
+          disabled={fields.length >= 10}
+          title={fields.length >= 10 ? "Максимум 10 полей" : undefined}
           style={{
             width: "100%", height: 28, borderRadius: 5, fontSize: 11,
-            cursor: p.fields.length >= 10 ? "not-allowed" : "pointer",
+            cursor: fields.length >= 10 ? "not-allowed" : "pointer",
             background: "#f8fafc",
-            color: p.fields.length >= 10 ? "#94a3b8" : "#2563eb",
+            color: fields.length >= 10 ? "#94a3b8" : "#2563eb",
             border: "1px dashed #e2e8f0",
           }}
         >
