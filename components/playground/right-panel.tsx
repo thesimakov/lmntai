@@ -47,6 +47,8 @@ type RightPanelProps = {
   ensurePublicShareForPreviewTab?: () => Promise<boolean>;
   /** Показать кнопку «Открыть в редакторе» (Lemnity Box). */
   showOpenInBox?: boolean;
+  /** Вызывается когда пользователь нажимает «AI-правка» для элемента */
+  onAiEdit?: (elementId: string, elementLabel: string) => void;
 };
 
 function IdleTypingHint() {
@@ -243,6 +245,7 @@ export function RightPanel({
   previewVariant = "default",
   ensurePublicShareForPreviewTab,
   showOpenInBox = false,
+  onAiEdit,
 }: RightPanelProps) {
   const previewFrame = previewUrl && sandboxId && (
     <LemnityAiPreviewChrome>
@@ -260,6 +263,7 @@ export function RightPanel({
         previewVariant={previewVariant}
         ensurePublicShareForPreviewTab={ensurePublicShareForPreviewTab}
         showOpenInBox={showOpenInBox}
+        onAiEdit={onAiEdit}
       />
     </LemnityAiPreviewChrome>
   );

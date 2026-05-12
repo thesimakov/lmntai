@@ -106,6 +106,8 @@ type PreviewFrameProps = {
   ensurePublicShareForPreviewTab?: () => Promise<boolean>;
   /** Показать кнопку «Открыть в редакторе» (Lemnity Box). */
   showOpenInBox?: boolean;
+  /** Вызывается когда пользователь нажимает «AI-правка» для элемента */
+  onAiEdit?: (elementId: string, elementLabel: string) => void;
 };
 
 type ExportTask = "zip" | "pptx" | "pdfServer" | "docx" | "pdfClient" | null;
@@ -123,6 +125,7 @@ export function PreviewFrame({
   previewVariant = "default",
   ensurePublicShareForPreviewTab,
   showOpenInBox = false,
+  onAiEdit,
 }: PreviewFrameProps) {
   const { t } = useI18n();
   const router = useRouter();
@@ -925,6 +928,26 @@ export function PreviewFrame({
               {visualEditMode && !iframeBlocked ? (
                 <div className="pointer-events-none absolute inset-0 z-30 flex items-end justify-center p-2 sm:justify-end sm:p-4">
                   <div className="pointer-events-auto flex w-full max-w-md flex-col gap-1.5">
+                    {visualSnapshot && onAiEdit && (
+                      <div className="flex items-center gap-1 self-end rounded-lg bg-gray-900 px-2 py-1 text-white shadow-lg">
+                        <span className="text-[10px] text-gray-400">{visualSnapshot.tagName.toLowerCase()}</span>
+                        <div className="mx-1 h-3 w-px bg-gray-600" />
+                        <button
+                          type="button"
+                          className="rounded px-2 py-0.5 text-[11px] font-medium hover:bg-gray-700"
+                          onClick={() => {
+                            const el = visualSelectedPrimaryRef.current;
+                            const id =
+                              el?.getAttribute("data-lmnt-element-id") ??
+                              el?.id ??
+                              visualSnapshot.elementId;
+                            onAiEdit(id, visualSnapshot.tagName.toLowerCase());
+                          }}
+                        >
+                          🤖 AI-правка
+                        </button>
+                      </div>
+                    )}
                     <ElementEditorPanel
                       ref={visualEditorPanelRef}
                       snapshot={visualSelectedCount <= 1 ? visualSnapshot : null}

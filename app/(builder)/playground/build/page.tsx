@@ -2229,6 +2229,12 @@ export default function PromptBuildPage() {
     setMode("preview");
   }, []);
 
+  const handleAiEdit = useCallback((elementId: string, elementLabel: string) => {
+    const { setSelectedElementId } = useBuildEditorStore.getState();
+    setSelectedElementId(elementId);
+    toast.info(`Контекст выбран: ${elementLabel}. Введите промпт для AI-правки.`);
+  }, []);
+
   /** Левая колонка чата («Сборка промпта»): скрываем при сворачивании или при активном каталожном шаблоне сборки */
   const leftPromptRailHidden = leftCollapsed || Boolean(buildTemplate);
 
@@ -2522,6 +2528,7 @@ export default function PromptBuildPage() {
                     projectKind !== "resume" &&
                     projectKind !== "lovable"
                   }
+                  onAiEdit={visualLayoutEditor ? handleAiEdit : undefined}
                 />
               </div>
 
