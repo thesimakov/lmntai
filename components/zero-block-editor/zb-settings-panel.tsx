@@ -711,6 +711,102 @@ function FormPanel({ el }: { el: ZbElement }) {
   );
 }
 
+function GalleryPanel({ el }: { el: ZbElement }) {
+  const { updateElementProps } = useZbEditorStore();
+  const p = el.props as unknown as ZbGalleryProps;
+  const u = (patch: Partial<ZbGalleryProps>) => updateElementProps(el.id, patch as Record<string, unknown>);
+
+  const images = p.images ?? [];
+
+  const addImage = () => {
+    if (images.length >= 20) return;
+    u({ images: [...images, ""] });
+  };
+
+  const updateImage = (idx: number, val: string) => {
+    u({ images: images.map((img, i) => (i === idx ? val : img)) });
+  };
+
+  const removeImage = (idx: number) => {
+    u({ images: images.filter((_, i) => i !== idx) });
+  };
+
+  return (
+    <>
+      <Group label="Изображения">
+        {images.length === 0 ? (
+          <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "8px 0" }}>
+            Нет изображений
+          </div>
+        ) : (
+          images.map((img, idx) => (
+            <div key={idx} style={{ display: "flex", gap: 4, alignItems: "center" }}>
+              <TextInput value={img} onChange={(v) => updateImage(idx, v)} placeholder="https://..." />
+              <button
+                onClick={() => removeImage(idx)}
+                style={{ width: 22, height: 22, border: "1px solid #fca5a5", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: 11, color: "#ef4444", flexShrink: 0 }}
+              >🗑</button>
+            </div>
+          ))
+        )}
+        <button
+          onClick={addImage}
+          disabled={images.length >= 20}
+          title={images.length >= 20 ? "Максимум 20 изображений" : undefined}
+          style={{
+            width: "100%", height: 28, borderRadius: 5, fontSize: 11,
+            cursor: images.length >= 20 ? "not-allowed" : "pointer",
+            background: "#f8fafc",
+            color: images.length >= 20 ? "#94a3b8" : "#2563eb",
+            border: "1px dashed #e2e8f0",
+          }}
+        >
+          + Изображение
+        </button>
+      </Group>
+      <Group label="Вид">
+        <div style={{ display: "flex", gap: 4 }}>
+          {(
+            [
+              ["slider", "Слайдер"],
+              ["grid", "Сетка"],
+              ["masonry", "Мозаика"],
+            ] as const
+          ).map(([val, label]) => (
+            <button
+              key={val}
+              onClick={() => u({ layout: val })}
+              style={{
+                flex: 1, height: 28, borderRadius: 5, fontSize: 10, cursor: "pointer",
+                background: p.layout === val ? "#eff6ff" : "#f8fafc",
+                color: p.layout === val ? "#2563eb" : "#374151",
+                border: p.layout === val ? "1.5px solid #3b82f6" : "1px solid #e2e8f0",
+                fontWeight: p.layout === val ? 600 : 400,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <Toggle checked={p.lightbox} onChange={(v) => u({ lightbox: v })} label="Lightbox" />
+        <Toggle checked={p.arrows} onChange={(v) => u({ arrows: v })} label="Стрелки" />
+      </Group>
+      <Group label="Поведение">
+        <Toggle checked={p.autoplay} onChange={(v) => u({ autoplay: v })} label="Автопроигрывание" />
+        {p.autoplay && (
+          <NumberInput
+            value={p.autoplayInterval ?? 3000}
+            onChange={(v) => u({ autoplayInterval: Math.max(500, v) })}
+            min={500}
+            label="Интервал"
+            suffix="мс"
+          />
+        )}
+      </Group>
+    </>
+  );
+}
+
 // ─── Animation panel ──────────────────────────────────────────────────────────
 
 function AnimationPanel({ el }: { el: ZbElement }) {
@@ -958,6 +1054,7 @@ function ElementTypePanel({ el }: { el: ZbElement }) {
     case "html":    return <HtmlPanel el={el} />;
     case "tooltip": return <TooltipPanel el={el} />;
     case "form":    return <FormPanel el={el} />;
+    case "gallery": return <GalleryPanel el={el} />;
     default:        return null;
   }
 }
