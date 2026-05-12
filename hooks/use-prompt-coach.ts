@@ -37,11 +37,11 @@ export function usePromptCoach() {
   }, []);
 
   // ── Slow-hint timer: fires 12s after promptCoachLoading becomes true ──
-  const store = useBuildEditorStore();
+  const promptCoachLoading = useBuildEditorStore((s) => s.promptCoachLoading);
   useEffect(() => {
     if (slowHintTimerRef.current) clearTimeout(slowHintTimerRef.current);
-    if (!store.promptCoachLoading) {
-      store.setCoachSlowHint(false);
+    if (!promptCoachLoading) {
+      useBuildEditorStore.getState().setCoachSlowHint(false);
       return;
     }
     slowHintTimerRef.current = setTimeout(() => {
@@ -52,8 +52,7 @@ export function usePromptCoach() {
     return () => {
       if (slowHintTimerRef.current) clearTimeout(slowHintTimerRef.current);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [store.promptCoachLoading]);
+  }, [promptCoachLoading]);
 
   // ─── runPromptCoach ────────────────────────────────────────────────────────
 
@@ -114,6 +113,9 @@ export function usePromptCoach() {
       const reply = typeof data.reply === "string" ? data.reply.trim() : "";
       if (!reply) {
         appendMessage({ id: createId(), role: "assistant", content: "❌ Пустой ответ. Попробуй ещё раз.", sentAt: Date.now() });
+        setCoachAwaitingConfirm(false);
+        setPendingTechnicalPrompt(null);
+        setStage("questions");
         return;
       }
 
@@ -161,6 +163,7 @@ export function usePromptCoach() {
       appendMessage({ id: `${Date.now()}-err`, role: "assistant", content: "❌ Ошибка запроса к коучу промпта", sentAt: Date.now() });
       setCoachAwaitingConfirm(false);
       setPendingTechnicalPrompt(null);
+      setStage("questions");
     } finally {
       if (mountedRef.current && seqRef.current === seq) {
         useBuildEditorStore.getState().setPromptCoachLoading(false);
