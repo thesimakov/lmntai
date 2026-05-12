@@ -434,6 +434,7 @@ model User {
   cmsEntryVersions CmsEntryVersion[] @relation("CmsEntryVersionAuthor")
   cmsMediaAssetsOwned CmsMediaAsset[] @relation("CmsMediaAssetOwner")
   cmsPublishJobs CmsPublishJob[] @relation("CmsPublishJobAuthor")
+  savedBlocks   UserSavedBlock[]
 
   /// Ключи прав для роли MANAGER: users.read, users.write, tariffs, team, settings.
   adminPermissions  Json?
@@ -806,4 +807,20 @@ model AuthEventLog {
 
   @@index([createdAt])
   @@index([userId, createdAt])
+}
+
+model UserSavedBlock {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teamProjectId String?
+  name          String
+  blockType     String
+  htmlContent   String   @db.Text
+  cssContent    String   @db.Text @default("")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([teamProjectId])
 }
