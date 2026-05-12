@@ -1,0 +1,86 @@
+<h2>Клик по элементу в превью — что происходит?</h2>
+<p class="subtitle">Пользователь кликает на секцию/элемент в iframe — как работает взаимодействие?</p>
+
+<div class="section">
+  <div class="cards">
+
+    <div class="card" data-choice="select-chat" onclick="toggleSelect(this)">
+      <h3>А — Контекстный промпт в чат <span style="background:#d1fae5;color:#065f46;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600;margin-left:6px;">Рекомендую</span></h3>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Превью</div>
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;min-height:180px;">
+          <div style="flex:1;background:#f8fafc;padding:10px;position:relative;">
+            <!-- Highlighted section -->
+            <div style="border:2px solid #4f46e5;border-radius:6px;padding:10px;margin-bottom:6px;position:relative;">
+              <div style="position:absolute;top:-10px;left:8px;background:#4f46e5;color:#fff;font-size:9px;padding:1px 7px;border-radius:4px;font-weight:600;">Hero Section</div>
+              <div style="background:#d1d5db;border-radius:4px;height:14px;margin-bottom:5px;"></div>
+              <div style="background:#d1d5db;border-radius:4px;height:10px;width:70%;"></div>
+            </div>
+            <div style="background:#e5e7eb;border-radius:6px;height:16px;margin-bottom:5px;"></div>
+          </div>
+          <div style="width:220px;border-left:1px solid #e5e7eb;padding:10px;display:flex;flex-direction:column;gap:6px;">
+            <div style="font-size:10px;color:#9ca3af;font-weight:600;">КОНТЕКСТ: Hero Section</div>
+            <div style="background:#eff6ff;border-radius:6px;padding:6px 8px;font-size:10px;color:#1e40af;">Выбрана секция «Hero». Что изменить?</div>
+            <div style="background:#f3f4f6;border-radius:6px;padding:5px 8px;font-size:10px;color:#6b7280;">Измени заголовок на более цепляющий</div>
+            <div style="margin-top:auto;display:flex;gap:4px;">
+              <div style="flex:1;background:#f3f4f6;border-radius:6px;padding:5px 8px;font-size:10px;color:#9ca3af;">Уточни задачу...</div>
+              <div style="background:#4f46e5;color:#fff;border-radius:5px;padding:4px 8px;font-size:10px;">→</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;">Клик по секции → подсветка + в сайдбаре появляется контекстный чат с предложениями. AI знает, какой элемент выбран, и редактирует только его.</div>
+    </div>
+
+    <div class="card" data-choice="select-inline" onclick="toggleSelect(this)">
+      <h3>Б — Inline-тулбар над элементом</h3>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Превью</div>
+        <div class="mockup-body" style="background:#f8fafc;padding:10px;min-height:180px;position:relative;">
+          <div style="border:2px solid #f59e0b;border-radius:6px;padding:10px;position:relative;margin-bottom:6px;">
+            <!-- Floating toolbar -->
+            <div style="position:absolute;top:-28px;left:0;background:#1f2937;color:#fff;border-radius:6px;padding:4px 8px;font-size:9px;display:flex;gap:8px;">
+              <span>✏️ Изменить текст</span>
+              <span>🎨 Стиль</span>
+              <span>🤖 AI-правка</span>
+              <span>🗑</span>
+            </div>
+            <div style="background:#d1d5db;border-radius:4px;height:14px;margin-bottom:5px;"></div>
+            <div style="background:#d1d5db;border-radius:4px;height:10px;width:70%;"></div>
+          </div>
+          <div style="background:#e5e7eb;border-radius:6px;height:16px;"></div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;">Клик → всплывающий тулбар прямо над блоком с быстрыми действиями: изменить текст, стиль, AI-правка. Похоже на Webflow/Framer.</div>
+    </div>
+
+    <div class="card" data-choice="select-panel" onclick="toggleSelect(this)">
+      <h3>В — Панель свойств справа</h3>
+      <div class="mockup" style="margin-top:10px;">
+        <div class="mockup-header">Превью</div>
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;min-height:180px;">
+          <div style="flex:1;background:#f8fafc;padding:10px;">
+            <div style="border:2px dashed #e5e7eb;border-radius:6px;padding:10px;margin-bottom:5px;">
+              <div style="background:#d1d5db;border-radius:4px;height:14px;margin-bottom:5px;"></div>
+              <div style="background:#d1d5db;border-radius:4px;height:10px;width:70%;"></div>
+            </div>
+          </div>
+          <div style="width:200px;border-left:1px solid #e5e7eb;padding:10px;background:#fff;">
+            <div style="font-size:10px;font-weight:600;color:#374151;margin-bottom:8px;">Hero Section</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:4px;">Заголовок</div>
+            <div style="background:#f3f4f6;border-radius:5px;padding:4px 6px;font-size:10px;color:#374151;margin-bottom:8px;">Главный заголовок...</div>
+            <div style="font-size:10px;color:#6b7280;margin-bottom:4px;">Цвет фона</div>
+            <div style="display:flex;gap:4px;margin-bottom:8px;">
+              <div style="width:16px;height:16px;border-radius:3px;background:#4f46e5;"></div>
+              <div style="width:16px;height:16px;border-radius:3px;background:#10b981;"></div>
+              <div style="width:16px;height:16px;border-radius:3px;background:#f59e0b;"></div>
+            </div>
+            <div style="background:#4f46e5;color:#fff;border-radius:5px;padding:4px 8px;font-size:10px;text-align:center;">AI улучши</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:#6b7280;">Клик → правая панель со свойствами элемента (текст, цвета, паддинги) + кнопка «AI улучши». Ближе к классическому редактору.</div>
+    </div>
+
+  </div>
+</div>

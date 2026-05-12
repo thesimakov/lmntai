@@ -437,28 +437,31 @@ export function AgentChat({
 
       <div
         className={cn(
-          "border-b",
-          isStudio ? "border-border/40 bg-background/80 px-3 py-2.5 backdrop-blur-sm" : "p-3"
+          "shrink-0 border-b",
+          isStudio ? "border-border/50 bg-background px-3 py-2" : "p-3"
         )}
       >
         {headerSlot ? <div className={cn(isStudio ? "mb-2" : "mb-3")}>{headerSlot}</div> : null}
         {isStudio ? (
           <TooltipProvider delayDuration={400}>
-            <div className="flex min-w-0 w-full items-start gap-2">
+            <div className="flex min-w-0 w-full items-center gap-2">
               {studioToolbarSlot ? (
                 <div className="flex shrink-0 items-center gap-0.5">{studioToolbarSlot}</div>
               ) : null}
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-semibold tracking-wide text-violet-600/90 dark:text-violet-300/90">
-                  {t("playground_chat_brand")}
-                </p>
-                <h2 className="mt-0.5 truncate text-xs font-semibold text-foreground">{title}</h2>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 rounded-md bg-primary/8 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-primary/80 dark:bg-primary/20 dark:text-primary/90 select-none">
+                    <span className="h-1 w-1 rounded-full bg-primary/60 dark:bg-primary/80" aria-hidden />
+                    {t("playground_chat_brand")}
+                  </span>
+                </div>
+                <h2 className="mt-0.5 truncate text-[12px] font-semibold leading-tight text-foreground">{title}</h2>
                 {subtitle?.trim() ? (
-                  <p className="mt-0.5 line-clamp-2 text-[11px] text-muted-foreground">{subtitle}</p>
+                  <p className="mt-0.5 line-clamp-2 text-[10px] text-muted-foreground">{subtitle}</p>
                 ) : null}
               </div>
               {studioToolbarTrailingSlot ? (
-                <div className="flex shrink-0 items-center self-start pt-0.5">{studioToolbarTrailingSlot}</div>
+                <div className="flex shrink-0 items-center self-center">{studioToolbarTrailingSlot}</div>
               ) : null}
             </div>
           </TooltipProvider>
@@ -473,9 +476,9 @@ export function AgentChat({
       <div
         ref={scrollRef}
         className={cn(
-          "flex min-h-0 flex-1 flex-col gap-3 overflow-auto",
+          "flex min-h-0 flex-1 flex-col gap-5 overflow-auto",
           isStudio
-            ? "scroll-smooth bg-gradient-to-b from-zinc-100 via-zinc-100 to-zinc-200/70 p-3 pt-2 dark:from-zinc-950 dark:via-zinc-950 dark:to-zinc-900 [scrollbar-gutter:stable]"
+            ? "scroll-smooth bg-white px-4 py-4 dark:bg-zinc-950 [scrollbar-gutter:stable]"
             : "space-y-2 p-3"
         )}
       >
@@ -485,57 +488,52 @@ export function AgentChat({
           {visible.map((m) => (
             <motion.div
               key={m.id}
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.22 }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
             >
               {isStudio && m.role === "assistant" ? (
-                <div className="w-full min-w-0 pr-1">
-                  <div className="min-w-0 w-full max-w-full">
-                    <p className="mb-0.5 pl-0.5 text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
+                /* Lovable-style: no bubble, just icon + flowing text */
+                <div className="flex w-full min-w-0 gap-2.5">
+                  {/* Brand avatar dot */}
+                  <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20" aria-hidden>
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/70 dark:bg-primary/80" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-primary/60 dark:text-primary/50 select-none">
                       {t("playground_chat_brand")}
                     </p>
-                    <div
-                      className={cn(
-                        "whitespace-pre-wrap rounded-2xl rounded-tl-sm border border-white/50 bg-white/95 px-3.5 py-2.5 text-sm leading-relaxed text-foreground [word-break:break-word] shadow-sm ring-1 ring-stone-900/[0.04] dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-100 dark:ring-white/[0.04]"
-                      )}
-                    >
+                    <div className="whitespace-pre-wrap text-[13px] leading-[1.65] text-foreground [word-break:break-word] dark:text-zinc-100">
                       <TypingAssistantContent
                         text={formatLemnityAssistantStreamText(m.content, t)}
                         messageId={m.id}
                       />
                     </div>
                     {m.sentAt != null ? (
-                      <p className="mt-0.5 pl-1 text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
+                      <p className="mt-1.5 text-[10px] tabular-nums text-foreground/30 dark:text-zinc-600">
                         {formatMessageClock(m.sentAt, lang)}
                       </p>
                     ) : null}
                   </div>
                 </div>
               ) : isStudio && m.role === "user" ? (
-                <div className="flex w-full min-w-0 flex-row items-end justify-end">
-                  <div className="min-w-0 w-fit max-w-full">
-                    <p className="mb-0.5 pr-0.5 text-right text-[11px] font-medium text-stone-600/90 dark:text-zinc-400">
-                      {t("playground_chat_you")}
-                    </p>
-                    <div
-                      className={cn(
-                        "ml-auto whitespace-pre-wrap rounded-2xl rounded-tr-md border-0 bg-primary px-3.5 py-2.5 text-sm font-normal leading-relaxed text-primary-foreground [word-break:break-word] shadow-none"
-                      )}
-                    >
+                /* User pill — right-aligned, compact */
+                <div className="flex w-full min-w-0 justify-end">
+                  <div className="min-w-0 max-w-[82%]">
+                    <div className="whitespace-pre-wrap rounded-[18px] rounded-br-md bg-primary px-3.5 py-2 text-[13px] leading-[1.6] text-primary-foreground [word-break:break-word] dark:bg-primary">
                       {m.content}
                     </div>
                     {m.promptPlainText &&
                     m.promptPlainText !== m.content &&
                     m.content.length < 240 &&
                     m.promptPlainText.length > 400 ? (
-                      <p className="mt-1 max-w-full pr-0.5 text-right text-[10px] leading-snug text-stone-500/90 dark:text-zinc-400">
+                      <p className="mt-1 text-right text-[10px] leading-snug text-foreground/35 dark:text-zinc-500">
                         {t("playground_chat_user_built_prompt_note")}
                       </p>
                     ) : null}
                     {m.sentAt != null ? (
-                      <p className="mt-0.5 pr-1 text-right text-[10px] tabular-nums text-stone-500/80 dark:text-zinc-500">
+                      <p className="mt-1 text-right text-[10px] tabular-nums text-foreground/30 dark:text-zinc-600">
                         {formatMessageClock(m.sentAt, lang)}
                       </p>
                     ) : null}
@@ -565,7 +563,7 @@ export function AgentChat({
                 <div
                   className={cn(
                     "mt-2 flex items-center gap-1 text-muted-foreground",
-                    isStudio && "pl-0.5"
+                    isStudio && "pl-7"
                   )}
                 >
                   <button
@@ -682,8 +680,8 @@ export function AgentChat({
 
       <div
         className={cn(
-          "border-t",
-          isStudio ? "border-border/30 bg-gradient-to-b from-stone-200/30 to-stone-100/40 p-0 dark:from-zinc-900/80 dark:to-zinc-950" : "p-2"
+          "shrink-0 border-t",
+          isStudio ? "border-border/40 bg-white p-0 dark:bg-zinc-950" : "p-2"
         )}
       >
         {footerSlot ? <div className="mb-2">{footerSlot}</div> : null}
@@ -722,8 +720,8 @@ export function AgentChat({
           />
 
           {isStudio ? (
-            <div className="@container flex min-h-0 flex-col overflow-hidden rounded-none border-0 bg-white/90 shadow-[0_2px_20px_rgba(0,0,0,0.06),0_0_0_1px_rgba(0,0,0,0.03)] backdrop-blur-sm dark:bg-zinc-900/90 dark:shadow-[0_2px_24px_rgba(0,0,0,0.35)]">
-              <div className="px-3.5 pb-2.5 pt-3">
+            <div className="@container mx-3 mb-3 flex min-h-0 flex-col overflow-hidden rounded-xl border border-border/60 bg-white shadow-[0_0_0_1px_rgba(0,0,0,0.03),0_2px_12px_rgba(0,0,0,0.07)] dark:border-zinc-700/50 dark:bg-zinc-900">
+              <div className="px-3.5 pb-2 pt-3">
               {isEditor ? (
                 <Textarea
                   value={value}
@@ -786,7 +784,7 @@ export function AgentChat({
 
               <div
                 ref={studioToolbarRowRef}
-                className="flex min-h-10 w-full min-w-0 items-center gap-0.5 border-t border-stone-200/70 px-2 pb-2 pt-1.5 dark:border-zinc-700/80"
+                className="flex min-h-10 w-full min-w-0 items-center gap-0.5 border-t border-border/60 px-2 pb-2 pt-1.5 dark:border-zinc-700/60"
               >
                 <TooltipProvider delayDuration={400}>
                   <Tooltip>
@@ -795,11 +793,11 @@ export function AgentChat({
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-stone-100/90 hover:text-foreground dark:hover:bg-zinc-800/80"
+                        className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         aria-label="Добавить изображение"
                         onClick={() => fileInputImageRef.current?.click()}
                       >
-                        <ImageIcon className="h-5 w-5 stroke-[1.5]" />
+                        <ImageIcon className="h-4 w-4 stroke-[1.5]" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top">{t("playground_chat_tooltip_attach_image")}</TooltipContent>
@@ -810,11 +808,11 @@ export function AgentChat({
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         aria-label="Добавить видео"
                         onClick={() => fileInputVideoRef.current?.click()}
                       >
-                        <Film className="h-5 w-5 stroke-[1.5]" />
+                        <Film className="h-4 w-4 stroke-[1.5]" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top">{t("playground_chat_tooltip_attach_video")}</TooltipContent>
@@ -825,11 +823,11 @@ export function AgentChat({
                         type="button"
                         size="icon"
                         variant="ghost"
-                        className="h-9 w-9 shrink-0 rounded-xl text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        className="h-8 w-8 shrink-0 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                         aria-label="Прикрепить файл"
                         onClick={() => fileInputAnyRef.current?.click()}
                       >
-                        <Paperclip className="h-5 w-5 stroke-[1.5]" />
+                        <Paperclip className="h-4 w-4 stroke-[1.5]" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top">{t("playground_chat_tooltip_attach_file")}</TooltipContent>
@@ -843,9 +841,9 @@ export function AgentChat({
                           size="icon"
                           variant="ghost"
                           className={cn(
-                            "h-9 w-9 shrink-0 rounded-xl",
+                            "h-8 w-8 shrink-0 rounded-lg",
                             buildTemplate
-                              ? "text-sky-700 hover:bg-sky-100/80 dark:text-sky-400 dark:hover:bg-sky-950/50"
+                              ? "text-primary/80 hover:bg-primary/8 dark:text-primary/70 dark:hover:bg-primary/20"
                               : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                           )}
                           aria-label={t("build_template_aria")}
@@ -854,7 +852,7 @@ export function AgentChat({
                             setTemplateDialogOpen(true);
                           }}
                         >
-                          <LayoutTemplate className="h-5 w-5 stroke-[1.5]" />
+                          <LayoutTemplate className="h-4 w-4 stroke-[1.5]" />
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="top">
@@ -865,13 +863,13 @@ export function AgentChat({
                     </Tooltip>
                   ) : null}
 
-                <div className="mx-1.5 h-5 w-px shrink-0 bg-border" aria-hidden />
+                <div className="mx-1 h-4 w-px shrink-0 bg-border/70" aria-hidden />
 
                 <button
                   ref={modelAnchorRef}
                   type="button"
                   className={cn(
-                    "inline-flex min-h-9 w-max max-w-[min(100%,12rem)] shrink-0 items-center rounded-xl py-1.5 text-sm font-medium text-foreground hover:bg-muted/50",
+                    "inline-flex min-h-8 w-max max-w-[min(100%,12rem)] shrink-0 items-center rounded-lg py-1 text-[11px] font-medium text-foreground/80 hover:bg-muted/60 hover:text-foreground",
                     studioToolbarCompact ? "gap-1 px-1.5" : "gap-1.5 px-2"
                   )}
                   aria-label={t("playground_chat_model_picker_aria").replace(
@@ -916,7 +914,7 @@ export function AgentChat({
                   </span>
                   <ChevronDown
                     className={cn(
-                      "h-4 w-4 shrink-0 text-muted-foreground",
+                      "h-3 w-3 shrink-0 text-muted-foreground/70",
                       studioToolbarCompact && "hidden"
                     )}
                     aria-hidden
@@ -928,7 +926,7 @@ export function AgentChat({
                 <Button
                   type="button"
                   size="icon"
-                  className="h-10 w-10 shrink-0 rounded-full bg-sky-600 text-white shadow-md hover:bg-sky-600/90 dark:bg-sky-600"
+                  className="h-9 w-9 shrink-0 rounded-xl bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-30 dark:bg-primary dark:hover:bg-primary/90"
                   onClick={() => {
                     if (disabled) return;
                     void submit();

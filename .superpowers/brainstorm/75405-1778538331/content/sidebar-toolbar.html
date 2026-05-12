@@ -1,0 +1,130 @@
+<h2>Секция 3: Сайдбар + Inline-тулбар</h2>
+<p class="subtitle">Детальный вид компонентов AiEditorSidebar и inline-тулбара в превью</p>
+
+<div class="section">
+  <div class="split">
+
+    <div class="mockup">
+      <div class="mockup-header">AiEditorSidebar (260px)</div>
+      <div class="mockup-body" style="padding:0;min-height:480px;display:flex;flex-direction:column;">
+
+        <!-- Top: project title + new button -->
+        <div style="padding:10px 12px;border-bottom:1px solid #e5e7eb;display:flex;align-items:center;justify-content:space-between;">
+          <div style="font-size:12px;font-weight:600;color:#111827;">Мой лендинг</div>
+          <div style="font-size:10px;background:#f3f4f6;border-radius:5px;padding:3px 8px;color:#6b7280;cursor:pointer;">+ Новый</div>
+        </div>
+
+        <!-- Version list -->
+        <div style="padding:8px;border-bottom:1px solid #e5e7eb;flex-shrink:0;">
+          <div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.08em;padding:2px 4px 6px;">ВЕРСИИ</div>
+
+          <!-- Active version -->
+          <div style="background:#eff6ff;border-radius:7px;padding:7px 9px;margin-bottom:4px;border:1px solid #bfdbfe;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:10px;font-weight:700;color:#1d4ed8;">v4</span>
+              <span style="font-size:9px;color:#93c5fd;">сейчас</span>
+            </div>
+            <div style="font-size:10px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Добавь форму обратной связи</div>
+          </div>
+
+          <!-- Prev versions -->
+          <div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:4px;border:1px solid #e5e7eb;cursor:pointer;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:10px;font-weight:600;color:#6b7280;">v3</span>
+              <span style="font-size:9px;color:#9ca3af;">5 мин</span>
+            </div>
+            <div style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Измени цветовую схему</div>
+          </div>
+
+          <div style="background:#fff;border-radius:7px;padding:7px 9px;margin-bottom:4px;border:1px solid #e5e7eb;cursor:pointer;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:10px;font-weight:600;color:#6b7280;">v2</span>
+              <span style="font-size:9px;color:#9ca3af;">12 мин</span>
+            </div>
+            <div style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Добавь блок с командой</div>
+          </div>
+
+          <div style="background:#fff;border-radius:7px;padding:7px 9px;border:1px solid #e5e7eb;cursor:pointer;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+              <span style="font-size:10px;font-weight:600;color:#6b7280;">v1</span>
+              <span style="font-size:9px;color:#9ca3af;">18 мин</span>
+            </div>
+            <div style="font-size:10px;color:#6b7280;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Создай лендинг для SaaS</div>
+          </div>
+        </div>
+
+        <!-- Chat messages (scrollable) -->
+        <div style="flex:1;overflow:hidden;padding:8px;display:flex;flex-direction:column;gap:5px;">
+          <div style="font-size:9px;font-weight:600;color:#9ca3af;letter-spacing:.08em;padding:2px 4px 4px;">ТЕКУЩАЯ СЕССИЯ</div>
+          <div style="background:#f3f4f6;border-radius:7px 7px 7px 2px;padding:6px 8px;font-size:10px;color:#374151;">Создай лендинг для SaaS продукта с разделами Hero, Features, Pricing</div>
+          <div style="background:#eff6ff;border-radius:7px 7px 2px 7px;padding:6px 8px;font-size:10px;color:#1e40af;align-self:flex-end;max-width:90%;">Готово! Создал страницу с 4 секциями.</div>
+          <div style="background:#f3f4f6;border-radius:7px 7px 7px 2px;padding:6px 8px;font-size:10px;color:#374151;">Добавь форму обратной связи внизу</div>
+          <div style="background:#eff6ff;border-radius:7px 7px 2px 7px;padding:6px 8px;font-size:10px;color:#1e40af;align-self:flex-end;">Добавил форму с полями имя, email, сообщение.</div>
+        </div>
+
+        <!-- Prompt input (bottom, fixed) -->
+        <div style="padding:8px;border-top:1px solid #e5e7eb;background:#fff;">
+          <div style="background:#f3f4f6;border-radius:8px;padding:7px 10px;font-size:10px;color:#9ca3af;margin-bottom:6px;">Опишите следующее изменение...</div>
+          <div style="display:flex;gap:4px;align-items:center;justify-content:space-between;">
+            <div style="font-size:9px;color:#9ca3af;background:#f3f4f6;border-radius:5px;padding:2px 7px;">claude-sonnet-4-6</div>
+            <div style="background:#4f46e5;color:#fff;border-radius:6px;padding:4px 12px;font-size:10px;font-weight:600;">Отправить →</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mockup">
+      <div class="mockup-header">Inline-тулбар в превью (при наведении/клике)</div>
+      <div class="mockup-body" style="background:#f8fafc;padding:16px;min-height:480px;position:relative;">
+
+        <!-- Normal section (no hover) -->
+        <div style="border:1px dashed #e5e7eb;border-radius:6px;padding:12px;margin-bottom:8px;background:#fff;">
+          <div style="background:#d1d5db;border-radius:4px;height:10px;margin-bottom:6px;"></div>
+          <div style="background:#d1d5db;border-radius:4px;height:8px;width:80%;"></div>
+        </div>
+
+        <!-- Hovered/selected section with toolbar -->
+        <div style="position:relative;margin-bottom:8px;">
+          <!-- Toolbar -->
+          <div style="position:absolute;top:-32px;left:0;background:#1f2937;color:#fff;border-radius:7px;padding:5px 8px;font-size:10px;display:flex;gap:10px;align-items:center;white-space:nowrap;z-index:10;box-shadow:0 2px 8px rgba(0,0,0,.2);">
+            <span style="cursor:pointer;opacity:.9;">✏️ Текст</span>
+            <span style="width:1px;height:12px;background:#4b5563;display:inline-block;"></span>
+            <span style="cursor:pointer;opacity:.9;">🎨 Стиль</span>
+            <span style="width:1px;height:12px;background:#4b5563;display:inline-block;"></span>
+            <span style="cursor:pointer;background:#4f46e5;border-radius:4px;padding:2px 7px;">🤖 AI-правка</span>
+            <span style="width:1px;height:12px;background:#4b5563;display:inline-block;"></span>
+            <span style="cursor:pointer;opacity:.7;">🗑</span>
+          </div>
+          <div style="border:2px solid #4f46e5;border-radius:6px;padding:12px;background:#fff;">
+            <div style="font-size:11px;font-weight:700;color:#111827;margin-bottom:4px;">Features Section</div>
+            <div style="background:#d1d5db;border-radius:4px;height:8px;width:90%;margin-bottom:4px;"></div>
+            <div style="background:#d1d5db;border-radius:4px;height:8px;width:70%;"></div>
+          </div>
+        </div>
+
+        <!-- AI-правка input (появляется при клике на "AI-правка") -->
+        <div style="position:absolute;bottom:12px;left:12px;right:12px;background:#fff;border:1px solid #4f46e5;border-radius:10px;padding:10px;box-shadow:0 4px 16px rgba(79,70,229,.15);">
+          <div style="font-size:10px;color:#4f46e5;font-weight:600;margin-bottom:5px;">AI-правка: Features Section</div>
+          <div style="background:#f3f4f6;border-radius:6px;padding:6px 8px;font-size:10px;color:#9ca3af;margin-bottom:6px;">Что изменить в этой секции?</div>
+          <div style="display:flex;gap:6px;">
+            <div style="background:#f3f4f6;border-radius:5px;padding:3px 8px;font-size:9px;color:#6b7280;cursor:pointer;">Упрости текст</div>
+            <div style="background:#f3f4f6;border-radius:5px;padding:3px 8px;font-size:9px;color:#6b7280;cursor:pointer;">Добавь иконки</div>
+            <div style="background:#f3f4f6;border-radius:5px;padding:3px 8px;font-size:9px;color:#6b7280;cursor:pointer;">Измени цвет</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div style="background:#fef3c7;border-radius:10px;padding:12px 16px;border:1px solid #fcd34d;margin-top:8px;">
+  <strong style="color:#92400e;">Поведение:</strong>
+  <ul style="margin:6px 0 0;padding-left:18px;color:#78350f;font-size:12px;line-height:1.8;">
+    <li>Наведение на секцию → появляется тонкая синяя рамка + тулбар</li>
+    <li>Клик «🤖 AI-правка» → внизу превью появляется мини-инпут с контекстом выбранной секции</li>
+    <li>Промпт из AI-правки отправляется как обычный промпт, но с префиксом контекста секции</li>
+    <li>Клик «✏️ Текст» → инлайн-редактирование через существующий ElementEditorPanel</li>
+  </ul>
+</div>

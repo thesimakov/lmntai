@@ -1,0 +1,4 @@
+{"ts":"2026-05-12T10:48:31.585Z","action":"sandbox.create","payload":{"mode":"memory","title":"тест","scaffold":"owned-project"}}
+{"ts":"2026-05-12T10:48:31.651Z","action":"sandbox.update_index_html","payload":null}
+{"ts":"2026-05-12T10:52:50.031Z","action":"sandbox.update_index_html","payload":null}
+{"ts":"2026-05-12T11:00:34.343Z","action":"sandbox.update_index_html","payload":null}

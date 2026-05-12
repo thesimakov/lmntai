@@ -1,0 +1,120 @@
+<h2>Как выглядит сохранённый блок в библиотеке?</h2>
+<p class="subtitle">Три варианта отображения блоков в панели «Мои блоки»</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="html-thumb" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:#6b7280;margin-bottom:6px;">Панель «Мои блоки»</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <!-- block item with mini html preview -->
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;display:flex;align-items:stretch;gap:0;">
+          <div style="width:64px;height:44px;flex-shrink:0;overflow:hidden;position:relative;background:#f3f4f6;border-right:1px solid #e5e7eb;">
+            <!-- mini html render -->
+            <div style="transform:scale(0.18);transform-origin:top left;position:absolute;top:0;left:0;width:360px;">
+              <div style="background:linear-gradient(135deg,#667eea,#764ba2);padding:20px;text-align:center;">
+                <div style="color:#fff;font-size:24px;font-weight:700;margin-bottom:8px;">Hero</div>
+                <div style="color:rgba(255,255,255,.8);font-size:14px;">Subtitle text</div>
+                <div style="margin-top:12px;background:#fff;color:#667eea;border-radius:20px;padding:6px 16px;display:inline-block;font-size:12px;font-weight:600;">CTA</div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:6px 8px;min-width:0;">
+            <div style="font-size:11px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Hero с градиентом</div>
+            <div style="font-size:9px;color:#9ca3af;">GrapesJS · Личный</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;display:flex;align-items:stretch;gap:0;">
+          <div style="width:64px;height:44px;flex-shrink:0;overflow:hidden;position:relative;background:#f3f4f6;border-right:1px solid #e5e7eb;">
+            <div style="transform:scale(0.18);transform-origin:top left;position:absolute;top:0;left:0;width:360px;">
+              <div style="background:#fff;padding:20px;display:flex;gap:16px;">
+                <div style="flex:1;background:#f3f4f6;height:60px;border-radius:6px;"></div>
+                <div style="flex:1;"><div style="font-size:18px;font-weight:700;color:#111;">Features</div><div style="font-size:12px;color:#6b7280;margin-top:6px;">Three key benefits</div></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:6px 8px;min-width:0;">
+            <div style="font-size:11px;font-weight:600;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Features 3-col</div>
+            <div style="font-size:9px;color:#9ca3af;">GrapesJS · Команда</div>
+          </div>
+        </div>
+        <div style="background:#f9fafb;border:1px dashed #d1d5db;border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer;">
+          <span style="font-size:10px;color:#6b7280;">+ Сохранить блок</span>
+        </div>
+      </div>
+    </div>
+    <h3>А — HTML-превью (авто)</h3>
+    <p>Миниатюра генерируется на лету: HTML блока рендерится в масштабе ~18% прямо в карточке. Не нужен скриншот — всегда актуально.</p>
+    <div style="margin-top:6px;" class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Всегда актуально</li><li>Не нужен бэкенд скриншотов</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Может тормозить при 50+ блоках</li><li>Нет CSS из внешних файлов</li></ul></div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="text-only" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:#6b7280;margin-bottom:6px;">Панель «Мои блоки»</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#111827;">Hero с градиентом</div>
+            <div style="font-size:9px;color:#9ca3af;margin-top:1px;">GrapesJS · Личный · Hero, CTA</div>
+          </div>
+          <div style="background:#4f46e5;color:#fff;border-radius:4px;padding:2px 8px;font-size:9px;cursor:pointer;">Вставить</div>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <div style="font-size:11px;font-weight:600;color:#111827;">Features 3-col</div>
+            <div style="font-size:9px;color:#9ca3af;margin-top:1px;">GrapesJS · Команда · Features</div>
+          </div>
+          <div style="background:#4f46e5;color:#fff;border-radius:4px;padding:2px 8px;font-size:9px;cursor:pointer;">Вставить</div>
+        </div>
+        <div style="background:#f9fafb;border:1px dashed #d1d5db;border-radius:6px;padding:8px;text-align:center;cursor:pointer;">
+          <span style="font-size:10px;color:#6b7280;">+ Сохранить текущий блок</span>
+        </div>
+      </div>
+    </div>
+    <h3>Б — Только название + теги</h3>
+    <p>Список без картинок: имя блока, тип (GrapesJS/Zero), владелец (личный/команда), теги. Быстро, легко, никакого рендера.</p>
+    <div style="margin-top:6px;" class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Максимально просто</li><li>Быстро работает</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Сложно понять что внутри</li><li>Придётся помнить названия</li></ul></div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="screenshot" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:600;color:#6b7280;margin-bottom:6px;">Панель «Мои блоки»</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+          <div style="height:50px;background:linear-gradient(135deg,#667eea,#764ba2);position:relative;">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:600;">HERO</div>
+          </div>
+          <div style="padding:5px 7px;">
+            <div style="font-size:10px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Hero с градиентом</div>
+            <div style="font-size:8px;color:#9ca3af;">Личный</div>
+          </div>
+        </div>
+        <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;overflow:hidden;">
+          <div style="height:50px;background:#f3f4f6;position:relative;">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:9px;">📷 скриншот</div>
+          </div>
+          <div style="padding:5px 7px;">
+            <div style="font-size:10px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Features 3-col</div>
+            <div style="font-size:8px;color:#9ca3af;">Команда</div>
+          </div>
+        </div>
+        <div style="background:#f9fafb;border:1px dashed #d1d5db;border-radius:6px;padding:8px;display:flex;align-items:center;justify-content:center;grid-column:1/-1;cursor:pointer;">
+          <span style="font-size:10px;color:#6b7280;">+ Сохранить блок</span>
+        </div>
+      </div>
+    </div>
+    <h3>В — Скриншот (grid-вид)</h3>
+    <p>При сохранении делается скриншот через Puppeteer/html2canvas. Блоки показываются сеткой 2×N с крупными превью. Красиво, но сложнее в реализации.</p>
+    <div style="margin-top:6px;" class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Наглядно как в Figma</li><li>Быстрая загрузка (PNG)</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Нужен headless браузер или html2canvas</li><li>Скриншот может устареть</li></ul></div>
+    </div>
+  </div>
+
+</div>

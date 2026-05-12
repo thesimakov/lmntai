@@ -1,0 +1,109 @@
+<h2>Фон секции — как реализовать?</h2>
+<p class="subtitle">Три варианта UX. Остальные улучшения не зависят от этого выбора.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="toolbar-popover" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-family:system-ui,sans-serif;">
+      <!-- Toolbar with bg button -->
+      <div style="position:relative;padding-top:28px;">
+        <div style="position:absolute;top:0;left:8px;background:#1f2937;border-radius:5px;padding:3px 6px;display:inline-flex;gap:5px;align-items:center;font-size:10px;color:#fff;">
+          <span style="opacity:.7;">⠿</span>
+          <span style="opacity:.7;">↑ ↓</span>
+          <span style="background:#4f46e5;border-radius:3px;padding:2px 6px;font-size:9px;font-weight:600;cursor:pointer;">🎨 Фон</span>
+          <span style="opacity:.7;">🗂</span>
+          <span style="color:#ef4444;opacity:.6;">✕</span>
+        </div>
+        <!-- Section with popover -->
+        <div style="background:#f3f4f6;border:2px solid #4f46e5;border-radius:6px;padding:8px;position:relative;min-height:48px;">
+          <div style="background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:8px;position:absolute;top:4px;left:4px;width:180px;box-shadow:0 4px 16px rgba(0,0,0,.12);">
+            <div style="font-size:9px;font-weight:600;color:#374151;margin-bottom:6px;">Фон секции</div>
+            <!-- Tabs -->
+            <div style="display:flex;gap:2px;margin-bottom:6px;">
+              <div style="background:#eff6ff;border:1px solid #3b82f6;color:#1d4ed8;border-radius:3px;padding:2px 6px;font-size:9px;font-weight:600;">Цвет</div>
+              <div style="background:#f9fafb;color:#6b7280;border-radius:3px;padding:2px 6px;font-size:9px;">Градиент</div>
+              <div style="background:#f9fafb;color:#6b7280;border-radius:3px;padding:2px 6px;font-size:9px;">Картинка</div>
+            </div>
+            <!-- Swatches -->
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px;">
+              <div style="width:18px;height:18px;background:#fff;border:1px solid #e5e7eb;border-radius:3px;"></div>
+              <div style="width:18px;height:18px;background:#111827;border-radius:3px;"></div>
+              <div style="width:18px;height:18px;background:#4f46e5;border-radius:3px;box-shadow:0 0 0 2px #818cf8;"></div>
+              <div style="width:18px;height:18px;background:#10b981;border-radius:3px;"></div>
+              <div style="width:18px;height:18px;background:#f59e0b;border-radius:3px;"></div>
+              <div style="width:18px;height:18px;background:#ef4444;border-radius:3px;"></div>
+            </div>
+            <!-- Hex input -->
+            <div style="background:#f3f4f6;border-radius:3px;padding:3px 6px;font-size:9px;color:#374151;font-family:monospace;">#4F46E5</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3>А — Попап из тулбара (рекомендую)</h3>
+    <p>Кнопка «🎨 Фон» в тулбаре секции → React-попап с табами Цвет / Градиент / Картинка. Паттерн как у LemnityBoxSaveBlockDialog. Не нужно открывать правый Style Manager.</p>
+    <div class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Контекстно — прямо у секции</li><li>Не надо знать Style Manager</li><li>Реиспользует существующий паттерн</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Новый компонент (~150 строк)</li></ul></div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="style-manager" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-family:system-ui,sans-serif;">
+      <div style="display:flex;gap:6px;">
+        <!-- Canvas -->
+        <div style="flex:1;background:#f3f4f6;border:2px solid #4f46e5;border-radius:6px;padding:8px;min-height:80px;">
+          <div style="background:#e5e7eb;border-radius:3px;height:10px;margin-bottom:4px;"></div>
+          <div style="background:#e5e7eb;border-radius:3px;height:10px;width:70%;"></div>
+        </div>
+        <!-- Right panel -->
+        <div style="width:100px;background:#fff;border:1px solid #e5e7eb;border-radius:6px;padding:6px;">
+          <div style="font-size:8px;color:#6b7280;margin-bottom:4px;">СТИЛИ</div>
+          <div style="font-size:8px;font-weight:600;color:#374151;margin-bottom:3px;">Фон</div>
+          <div style="display:flex;gap:2px;margin-bottom:3px;">
+            <div style="width:14px;height:14px;background:#4f46e5;border-radius:2px;border:1px solid #6366f1;"></div>
+            <div style="font-size:8px;color:#374151;font-family:monospace;">#4F46E5</div>
+          </div>
+          <div style="font-size:8px;color:#6b7280;margin-bottom:2px;">Картинка</div>
+          <div style="background:#f3f4f6;border-radius:2px;padding:2px 4px;font-size:7px;color:#9ca3af;">URL или Загрузить</div>
+        </div>
+      </div>
+    </div>
+    <h3>Б — Кастомный раздел в Style Manager</h3>
+    <p>Расширяем правый Style Manager: добавляем группу «Фон секции» с полями цвет + картинка. Открывается при выборе секции. Использует GrapesJS Traits API.</p>
+    <div class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Нативный UX GrapesJS</li><li>Не нужен отдельный попап</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Надо открывать правый сайдбар</li><li>Тяжелее стилизовать под дизайн</li></ul></div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="inline-swatches" onclick="toggleSelect(this)">
+    <div style="background:#f8fafc;border-radius:8px;padding:10px;margin-bottom:10px;font-family:system-ui,sans-serif;">
+      <div style="position:relative;padding-top:36px;">
+        <!-- Toolbar: color swatches inline -->
+        <div style="position:absolute;top:0;left:4px;background:#1f2937;border-radius:5px;padding:3px 6px;display:inline-flex;gap:4px;align-items:center;">
+          <span style="font-size:10px;color:#9ca3af;opacity:.7;">⠿</span>
+          <span style="font-size:10px;color:#9ca3af;opacity:.7;">↑↓</span>
+          <!-- Color swatches row -->
+          <div style="width:14px;height:14px;background:#fff;border:1px solid #6b7280;border-radius:2px;cursor:pointer;"></div>
+          <div style="width:14px;height:14px;background:#111827;border-radius:2px;cursor:pointer;"></div>
+          <div style="width:14px;height:14px;background:#4f46e5;border-radius:2px;border:1.5px solid #818cf8;cursor:pointer;"></div>
+          <div style="width:14px;height:14px;background:#10b981;border-radius:2px;cursor:pointer;"></div>
+          <div style="width:14px;height:14px;background:#f59e0b;border-radius:2px;cursor:pointer;"></div>
+          <div style="width:12px;height:12px;border:1px solid #6b7280;border-radius:2px;background:linear-gradient(135deg,#f00,#00f);cursor:pointer;"></div>
+          <span style="font-size:10px;color:#9ca3af;opacity:.7;">🗂</span>
+          <span style="font-size:10px;color:#ef4444;opacity:.6;">✕</span>
+        </div>
+        <div style="background:#4f46e5;border-radius:6px;padding:10px 8px;min-height:30px;">
+          <div style="background:rgba(255,255,255,.2);border-radius:3px;height:8px;width:70%;"></div>
+        </div>
+      </div>
+    </div>
+    <h3>В — Цветные свотчи прямо в тулбаре</h3>
+    <p>Тулбар расширяется: ряд цветных квадратиков + кнопка «+» для пикера. Клик — сразу применяет цвет без попапа. Последний вариант открывает градиент/картинку.</p>
+    <div class="pros-cons">
+      <div class="pros"><h4>Плюсы</h4><ul><li>Один клик без попапа</li><li>Быстро для частых цветов</li></ul></div>
+      <div class="cons"><h4>Минусы</h4><ul><li>Тулбар перегружается</li><li>Не хватает места для градиентов</li></ul></div>
+    </div>
+  </div>
+
+</div>

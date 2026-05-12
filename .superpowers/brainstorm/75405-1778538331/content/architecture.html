@@ -1,0 +1,57 @@
+<h2>Архитектура компонентов — AI-редактор</h2>
+<p class="subtitle">Как build/page.tsx разбивается на части. Зелёное — новое, синее — рефактор существующего, серое — без изменений.</p>
+
+<div class="section">
+<div class="mockup">
+  <div class="mockup-header">Файловая структура (новая)</div>
+  <div class="mockup-body" style="font-family:monospace;font-size:12px;line-height:1.8;padding:16px;">
+
+    <div style="color:#6b7280;">app/(builder)/playground/build/</div>
+    <div style="margin-left:16px;color:#6b7280;">page.tsx <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← тонкий оркестратор (auth + routing + &lt;AiEditorShell&gt;), ~150 строк</span></div>
+
+    <div style="margin-top:12px;color:#6b7280;">components/ai-editor/</div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">AiEditorShell.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← новый корневой layout (левый сайдбар + центральный превью)</span></div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">AiEditorSidebar.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← список версий + ввод промпта + история чата</span></div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">AiVersionList.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← прокручиваемый список снимков с датой и промптом</span></div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">AiVersionDiffBadge.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← маленький индикатор «v3 · 2 мин назад»</span></div>
+    <div style="margin-left:16px;"><span style="color:#3b82f6;font-weight:600;">AiPromptInput.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← вынесен из build/page.tsx (textarea + кнопка + модель)</span></div>
+    <div style="margin-left:16px;"><span style="color:#3b82f6;font-weight:600;">AiEditorPreview.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← обёртка над preview-frame.tsx + тулбар устройств</span></div>
+
+    <div style="margin-top:12px;color:#6b7280;">components/playground/</div>
+    <div style="margin-left:16px;"><span style="color:#3b82f6;font-weight:600;">preview-frame.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← добавляем экшены в ElementEditorPanel (AI-правка)</span></div>
+    <div style="margin-left:16px;"><span style="color:#6b7280;">agent-chat.tsx</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← без изменений (используется внутри AiEditorSidebar)</span></div>
+
+    <div style="margin-top:12px;color:#6b7280;">lib/stores/</div>
+    <div style="margin-left:16px;"><span style="color:#3b82f6;font-weight:600;">use-build-editor-store.ts</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← добавляем: currentVersionId, versions[], selectedElementId</span></div>
+
+    <div style="margin-top:12px;color:#6b7280;">app/api/projects/[id]/snapshots/</div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">route.ts</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← GET (список), POST (создать снимок)</span></div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">[snapshotId]/route.ts</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← GET (загрузить), DELETE</span></div>
+
+    <div style="margin-top:12px;color:#6b7280;">prisma/migrations/</div>
+    <div style="margin-left:16px;"><span style="color:#10b981;font-weight:600;">add_project_snapshot</span> <span style="color:#9ca3af;font-family:sans-serif;font-size:11px;">← новая таблица ProjectSnapshot</span></div>
+
+  </div>
+</div>
+</div>
+
+<div class="section">
+<div class="mockup">
+  <div class="mockup-header">Дерево компонентов (runtime)</div>
+  <div class="mockup-body" style="font-family:monospace;font-size:12px;line-height:2;padding:16px;">
+    <div><span style="color:#6b7280;">build/page.tsx</span></div>
+    <div style="margin-left:16px;">└─ <span style="color:#10b981;font-weight:600;">AiEditorShell</span></div>
+    <div style="margin-left:32px;">├─ <span style="color:#10b981;font-weight:600;">AiEditorSidebar</span> <span style="color:#d1d5db;">(260px, фикс.)</span></div>
+    <div style="margin-left:48px;">├─ <span style="color:#10b981;">AiVersionList</span> → <span style="color:#10b981;">AiVersionDiffBadge</span> ×N</div>
+    <div style="margin-left:48px;">├─ <span style="color:#6b7280;">AgentChat</span> <span style="color:#d1d5db;">(существующий)</span></div>
+    <div style="margin-left:48px;">└─ <span style="color:#3b82f6;">AiPromptInput</span></div>
+    <div style="margin-left:32px;">└─ <span style="color:#3b82f6;">AiEditorPreview</span> <span style="color:#d1d5db;">(flex-1)</span></div>
+    <div style="margin-left:48px;">├─ <span style="color:#6b7280;">BuildPreviewChrome</span> <span style="color:#d1d5db;">(топбар)</span></div>
+    <div style="margin-left:48px;">└─ <span style="color:#3b82f6;">PreviewFrame</span> <span style="color:#d1d5db;">(+ inline toolbar)</span></div>
+  </div>
+</div>
+</div>
+
+<div style="background:#eff6ff;border-radius:12px;padding:14px 18px;border:1px solid #bfdbfe;">
+  <strong style="color:#1e40af;">Принцип разбивки:</strong> <span style="color:#1e40af;">build/page.tsx сохраняет всю логику потоков (SSE, Lemnity AI bridge, токены) — но рендерит только <code>&lt;AiEditorShell&gt;</code>. UI полностью вынесен. Это позволяет изменять раскладку без прикосновения к логике стриминга.</span>
+</div>

@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 
-import { AiEditorShell } from "@/components/ai-editor";
+import { AiEditorShell, AiEditorVersionHistoryButton } from "@/components/ai-editor";
 import { AgentChat, type ChatMessage } from "@/components/playground/agent-chat";
 import { BuildCode } from "@/components/playground/build-code";
 import { BuildPublishDialog } from "@/components/playground/build-publish-dialog";
@@ -2282,6 +2282,11 @@ export default function PromptBuildPage() {
                     lemnityAiBridgeReady={lemnityAiBridgeReady}
                     shouldUseLemnityAiBridge={shouldUseLemnityAiBridge}
                   />
+                  <AiEditorVersionHistoryButton
+                    projectId={lemnityAiSessionId ?? ""}
+                    isGenerating={isGenerating}
+                    onVersionRestoreHtml={handleVersionRestoreHtml}
+                  />
                 </>
               }
               studioToolbarTrailingSlot={
@@ -2580,15 +2585,7 @@ export default function PromptBuildPage() {
   return (
     <PageTransition>
       <div className="flex h-full min-h-0 min-w-0 w-full flex-1 flex-col bg-transparent">
-        <AiEditorShell
-          projectName={header ?? "Проект"}
-          projectId={lemnityAiSessionId ?? ""}
-          isGenerating={isGenerating}
-          onSubmitPrompt={(prompt) => { void onSend(prompt); }}
-          onVersionRestoreHtml={handleVersionRestoreHtml}
-          chatSlot={chatSlot}
-          previewSlot={previewSlot}
-        />
+        <AiEditorShell chatSlot={chatSlot} previewSlot={previewSlot} />
       </div>
       <BuildPublishDialog
         open={publishDialogOpen}
