@@ -19,14 +19,14 @@ import {
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
 import { writeStoredLemnityBuildManusSessionId } from "@/lib/lemnity-ai-build-session-storage";
 import { useBuildEditorStore, type ProjectSnapshotMeta } from "@/lib/stores/use-build-editor-store";
+import { useSandboxFilesStore } from "@/lib/stores/use-sandbox-files-store";
 
 // ─── Module-level helpers ──────────────────────────────────────────────────────
 
 function notifySandboxFilesUpdated(sandboxId: string): void {
-  if (typeof window === "undefined") return;
   const s = sandboxId.trim();
   if (!s) return;
-  window.dispatchEvent(new CustomEvent("lemnity:sandbox-files-updated", { detail: { sandboxId: s } }));
+  useSandboxFilesStore.getState().notifyFilesUpdated(s);
 }
 
 async function saveSnapshot(
@@ -619,7 +619,7 @@ export function useAiSession() {
                   bridgeSawDeltaRef.current = true;
                   appendBridgeAssistantChunk(formatLemnityAssistantStreamText(piece, t));
                 }
-                setProgress((prev) => Math.min(95, Math.max(prev as number, 45)));
+                setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
               return;
             }
@@ -646,7 +646,7 @@ export function useAiSession() {
                 if (!bridgeSawDeltaRef.current) {
                   pushBridgeAssistantMessage(visible);
                 }
-                setProgress((prev) => Math.min(95, Math.max(prev as number, 45)));
+                setProgress((prev) => Math.min(95, Math.max(prev, 45)));
               }
               return;
             }
@@ -663,7 +663,7 @@ export function useAiSession() {
                 description: data.description || "Шаг",
                 status: mapStepStatus(data.status),
               });
-              setProgress((prev) => Math.min(92, Math.max(prev as number, (prev as number) + 5)));
+              setProgress((prev) => Math.min(92, Math.max(prev, prev + 5)));
               return;
             }
 
@@ -798,8 +798,9 @@ export function useAiSession() {
         }
 
         buffer = buffer.replace(/\r\n/g, "\n");
-        if (buffer.trim()) {
-          handleSseBlock(buffer);
+        const finalChunks = buffer.split("\n\n");
+        for (const rawChunk of finalChunks) {
+          if (rawChunk.trim()) handleSseBlock(rawChunk);
         }
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
