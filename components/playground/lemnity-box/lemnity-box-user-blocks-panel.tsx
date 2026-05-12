@@ -61,12 +61,16 @@ export function LemnityBoxUserBlocksPanel({
   async function handleInsert(id: string, blockType: "grapesjs" | "zero") {
     const qs = projectId ? `?projectId=${encodeURIComponent(projectId)}` : "";
     const res = await fetch(`/api/user-blocks/${id}${qs}`);
-    if (!res.ok) return;
-    const data = (await res.json()) as { block: { htmlContent: string; cssContent: string } };
+    if (!res.ok) {
+      alert("Не удалось загрузить блок. Попробуйте ещё раз.");
+      return;
+    }
+    const data = await res.json() as { block: { htmlContent: string; cssContent: string } };
     onInsertBlock(data.block.htmlContent, data.block.cssContent, blockType);
   }
 
-  async function handleDelete(id: string) {
+  async function handleDelete(id: string, name: string) {
+    if (!window.confirm(`Удалить блок «${name}»?`)) return;
     await fetch(`/api/user-blocks/${id}`, { method: "DELETE" });
     setBlocks((prev) => prev.filter((b) => b.id !== id));
   }
@@ -310,7 +314,7 @@ export function LemnityBoxUserBlocksPanel({
                   <button
                     type="button"
                     title="Удалить"
-                    onClick={() => handleDelete(block.id)}
+                    onClick={() => handleDelete(block.id, block.name)}
                     style={{
                       width: 18,
                       height: 18,

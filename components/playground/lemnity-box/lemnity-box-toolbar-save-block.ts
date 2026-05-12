@@ -26,8 +26,7 @@ export function registerLemnityBoxToolbarSaveBlock(
       const selected = ed.getSelected();
       if (!selected) return;
       const html = selected.toHTML?.() ?? "";
-      const allCss = ed.getCss({ keepUnusedStyles: false }) ?? "";
-      onSaveBlock(html, allCss);
+      onSaveBlock(html, "");
     },
   });
 

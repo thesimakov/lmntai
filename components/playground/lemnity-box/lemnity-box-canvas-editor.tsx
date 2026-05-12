@@ -2049,7 +2049,10 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
       <LemnityBoxUserBlocksPanel
         projectId={projectId}
         visible={userBlocksPanelOpen}
-        onClose={() => setUserBlocksPanelOpen(false)}
+        onClose={() => {
+          setUserBlocksPanelOpen(false);
+          getEditor()?.Panels?.getButton("devices-c", "lemnity-user-blocks-toggle")?.set("active", false);
+        }}
         pendingSave={pendingBlockSave}
         onPendingSaveDone={() => setPendingBlockSave(null)}
         onInsertBlock={(htmlContent, _cssContent, blockType) => {

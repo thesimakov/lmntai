@@ -11,11 +11,27 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+// Helper: returns true if user owns the project OR has an accepted team invitation from the owner
+async function canAccessProject(projectId: string, userId: string): Promise<boolean> {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId },
+    select: { id: true, ownerId: true },
+  });
+  if (!project) return false;
+  if (project.ownerId === userId) return true;
+
+  const invitation = await prisma.teamInvitation.findFirst({
+    where: { userId: project.ownerId, invitedUserId: userId, status: "ACCEPTED" },
+    select: { id: true },
+  });
+  return invitation !== null;
+}
+
 const createSchema = z.object({
   name: z.string().min(1).max(100),
   blockType: z.enum(["grapesjs", "zero"]),
   htmlContent: z.string().min(1).max(500_000),
-  cssContent: z.string().optional().default(""),
+  cssContent: z.string().max(500_000).optional().default(""),
   teamProjectId: z.string().optional(),
 });
 
@@ -26,13 +42,10 @@ async function getBlocks(req: NextRequest) {
 
   const projectId = new URL(req.url).searchParams.get("projectId") ?? undefined;
 
-  // Verify project ownership before including team blocks
+  // Verify project access (owner or accepted team member) before including team blocks
   if (projectId) {
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, ownerId: user.id },
-      select: { id: true },
-    });
-    if (!project) return apiError("Not found", 404);
+    const canAccess = await canAccessProject(projectId, user.id);
+    if (!canAccess) return apiError("Not found", 404);
   }
 
   const blocks = await listUserBlocks(user.id, projectId);
@@ -49,13 +62,10 @@ async function postBlock(req: NextRequest) {
 
   const { cssContent = "", ...rest } = parsed.data;
 
-  // Verify project ownership when creating a team block
+  // Verify project access (owner or accepted team member) when creating a team block
   if (rest.teamProjectId) {
-    const project = await prisma.project.findFirst({
-      where: { id: rest.teamProjectId, ownerId: user.id },
-      select: { id: true },
-    });
-    if (!project) return apiError("Not found", 404);
+    const canAccess = await canAccessProject(rest.teamProjectId, user.id);
+    if (!canAccess) return apiError("Not found", 404);
   }
 
   try {
