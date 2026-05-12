@@ -34,7 +34,7 @@ interface UiSlice {
   // Extended UI state (was local useState in build/page.tsx):
   leftCollapsed: boolean;
   leftWidth: number;
-  tab: "preview" | "document" | "settings" | "code";
+  contentTab: "preview" | "document" | "settings" | "code";
   agentHint: AgentPickerLabel;
   visualLayoutEditor: boolean;
   setActiveTab: (tab: "chat" | "files" | "preview") => void;
@@ -43,7 +43,7 @@ interface UiSlice {
   setHistoryOpen: (v: boolean) => void;
   setLeftCollapsed: (v: boolean) => void;
   setLeftWidth: (v: number) => void;
-  setTab: (v: "preview" | "document" | "settings" | "code") => void;
+  setContentTab: (v: "preview" | "document" | "settings" | "code") => void;
   setAgentHint: (v: AgentPickerLabel) => void;
   setVisualLayoutEditor: (v: boolean) => void;
 }
@@ -107,6 +107,7 @@ interface StreamSlice {
   previewArtifactMime: string | null;
   previewDownloadFilename: string | null;
   presentationPdfExport: { url: string; filename: string } | null;
+  /** was lastInterfaceBuildMs in page.tsx */
   lastBuildMs: number | null;
   streamArtifactChars: number;
   shareIsPublic: boolean;
@@ -153,8 +154,8 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   historyOpen: false,
   leftCollapsed: false,
   leftWidth: 400,
-  tab: "preview",
-  agentHint: "DeepSeek",
+  contentTab: "preview",
+  agentHint: "DeepSeek", // override on mount from plan+kind
   visualLayoutEditor: false,
   setActiveTab: (activeTab) => set({ activeTab }),
   setChatRailCollapsed: (chatRailCollapsed) => set({ chatRailCollapsed }),
@@ -162,7 +163,7 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   setHistoryOpen: (historyOpen) => set({ historyOpen }),
   setLeftCollapsed: (leftCollapsed) => set({ leftCollapsed }),
   setLeftWidth: (leftWidth) => set({ leftWidth }),
-  setTab: (tab) => set({ tab }),
+  setContentTab: (contentTab) => set({ contentTab }),
   setAgentHint: (agentHint) => set({ agentHint }),
   setVisualLayoutEditor: (visualLayoutEditor) => set({ visualLayoutEditor }),
 
@@ -217,7 +218,7 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   previewArtifactMime: null,
   previewDownloadFilename: null,
   presentationPdfExport: null,
-  lastBuildMs: null,
+  lastBuildMs: null, // was lastInterfaceBuildMs in page.tsx
   streamArtifactChars: 0,
   shareIsPublic: false,
   buildTemplate: null,
