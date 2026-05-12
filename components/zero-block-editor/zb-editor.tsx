@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useZbEditorStore } from "@/lib/zero-block-editor/store";
 import { zbExportToHtml, zbExportToCss } from "@/lib/zero-block-editor/html-export";
 import type { ZbElement, ZbCanvasConfig } from "@/lib/zero-block-editor/types";
@@ -9,6 +9,7 @@ import { ZbCanvas } from "./zb-canvas";
 import { ZbAddPanel } from "./zb-add-panel";
 import { ZbSettingsPanel } from "./zb-settings-panel";
 import { ZbLayersPanel } from "./zb-layers-panel";
+import { LemnityBoxSaveBlockDialog } from "@/components/playground/lemnity-box/lemnity-box-save-block-dialog";
 
 export interface ZbEditorHandle {
   getHtmlCss: (blockId: string) => { html: string; css: string };
@@ -22,11 +23,20 @@ interface Props {
   onSave?: () => void;
   onClose?: () => void;
   editorRef?: React.RefObject<ZbEditorHandle | null>;
+  projectId?: string | null;
 }
 
-export function ZbEditor({ initialElements, canvasConfig, onSave, onClose, editorRef }: Props) {
+export function ZbEditor({ initialElements, canvasConfig, onSave, onClose, editorRef, projectId }: Props) {
   const { setElements, updateCanvas, layersPanelOpen, settingsPanelOpen } = useZbEditorStore();
   const initialized = useRef(false);
+  const [saveDialogData, setSaveDialogData] = useState<{ htmlContent: string; cssContent: string } | null>(null);
+
+  function handleSaveToLibrary() {
+    const { elements, canvas } = useZbEditorStore.getState();
+    const html = zbExportToHtml(elements, canvas, "");
+    const css = zbExportToCss(elements);
+    setSaveDialogData({ htmlContent: html, cssContent: css });
+  }
 
   useEffect(() => {
     if (initialized.current) return;
@@ -113,13 +123,23 @@ export function ZbEditor({ initialElements, canvasConfig, onSave, onClose, edito
 
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-[#f0f0f0]" style={{ fontFamily: "Inter, sans-serif" }}>
-      <ZbTopBar onSave={onSave} onClose={onClose} />
+      <ZbTopBar onSave={onSave} onClose={onClose} onSaveToLibrary={handleSaveToLibrary} />
       <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <ZbAddPanel />
         {layersPanelOpen && <ZbLayersPanel />}
         <ZbCanvas />
         {settingsPanelOpen && <ZbSettingsPanel />}
       </div>
+      {saveDialogData ? (
+        <LemnityBoxSaveBlockDialog
+          htmlContent={saveDialogData.htmlContent}
+          cssContent={saveDialogData.cssContent}
+          blockType="zero"
+          projectId={projectId}
+          onSaved={() => setSaveDialogData(null)}
+          onClose={() => setSaveDialogData(null)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { ZB_BREAKPOINT_PRESETS } from "@/lib/zero-block-editor/breakpoints";
 interface Props {
   onSave?: () => void;
   onClose?: () => void;
+  onSaveToLibrary?: () => void;
 }
 
 const BREAKPOINT_LABELS: Record<string, string> = {
@@ -57,7 +58,7 @@ const BREAKPOINT_ICONS: Record<string, React.ReactNode> = {
   ),
 };
 
-export function ZbTopBar({ onSave, onClose }: Props) {
+export function ZbTopBar({ onSave, onClose, onSaveToLibrary }: Props) {
   const {
     breakpoint,
     setBreakpoint,
@@ -294,6 +295,24 @@ export function ZbTopBar({ onSave, onClose }: Props) {
 
       {/* Save / Close */}
       <div style={{ display: "flex", gap: 6 }}>
+        {onSaveToLibrary && (
+          <button
+            onClick={onSaveToLibrary}
+            style={{
+              height: 32,
+              padding: "0 14px",
+              background: "transparent",
+              color: "#374151",
+              border: "1px solid #e5e7eb",
+              borderRadius: 20,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            В библиотеку
+          </button>
+        )}
         {onSave && (
           <button
             onClick={onSave}
