@@ -12,6 +12,10 @@ import type {
   ZbVectorProps,
   ZbVideoProps,
   ZbHtmlProps,
+  ZbTooltipProps,
+  ZbFormProps,
+  ZbFormField,
+  ZbGalleryProps,
   ZbAnimationConfig,
 } from "@/lib/zero-block-editor/types";
 import { useState, useCallback } from "react";
@@ -514,6 +518,83 @@ function HtmlPanel({ el }: { el: ZbElement }) {
   );
 }
 
+function TooltipPanel({ el }: { el: ZbElement }) {
+  const { updateElementProps } = useZbEditorStore();
+  const p = el.props as unknown as ZbTooltipProps;
+  const u = (patch: Partial<ZbTooltipProps>) => updateElementProps(el.id, patch as Record<string, unknown>);
+
+  return (
+    <>
+      <Group label="Содержимое">
+        <TextInput value={p.triggerText} onChange={(v) => u({ triggerText: v })} label="Текст триггера" />
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <span style={{ fontSize: 10, color: "#94a3b8" }}>Текст подсказки</span>
+          <textarea
+            value={p.content}
+            onChange={(e) => u({ content: e.target.value })}
+            rows={3}
+            style={{
+              width: "100%", padding: "6px 8px", border: "1px solid #e2e8f0",
+              borderRadius: 5, fontSize: 12, background: "#f8fafc", color: "#1e293b",
+              outline: "none", resize: "vertical",
+            }}
+          />
+        </div>
+      </Group>
+      <Group label="Поведение">
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ fontSize: 10, color: "#94a3b8" }}>Триггер</span>
+          <Row>
+            {(["hover", "click"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => u({ trigger: t })}
+                style={{
+                  flex: 1, height: 28, borderRadius: 5, fontSize: 11, cursor: "pointer",
+                  background: p.trigger === t ? "#eff6ff" : "#f8fafc",
+                  color: p.trigger === t ? "#2563eb" : "#374151",
+                  border: p.trigger === t ? "1.5px solid #3b82f6" : "1px solid #e2e8f0",
+                  fontWeight: p.trigger === t ? 600 : 400,
+                }}
+              >
+                {t === "hover" ? "Наведение" : "Клик"}
+              </button>
+            ))}
+          </Row>
+        </div>
+        {p.trigger === "hover" && (
+          <NumberInput
+            value={p.delay}
+            onChange={(v) => u({ delay: Math.max(0, v) })}
+            min={0}
+            label="Задержка"
+            suffix="мс"
+          />
+        )}
+      </Group>
+      <Group label="Позиция">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
+          {(["top", "bottom", "left", "right"] as const).map((pos) => (
+            <button
+              key={pos}
+              onClick={() => u({ position: pos })}
+              style={{
+                height: 28, borderRadius: 5, fontSize: 11, cursor: "pointer",
+                background: p.position === pos ? "#eff6ff" : "#f8fafc",
+                color: p.position === pos ? "#2563eb" : "#374151",
+                border: p.position === pos ? "1.5px solid #3b82f6" : "1px solid #e2e8f0",
+                fontWeight: p.position === pos ? 600 : 400,
+              }}
+            >
+              {pos === "top" ? "↑ Сверху" : pos === "bottom" ? "↓ Снизу" : pos === "left" ? "← Слева" : "→ Справа"}
+            </button>
+          ))}
+        </div>
+      </Group>
+    </>
+  );
+}
+
 // ─── Animation panel ──────────────────────────────────────────────────────────
 
 function AnimationPanel({ el }: { el: ZbElement }) {
@@ -759,6 +840,7 @@ function ElementTypePanel({ el }: { el: ZbElement }) {
     case "vector":  return <VectorPanel el={el} />;
     case "video":   return <VideoPanel el={el} />;
     case "html":    return <HtmlPanel el={el} />;
+    case "tooltip": return <TooltipPanel el={el} />;
     default:        return null;
   }
 }
