@@ -788,11 +788,11 @@ function GalleryPanel({ el }: { el: ZbElement }) {
             </button>
           ))}
         </div>
-        <Toggle checked={p.lightbox} onChange={(v) => u({ lightbox: v })} label="Lightbox" />
-        <Toggle checked={p.arrows} onChange={(v) => u({ arrows: v })} label="Стрелки" />
+        <Toggle checked={p.lightbox ?? true} onChange={(v) => u({ lightbox: v })} label="Lightbox" />
+        <Toggle checked={p.arrows ?? true} onChange={(v) => u({ arrows: v })} label="Стрелки" />
       </Group>
       <Group label="Поведение">
-        <Toggle checked={p.autoplay} onChange={(v) => u({ autoplay: v })} label="Автопроигрывание" />
+        <Toggle checked={p.autoplay ?? false} onChange={(v) => u({ autoplay: v })} label="Автопроигрывание" />
         {p.autoplay && (
           <NumberInput
             value={p.autoplayInterval ?? 3000}
