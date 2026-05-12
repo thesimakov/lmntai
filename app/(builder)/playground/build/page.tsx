@@ -172,15 +172,22 @@ export default function PromptBuildPage() {
 
   // ── Build timer ──
   const [buildTimerTick, setBuildTimerTick] = useState(0);
+  const buildStartRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!isGenerating) return;
-    const id = window.setInterval(() => setBuildTimerTick((n) => n + 1), 250);
-    return () => clearInterval(id);
+    if (isGenerating) {
+      buildStartRef.current = Date.now();
+      setBuildTimerTick(0);
+      const id = window.setInterval(() => setBuildTimerTick((n) => n + 1), 250);
+      return () => clearInterval(id);
+    } else {
+      buildStartRef.current = null;
+    }
   }, [isGenerating]);
 
   // ── onSend ──
   const onSend = useCallback(async (text: string, files?: File[]) => {
     if (!lemnityAiBridgeReady) { toast.message("Загрузка режима сборки…"); return; }
+    if (isGenerating) return;
     if (buildTemplate) return;
 
     const trimmed = text.trim();
@@ -196,7 +203,8 @@ export default function PromptBuildPage() {
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const s = useBuildEditorStore.getState();
 
-    if (coachAwaitingConfirm && pendingTechnicalPrompt) {
+    if (coachAwaitingConfirm) {
+      if (!pendingTechnicalPrompt) return;
       const userMsg = { id: createId(), role: "user" as const, content: displayContent, sentAt: Date.now(), ...userExtras };
       if (isAffirmativeUserReply(trimmed)) {
         s.appendMessage(userMsg);
@@ -234,7 +242,7 @@ export default function PromptBuildPage() {
     if (stage === "idea") setStage("questions");
     void runPromptCoach(nextThread);
   }, [
-    buildTemplate, coachAwaitingConfirm, finalPrompt, idea,
+    buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
     lemnityAiBridgeReady, messages, pendingTechnicalPrompt, runPromptCoach,
     sendChat, setIdea, setStage, stage, t,
   ]);
@@ -292,8 +300,8 @@ export default function PromptBuildPage() {
 
   const interfaceBuildElapsedLabel = useMemo(() => {
     void buildTimerTick;
-    if (!isGenerating) return null;
-    return formatBuildElapsed(0, lang);
+    if (!isGenerating || buildStartRef.current == null) return null;
+    return formatBuildElapsed(Date.now() - buildStartRef.current, lang);
   }, [isGenerating, buildTimerTick, lang]);
 
   const chatThreadScrollKey = `${stage}:${idea.length}:${streamSteps.map((s) => `${s.id}:${s.status}`).join("|")}:${isGenerating}:${promptCoachLoading}:${messages.length}`;
@@ -327,6 +335,8 @@ export default function PromptBuildPage() {
       setPublishDialogOpen(false);
       useBuildEditorStore.getState().appendMessage({ id: `${Date.now()}`, role: "assistant", content: "Ссылка на публичную страницу превью открыта.", sentAt: Date.now() });
       toast.message(t("playground_build_publish_opened"));
+    } catch {
+      toast.error(t("playground_build_share_error_instant"));
     } finally { setPublishPending(false); }
   }, [previewUrl, sandboxId, shareIsPublic, setShareIsPublic, setPublishDialogOpen, t]);
 
