@@ -68,14 +68,16 @@ export async function createUserBlock(
     : { userId, teamProjectId: null };
   const limit = teamProjectId ? TEAM_LIMIT : PERSONAL_LIMIT;
 
-  const count = await prisma.userSavedBlock.count({ where: countWhere });
-  if (count >= limit) {
-    throw new Error(`Block library limit reached (${limit})`);
-  }
+  const created = await prisma.$transaction(async (tx) => {
+    const count = await tx.userSavedBlock.count({ where: countWhere });
+    if (count >= limit) {
+      throw new Error(`Block library limit reached (${limit})`);
+    }
 
-  const created = await prisma.userSavedBlock.create({
-    data: { userId, name, blockType, htmlContent, cssContent, teamProjectId: teamProjectId ?? null },
-    select: { id: true, name: true, blockType: true, teamProjectId: true, createdAt: true },
+    return tx.userSavedBlock.create({
+      data: { userId, name, blockType, htmlContent, cssContent, teamProjectId: teamProjectId ?? null },
+      select: { id: true, name: true, blockType: true, teamProjectId: true, createdAt: true },
+    });
   });
 
   return toMeta(created);
@@ -84,10 +86,13 @@ export async function createUserBlock(
 export async function getUserBlockById(
   id: string,
   userId: string,
+  projectId?: string,
 ): Promise<UserSavedBlockFull | null> {
-  const row = await prisma.userSavedBlock.findFirst({
-    where: { id, userId },
-  });
+  const where = projectId
+    ? { id, OR: [{ userId }, { teamProjectId: projectId }] }
+    : { id, userId };
+
+  const row = await prisma.userSavedBlock.findFirst({ where });
   if (!row) return null;
   return {
     ...toMeta(row),

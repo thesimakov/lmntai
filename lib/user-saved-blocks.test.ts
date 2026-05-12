@@ -13,6 +13,7 @@ vi.mock("@/lib/prisma", () => ({
     project: {
       findFirst: vi.fn(),
     },
+    $transaction: vi.fn(),
   },
 }));
 
@@ -37,6 +38,7 @@ const mockPrisma = prisma as unknown as {
     count: ReturnType<typeof vi.fn>;
   };
   project: { findFirst: ReturnType<typeof vi.fn> };
+  $transaction: ReturnType<typeof vi.fn>;
 };
 
 beforeEach(() => vi.clearAllMocks());
@@ -70,12 +72,19 @@ describe("listUserBlocks", () => {
 
 describe("createUserBlock", () => {
   it("creates personal block and returns meta", async () => {
-    mockPrisma.userSavedBlock.count.mockResolvedValue(0);
     const created = {
       id: "new-id", name: "Hero", blockType: "grapesjs",
       teamProjectId: null, createdAt: new Date(),
     };
-    mockPrisma.userSavedBlock.create.mockResolvedValue(created);
+    mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const fakeTx = {
+        userSavedBlock: {
+          count: vi.fn().mockResolvedValue(0),
+          create: vi.fn().mockResolvedValue(created),
+        },
+      };
+      return fn(fakeTx);
+    });
 
     const input: CreateUserBlockInput = {
       userId: "user1", name: "Hero", blockType: "grapesjs",
@@ -88,7 +97,15 @@ describe("createUserBlock", () => {
   });
 
   it("throws when personal limit exceeded", async () => {
-    mockPrisma.userSavedBlock.count.mockResolvedValue(200);
+    mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const fakeTx = {
+        userSavedBlock: {
+          count: vi.fn().mockResolvedValue(200),
+          create: vi.fn(),
+        },
+      };
+      return fn(fakeTx);
+    });
 
     await expect(
       createUserBlock({
@@ -99,7 +116,15 @@ describe("createUserBlock", () => {
   });
 
   it("throws when team limit exceeded", async () => {
-    mockPrisma.userSavedBlock.count.mockResolvedValue(500);
+    mockPrisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) => {
+      const fakeTx = {
+        userSavedBlock: {
+          count: vi.fn().mockResolvedValue(500),
+          create: vi.fn(),
+        },
+      };
+      return fn(fakeTx);
+    });
 
     await expect(
       createUserBlock({
@@ -124,6 +149,16 @@ describe("getUserBlockById", () => {
     };
     mockPrisma.userSavedBlock.findFirst.mockResolvedValue(row);
     const result = await getUserBlockById("b1", "user1");
+    expect(result?.htmlContent).toBe("<section/>");
+  });
+
+  it("returns team block for team member (projectId given)", async () => {
+    const row = {
+      id: "t1", name: "Team Block", blockType: "zero", teamProjectId: "proj1",
+      htmlContent: "<section/>", cssContent: "", createdAt: new Date(),
+    };
+    mockPrisma.userSavedBlock.findFirst.mockResolvedValue(row);
+    const result = await getUserBlockById("t1", "other-user", "proj1");
     expect(result?.htmlContent).toBe("<section/>");
   });
 });
