@@ -565,7 +565,7 @@ function TooltipPanel({ el }: { el: ZbElement }) {
         </div>
         {p.trigger === "hover" && (
           <NumberInput
-            value={p.delay}
+            value={p.delay ?? 0}
             onChange={(v) => u({ delay: Math.max(0, v) })}
             min={0}
             label="Задержка"
@@ -698,8 +698,8 @@ function FormPanel({ el }: { el: ZbElement }) {
         </button>
       </Group>
       <Group label="Отправка">
-        <TextInput value={p.submitText} onChange={(v) => u({ submitText: v })} label="Текст кнопки" placeholder="Отправить" />
-        <TextInput value={p.successMessage} onChange={(v) => u({ successMessage: v })} label="Сообщение об успехе" placeholder="Спасибо!" />
+        <TextInput value={p.submitText ?? ""} onChange={(v) => u({ submitText: v })} label="Текст кнопки" placeholder="Отправить" />
+        <TextInput value={p.successMessage ?? ""} onChange={(v) => u({ successMessage: v })} label="Сообщение об успехе" placeholder="Спасибо!" />
         <TextInput
           value={p.action ?? ""}
           onChange={(v) => u({ action: v || undefined })}
