@@ -39,6 +39,8 @@ import { attachLemnityBoxStyleManagerChoiceDropdowns } from "@/components/playgr
 import { mountPlaygroundBoxDeviceMenu } from "@/components/playground/lemnity-box/lemnity-box-device-dock-menu";
 import { registerLemnityBoxToolbarSiblingMoves } from "@/components/playground/lemnity-box/lemnity-box-toolbar-sibling-moves";
 import { registerLemnityBoxBlockSettingsToolbar } from "@/components/playground/lemnity-box/lemnity-box-toolbar-block-settings-modal";
+import { registerLemnityBoxToolbarSaveBlock } from "@/components/playground/lemnity-box/lemnity-box-toolbar-save-block";
+import { LemnityBoxUserBlocksPanel } from "@/components/playground/lemnity-box/lemnity-box-user-blocks-panel";
 import { PAGE_GRID_DEFAULTS } from "@/lib/lemnity-box-editor-schema";
 import type { BlockNode, JsonStyle, LemnityBoxCanvasContent, PageDocument, ZeroElement } from "@/lib/lemnity-box-editor-schema";
 import type { BoxImageLibraryResponse } from "@/lib/box-image-library-types";
@@ -85,6 +87,8 @@ export type LemnityBoxCanvasEditorProps = {
   autoActivateZeroBlock?: boolean;
   /** UI нулевого блока в iframe: minimal — только «Редактировать», без нижней панели и «+». По умолчанию minimal, кроме autoActivateZeroBlock. */
   zeroBlockCanvasUi?: "minimal" | "full";
+  /** ID проекта для командных блоков. */
+  projectId?: string | null;
 };
 
 export type LemnityBoxCanvasEditorHandle = {
@@ -1258,6 +1262,7 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
     onOpenZeroBlockEditor,
     autoActivateZeroBlock,
     zeroBlockCanvasUi,
+    projectId,
   },
   ref
 ) {
@@ -1286,6 +1291,12 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
   const [canvasBooting, setCanvasBooting] = useState(true);
   const isBlocksPanelControlled = typeof onBlocksPanelOpenChange === "function";
   const [blocksPanelInternal, setBlocksPanelInternal] = useState(true);
+  const [userBlocksPanelOpen, setUserBlocksPanelOpen] = useState(false);
+  const [pendingBlockSave, setPendingBlockSave] = useState<{
+    htmlContent: string;
+    cssContent: string;
+    blockType: "grapesjs" | "zero";
+  } | null>(null);
   const blocksPanelOpen = isBlocksPanelControlled ? Boolean(blocksPanelOpenProp) : blocksPanelInternal;
   const setBlocksPanelOpen = useCallback(
     (next: boolean) => {
@@ -1487,6 +1498,10 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
 
         registerLemnityBoxToolbarSiblingMoves(editor);
         registerLemnityBoxBlockSettingsToolbar(editor);
+        registerLemnityBoxToolbarSaveBlock(editor, (htmlContent, cssContent) => {
+          setPendingBlockSave({ htmlContent, cssContent, blockType: "grapesjs" });
+          setUserBlocksPanelOpen(true);
+        });
         detachViewportGuides = attachLemnityBoxCanvasViewportGuides(editor);
         detachScopedStyles = attachLemnityBoxComponentScopedStyles(editor);
         detachSectionWidthGrid = attachLemnityBoxSectionWidthGrid(editor);
@@ -1765,6 +1780,23 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
           if (row && ours) {
             row.prepend(ours);
           }
+          if (!editor.Panels.getButton("devices-c", "lemnity-user-blocks-toggle")) {
+            editor.Panels.addButton("devices-c", {
+              id: "lemnity-user-blocks-toggle",
+              className: "lemnity-user-blocks-toggle-btn",
+              label: '<svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M20 6H4a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1zm-9 9H7v-4h4v4zm6 0h-4v-4h4v4zM4 4h16a1 1 0 0 1 0 2H4a1 1 0 0 1 0-2z"/></svg>',
+              command: {
+                run() {
+                  setUserBlocksPanelOpen(true);
+                },
+                stop() {
+                  setUserBlocksPanelOpen(false);
+                },
+              },
+              attributes: { title: "Мои блоки" },
+              active: false,
+            });
+          }
         };
 
         const mountCanvasDeviceDock = () => {
@@ -2014,6 +2046,27 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
         />
       ) : null}
       <LemnityBoxImageLibraryModal context={assetLibraryCtx} getEditor={getEditor} />
+      <LemnityBoxUserBlocksPanel
+        projectId={projectId}
+        visible={userBlocksPanelOpen}
+        onClose={() => setUserBlocksPanelOpen(false)}
+        pendingSave={pendingBlockSave}
+        onPendingSaveDone={() => setPendingBlockSave(null)}
+        onInsertBlock={(htmlContent, _cssContent, blockType) => {
+          const editorInst = getEditor();
+          if (!editorInst) return;
+          if (blockType === "grapesjs") {
+            editorInst.addComponents(htmlContent);
+          } else {
+            const newId = `zb_${Math.random().toString(36).slice(2, 10)}`;
+            const patched = htmlContent.replace(
+              /data-ln-zero-id="[^"]*"/,
+              `data-ln-zero-id="${newId}"`,
+            );
+            editorInst.addComponents(patched);
+          }
+        }}
+      />
     </div>
   );
 });
