@@ -595,6 +595,120 @@ function TooltipPanel({ el }: { el: ZbElement }) {
   );
 }
 
+function FormPanel({ el }: { el: ZbElement }) {
+  const { updateElementProps } = useZbEditorStore();
+  const p = el.props as unknown as ZbFormProps;
+  const u = (patch: Partial<ZbFormProps>) => updateElementProps(el.id, patch as Record<string, unknown>);
+
+  const addField = () => {
+    if (p.fields.length >= 10) return;
+    const newField: ZbFormField = {
+      id: `field_${Date.now()}`,
+      fieldType: "input",
+      label: "Новое поле",
+      required: false,
+      placeholder: "",
+    };
+    u({ fields: [...p.fields, newField] });
+  };
+
+  const updateField = (idx: number, patch: Partial<ZbFormField>) => {
+    u({ fields: p.fields.map((f, i) => (i === idx ? { ...f, ...patch } : f)) });
+  };
+
+  const removeField = (idx: number) => {
+    u({ fields: p.fields.filter((_, i) => i !== idx) });
+  };
+
+  const moveField = (idx: number, dir: -1 | 1) => {
+    const arr = [...p.fields];
+    const swapIdx = idx + dir;
+    if (swapIdx < 0 || swapIdx >= arr.length) return;
+    [arr[idx], arr[swapIdx]] = [arr[swapIdx], arr[idx]];
+    u({ fields: arr });
+  };
+
+  return (
+    <>
+      <Group label="Поля">
+        {p.fields.length === 0 ? (
+          <div style={{ fontSize: 11, color: "#94a3b8", textAlign: "center", padding: "8px 0" }}>
+            Нет полей — нажмите + Поле
+          </div>
+        ) : (
+          p.fields.map((field, idx) => (
+            <div
+              key={field.id}
+              style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 6, padding: 8, display: "flex", flexDirection: "column", gap: 4 }}
+            >
+              <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                <SelectInput
+                  value={field.fieldType}
+                  onChange={(v) => updateField(idx, { fieldType: v as ZbFormField["fieldType"] })}
+                  options={[
+                    { value: "input", label: "Текст" },
+                    { value: "textarea", label: "Textarea" },
+                    { value: "select", label: "Select" },
+                    { value: "checkbox", label: "Checkbox" },
+                    { value: "radio", label: "Radio" },
+                  ]}
+                />
+                <button
+                  onClick={() => moveField(idx, -1)}
+                  disabled={idx === 0}
+                  style={{ width: 22, height: 22, border: "1px solid #e2e8f0", borderRadius: 4, background: "#fff", cursor: idx === 0 ? "default" : "pointer", fontSize: 11, flexShrink: 0 }}
+                >↑</button>
+                <button
+                  onClick={() => moveField(idx, 1)}
+                  disabled={idx === p.fields.length - 1}
+                  style={{ width: 22, height: 22, border: "1px solid #e2e8f0", borderRadius: 4, background: "#fff", cursor: idx === p.fields.length - 1 ? "default" : "pointer", fontSize: 11, flexShrink: 0 }}
+                >↓</button>
+                <button
+                  onClick={() => removeField(idx)}
+                  style={{ width: 22, height: 22, border: "1px solid #fca5a5", borderRadius: 4, background: "#fff", cursor: "pointer", fontSize: 11, color: "#ef4444", flexShrink: 0 }}
+                >🗑</button>
+              </div>
+              <TextInput value={field.label} onChange={(v) => updateField(idx, { label: v })} label="Название" />
+              {!["checkbox", "radio"].includes(field.fieldType) && (
+                <TextInput
+                  value={field.placeholder ?? ""}
+                  onChange={(v) => updateField(idx, { placeholder: v })}
+                  label="Placeholder"
+                />
+              )}
+              <Toggle checked={field.required} onChange={(v) => updateField(idx, { required: v })} label="Обязательное" />
+            </div>
+          ))
+        )}
+        <button
+          onClick={addField}
+          disabled={p.fields.length >= 10}
+          title={p.fields.length >= 10 ? "Максимум 10 полей" : undefined}
+          style={{
+            width: "100%", height: 28, borderRadius: 5, fontSize: 11,
+            cursor: p.fields.length >= 10 ? "not-allowed" : "pointer",
+            background: "#f8fafc",
+            color: p.fields.length >= 10 ? "#94a3b8" : "#2563eb",
+            border: "1px dashed #e2e8f0",
+          }}
+        >
+          + Поле
+        </button>
+      </Group>
+      <Group label="Отправка">
+        <TextInput value={p.submitText} onChange={(v) => u({ submitText: v })} label="Текст кнопки" placeholder="Отправить" />
+        <TextInput value={p.successMessage} onChange={(v) => u({ successMessage: v })} label="Сообщение об успехе" placeholder="Спасибо!" />
+        <TextInput
+          value={p.action ?? ""}
+          onChange={(v) => u({ action: v || undefined })}
+          label="URL отправки (action)"
+          placeholder="https://..."
+        />
+      </Group>
+    </>
+  );
+}
+
 // ─── Animation panel ──────────────────────────────────────────────────────────
 
 function AnimationPanel({ el }: { el: ZbElement }) {
@@ -841,6 +955,7 @@ function ElementTypePanel({ el }: { el: ZbElement }) {
     case "video":   return <VideoPanel el={el} />;
     case "html":    return <HtmlPanel el={el} />;
     case "tooltip": return <TooltipPanel el={el} />;
+    case "form":    return <FormPanel el={el} />;
     default:        return null;
   }
 }
