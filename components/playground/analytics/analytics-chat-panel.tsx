@@ -32,7 +32,7 @@ export function AnalyticsChatPanel({ projectId }: Props) {
     const userMsg = { id: crypto.randomUUID(), role: "user" as const, content: message };
     addChatMessage(userMsg);
     const assistantId = crypto.randomUUID();
-    addChatMessage({ id: assistantId, role: "assistant" as const, content: "" });
+    const historySnapshot = [...chatMessages];
     setIsChatStreaming(true);
 
     try {
@@ -41,11 +41,15 @@ export function AnalyticsChatPanel({ projectId }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          history: chatMessages,
+          history: historySnapshot,
         }),
       });
 
-      if (!res.body) return;
+      if (!res.body) {
+        setIsChatStreaming(false);
+        return;
+      }
+      addChatMessage({ id: assistantId, role: "assistant" as const, content: "" });
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buf = "";

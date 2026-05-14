@@ -48,7 +48,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
             <Tooltip />
             <Area type="monotone" dataKey="value" stroke={COLORS[0]} fill={`${COLORS[0]}33`} />
           </AreaChart>
-        ) : (
+        ) : type === "pie" ? (
           <PieChart>
             <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} label={(entry: {name: string}) => entry.name}>
               {data.map((_, i) => (
@@ -58,6 +58,15 @@ export function AnalyticsChartBlock({ chart }: Props) {
             <Tooltip />
             <Legend />
           </PieChart>
+        ) : (
+          // waterfall and any other types — render as bar
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.2} />
+            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+            <YAxis tick={{ fontSize: 11 }} />
+            <Tooltip />
+            <Bar dataKey="value" fill={COLORS[1]} radius={[4, 4, 0, 0]} />
+          </BarChart>
         )}
       </ResponsiveContainer>
     </div>

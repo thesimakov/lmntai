@@ -14,7 +14,8 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
 
   const handle = useCallback(
     (file: File) => {
-      if (!file.type.includes("pdf")) return;
+      if (file.type !== "application/pdf") return;
+      if (file.size > 50 * 1024 * 1024) return;
       onFile(file);
     },
     [onFile]
