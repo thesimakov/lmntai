@@ -89,8 +89,7 @@ export function MarketingEditor() {
 
   const isUploading = status === "uploading";
   const isAnalyzing = status === "analyzing";
-  const isEmptyState =
-    (status === "idle" || status === "error" || isUploading) && dashboard === null;
+  const isEmptyState = (status === "idle" || status === "error") && dashboard === null;
 
   return (
     <div className="flex flex-col w-full h-full">
@@ -191,7 +190,12 @@ export function MarketingEditor() {
             </div>
 
             {/* Dashboard */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden flex flex-col">
+              {status === "error" && errorMessage && (
+                <div className="px-4 py-2 bg-red-500/10 border-b border-red-500/20 text-sm text-red-500 shrink-0">
+                  {errorMessage}
+                </div>
+              )}
               {dashboard && <MarketingDashboard dashboard={dashboard} />}
             </div>
           </div>

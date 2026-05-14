@@ -30,9 +30,9 @@ export function MarketingChatPanel({ projectId }: Props) {
     const message = input.trim();
     if (!message || isChatStreaming) return;
     setInput("");
+    const historySnapshot = [...chatMessages];
     const userMsg = { id: crypto.randomUUID(), role: "user" as const, content: message };
     addChatMessage(userMsg);
-    const historySnapshot = [...chatMessages];
     setIsChatStreaming(true);
     try {
       const res = await fetch(`/api/marketing/${projectId}/chat`, {
@@ -101,7 +101,7 @@ export function MarketingChatPanel({ projectId }: Props) {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about channel performance..."
+          placeholder="Ask about the marketing data..."
           className="text-xs resize-none min-h-[60px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
