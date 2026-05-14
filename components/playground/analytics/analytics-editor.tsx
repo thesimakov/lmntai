@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, MessageSquare, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { AnalyticsUploadZone } from "./analytics-upload-zone";
@@ -10,13 +10,18 @@ import { AnalyticsDashboard } from "./analytics-dashboard";
 import { AnalyticsChatPanel } from "./analytics-chat-panel";
 import { AnalyticsProgressOverlay } from "./analytics-progress-overlay";
 import { AnalyticsExportMenu } from "./analytics-export-menu";
+import { AnalyticsInvestorPanel } from "./analytics-investor-panel";
+import { cn } from "@/lib/utils";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
+
+type LeftTab = "chat" | "investor";
 
 export function AnalyticsEditor() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const projectId = searchParams.get("projectId") ?? "";
   const dashboardRef = useRef<HTMLDivElement>(null);
+  const [leftTab, setLeftTab] = useState<LeftTab>("chat");
 
   const {
     status,
@@ -166,9 +171,46 @@ export function AnalyticsEditor() {
           </div>
         ) : (
           <div className="flex flex-1 overflow-hidden">
-            {/* Left: chat */}
-            <div className="w-64 shrink-0 overflow-hidden">
-              <AnalyticsChatPanel projectId={projectId} />
+            {/* Left panel with tabs */}
+            <div className="w-64 shrink-0 flex flex-col border-r border-border overflow-hidden">
+              {/* Tab bar */}
+              <div className="flex shrink-0 border-b border-border">
+                <button
+                  type="button"
+                  onClick={() => setLeftTab("chat")}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                    leftTab === "chat"
+                      ? "text-foreground border-b-2 border-primary -mb-px"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeftTab("investor")}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                    leftTab === "investor"
+                      ? "text-foreground border-b-2 border-primary -mb-px"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  Investor
+                </button>
+              </div>
+
+              {/* Tab content */}
+              <div className="flex-1 overflow-y-auto">
+                {leftTab === "chat" ? (
+                  <AnalyticsChatPanel projectId={projectId} />
+                ) : (
+                  <AnalyticsInvestorPanel projectId={projectId} />
+                )}
+              </div>
             </div>
 
             {/* Center: dashboard */}
