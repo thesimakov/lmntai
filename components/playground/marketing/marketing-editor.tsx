@@ -68,6 +68,7 @@ export function MarketingEditor() {
   }, [projectId, setProjectId, setDashboard]);
 
   const handleAnalyze = useCallback(async () => {
+    if (!projectId) return;
     setStatus("analyzing");
     try {
       const res = await fetch(`/api/marketing/${projectId}/analyze`, { method: "POST" });

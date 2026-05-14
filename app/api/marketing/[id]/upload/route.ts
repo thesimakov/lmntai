@@ -132,7 +132,7 @@ export async function POST(
 
   await upsertSandboxProjectState({
     projectId,
-    sandboxId: existing?.sandboxId ?? "",
+    sandboxId: existing?.sandboxId ?? projectId,
     ownerId: user.id,
     html: existing?.html ?? "",
     files: { ...existingFiles, "marketing_raw.txt": combined },

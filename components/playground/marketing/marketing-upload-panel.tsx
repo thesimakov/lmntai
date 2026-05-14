@@ -41,7 +41,7 @@ export function MarketingUploadPanel({ onAnalyze, isUploading, isAnalyzing, proj
     if (files.length === 0 || isUploading || isAnalyzing) return;
     setError(null);
     const body = new FormData();
-    files.forEach((f) => body.append("files[]", f));
+    files.forEach((f) => body.append("files", f));
     try {
       const res = await fetch(`/api/marketing/${projectId}/upload`, { method: "POST", body });
       if (!res.ok) {
