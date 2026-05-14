@@ -22,7 +22,8 @@ export async function GET(
   }
 
   const state = await getSandboxProjectState(projectId);
-  const raw = state?.files?.["analysis.json"];
+  if (!state) return apiError("No analysis found", 404);
+  const raw = state.files["analysis.json"];
   if (!raw) return apiError("No analysis found", 404);
 
   let parsed: unknown;

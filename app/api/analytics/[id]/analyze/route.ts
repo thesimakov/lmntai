@@ -40,6 +40,7 @@ export async function POST(
 
   const stream = new ReadableStream({
     async start(controller) {
+      sseEncode(controller, { type: "progress", progress: 0 });
       sseEncode(controller, { type: "progress", progress: 10 });
 
       let fakeProgress = 10;
