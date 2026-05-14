@@ -1,16 +1,26 @@
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError } from "@/lib/api-response";
+import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIStream } from "@/lib/routerai-client";
 import { splitSseLines, extractDataJson } from "@/lib/sse-parser";
 import { buildChatPrompt } from "@/lib/analytics-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
-import type { ChatMessage } from "@/lib/stores/use-analytics-store";
 
 const CHAT_MODEL = "anthropic/claude-haiku-4.5";
+
+const chatBodySchema = z.object({
+  message: z.string().min(1),
+  history: z.array(z.object({
+    role: z.enum(["user", "assistant"]),
+    content: z.string(),
+    id: z.string(),
+  })).default([]),
+});
 
 export async function POST(
   req: NextRequest,
@@ -28,8 +38,9 @@ export async function POST(
     return apiError("Project not found or access denied", 403);
   }
 
-  const body = (await req.json()) as { message: string; history: ChatMessage[] };
-  if (!body.message?.trim()) return apiError("Empty message", 400);
+  const bodyResult = await parseBody(req, chatBodySchema);
+  if (!bodyResult.ok) return bodyResult.response;
+  const body = bodyResult.data;
 
   const state = await getSandboxProjectState(projectId);
   if (!state) return apiError("No analysis found. Upload and analyze a PDF first.", 400);

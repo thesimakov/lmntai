@@ -86,6 +86,7 @@ export function AnalyticsEditor() {
         const reader = analyzeRes.body.getReader();
         const decoder = new TextDecoder();
         let buf = "";
+        let isDone = false;
 
         while (true) {
           const { done, value } = await reader.read();
@@ -107,10 +108,14 @@ export function AnalyticsEditor() {
               setProgress(payload.progress);
             } else if (payload.type === "complete" && payload.dashboard) {
               setDashboard(payload.dashboard);
+              isDone = true;
+              break;
             } else if (payload.type === "error") {
               setError(payload.message ?? "Analysis failed");
             }
           }
+
+          if (isDone) break;
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : "Unexpected error";

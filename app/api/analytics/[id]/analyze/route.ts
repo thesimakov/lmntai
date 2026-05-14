@@ -36,7 +36,11 @@ export async function POST(
     return apiError("No document uploaded. Upload a PDF first.", 400);
   }
 
-  const messages = buildAnalysisPrompt(rawText);
+  const MAX_CHARS = 200_000;
+  const truncatedText = rawText.length > MAX_CHARS
+    ? rawText.slice(0, MAX_CHARS) + "\n\n[Document truncated for analysis — first 200k characters shown]"
+    : rawText;
+  const messages = buildAnalysisPrompt(truncatedText);
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -58,6 +62,16 @@ export async function POST(
         });
 
         clearInterval(ticker);
+
+        if (result.usage) {
+          await chargeTokensSafely({
+            userId: user.id,
+            projectId,
+            usage: result.usage,
+            model: result.model ?? "anthropic/claude-sonnet-4.5",
+          });
+        }
+
         sseEncode(controller, { type: "progress", progress: 85 });
 
         let jsonText = result.text.trim();
@@ -99,15 +113,6 @@ export async function POST(
             "analysis.json": JSON.stringify(dashboard),
           },
         });
-
-        if (result.usage) {
-          await chargeTokensSafely({
-            userId: user.id,
-            projectId,
-            usage: result.usage,
-            model: result.model ?? "anthropic/claude-sonnet-4.5",
-          });
-        }
 
         sseEncode(controller, { type: "progress", progress: 100 });
         sseEncode(controller, { type: "complete", dashboard });

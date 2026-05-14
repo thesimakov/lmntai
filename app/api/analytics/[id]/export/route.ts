@@ -43,11 +43,12 @@ export async function POST(
 
   const buffer = await buildAnalysisPptx(dashboard);
   const filename = `${dashboard.meta.companyName.replace(/\s+/g, "_")}_${dashboard.meta.period.replace(/\s+/g, "_")}.pptx`;
+  const safeFilename = filename.replace(/[";\r\n\\]/g, "_");
 
   return new Response(new Uint8Array(buffer), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
     },
   });
 }
