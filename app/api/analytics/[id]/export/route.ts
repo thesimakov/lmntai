@@ -6,9 +6,27 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
+import { investorReportSchema } from "@/lib/investor-schema";
 import { buildAnalysisPptx } from "@/lib/analytics-pptx-export";
+import {
+  buildVcPitchPptx,
+  buildBoardReportPptx,
+  buildDueDiligencePptx,
+} from "@/lib/investor-pptx-export";
 
-const exportBodySchema = z.object({ format: z.literal("pptx") });
+const exportBodySchema = z.object({
+  format: z.enum(["pptx", "investor-vc-pptx", "investor-board-pptx", "investor-dd-pptx"]),
+});
+
+function pptxResponse(buffer: Buffer, filename: string): Response {
+  const safeFilename = filename.replace(/[";\r\n\\]/g, "_");
+  return new Response(new Uint8Array(buffer), {
+    headers: {
+      "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "Content-Disposition": `attachment; filename="${safeFilename}"`,
+    },
+  });
+}
 
 export async function POST(
   req: NextRequest,
@@ -28,27 +46,52 @@ export async function POST(
 
   const bodyResult = await parseBody(req, exportBodySchema);
   if (!bodyResult.ok) return bodyResult.response;
+  const { format } = bodyResult.data;
 
   const state = await getSandboxProjectState(projectId);
   if (!state) return apiError("No analysis found", 404);
-  const raw = state.files["analysis.json"];
-  if (!raw) return apiError("No analysis found", 404);
+
+  const rawDashboard = state.files["analysis.json"];
+  if (!rawDashboard) return apiError("No analysis found", 404);
 
   let dashboard: ReturnType<typeof analysisDashboardSchema.parse>;
   try {
-    dashboard = analysisDashboardSchema.parse(JSON.parse(raw));
+    dashboard = analysisDashboardSchema.parse(JSON.parse(rawDashboard));
   } catch {
     return apiError("Analysis data is corrupted.", 422);
   }
 
-  const buffer = await buildAnalysisPptx(dashboard);
-  const filename = `${dashboard.meta.companyName.replace(/\s+/g, "_")}_${dashboard.meta.period.replace(/\s+/g, "_")}.pptx`;
-  const safeFilename = filename.replace(/[";\r\n\\]/g, "_");
+  const baseFilename = `${dashboard.meta.companyName.replace(/\s+/g, "_")}_${dashboard.meta.period.replace(/\s+/g, "_")}`;
 
-  return new Response(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="${safeFilename}"`,
-    },
-  });
+  if (format === "pptx") {
+    const buffer = await buildAnalysisPptx(dashboard);
+    return pptxResponse(buffer, `${baseFilename}.pptx`);
+  }
+
+  // Investor formats — require investor.json
+  const rawInvestor = state.files["investor.json"];
+  if (!rawInvestor) {
+    return apiError("Investor report not generated yet. Click 'Generate Investor Report' first.", 400);
+  }
+
+  let report: ReturnType<typeof investorReportSchema.parse>;
+  try {
+    report = investorReportSchema.parse(JSON.parse(rawInvestor));
+  } catch {
+    return apiError("Investor report data is corrupted.", 422);
+  }
+
+  if (format === "investor-vc-pptx") {
+    const buffer = await buildVcPitchPptx(report, dashboard);
+    return pptxResponse(buffer, `${baseFilename}_VC_Pitch.pptx`);
+  }
+
+  if (format === "investor-board-pptx") {
+    const buffer = await buildBoardReportPptx(report, dashboard);
+    return pptxResponse(buffer, `${baseFilename}_Board_Report.pptx`);
+  }
+
+  // investor-dd-pptx
+  const buffer = await buildDueDiligencePptx(report, dashboard);
+  return pptxResponse(buffer, `${baseFilename}_Due_Diligence.pptx`);
 }
