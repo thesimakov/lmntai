@@ -37,7 +37,9 @@ export const PROJECT_KINDS = [
   /** React + Vite-стек (как lovable.dev): многофайловый TSX, превью через сборку. */
   "lovable",
   /** Монолитный HTML для импорта в Lemnity Box (GrapesJS): section-блоки, Tailwind CDN, без React. */
-  "box_html"
+  "box_html",
+  /** Дашборд аналитики / BI-платформа: графики, метрики, таблицы данных. */
+  "analytics"
 ] as const;
 
 export type ProjectKind = (typeof PROJECT_KINDS)[number];
@@ -55,6 +57,11 @@ function isMultifileViteOutput(kind: ProjectKind | null): boolean {
   if (kind == null) return true;
   if (kind === "presentation" || kind === "resume" || kind === "box_html") return false;
   return true;
+}
+
+/** Analytics/BI projects use multi-file React output with charting libraries. */
+function isAnalyticsDashboard(kind: ProjectKind | null): boolean {
+  return kind === "analytics";
 }
 
 /** Превью через esbuild (многофайловый React); иначе — монолитный HTML. */
@@ -145,6 +152,17 @@ export function buildRouterGenerationPrompt(
           "For any photos/illustrations in the UI, follow the global stock-image URL rules.",
           "Include the site footer bar (copyright + privacy placeholder; Lemnity link) when the app has a footer — no «Собрано»/build date in the layout."
         ];
+      case "analytics":
+        return [
+          "Deliverable: **Analytics / BI dashboard** as a **React+TypeScript** app (Vite/Lovable-style).",
+          "Use `recharts` for charts (it is pre-installed in the bundler); prefer `BarChart`, `LineChart`, `AreaChart`, `PieChart` with responsive containers.",
+          "Structure: sidebar or top-nav, KPI metric cards, one or more chart panels, an optional data table.",
+          "Use realistic placeholder data (arrays of objects) — no external API calls.",
+          "State: `useState` for filters/date-range; no backend required.",
+          "Tailwind utility classes only; clean dashboard aesthetic (neutral backgrounds, clear data ink ratio).",
+          "Apply the global stock-image URL rules only if the dashboard includes illustrative imagery.",
+          "Do NOT include a Lemnity footer bar — dashboards are internal tools, not public pages."
+        ];
       case "box_html":
         return [
           "Deliverable: **Clean semantic HTML page** intended to be imported into **Lemnity Box** (GrapesJS visual editor).",
@@ -213,7 +231,9 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
     lovable:
       "веб-приложение в стиле Lovable: React+TypeScript, несколько файлов в `src/`, Tailwind, превью как у современного AI-билдера. Иллюстрации в UI — стабильные URL (Commons / Picsum / Unsplash), не выдуманные домены. При футере — та же схема, что для сайта (политика слева/по макету, справа дата сборки и Lemnity).",
     box_html:
-      "монолитный HTML-файл для импорта в **Lemnity Box** (визуальный редактор): секции `<section class=\"lemnity-section\">`, Tailwind CDN, без React и JSX. Каждая секция — логический блок страницы (hero, features, pricing, footer). Только класс-стилизация (без `style=\"…\"` на ключевых элементах), семантические теги, стабильные URL изображений (Commons / Picsum / Unsplash). Никакого интерактивного JS."
+      "монолитный HTML-файл для импорта в **Lemnity Box** (визуальный редактор): секции `<section class=\"lemnity-section\">`, Tailwind CDN, без React и JSX. Каждая секция — логический блок страницы (hero, features, pricing, footer). Только класс-стилизация (без `style=\"…\"` на ключевых элементах), семантические теги, стабильные URL изображений (Commons / Picsum / Unsplash). Никакого интерактивного JS.",
+    analytics:
+      "дашборд аналитики / BI-платформа в виде **React+TypeScript-проекта** (Vite/Lovable-стиль): графики (`recharts`), карточки метрик, боковое меню или верхняя навигация, опционально таблица данных. Данные — реалистичные заглушки (массивы объектов). Tailwind, никаких внешних API. Формулируй вопросы и промпт под аналитический интерфейс — не маркетинговый сайт."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }

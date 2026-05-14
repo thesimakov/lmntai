@@ -1,9 +1,10 @@
 /** Значение в колонке `Project.preferredEditor`. */
-export type PreferredPlaygroundEditor = "build" | "box";
+export type PreferredPlaygroundEditor = "build" | "box" | "analytics";
 
 export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroundEditor | undefined {
   if (raw === "box") return "box";
   if (raw === "build") return "build";
+  if (raw === "analytics") return "analytics";
   /** Старое значение в БД и клиентах → трактуем как build. */
   if (raw === "webstudio") return "build";
   return undefined;
@@ -11,6 +12,7 @@ export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroun
 
 export function normalizePreferredPlaygroundEditor(raw: string | null | undefined): PreferredPlaygroundEditor {
   if (raw === "box") return "box";
+  if (raw === "analytics") return "analytics";
   if (raw === "webstudio") return "build";
   return "build";
 }
@@ -37,6 +39,11 @@ export function buildPlaygroundBoxEditUrl(projectId: string): string {
   return `/playground/box/editor?sandboxId=${encodeURIComponent(projectId.trim())}`;
 }
 
+/** Analytics / BI dashboard editor. */
+export function buildPlaygroundAnalyticsEditUrl(projectId: string): string {
+  return `/playground/analytics?projectId=${encodeURIComponent(projectId)}`;
+}
+
 export function buildPlaygroundEditUrlForStoredEditor(
   editor: PreferredPlaygroundEditor,
   opts: {
@@ -47,6 +54,9 @@ export function buildPlaygroundEditUrlForStoredEditor(
 ): string {
   if (editor === "box") {
     return buildPlaygroundBoxEditUrl(opts.projectId);
+  }
+  if (editor === "analytics") {
+    return buildPlaygroundAnalyticsEditUrl(opts.projectId);
   }
   return buildPlaygroundBuildEditUrl({
     projectId: opts.projectId,
