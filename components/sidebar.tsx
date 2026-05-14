@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  BarChart2,
   BarChart3,
   BookOpen,
   Bot,
@@ -41,6 +42,7 @@ const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot }[] = [
   { href: "/playground", labelKey: "nav_playground", icon: Bot },
   { href: "/pricing", labelKey: "nav_pricing", icon: CreditCard },
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
+  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2 },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },
   { href: "/profile", labelKey: "nav_profile", icon: UserCircle2 },
   { href: "/team", labelKey: "nav_team", icon: Users },
