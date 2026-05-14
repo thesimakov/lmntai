@@ -1,10 +1,14 @@
 import { type NextRequest } from "next/server";
+import { z } from "zod";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError } from "@/lib/api-response";
+import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { buildAnalysisPptx } from "@/lib/analytics-pptx-export";
+
+const exportBodySchema = z.object({ format: z.literal("pptx") });
 
 export async function POST(
   req: NextRequest,
@@ -22,8 +26,8 @@ export async function POST(
     return apiError("Project not found or access denied", 403);
   }
 
-  const body = await req.json() as { format: string };
-  if (body.format !== "pptx") return apiError("Only pptx format is supported", 400);
+  const bodyResult = await parseBody(req, exportBodySchema);
+  if (!bodyResult.ok) return bodyResult.response;
 
   const state = await getSandboxProjectState(projectId);
   if (!state) return apiError("No analysis found", 404);
