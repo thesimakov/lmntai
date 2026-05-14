@@ -50,60 +50,72 @@ export function AnalyticsEditor() {
       setStatus("uploading");
       setProgress(5);
 
-      const form = new FormData();
-      form.append("file", file);
+      try {
+        const form = new FormData();
+        form.append("file", file);
 
-      const uploadRes = await fetch(`/api/analytics/${projectId}/upload`, {
-        method: "POST",
-        body: form,
-      });
+        const uploadRes = await fetch(`/api/analytics/${projectId}/upload`, {
+          method: "POST",
+          body: form,
+        });
 
-      if (!uploadRes.ok) {
-        const err = await uploadRes.json().catch(() => ({})) as { error?: string };
-        setError(err.error ?? "Upload failed");
-        return;
-      }
+        if (!uploadRes.ok) {
+          const err = await uploadRes.json().catch(() => ({})) as { error?: string };
+          setError(err.error ?? "Upload failed");
+          return;
+        }
 
-      setStatus("analyzing");
-      setProgress(10);
+        setStatus("analyzing");
+        setProgress(10);
 
-      const analyzeRes = await fetch(`/api/analytics/${projectId}/analyze`, {
-        method: "POST",
-      });
+        const analyzeRes = await fetch(`/api/analytics/${projectId}/analyze`, {
+          method: "POST",
+        });
 
-      if (!analyzeRes.body) {
-        setError("Analysis stream unavailable");
-        return;
-      }
+        if (!analyzeRes.ok) {
+          const err = await analyzeRes.json().catch(() => ({})) as { error?: string };
+          setError(err.error ?? "Analysis failed");
+          return;
+        }
 
-      const reader = analyzeRes.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
+        if (!analyzeRes.body) {
+          setError("Analysis stream unavailable");
+          return;
+        }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
+        const reader = analyzeRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
 
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = JSON.parse(line.slice(6)) as {
-            type: string;
-            progress?: number;
-            dashboard?: AnalysisDashboard;
-            message?: string;
-          };
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
 
-          if (payload.type === "progress" && payload.progress !== undefined) {
-            setProgress(payload.progress);
-          } else if (payload.type === "complete" && payload.dashboard) {
-            setDashboard(payload.dashboard);
-          } else if (payload.type === "error") {
-            setError(payload.message ?? "Analysis failed");
+          for (const line of lines) {
+            if (!line.startsWith("data: ")) continue;
+            const payload = JSON.parse(line.slice(6)) as {
+              type: string;
+              progress?: number;
+              dashboard?: AnalysisDashboard;
+              message?: string;
+            };
+
+            if (payload.type === "progress" && payload.progress !== undefined) {
+              setProgress(payload.progress);
+            } else if (payload.type === "complete" && payload.dashboard) {
+              setDashboard(payload.dashboard);
+            } else if (payload.type === "error") {
+              setError(payload.message ?? "Analysis failed");
+            }
           }
         }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "Unexpected error";
+        setError(msg);
+        setStatus("idle");
       }
     },
     [projectId, setStatus, setProgress, setDashboard, setError]
