@@ -25,6 +25,8 @@ interface Props {
 const HORIZON_COUNTS = { "6m": 6, "12m": 12, "24m": 24 } as const;
 type Horizon = keyof typeof HORIZON_COUNTS;
 
+const CHART_MARGIN = { top: 8, right: 4, left: -20, bottom: 0 } as const;
+
 function buildChartData(metric: ForecastMetric, horizon: Horizon) {
   const historical = metric.points.filter((p) => p.isHistorical);
   const forecast = metric.points
@@ -161,7 +163,8 @@ function ReadyState({
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const metric = report.metrics[selectedMetric]!;
+  const metric = report.metrics[selectedMetric];
+  if (!metric) return null;
   const chartData = buildChartData(metric, horizon);
 
   return (
@@ -209,7 +212,7 @@ function ReadyState({
         <ResponsiveContainer width="100%" height={160}>
           <ComposedChart
             data={chartData}
-            margin={{ top: 8, right: 4, left: -20, bottom: 0 }}
+            margin={CHART_MARGIN}
           >
             <XAxis
               dataKey="period"
