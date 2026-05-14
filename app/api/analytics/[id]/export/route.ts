@@ -2,12 +2,14 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
-import { apiError, apiGuardError } from "@/lib/api-response";
+import { apiError, apiGuardError, apiFile } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { investorReportSchema } from "@/lib/investor-schema";
+import { forecastReportSchema } from "@/lib/forecast-schema";
 import { buildAnalysisPptx } from "@/lib/analytics-pptx-export";
+import { buildForecastPptx } from "@/lib/forecast-pptx-export";
 import {
   buildVcPitchPptx,
   buildBoardReportPptx,
@@ -15,17 +17,13 @@ import {
 } from "@/lib/investor-pptx-export";
 
 const exportBodySchema = z.object({
-  format: z.enum(["pptx", "investor-vc-pptx", "investor-board-pptx", "investor-dd-pptx"]),
+  format: z.enum(["pptx", "investor-vc-pptx", "investor-board-pptx", "investor-dd-pptx", "forecast-pptx"]),
 });
 
+const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
 function pptxResponse(buffer: Buffer, filename: string): Response {
-  const safeFilename = filename.replace(/[";\r\n\\]/g, "_");
-  return new Response(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      "Content-Disposition": `attachment; filename="${safeFilename}"`,
-    },
-  });
+  return apiFile(buffer, filename, PPTX_MIME);
 }
 
 export async function POST(
@@ -66,6 +64,24 @@ export async function POST(
   if (format === "pptx") {
     const buffer = await buildAnalysisPptx(dashboard);
     return pptxResponse(buffer, `${baseFilename}.pptx`);
+  }
+
+  // Forecast format — require forecast.json
+  if (format === "forecast-pptx") {
+    const rawForecast = state.files["forecast.json"];
+    if (!rawForecast) {
+      return apiError("Forecast not generated yet. Click 'Generate Forecast' first.", 404);
+    }
+
+    let forecastReport: ReturnType<typeof forecastReportSchema.parse>;
+    try {
+      forecastReport = forecastReportSchema.parse(JSON.parse(rawForecast));
+    } catch {
+      return apiError("Forecast data is corrupted.", 422);
+    }
+
+    const buffer = await buildForecastPptx(forecastReport, dashboard);
+    return pptxResponse(buffer, `${baseFilename}_Forecast.pptx`);
   }
 
   // Investor formats — require investor.json
