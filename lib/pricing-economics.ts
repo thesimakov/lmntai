@@ -30,7 +30,8 @@ export const PRO_KIND_MIX: Record<ProjectKind, number> = {
   visitcard: 0,
   lovable: 0,
   box_html: 0,
-  analytics: 0
+  analytics: 0,
+  marketing: 0
 };
 
 export const FREE_KIND_MIX: Record<ProjectKind, number> = {
@@ -41,7 +42,8 @@ export const FREE_KIND_MIX: Record<ProjectKind, number> = {
   visitcard: 0,
   lovable: 0,
   box_html: 0,
-  analytics: 0
+  analytics: 0,
+  marketing: 0
 };
 
 export function estimateUsageCostRub(modelId: string, totalTokens: number): number {

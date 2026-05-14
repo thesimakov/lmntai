@@ -39,7 +39,9 @@ export const PROJECT_KINDS = [
   /** Монолитный HTML для импорта в Lemnity Box (GrapesJS): section-блоки, Tailwind CDN, без React. */
   "box_html",
   /** Дашборд аналитики / BI-платформа: графики, метрики, таблицы данных. */
-  "analytics"
+  "analytics",
+  /** Маркетинговая аналитика: каналы, ROAS, CAC, экспорт в PPTX. */
+  "marketing"
 ] as const;
 
 export type ProjectKind = (typeof PROJECT_KINDS)[number];
@@ -158,6 +160,14 @@ export function buildRouterGenerationPrompt(
           "Apply the global stock-image URL rules only if the dashboard includes illustrative imagery.",
           "Do NOT include a Lemnity footer bar — dashboards are internal tools, not public pages."
         ];
+      case "marketing":
+        return [
+          "Deliverable: **Marketing Analytics dashboard** — channels-first performance report.",
+          "Focus on channel KPIs: ROAS for paid channels, CVR for organic, open rate for email.",
+          "Use `recharts` for charts; prefer grouped BarChart for spend vs revenue comparisons.",
+          "Structure: summary KPI row, channel cards grid, chart block.",
+          "Do NOT include a Lemnity footer bar."
+        ];
       case "box_html":
         return [
           "Deliverable: **Clean semantic HTML page** intended to be imported into **Lemnity Box** (GrapesJS visual editor).",
@@ -228,7 +238,9 @@ export function getProjectKindPromptBuilderContextRu(kind?: ProjectKind | null):
     box_html:
       "монолитный HTML-файл для импорта в **Lemnity Box** (визуальный редактор): секции `<section class=\"lemnity-section\">`, Tailwind CDN, без React и JSX. Каждая секция — логический блок страницы (hero, features, pricing, footer). Только класс-стилизация (без `style=\"…\"` на ключевых элементах), семантические теги, стабильные URL изображений (Commons / Picsum / Unsplash). Никакого интерактивного JS.",
     analytics:
-      "дашборд аналитики / BI-платформа в виде **React+TypeScript-проекта** (Vite/Lovable-стиль): графики (`recharts`), карточки метрик, боковое меню или верхняя навигация, опционально таблица данных. Данные — реалистичные заглушки (массивы объектов). Tailwind, никаких внешних API. Формулируй вопросы и промпт под аналитический интерфейс — не маркетинговый сайт."
+      "дашборд аналитики / BI-платформа в виде **React+TypeScript-проекта** (Vite/Lovable-стиль): графики (`recharts`), карточки метрик, боковое меню или верхняя навигация, опционально таблица данных. Данные — реалистичные заглушки (массивы объектов). Tailwind, никаких внешних API. Формулируй вопросы и промпт под аналитический интерфейс — не маркетинговый сайт.",
+    marketing:
+      "маркетинговая аналитика в виде **React+TypeScript-проекта**: дашборд каналов (ROAS, CVR, CAC, open rate), сгруппированные BarChart (`recharts`), KPI-карточки, таблица каналов. Данные — реалистичные заглушки. Tailwind, никаких внешних API. Формулируй вопросы и промпт под маркетинговый отчёт по каналам."
   };
   return `\n\nТип результата (зафиксировано пользователем): ${m[kind]} Формулируй вопросы и итоговый промпт под этот тип, а не «универсальный сайт», если оно иное.`;
 }

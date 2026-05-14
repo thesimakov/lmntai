@@ -1,10 +1,11 @@
 /** Значение в колонке `Project.preferredEditor`. */
-export type PreferredPlaygroundEditor = "build" | "box" | "analytics";
+export type PreferredPlaygroundEditor = "build" | "box" | "analytics" | "marketing";
 
 export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroundEditor | undefined {
   if (raw === "box") return "box";
   if (raw === "build") return "build";
   if (raw === "analytics") return "analytics";
+  if (raw === "marketing") return "marketing";
   /** Старое значение в БД и клиентах → трактуем как build. */
   if (raw === "webstudio") return "build";
   return undefined;
@@ -13,6 +14,7 @@ export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroun
 export function normalizePreferredPlaygroundEditor(raw: string | null | undefined): PreferredPlaygroundEditor {
   if (raw === "box") return "box";
   if (raw === "analytics") return "analytics";
+  if (raw === "marketing") return "marketing";
   if (raw === "webstudio") return "build";
   return "build";
 }
@@ -44,6 +46,11 @@ export function buildPlaygroundAnalyticsEditUrl(projectId: string): string {
   return `/playground/analytics?projectId=${encodeURIComponent(projectId)}`;
 }
 
+/** Marketing Analytics editor. */
+export function buildPlaygroundMarketingEditUrl(projectId: string): string {
+  return `/playground/marketing?projectId=${encodeURIComponent(projectId)}`;
+}
+
 export function buildPlaygroundEditUrlForStoredEditor(
   editor: PreferredPlaygroundEditor,
   opts: {
@@ -57,6 +64,9 @@ export function buildPlaygroundEditUrlForStoredEditor(
   }
   if (editor === "analytics") {
     return buildPlaygroundAnalyticsEditUrl(opts.projectId);
+  }
+  if (editor === "marketing") {
+    return buildPlaygroundMarketingEditUrl(opts.projectId);
   }
   return buildPlaygroundBuildEditUrl({
     projectId: opts.projectId,
