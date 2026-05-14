@@ -9,8 +9,8 @@ const marketingKpiSchema = z.object({
 
 const marketingChannelSchema = z.object({
   name: z.string(),
-  spend: z.number().optional(),
-  revenue: z.number().optional(),
+  spend: z.number().nonnegative().optional(),
+  revenue: z.number().nonnegative().optional(),
   kpis: z.array(marketingKpiSchema),
   trend: z.enum(["up", "down", "neutral"]),
   narrative: z.string(),
@@ -28,7 +28,7 @@ export const marketingDashboardSchema = z.object({
     companyName: z.string(),
     period: z.string(),
     dataSource: z.string(),
-    analyzedAt: z.string(),
+    analyzedAt: z.string().datetime(),
   }),
   summary: z.object({
     executive: z.string(),

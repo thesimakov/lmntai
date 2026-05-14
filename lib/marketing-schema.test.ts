@@ -59,7 +59,8 @@ describe("marketingDashboardSchema", () => {
   });
 
   it("allows optional spend and revenue on channel", () => {
-    const { spend: _s, revenue: _r, ...channelWithout } = validDashboard.channels[0];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { spend, revenue, ...channelWithout } = validDashboard.channels[0];
     const result = marketingDashboardSchema.safeParse({
       ...validDashboard,
       channels: [channelWithout],
