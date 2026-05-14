@@ -38,11 +38,11 @@ import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
-const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot }[] = [
+const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot; fullNav?: boolean }[] = [
   { href: "/playground", labelKey: "nav_playground", icon: Bot },
   { href: "/pricing", labelKey: "nav_pricing", icon: CreditCard },
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
-  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2 },
+  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2, fullNav: true },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },
   { href: "/profile", labelKey: "nav_profile", icon: UserCircle2 },
   { href: "/team", labelKey: "nav_team", icon: Users },
@@ -139,18 +139,15 @@ function SidebarBody({ className }: { className?: string }) {
         <div className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-accent text-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
+            const isActive = !item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+            const itemClass = cn(
+              "group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
+              isActive
+                ? "bg-accent text-accent-foreground font-medium"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            );
+            const itemContent = (
+              <>
                 <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground/70")} />
                 <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
                 {item.href === "/pricing" ? (
@@ -165,6 +162,15 @@ function SidebarBody({ className }: { className?: string }) {
                     {t(activePlanLabelKey(activePlan))}
                   </Badge>
                 ) : null}
+              </>
+            );
+            return item.fullNav ? (
+              <a key={item.href} href={item.href} className={itemClass}>
+                {itemContent}
+              </a>
+            ) : (
+              <Link key={item.href} href={item.href} className={itemClass}>
+                {itemContent}
               </Link>
             );
           })}

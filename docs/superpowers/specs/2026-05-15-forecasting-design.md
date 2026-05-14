@@ -138,7 +138,7 @@ File: `components/playground/analytics/analytics-forecast-panel.tsx`
 2. **Idle / error** — description card + "Generate Forecast" button (+ error message if present); `setForecastError("")` called before each new generation attempt
 3. **Generating** — spinner + "Generating forecast..."
 4. **Ready:**
-   - Metric selector pills (Revenue / EBITDA / Burn Rate / Runway / MRR)
+   - Metric selector pills — rendered dynamically from `report.metrics` array (e.g. Revenue / EBITDA / Burn Rate / Runway / MRR)
    - Horizon toggle (6m / 12m / 24m) — UI-only filter, no new requests
    - `Recharts <AreaChart>`: solid line for history, dashed for forecast, grey `<ReferenceArea>` for confidence band, vertical `<ReferenceLine>` at `basePeriod`
    - Metric narrative (1–2 lines below chart)

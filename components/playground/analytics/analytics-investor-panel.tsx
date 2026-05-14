@@ -83,6 +83,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
+    setInvestorError("");
     setInvestorStatus("generating");
     setDownloadError(null);
     try {

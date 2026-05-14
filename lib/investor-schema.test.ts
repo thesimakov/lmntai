@@ -16,13 +16,22 @@ const MINIMAL_VALID: unknown = {
     },
   },
   vcPitch: {
-    slides: [{ title: "Cover", content: "Company overview" }],
+    slides: Array.from({ length: 10 }, (_, i) => ({
+      title: `VC Slide ${i + 1}`,
+      content: `Content ${i + 1}`,
+    })),
   },
   boardReport: {
-    slides: [{ title: "Exec Summary", content: "Overview" }],
+    slides: Array.from({ length: 14 }, (_, i) => ({
+      title: `Board Slide ${i + 1}`,
+      content: `Content ${i + 1}`,
+    })),
   },
   dueDiligence: {
-    slides: [{ title: "Overview", content: "DD overview" }],
+    slides: Array.from({ length: 8 }, (_, i) => ({
+      title: `DD Slide ${i + 1}`,
+      content: `Content ${i + 1}`,
+    })),
     keyQuestions: ["What is the runway?"],
     dataRoomChecklist: ["Cap table", "Financials"],
   },

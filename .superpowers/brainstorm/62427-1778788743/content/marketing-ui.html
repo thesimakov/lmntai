@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #0a0a12; color: #e0e0e0; font-family: -apple-system, sans-serif; padding: 24px; }
+  h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 24px; }
+  .editor-frame {
+    border: 1px solid #333;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #111;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  /* Top bar */
+  .topbar {
+    background: #1a1a2e;
+    border-bottom: 1px solid #333;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .topbar-back { color: #666; font-size: 11px; }
+  .topbar-title { color: #ccc; font-size: 12px; font-weight: 600; flex: 1; }
+  .topbar-btn {
+    background: rgba(79,142,247,0.15);
+    border: 1px solid rgba(79,142,247,0.3);
+    border-radius: 5px;
+    color: #4F8EF7;
+    font-size: 10px;
+    padding: 4px 10px;
+    cursor: pointer;
+  }
+  /* Main layout */
+  .main {
+    display: flex;
+    height: 520px;
+  }
+  /* Left panel */
+  .left-tabs {
+    width: 44px;
+    background: #141424;
+    border-right: 1px solid #222;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 6px;
+  }
+  .tab-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    cursor: pointer;
+    color: #555;
+    background: transparent;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab-icon.active {
+    background: rgba(79,142,247,0.2);
+    border-color: rgba(79,142,247,0.5);
+    color: #4F8EF7;
+  }
+  .tab-icon:hover:not(.active) {
+    background: #1e1e3e;
+    color: #aaa;
+  }
+  /* Left panel content */
+  .left-content {
+    width: 220px;
+    background: #141424;
+    border-right: 1px solid #222;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .panel-title { font-size: 10px; font-weight: 700; color: #4F8EF7; text-transform: uppercase; letter-spacing: 0.5px; }
+  /* Upload zone */
+  .upload-zone {
+    border: 1.5px dashed #333;
+    border-radius: 6px;
+    padding: 16px 10px;
+    text-align: center;
+    color: #555;
+    font-size: 11px;
+    cursor: pointer;
+    background: #0d0d1e;
+    line-height: 1.6;
+  }
+  .upload-zone .upload-icon { font-size: 22px; margin-bottom: 6px; }
+  .upload-zone .upload-hint { font-size: 9px; color: #444; margin-top: 4px; }
+  .analyze-btn {
+    background: #4F8EF7;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 7px 0;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+  }
+  /* Chat panel */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .msg-user {
+    align-self: flex-end;
+    background: rgba(79,142,247,0.15);
+    border: 1px solid rgba(79,142,247,0.25);
+    border-radius: 8px 8px 2px 8px;
+    padding: 6px 8px;
+    color: #ccc;
+    max-width: 85%;
+  }
+  .msg-ai {
+    align-self: flex-start;
+    background: #1a1a30;
+    border: 1px solid #2a2a4a;
+    border-radius: 2px 8px 8px 8px;
+    padding: 6px 8px;
+    color: #bbb;
+    max-width: 90%;
+  }
+  .chat-input {
+    background: #0d0d1e;
+    border: 1px solid #2a2a4a;
+    border-radius: 5px;
+    padding: 6px 8px;
+    font-size: 10px;
+    color: #777;
+  }
+  /* Right dashboard */
+  .right-content {
+    flex: 1;
+    background: #0d0d1e;
+    overflow-y: auto;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  /* KPI bar */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  .kpi-card {
+    background: #141424;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+  .kpi-label { font-size: 9px; color: #666; margin-bottom: 3px; }
+  .kpi-value { font-size: 16px; font-weight: 700; color: #e0e0e0; }
+  .kpi-change { font-size: 9px; margin-top: 2px; }
+  .up { color: #4ade80; }
+  .down { color: #f87171; }
+  /* Channel cards */
+  .channels-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .channel-card {
+    background: #141424;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .channel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .channel-name { font-size: 11px; font-weight: 600; color: #ccc; }
+  .channel-trend {
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 3px;
+  }
+  .trend-up { background: rgba(74,222,128,0.1); color: #4ade80; }
+  .trend-down { background: rgba(248,113,113,0.1); color: #f87171; }
+  .channel-kpis {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .channel-kpi {
+    background: #0d0d1e;
+    border-radius: 4px;
+    padding: 4px 6px;
+  }
+  .channel-kpi-label { font-size: 8px; color: #555; }
+  .channel-kpi-value { font-size: 11px; font-weight: 600; color: #ddd; }
+  /* Chart area */
+  .chart-area {
+    background: #141424;
+    border: 1px solid #222;
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .chart-title { font-size: 10px; font-weight: 600; color: #aaa; margin-bottom: 8px; }
+  .section-label { font-size: 10px; font-weight: 700; color: #aaa; margin-top: 2px; }
+
+  /* State selector */
+  .state-selector {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .state-btn {
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 5px;
+    color: #aaa;
+    font-size: 11px;
+    padding: 5px 12px;
+    cursor: pointer;
+  }
+  .state-btn.active {
+    background: rgba(79,142,247,0.15);
+    border-color: rgba(79,142,247,0.4);
+    color: #4F8EF7;
+  }
+</style>
+</head>
+<body>
+<h2>Marketing Analytics — UI Layout</h2>
+<p class="subtitle">Макет редактора: загрузка данных, дашборд каналов, чат. Выберите состояние для просмотра.</p>
+
+<div class="state-selector">
+  <button class="state-btn active" onclick="showState('upload')">📤 Upload (пустой)</button>
+  <button class="state-btn" onclick="showState('dashboard')">📊 Dashboard (после анализа)</button>
+  <button class="state-btn" onclick="showState('chat')">💬 Chat</button>
+</div>
+
+<div class="editor-frame">
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="topbar-back">← Проекты</span>
+    <span class="topbar-title">Marketing Analytics · Acme Corp</span>
+    <button class="topbar-btn">↓ Экспорт PPTX</button>
+  </div>
+
+  <div class="main">
+    <!-- Left tab icons -->
+    <div class="left-tabs">
+      <div class="tab-icon active" title="Upload" onclick="setTab('upload', event)">📤</div>
+      <div class="tab-icon" title="Chat" onclick="setTab('chat', event)">💬</div>
+    </div>
+
+    <!-- Left panel content -->
+    <div class="left-content" id="panel-upload">
+      <div class="panel-title">Данные</div>
+      <div class="upload-zone" id="upload-zone">
+        <div class="upload-icon">📂</div>
+        <div>Перетащите CSV / XLSX / PDF</div>
+        <div class="upload-hint">Google Ads, Meta, Яндекс, CRM…<br>До 5 файлов · 50MB</div>
+      </div>
+      <div id="file-list" style="display:none; font-size:10px; color:#666; display:flex; flex-direction:column; gap:3px;">
+        <div>📄 google_ads_q1.csv</div>
+        <div>📄 meta_report.xlsx</div>
+        <div>📑 summary.pdf</div>
+      </div>
+      <button class="analyze-btn" id="analyze-btn">✦ Анализировать</button>
+    </div>
+
+    <div class="left-content" id="panel-chat" style="display:none;">
+      <div class="panel-title">AI Чат</div>
+      <div class="chat-messages">
+        <div class="msg-user">Какой канал даёт лучший ROAS?</div>
+        <div class="msg-ai">Google Ads показывает лучший ROAS — 4.1x при расходе $12,400. Meta Ads — 2.8x, но объём трафика выше.</div>
+        <div class="msg-user">Где снизить расходы?</div>
+        <div class="msg-ai">Email канал имеет высокий CAC ($68) при низком объёме. Рекомендую перераспределить 15–20% бюджета в Google.</div>
+      </div>
+      <div class="chat-input">Задайте вопрос по данным…</div>
+    </div>
+
+    <!-- Right content -->
+    <div class="right-content" id="right-dashboard">
+
+      <!-- State: upload -->
+      <div id="state-upload">
+        <div style="display:flex; align-items:center; justify-content:center; height:100%; flex-direction:column; gap:12px; opacity:0.5; padding-top: 80px;">
+          <div style="font-size:36px;">📊</div>
+          <div style="font-size:13px; color:#666; text-align:center;">
+            Загрузите маркетинговые данные<br>и нажмите «Анализировать»
+          </div>
+        </div>
+      </div>
+
+      <!-- State: dashboard -->
+      <div id="state-dashboard" style="display:none;">
+        <!-- KPIs -->
+        <div class="section-label" style="margin-bottom:6px;">Сводные метрики</div>
+        <div class="kpi-row">
+          <div class="kpi-card">
+            <div class="kpi-label">Total Spend</div>
+            <div class="kpi-value">$48.2K</div>
+            <div class="kpi-change up">+12% MoM</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Total Revenue</div>
+            <div class="kpi-value">$162K</div>
+            <div class="kpi-change up">+18%</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Blended ROAS</div>
+            <div class="kpi-value">3.4x</div>
+            <div class="kpi-change up">+0.3x</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-label">Avg CAC</div>
+            <div class="kpi-value">$54</div>
+            <div class="kpi-change down">+$8</div>
+          </div>
+        </div>
+
+        <!-- Channels -->
+        <div class="section-label" style="margin-bottom:6px;">Каналы</div>
+        <div class="channels-grid">
+          <div class="channel-card">
+            <div class="channel-header">
+              <span class="channel-name">🔍 Google Ads</span>
+              <span class="channel-trend trend-up">↑ растёт</span>
+            </div>
+            <div class="channel-kpis">
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">ROAS</div>
+                <div class="channel-kpi-value up">4.1x</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Spend</div>
+                <div class="channel-kpi-value">$12.4K</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CAC</div>
+                <div class="channel-kpi-value">$38</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CTR</div>
+                <div class="channel-kpi-value">6.2%</div>
+              </div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-header">
+              <span class="channel-name">📘 Meta Ads</span>
+              <span class="channel-trend trend-up">↑ растёт</span>
+            </div>
+            <div class="channel-kpis">
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">ROAS</div>
+                <div class="channel-kpi-value">2.8x</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Spend</div>
+                <div class="channel-kpi-value">$18.1K</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CAC</div>
+                <div class="channel-kpi-value">$61</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CPM</div>
+                <div class="channel-kpi-value">$14.2</div>
+              </div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-header">
+              <span class="channel-name">🌱 Organic</span>
+              <span class="channel-trend trend-up">↑ стабильно</span>
+            </div>
+            <div class="channel-kpis">
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Revenue</div>
+                <div class="channel-kpi-value up">$42K</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Spend</div>
+                <div class="channel-kpi-value">$0</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CVR</div>
+                <div class="channel-kpi-value">3.1%</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Sessions</div>
+                <div class="channel-kpi-value">14.2K</div>
+              </div>
+            </div>
+          </div>
+          <div class="channel-card">
+            <div class="channel-header">
+              <span class="channel-name">📧 Email</span>
+              <span class="channel-trend trend-down">↓ снижение</span>
+            </div>
+            <div class="channel-kpis">
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">ROAS</div>
+                <div class="channel-kpi-value down">1.9x</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Spend</div>
+                <div class="channel-kpi-value">$5.2K</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">CAC</div>
+                <div class="channel-kpi-value down">$68</div>
+              </div>
+              <div class="channel-kpi">
+                <div class="channel-kpi-label">Open Rate</div>
+                <div class="channel-kpi-value">22%</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Chart -->
+        <div class="chart-area">
+          <div class="chart-title">Spend vs Revenue по каналам</div>
+          <svg viewBox="0 0 500 100" style="width:100%;height:80px;">
+            <!-- Google -->
+            <rect x="20" y="40" width="30" height="50" fill="rgba(79,142,247,0.4)" rx="2"/>
+            <rect x="20" y="14" width="30" height="26" fill="rgba(74,222,128,0.5)" rx="2"/>
+            <!-- Meta -->
+            <rect x="80" y="20" width="30" height="70" fill="rgba(79,142,247,0.4)" rx="2"/>
+            <rect x="80" y="5" width="30" height="15" fill="rgba(74,222,128,0.5)" rx="2"/>
+            <!-- Organic -->
+            <rect x="140" y="55" width="30" height="35" fill="rgba(79,142,247,0.1)" rx="2"/>
+            <rect x="140" y="16" width="30" height="39" fill="rgba(74,222,128,0.5)" rx="2"/>
+            <!-- Email -->
+            <rect x="200" y="70" width="30" height="20" fill="rgba(79,142,247,0.4)" rx="2"/>
+            <rect x="200" y="60" width="30" height="10" fill="rgba(74,222,128,0.3)" rx="2"/>
+            <!-- Legend -->
+            <rect x="260" y="82" width="8" height="8" fill="rgba(79,142,247,0.4)" rx="1"/>
+            <text x="272" y="90" fill="#666" font-size="8">Spend</text>
+            <rect x="310" y="82" width="8" height="8" fill="rgba(74,222,128,0.5)" rx="1"/>
+            <text x="322" y="90" fill="#666" font-size="8">Revenue</text>
+            <!-- X labels -->
+            <text x="27" y="98" fill="#555" font-size="7">Google</text>
+            <text x="88" y="98" fill="#555" font-size="7">Meta</text>
+            <text x="146" y="98" fill="#555" font-size="7">Organic</text>
+            <text x="206" y="98" fill="#555" font-size="7">Email</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- State: chat (just show dashboard faded) -->
+      <div id="state-chat" style="display:none;">
+        <div style="padding-top:80px; text-align:center; color:#444; font-size:12px;">
+          Дашборд остаётся справа<br>
+          <span style="font-size:10px; color:#333;">(чат в левой панели)</span>
+        </div>
+        <div style="opacity:0.25; pointer-events:none; margin-top:16px;">
+          <div class="kpi-row">
+            <div class="kpi-card"><div class="kpi-label">Total Spend</div><div class="kpi-value">$48.2K</div></div>
+            <div class="kpi-card"><div class="kpi-label">Total Revenue</div><div class="kpi-value">$162K</div></div>
+            <div class="kpi-card"><div class="kpi-label">Blended ROAS</div><div class="kpi-value">3.4x</div></div>
+            <div class="kpi-card"><div class="kpi-label">Avg CAC</div><div class="kpi-value">$54</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+function showState(state) {
+  document.querySelectorAll('.state-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  document.getElementById('state-upload').style.display = 'none';
+  document.getElementById('state-dashboard').style.display = 'none';
+  document.getElementById('state-chat').style.display = 'none';
+  document.getElementById('panel-upload').style.display = 'none';
+  document.getElementById('panel-chat').style.display = 'none';
+
+  const icons = document.querySelectorAll('.tab-icon');
+
+  if (state === 'upload') {
+    document.getElementById('state-upload').style.display = 'block';
+    document.getElementById('panel-upload').style.display = 'flex';
+    icons[0].classList.add('active'); icons[1].classList.remove('active');
+  } else if (state === 'dashboard') {
+    document.getElementById('state-dashboard').style.display = 'flex';
+    document.getElementById('state-dashboard').style.flexDirection = 'column';
+    document.getElementById('panel-upload').style.display = 'flex';
+    icons[0].classList.add('active'); icons[1].classList.remove('active');
+  } else if (state === 'chat') {
+    document.getElementById('state-chat').style.display = 'block';
+    document.getElementById('panel-chat').style.display = 'flex';
+    icons[0].classList.remove('active'); icons[1].classList.add('active');
+  }
+}
+
+function setTab(tab, e) {
+  // handled by state buttons
+}
+</script>
+</body>
+</html>

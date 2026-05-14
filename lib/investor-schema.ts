@@ -27,10 +27,10 @@ export const investorReportSchema = z.object({
       pessimistic: z.object({ revenue: z.string(), ebitda: z.string(), narrative: z.string() }),
     }),
   }),
-  vcPitch: z.object({ slides: z.array(investorSlideSchema) }),
-  boardReport: z.object({ slides: z.array(investorSlideSchema) }),
+  vcPitch: z.object({ slides: z.array(investorSlideSchema).min(10).max(10) }),
+  boardReport: z.object({ slides: z.array(investorSlideSchema).min(14).max(14) }),
   dueDiligence: z.object({
-    slides: z.array(investorSlideSchema),
+    slides: z.array(investorSlideSchema).min(8).max(8),
     keyQuestions: z.array(z.string()),
     dataRoomChecklist: z.array(z.string()),
   }),

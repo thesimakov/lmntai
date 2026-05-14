@@ -28,26 +28,37 @@ function tryParseReport(text: string): ReturnType<typeof investorReportSchema.sa
   }
 }
 
+class AICallError extends Error {
+  constructor(cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "AICallError";
+  }
+}
+
 async function callInvestorAI(
   messages: Array<{ role: "system" | "user" | "assistant"; content: string }>,
   userId: string,
   projectId: string
 ) {
-  const result = await requestRouterAIJson({
-    messages,
-    model: INVESTOR_MODEL,
-    settings: { temperature: 0.1, max_completion_tokens: 12000 },
-    user: userId,
-  });
-  if (result.usage) {
-    await chargeTokensSafely({
-      userId,
-      projectId,
-      usage: result.usage,
-      model: result.model ?? INVESTOR_MODEL,
+  try {
+    const result = await requestRouterAIJson({
+      messages,
+      model: INVESTOR_MODEL,
+      settings: { temperature: 0.1, max_completion_tokens: 12000 },
+      user: userId,
     });
+    if (result.usage) {
+      await chargeTokensSafely({
+        userId,
+        projectId,
+        usage: result.usage,
+        model: result.model ?? INVESTOR_MODEL,
+      });
+    }
+    return result;
+  } catch (err) {
+    throw new AICallError(err);
   }
-  return result;
 }
 
 export async function POST(
@@ -62,8 +73,11 @@ export async function POST(
 
   try {
     await requireProjectScopeForOwner(projectId, user.id);
-  } catch {
-    return apiError("Project not found or access denied", 403);
+  } catch (err) {
+    if (err instanceof Error && err.message === "PROJECT_NOT_FOUND") {
+      return apiError("Project not found or access denied", 403);
+    }
+    throw err;
   }
 
   const state = await getSandboxProjectState(projectId);
@@ -81,20 +95,27 @@ export async function POST(
   const messages = buildInvestorPrompt(dashboard);
 
   // First attempt
-  const result1 = await callInvestorAI(messages, user.id, projectId);
+  let result1: Awaited<ReturnType<typeof callInvestorAI>>;
+  try {
+    result1 = await callInvestorAI(messages, user.id, projectId);
+  } catch {
+    return apiError("AI service temporarily unavailable", 502);
+  }
   const v1 = tryParseReport(result1.text);
 
   if (v1?.success) {
-    const report = v1.data;
+    const reportWithTimestamp = { ...v1.data, generatedAt: new Date().toISOString() };
+    const freshState1 = await getSandboxProjectState(projectId);
+    const freshFiles1 = freshState1?.files ?? {};
     await upsertSandboxProjectState({
       projectId,
       sandboxId: state.sandboxId,
       ownerId: user.id,
       title: state.title,
       html: state.html,
-      files: { ...state.files, "investor.json": JSON.stringify(report) },
+      files: { ...freshFiles1, "investor.json": JSON.stringify(reportWithTimestamp) },
     });
-    return apiOk({ report });
+    return apiOk({ report: reportWithTimestamp });
   }
 
   // Retry once with corrective prompt
@@ -103,23 +124,29 @@ export async function POST(
     { role: "assistant" as const, content: result1.text },
     { role: "user" as const, content: RETRY_MESSAGE },
   ];
-  const result2 = await callInvestorAI(retryMessages, user.id, projectId);
+  let result2: Awaited<ReturnType<typeof callInvestorAI>>;
+  try {
+    result2 = await callInvestorAI(retryMessages, user.id, projectId);
+  } catch {
+    return apiError("AI service temporarily unavailable", 502);
+  }
   const v2 = tryParseReport(result2.text);
 
   if (!v2?.success) {
     return apiError("AI response did not match expected schema after retry. Please try again.", 422);
   }
 
-  const report = v2.data;
-
+  const reportWithTimestamp = { ...v2.data, generatedAt: new Date().toISOString() };
+  const freshState2 = await getSandboxProjectState(projectId);
+  const freshFiles2 = freshState2?.files ?? {};
   await upsertSandboxProjectState({
     projectId,
     sandboxId: state.sandboxId,
     ownerId: user.id,
     title: state.title,
     html: state.html,
-    files: { ...state.files, "investor.json": JSON.stringify(report) },
+    files: { ...freshFiles2, "investor.json": JSON.stringify(reportWithTimestamp) },
   });
 
-  return apiOk({ report });
+  return apiOk({ report: reportWithTimestamp });
 }
