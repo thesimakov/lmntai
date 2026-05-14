@@ -36,7 +36,12 @@ export async function POST(
   const rawAnalysis = state.files["analysis.json"];
   if (!rawAnalysis) return apiError("No analysis found. Upload and analyze a PDF first.", 400);
 
-  const dashboard = analysisDashboardSchema.parse(JSON.parse(rawAnalysis));
+  let dashboard: ReturnType<typeof analysisDashboardSchema.parse>;
+  try {
+    dashboard = analysisDashboardSchema.parse(JSON.parse(rawAnalysis));
+  } catch {
+    return apiError("Analysis data is corrupted or invalid.", 422);
+  }
   const history = (body.history ?? []).map((m) => ({
     role: m.role,
     content: m.content,
