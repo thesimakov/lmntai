@@ -59,11 +59,6 @@ function isMultifileViteOutput(kind: ProjectKind | null): boolean {
   return true;
 }
 
-/** Analytics/BI projects use multi-file React output with charting libraries. */
-function isAnalyticsDashboard(kind: ProjectKind | null): boolean {
-  return kind === "analytics";
-}
-
 /** Превью через esbuild (многофайловый React); иначе — монолитный HTML. */
 export function shouldUseLovableBundler(projectKind?: ProjectKind | null): boolean {
   if (projectKind === "resume" || projectKind === "presentation" || projectKind === "box_html") return false;

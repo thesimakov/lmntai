@@ -205,7 +205,7 @@ function syncZeroBlockRuntimeStyles(doc: Document, inlineUi: ZeroBlockCanvasInli
   }
   const base = `
 /* === Zero Block base === */
-.lemnity-zero-block{position:relative}
+.lemnity-zero-block{position:relative;width:100%!important;max-width:none!important;margin-left:0!important;margin-right:0!important;box-sizing:border-box!important}
 .lemnity-zero-block .lemnity-zero-canvas{position:relative;width:100%;min-height:100%;box-sizing:border-box}
 .lemnity-zero-block[data-ln-zero-editing="1"]{outline:2px solid #f26b4f;outline-offset:-2px}
 
@@ -937,10 +937,8 @@ function placeZeroBlockChildFreely(component: Component) {
 
   ensureZeroBlockChildResizable(component);
 
-  const draggable = component.get("draggable");
-  if (draggable !== ".lemnity-zero-block") {
-    component.set("draggable", ".lemnity-zero-block");
-  }
+  // Zero block children are non-interactive in the main canvas — use ZbEditor to edit.
+  component.set({ selectable: false, hoverable: false, draggable: false });
 
   const layoutParent = getGrapesComponentParent(component);
   if (!layoutParent || !isZeroBlockCanvasComponent(layoutParent)) return;

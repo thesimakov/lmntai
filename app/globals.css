@@ -158,7 +158,7 @@
   z-index: 0;
   pointer-events: none;
   overflow: hidden;
-  background: linear-gradient(165deg, #f4f4f3 0%, #eceaf5 42%, #f2f0ea 100%);
+  background: linear-gradient(165deg, #f6f4f1 0%, #eef0fa 38%, #fdf3eb 72%, #f5f0f8 100%);
 }
 
 .landing-backdrop__blob {
@@ -169,42 +169,42 @@
 }
 
 .landing-backdrop__blob--a {
-  width: min(78vw, 540px);
-  height: min(78vw, 540px);
-  left: -10%;
-  top: 8%;
+  width: min(80vw, 560px);
+  height: min(80vw, 560px);
+  left: -12%;
+  top: 4%;
   background: radial-gradient(
     circle at 32% 28%,
-    rgba(11, 42, 91, 0.32),
-    rgba(37, 99, 235, 0.14) 58%,
+    rgba(11, 42, 91, 0.45),
+    rgba(37, 99, 235, 0.22) 55%,
     transparent 72%
   );
   animation: landing-blob-drift-a 21s ease-in-out infinite;
 }
 
 .landing-backdrop__blob--b {
-  width: min(88vw, 640px);
-  height: min(88vw, 640px);
-  right: -14%;
-  top: 22%;
+  width: min(90vw, 660px);
+  height: min(90vw, 660px);
+  right: -16%;
+  top: 16%;
   background: radial-gradient(
     circle at 55% 45%,
-    rgba(37, 99, 235, 0.25),
-    rgba(59, 130, 246, 0.12) 60%,
+    rgba(249, 115, 22, 0.28),
+    rgba(251, 146, 60, 0.12) 58%,
     transparent 74%
   );
   animation: landing-blob-drift-b 27s ease-in-out infinite reverse;
 }
 
 .landing-backdrop__blob--c {
-  width: min(72vw, 500px);
-  height: min(72vw, 500px);
-  left: 18%;
-  bottom: -8%;
+  width: min(74vw, 520px);
+  height: min(74vw, 520px);
+  left: 22%;
+  bottom: -10%;
   background: radial-gradient(
     circle at 48% 52%,
-    rgba(37, 99, 235, 0.18),
-    rgba(59, 130, 246, 0.08) 56%,
+    rgba(99, 102, 241, 0.22),
+    rgba(139, 92, 246, 0.10) 54%,
     transparent 72%
   );
   animation: landing-blob-drift-c 18s ease-in-out infinite;

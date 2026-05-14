@@ -2,7 +2,7 @@ import type { Component, Editor, TraitProperties } from "grapesjs";
 import { ZB_GRID_OVERLAY_STYLE_ID } from "@/lib/zero-block-grid";
 
 /** Стили только в документе iframe редактора. */
-export const BLOCK_GRID_DOC_STYLE_ID = "lemnity-block-grid-12-doc";
+export const BLOCK_GRID_DOC_STYLE_ID = "lemnity-block-grid-10-doc";
 
 function isDesktopLikeDevice(editor: Editor): boolean {
   const ed = editor as Editor & {
@@ -20,12 +20,13 @@ function isDesktopLikeDevice(editor: Editor): boolean {
   return false;
 }
 
-/** Горизонтальные поля сетки редактора (совпадают с пунктиром). Реальная ширина «12 колонок» = 100% − 2×. */
+/** Горизонтальные поля сетки редактора (совпадают с пунктиром). Реальная ширина «10 колонок» = 100% − 2×. */
 export const LEMNITY_GRID_OUTSIDE_GUTTER_PX = 40;
 
 const CANVAS_GRID_DOC_CSS = `
-/* Сетка 12 колонок в полосе контента (отступы по бокам 40px). Секции на всю ширину холста могут визуально
-   выходить за колонки; контент внутри удерживается правилами padding на section (см. ниже). */
+/* Сетка 10 колонок в полосе контента (отступы по бокам 40px). Секции на всю ширину холста могут визуально
+   выходить за колонки; контент внутри удерживается правилами padding на section (см. ниже).
+   Математика: 2×20px поля + 10×80px кол + 9×40px зазор = 1200px. Шаг = ровно 10%. */
 html[data-lemnity-grid12="on"] body {
   position: relative;
   margin: 0;
@@ -43,31 +44,27 @@ html[data-lemnity-grid12="on"] body::before {
   z-index: 2147482900;
   box-sizing: border-box;
   background-image: linear-gradient(90deg,
-    transparent                      1.6667%,
-    rgba(251, 113, 133, 0.12)  1.6667%  6.6667%,
-    transparent                6.6667%  10%,
-    rgba(251, 113, 133, 0.12)  10%      15%,
-    transparent                15%      18.3333%,
-    rgba(251, 113, 133, 0.12)  18.3333% 23.3333%,
-    transparent                23.3333% 26.6667%,
-    rgba(251, 113, 133, 0.12)  26.6667% 31.6667%,
-    transparent                31.6667% 35%,
-    rgba(251, 113, 133, 0.12)  35%      40%,
-    transparent                40%      43.3333%,
-    rgba(251, 113, 133, 0.12)  43.3333% 48.3333%,
-    transparent                48.3333% 51.6667%,
-    rgba(251, 113, 133, 0.12)  51.6667% 56.6667%,
-    transparent                56.6667% 60%,
-    rgba(251, 113, 133, 0.12)  60%      65%,
-    transparent                65%      68.3333%,
-    rgba(251, 113, 133, 0.12)  68.3333% 73.3333%,
-    transparent                73.3333% 76.6667%,
-    rgba(251, 113, 133, 0.12)  76.6667% 81.6667%,
-    transparent                81.6667% 85%,
-    rgba(251, 113, 133, 0.12)  85%      90%,
-    transparent                90%      93.3333%,
-    rgba(251, 113, 133, 0.12)  93.3333% 98.3333%,
-    transparent                98.3333%
+    transparent                        1.6667%,
+    rgba(251, 113, 133, 0.12)  1.6667%  8.3333%,
+    transparent                8.3333%  11.6667%,
+    rgba(251, 113, 133, 0.12) 11.6667%  18.3333%,
+    transparent               18.3333%  21.6667%,
+    rgba(251, 113, 133, 0.12) 21.6667%  28.3333%,
+    transparent               28.3333%  31.6667%,
+    rgba(251, 113, 133, 0.12) 31.6667%  38.3333%,
+    transparent               38.3333%  41.6667%,
+    rgba(251, 113, 133, 0.12) 41.6667%  48.3333%,
+    transparent               48.3333%  51.6667%,
+    rgba(251, 113, 133, 0.12) 51.6667%  58.3333%,
+    transparent               58.3333%  61.6667%,
+    rgba(251, 113, 133, 0.12) 61.6667%  68.3333%,
+    transparent               68.3333%  71.6667%,
+    rgba(251, 113, 133, 0.12) 71.6667%  78.3333%,
+    transparent               78.3333%  81.6667%,
+    rgba(251, 113, 133, 0.12) 81.6667%  88.3333%,
+    transparent               88.3333%  91.6667%,
+    rgba(251, 113, 133, 0.12) 91.6667%  98.3333%,
+    transparent               98.3333%
   );
 }
 
@@ -150,12 +147,12 @@ export function syncBlockGridOverlay(editor: Editor) {
   }
   tag.textContent = CANVAS_GRID_DOC_CSS;
   html.setAttribute("data-lemnity-grid12", isDesktopLikeDevice(editor) ? "on" : "off");
-  // Direct DOM reset for zero-block sections — overrides any stale GrapesJS inline styles.
+  // Direct DOM reset for zero-block sections — use !important to beat any stale GrapesJS class rules.
   doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block").forEach((el) => {
-    el.style.width = "100%";
-    el.style.maxWidth = "none";
-    el.style.marginLeft = "0";
-    el.style.marginRight = "0";
+    el.style.setProperty("width", "100%", "important");
+    el.style.setProperty("max-width", "none", "important");
+    el.style.setProperty("margin-left", "0", "important");
+    el.style.setProperty("margin-right", "0", "important");
   });
   syncZeroBlockGridOverlays(editor);
 }
@@ -172,9 +169,9 @@ export function syncZeroBlockGridOverlays(editor: Editor) {
 
 function readSpan(attrs: Record<string, string>): number {
   const raw = attrs["data-ln-span"];
-  const n = parseInt(raw ?? "12", 10);
-  if (!Number.isFinite(n)) return 12;
-  return Math.min(12, Math.max(1, n));
+  const n = parseInt(raw ?? "10", 10);
+  if (!Number.isFinite(n)) return 10;
+  return Math.min(10, Math.max(1, n));
 }
 
 function readAlign(attrs: Record<string, string>): "left" | "center" | "right" {
@@ -256,8 +253,8 @@ function spanFromPixelWidth(wPx: number, parentW: number): number {
   const gutter = LEMNITY_GRID_OUTSIDE_GUTTER_PX * 2;
   const gridInner = Math.max(1, parentW - gutter);
   const innerW = Math.max(0, wPx - gutter);
-  const n = Math.round((innerW / gridInner) * 12);
-  return Math.min(12, Math.max(1, n));
+  const n = Math.round((innerW / gridInner) * 10);
+  return Math.min(10, Math.max(1, n));
 }
 
 type ResizeInitOpts = { component?: Component; resizable?: unknown };
@@ -303,11 +300,11 @@ export function applyLemnitySectionWidthLayout(component: Component) {
   const span = readSpan(attrs);
   const gutter2 = LEMNITY_GRID_OUTSIDE_GUTTER_PX * 2;
 
-  if (span >= 12) {
+  if (span >= 10) {
     component.removeStyle("max-width");
   } else {
-    /* Внешняя коробка может быть шире полосы контента; внутренняя ширина под контент ≈ span/12 от (100% − 80px). */
-    component.addStyle({ "max-width": `calc(${span} / 12 * (100% - ${gutter2}px) + ${gutter2}px)` });
+    /* Внешняя коробка может быть шире полосы контента; внутренняя ширина под контент ≈ span/10 от (100% − 80px). */
+    component.addStyle({ "max-width": `calc(${span} / 10 * (100% - ${gutter2}px) + ${gutter2}px)` });
   }
 
   component.addStyle({ "box-sizing": "border-box" });
@@ -378,7 +375,7 @@ function normalizeNewSection(component: Component) {
   if (isZeroBlockSection(component)) return;
   const a = component.getAttributes();
   if (a["data-ln-span"] != null || a["data-ln-align"] != null) return;
-  component.addAttributes({ "data-ln-span": "12", "data-ln-align": "center", "data-ln-full": "0" }, { silent: true } as never);
+  component.addAttributes({ "data-ln-span": "10", "data-ln-align": "center", "data-ln-full": "0" }, { silent: true } as never);
 }
 
 function registerFullWidthTraitType(editor: Editor) {
@@ -444,7 +441,7 @@ function registerTraitType(editor: Editor) {
       let dragging = false;
 
       const segs: HTMLDivElement[] = [];
-      for (let col = 1; col <= 12; col += 1) {
+      for (let col = 1; col <= 10; col += 1) {
         const cell = document.createElement("div");
         cell.className = "lemnity-span12-cell";
         cell.dataset.col = String(col);
@@ -468,7 +465,7 @@ function registerTraitType(editor: Editor) {
         const rect = bars.getBoundingClientRect();
         if (!rect.width) return activeSpan;
         const frac = Math.max(0, Math.min(1, (cx - rect.left) / rect.width));
-        return Math.max(1, Math.min(12, Math.ceil(frac * 12)));
+        return Math.max(1, Math.min(10, Math.ceil(frac * 10)));
       };
 
       const paintVisual = () => {
@@ -485,7 +482,7 @@ function registerTraitType(editor: Editor) {
       };
 
       const applySpan = (n: number) => {
-        activeSpan = Math.min(12, Math.max(1, n));
+        activeSpan = Math.min(10, Math.max(1, n));
         component.addAttributes({ "data-ln-span": String(activeSpan) });
         applyLemnitySectionWidthLayout(component);
         paintVisual();

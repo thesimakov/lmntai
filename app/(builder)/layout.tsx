@@ -7,7 +7,7 @@ import { getStarterCabinetWallState } from "@/lib/starter-cabinet-server";
 export default async function BuilderLayout({ children }: { children: React.ReactNode }) {
   const session = await getSafeServerSession();
   if (!session) {
-    redirect("/");
+    redirect("/login");
   }
 
   let wall: Awaited<ReturnType<typeof getStarterCabinetWallState>> = { show: false };

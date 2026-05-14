@@ -1,20 +1,27 @@
 import { redirect } from "next/navigation";
 
-/** Совместимость со старыми ссылками `/login` → главная с тем же query. */
-export default async function LoginLegacyRedirect({
+import { LoginForm } from "@/components/login-form";
+import { getSafeServerSession } from "@/lib/auth";
+import { LOGIN_PAGE_DYNAMIC, readLoginFeatures } from "@/lib/read-login-features";
+
+export const dynamic = LOGIN_PAGE_DYNAMIC;
+
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<{ reset?: string; register?: string }>;
 }) {
-  const sp = await searchParams;
-  const q = new URLSearchParams();
-  for (const [key, raw] of Object.entries(sp)) {
-    if (raw === undefined) continue;
-    const vals = Array.isArray(raw) ? raw : [raw];
-    for (const v of vals) {
-      q.append(key, v);
-    }
+  const session = await getSafeServerSession();
+  if (session) {
+    redirect("/playground");
   }
-  const suffix = q.toString();
-  redirect(suffix ? `/?${suffix}` : "/");
+
+  const sp = await searchParams;
+  return (
+    <LoginForm
+      features={await readLoginFeatures()}
+      passwordResetSuccess={sp.reset === "ok"}
+      startWithRegister={sp.register === "1" || sp.register === "true"}
+    />
+  );
 }

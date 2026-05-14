@@ -7,11 +7,11 @@ export interface ZbBreakpointPreset {
 }
 
 // Standard column grid based on 1200px reference:
-// desktop/1200: 12 cols (20px margin, 60px col, 40px gap)
+// desktop/1200: 10 cols (20px margin, 80px col, 40px gap)
 // Smaller breakpoints: proportionally fewer columns
 export const ZB_BREAKPOINT_PRESETS: Record<ZbBreakpoint, ZbBreakpointPreset> = {
-  desktop: { canvasWidth: null, columns: 12, gridWidth: 1200 },
-  "1200":  { canvasWidth: 1200, columns: 12, gridWidth: 1200 },
+  desktop: { canvasWidth: null, columns: 10, gridWidth: 1200 },
+  "1200":  { canvasWidth: 1200, columns: 10, gridWidth: 1200 },
   "980":   { canvasWidth: 980,  columns: 8,  gridWidth: 940  },
   "640":   { canvasWidth: 640,  columns: 4,  gridWidth: 600  },
   "480":   { canvasWidth: 480,  columns: 4,  gridWidth: 440  },
@@ -22,7 +22,7 @@ export const ZB_BREAKPOINT_PRESETS: Record<ZbBreakpoint, ZbBreakpointPreset> = {
 // Uses proportional scaling from the 1200px/12-col reference layout.
 const REF_TOTAL = 1200;
 const REF_MARGIN = 20;
-const REF_COL = 60;
+const REF_COL = 80;
 const REF_GAP = 40;
 
 export function computeColLayout(columns: number, gridWidth: number): {

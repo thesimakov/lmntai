@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ChevronDown, Image as ImageIcon, Paperclip } from "lucide-react";
+import { ArrowUp, ChevronDown, Globe, Image as ImageIcon, Layers, Paperclip, Sparkles } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -160,7 +160,7 @@ export function LandingPage() {
     if (!text) return;
     saveBuilderHandoff(text, undefined, null);
     setPostLoginRedirect("/playground/build");
-    router.push(authed ? "/playground/build" : "/");
+    router.push(authed ? "/playground/build" : "/login");
   }, [authed, prompt, router]);
 
   return (
@@ -182,7 +182,7 @@ export function LandingPage() {
             <button
               type="button"
               onClick={() =>
-                router.push(authed ? "/playground" : "/?register=1")
+                router.push(authed ? "/playground" : "/login?register=1")
               }
               className="font-medium text-blue-600 transition hover:text-blue-700"
             >
@@ -193,7 +193,7 @@ export function LandingPage() {
 
         <h1
           id="hero-heading"
-          className="mx-auto mt-8 max-w-4xl text-center text-3xl font-semibold leading-[1.12] tracking-tight text-zinc-900 sm:mt-10 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem] md:leading-[1.06]"
+          className="mx-auto mt-8 max-w-4xl text-center text-3xl font-semibold leading-[1.12] tracking-tight sm:mt-10 sm:text-5xl sm:leading-[1.08] md:text-[3.25rem] md:leading-[1.06] bg-gradient-to-br from-zinc-900 via-blue-700 to-indigo-600 bg-clip-text text-transparent"
         >
           {t("landing_simple_hero_h1")}
         </h1>
@@ -202,112 +202,293 @@ export function LandingPage() {
           {t("landing_dark_hero_lead")}
         </p>
 
-        <div id="hero-input" className="mx-auto mt-9 w-full max-w-3xl sm:mt-11">
-          <div className="rounded-[1.35rem] border border-zinc-200/90 bg-white p-3 shadow-[0_12px_40px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.03] sm:rounded-3xl sm:p-4">
-            <div className="relative min-h-[76px] sm:min-h-[92px]">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder=""
-                rows={3}
-                aria-label={t("landing_simple_placeholder")}
-                className="min-h-[76px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:min-h-[92px] sm:text-base sm:leading-relaxed"
-              />
-              <AnimatePresence mode="wait">
-                {!prompt.trim() && !isFocused ? (
-                  <motion.div
-                    key="landing-typewriter"
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -3 }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 260,
-                      damping: 28,
-                      mass: 0.85,
-                      opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
-                    }}
-                    className="pointer-events-none absolute left-0 top-0 z-10 pr-12 text-[15px] leading-snug text-zinc-400 sm:text-base sm:leading-relaxed"
-                  >
-                    <span>{typed}</span>
-                    <motion.span
-                      aria-hidden
-                      className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/70"
-                      animate={{ opacity: [0.35, 1, 0.35] }}
+        {/* Dual product cards */}
+        <div id="hero-input" className="mx-auto mt-10 grid w-full max-w-5xl grid-cols-1 gap-4 sm:mt-12 md:grid-cols-2">
+
+          {/* Card A — Lemnity AI (blue) */}
+          <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-blue-200/60 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.07)] ring-1 ring-black/[0.03] transition-shadow hover:shadow-[0_16px_48px_rgba(37,99,235,0.12)] hover:ring-blue-200/50">
+            <div className="h-1 w-full bg-gradient-to-r from-blue-500 to-indigo-500" />
+            <div className="flex flex-1 flex-col p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-[11px] font-semibold tracking-wide text-blue-700">
+                  <Sparkles className="h-3 w-3" strokeWidth={2} />
+                  {t("landing_ai_card_badge")}
+                </span>
+              </div>
+              <h2 className="mb-3 text-base font-semibold text-zinc-900 sm:text-lg">
+                {t("landing_ai_card_title")}
+              </h2>
+
+              {/* Prompt textarea */}
+              <div className="relative min-h-[72px] flex-1 sm:min-h-[84px]">
+                <textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  placeholder=""
+                  rows={3}
+                  aria-label={t("landing_simple_placeholder")}
+                  className="min-h-[72px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:min-h-[84px] sm:text-base sm:leading-relaxed"
+                />
+                <AnimatePresence mode="wait">
+                  {!prompt.trim() && !isFocused ? (
+                    <motion.div
+                      key="landing-typewriter"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -3 }}
                       transition={{
-                        duration: 1.65,
-                        repeat: Number.POSITIVE_INFINITY,
-                        ease: "easeInOut"
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 28,
+                        mass: 0.85,
+                        opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
                       }}
-                    />
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-2">
-              <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
-                  aria-label={t("landing_simple_attach")}
-                >
-                  <Paperclip className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
-                </button>
-                <button
-                  type="button"
-                  className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
-                  aria-label={t("landing_dark_image_attach_aria")}
-                >
-                  <ImageIcon className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
-                </button>
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  className="ml-1 inline-flex max-w-[min(100%,14rem)] items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-1.5 pr-2 text-left text-[11px] font-medium text-zinc-800 shadow-sm sm:max-w-none sm:gap-2 sm:pl-2 sm:pr-2.5 sm:text-[13px]"
-                  aria-hidden
-                >
-                  <span
-                    className="flex h-[1.25rem] w-[1.25rem] shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-indigo-600 text-[9px] font-bold text-white sm:h-[1.375rem] sm:w-[1.375rem] sm:text-[10px]"
+                      className="pointer-events-none absolute left-0 top-0 z-10 pr-12 text-[15px] leading-snug text-zinc-400 sm:text-base sm:leading-relaxed"
+                    >
+                      <span>{typed}</span>
+                      <motion.span
+                        aria-hidden
+                        className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/70"
+                        animate={{ opacity: [0.35, 1, 0.35] }}
+                        transition={{
+                          duration: 1.65,
+                          repeat: Number.POSITIVE_INFINITY,
+                          ease: "easeInOut"
+                        }}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+              </div>
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3">
+                <div className="flex flex-wrap items-center gap-0.5 sm:gap-1">
+                  <button
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
+                    aria-label={t("landing_simple_attach")}
+                  >
+                    <Paperclip className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
+                  </button>
+                  <button
+                    type="button"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800 sm:rounded-xl"
+                    aria-label={t("landing_dark_image_attach_aria")}
+                  >
+                    <ImageIcon className="h-[1.05rem] w-[1.05rem]" strokeWidth={1.75} />
+                  </button>
+                  <button
+                    type="button"
+                    tabIndex={-1}
+                    className="ml-1 inline-flex max-w-[min(100%,12rem)] items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 py-1 pl-1.5 pr-2 text-left text-[11px] font-medium text-zinc-800 shadow-sm sm:max-w-none sm:gap-2 sm:pl-2 sm:pr-2.5 sm:text-[13px]"
                     aria-hidden
                   >
-                    L
-                  </span>
-                  <span className="min-w-0 truncate">{t("landing_model_pill_label")}</span>
-                  <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
+                    <span
+                      className="flex h-[1.25rem] w-[1.25rem] shrink-0 items-center justify-center rounded-md bg-gradient-to-br from-sky-500 to-indigo-600 text-[9px] font-bold text-white sm:h-[1.375rem] sm:w-[1.375rem] sm:text-[10px]"
+                      aria-hidden
+                    >
+                      L
+                    </span>
+                    <span className="min-w-0 truncate">{t("landing_model_pill_label")}</span>
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-zinc-400" aria-hidden />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={goApp}
+                  disabled={!prompt.trim()}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Send"
+                >
+                  <ArrowUp className="h-[1.1rem] w-[1.1rem]" strokeWidth={2.35} />
                 </button>
               </div>
-              <button
-                type="button"
-                onClick={goApp}
-                disabled={!prompt.trim()}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white shadow-sm transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-                aria-label="Send"
-              >
-                <ArrowUp className="h-[1.1rem] w-[1.1rem]" strokeWidth={2.35} />
-              </button>
+            </div>
+            <div className="border-t border-zinc-100/80 bg-zinc-50/60 px-5 py-3 sm:px-6">
+              <p className="text-[12px] text-zinc-500">{t("landing_ai_card_footer")}</p>
+            </div>
+          </div>
+
+          {/* Card B — Lemnity Box (amber) */}
+          <div className="group relative flex flex-col overflow-hidden rounded-3xl border border-orange-200/60 bg-white shadow-[0_12px_40px_rgba(15,23,42,0.07)] ring-1 ring-black/[0.03] transition-shadow hover:shadow-[0_16px_48px_rgba(249,115,22,0.12)] hover:ring-orange-200/50">
+            <div className="h-1 w-full bg-gradient-to-r from-orange-400 to-amber-500" />
+            <div className="flex flex-1 flex-col p-5 sm:p-6">
+              <div className="mb-4 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-orange-50 px-3 py-1 text-[11px] font-semibold tracking-wide text-orange-700">
+                  <Layers className="h-3 w-3" strokeWidth={2} />
+                  {t("landing_box_card_badge")}
+                </span>
+              </div>
+              <h2 className="mb-3 text-base font-semibold text-zinc-900 sm:text-lg">
+                {t("landing_box_card_title")}
+              </h2>
+
+              {/* Block preview grid */}
+              <div className="flex-1">
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { bg: "bg-gradient-to-br from-blue-100 to-blue-200", h: "h-12" },
+                    { bg: "bg-gradient-to-br from-amber-100 to-orange-200", h: "h-12" },
+                    { bg: "bg-gradient-to-br from-violet-100 to-purple-200", h: "h-12" },
+                    { bg: "bg-gradient-to-br from-emerald-100 to-teal-200", h: "h-8" },
+                    { bg: "bg-gradient-to-br from-rose-100 to-pink-200", h: "h-8" },
+                    { bg: "bg-gradient-to-br from-zinc-100 to-zinc-200", h: "h-8" },
+                  ].map(({ bg, h }, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "rounded-lg",
+                        bg,
+                        h,
+                      )}
+                    />
+                  ))}
+                </div>
+                <p className="mt-4 text-sm leading-relaxed text-zinc-500">
+                  {t("landing_box_card_body")}
+                </p>
+              </div>
+
+              <div className="mt-4 border-t border-zinc-100 pt-4">
+                <Button
+                  onClick={() => {
+                    setPostLoginRedirect("/playground/box");
+                    router.push(authed ? "/playground/box" : "/login");
+                  }}
+                  className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-sm hover:from-orange-600 hover:to-amber-600"
+                >
+                  {t("landing_box_card_cta")}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
 
         <div className="mx-auto mt-7 flex justify-center px-2 sm:mt-8">
           <div
-            className="inline-flex max-w-[min(100%,36rem)] items-center gap-2.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 py-2.5 text-[13px] leading-snug text-zinc-600 shadow-sm backdrop-blur-sm sm:text-sm sm:leading-snug"
+            className="inline-flex max-w-[min(100%,40rem)] items-center gap-2.5 rounded-full border border-zinc-200/90 bg-white/90 px-4 py-2.5 text-[13px] leading-snug text-zinc-600 shadow-sm backdrop-blur-sm sm:text-sm sm:leading-snug"
             role="status"
-            aria-label={`${t("landing_projects_status_before")} ${landingProjectsFormatted} ${t("landing_projects_status_after")}`}
           >
-            <span
-              className="h-2 w-2 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_12px_rgba(52,211,153,0.45)]"
-              aria-hidden
-            />
+            <span className="flex shrink-0 items-center gap-1">
+              <span
+                className="h-2 w-2 rounded-full bg-blue-500 shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_10px_rgba(37,99,235,0.5)]"
+                aria-hidden
+              />
+              <span
+                className="-ml-0.5 h-2 w-2 rounded-full bg-orange-400 shadow-[0_0_0_2px_rgba(255,255,255,1),0_0_10px_rgba(249,115,22,0.5)]"
+                aria-hidden
+              />
+            </span>
             <span className="text-left">
-              {t("landing_projects_status_before")}{" "}
               <strong className="font-semibold tabular-nums text-zinc-900">{landingProjectsFormatted}</strong>{" "}
-              {t("landing_projects_status_after")}
+              {t("landing_projects_status_combined")}
             </span>
           </div>
         </div>
+
+        {/* Features strip */}
+        <motion.section
+          className="mx-auto mt-20 w-full"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {([
+              {
+                titleKey: "landing_feature_1_title",
+                descKey: "landing_feature_1_desc",
+                Icon: Sparkles,
+                iconBg: "bg-blue-50",
+                iconColor: "text-blue-600",
+              },
+              {
+                titleKey: "landing_feature_2_title",
+                descKey: "landing_feature_2_desc",
+                Icon: Layers,
+                iconBg: "bg-violet-50",
+                iconColor: "text-violet-600",
+              },
+              {
+                titleKey: "landing_feature_3_title",
+                descKey: "landing_feature_3_desc",
+                Icon: Globe,
+                iconBg: "bg-amber-50",
+                iconColor: "text-amber-600",
+              },
+            ] as const).map(({ titleKey, descKey, Icon, iconBg, iconColor }) => (
+              <div
+                key={titleKey}
+                className="rounded-2xl border border-zinc-200/80 bg-white p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <div className={cn("inline-flex rounded-xl p-2.5", iconBg)}>
+                  <Icon className={cn("h-5 w-5", iconColor)} strokeWidth={1.75} />
+                </div>
+                <h3 className="mt-4 text-base font-semibold text-zinc-900">{t(titleKey)}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-zinc-500">{t(descKey)}</p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* How it works */}
+        <motion.section
+          className="mx-auto mt-20 w-full"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+        >
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+            {([
+              { num: "01", titleKey: "landing_how_step_1_title", descKey: "landing_how_step_1_desc" },
+              { num: "02", titleKey: "landing_how_step_2_title", descKey: "landing_how_step_2_desc" },
+              { num: "03", titleKey: "landing_how_step_3_title", descKey: "landing_how_step_3_desc" },
+            ] as const).map(({ num, titleKey, descKey }) => (
+              <div key={titleKey} className="flex flex-col gap-3">
+                <span className="font-mono text-3xl font-bold text-blue-600/80 tabular-nums">{num}</span>
+                <div>
+                  <h3 className="text-base font-semibold text-zinc-900">{t(titleKey)}</h3>
+                  <p className="mt-1 text-sm leading-relaxed text-zinc-500">{t(descKey)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.section>
+
+        {/* Bottom CTA */}
+        <motion.section
+          className="mx-auto mt-20 w-full rounded-3xl border border-zinc-200/80 bg-white px-8 py-14 text-center shadow-sm"
+          initial={{ opacity: 0, y: 28 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.08 }}
+        >
+          <h2 className="text-2xl font-semibold tracking-tight text-zinc-900 sm:text-3xl">
+            {t("landing_cta_title")}
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-zinc-500 sm:text-base">
+            {t("landing_cta_desc")}
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <Button
+              onClick={() => router.push(authed ? "/playground" : "/login?register=1")}
+              className="rounded-full px-7"
+            >
+              {t("landing_simple_badge_trial")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push(authed ? "/playground" : "/login")}
+              className="rounded-full border-zinc-300 bg-transparent px-7 text-zinc-800 hover:bg-zinc-50"
+            >
+              {t("landing_login")}
+            </Button>
+          </div>
+        </motion.section>
 
         {SHOWCASE_SECTION_ENABLED ? (
         <section id="showcase" className="mx-auto mt-20 w-full scroll-mt-24">
@@ -436,7 +617,7 @@ export function LandingPage() {
 
       <footer className="border-t border-zinc-200/80 py-8 text-center text-xs text-zinc-500">
         <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
-          <Link href="/" className="hover:text-zinc-800">
+          <Link href="/login" className="hover:text-zinc-800">
             {t("landing_footer_login")}
           </Link>
           <Link href="/plans" className="hover:text-zinc-800">
@@ -445,7 +626,7 @@ export function LandingPage() {
           <Link href="/docs" className="hover:text-zinc-800">
             {t("landing_simple_nav_docs")}
           </Link>
-          <Link href={authed ? "/playground" : "/"} className="hover:text-zinc-800">
+          <Link href={authed ? "/playground" : "/login"} className="hover:text-zinc-800">
             {t("landing_footer_dashboard")}
           </Link>
         </div>
