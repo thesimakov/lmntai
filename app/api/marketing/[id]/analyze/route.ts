@@ -5,7 +5,7 @@ import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildMarketingPrompt } from "@/lib/marketing-prompt";
-import { marketingDashboardSchema } from "@/lib/marketing-schema";
+import { marketingDashboardSchema, type MarketingDashboard } from "@/lib/marketing-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
 
 const MARKETING_MODEL = "anthropic/claude-sonnet-4.5";
@@ -56,7 +56,24 @@ export async function POST(
 
   const messages = buildMarketingPrompt(truncated);
 
-  async function callAI(msgs: typeof messages) {
+  // state is non-null here: the !rawText guard above proves state?.files existed
+  const nonNullState = state!;
+
+  async function saveReport(data: MarketingDashboard) {
+    const report = { ...data, meta: { ...data.meta, analyzedAt: new Date().toISOString() } };
+    const freshState = await getSandboxProjectState(projectId);
+    await upsertSandboxProjectState({
+      projectId,
+      sandboxId: nonNullState.sandboxId,
+      ownerId: user.id,
+      title: nonNullState.title,
+      html: nonNullState.html,
+      files: { ...(freshState?.files ?? {}), "marketing.json": JSON.stringify(report) },
+    });
+    return apiOk({ report });
+  }
+
+  async function callAI(msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>) {
     const result = await requestRouterAIJson({
       messages: msgs,
       model: MARKETING_MODEL,
@@ -83,17 +100,7 @@ export async function POST(
 
   const v1 = tryParseDashboard(result1.text);
   if (v1?.success) {
-    const report = { ...v1.data, meta: { ...v1.data.meta, analyzedAt: new Date().toISOString() } };
-    const freshState = await getSandboxProjectState(projectId);
-    await upsertSandboxProjectState({
-      projectId,
-      sandboxId: state.sandboxId,
-      ownerId: user.id,
-      title: state.title,
-      html: state.html,
-      files: { ...(freshState?.files ?? {}), "marketing.json": JSON.stringify(report) },
-    });
-    return apiOk({ report });
+    return saveReport(v1.data);
   }
 
   const retryMessages = [
@@ -114,16 +121,5 @@ export async function POST(
     return apiError("AI response did not match expected schema after retry. Please try again.", 422);
   }
 
-  const report = { ...v2.data, meta: { ...v2.data.meta, analyzedAt: new Date().toISOString() } };
-  const freshState2 = await getSandboxProjectState(projectId);
-  await upsertSandboxProjectState({
-    projectId,
-    sandboxId: state.sandboxId,
-    ownerId: user.id,
-    title: state.title,
-    html: state.html,
-    files: { ...(freshState2?.files ?? {}), "marketing.json": JSON.stringify(report) },
-  });
-
-  return apiOk({ report });
+  return saveReport(v2.data);
 }
