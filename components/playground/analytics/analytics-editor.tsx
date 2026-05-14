@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, MessageSquare, TrendingUp } from "lucide-react";
+import { ArrowLeft, MessageSquare, TrendingUp, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { AnalyticsUploadZone } from "./analytics-upload-zone";
@@ -11,10 +11,11 @@ import { AnalyticsChatPanel } from "./analytics-chat-panel";
 import { AnalyticsProgressOverlay } from "./analytics-progress-overlay";
 import { AnalyticsExportMenu } from "./analytics-export-menu";
 import { AnalyticsInvestorPanel } from "./analytics-investor-panel";
+import { AnalyticsForecastPanel } from "./analytics-forecast-panel";
 import { cn } from "@/lib/utils";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 
-type LeftTab = "chat" | "investor";
+type LeftTab = "chat" | "investor" | "forecast";
 
 export function AnalyticsEditor() {
   const searchParams = useSearchParams();
@@ -201,14 +202,29 @@ export function AnalyticsEditor() {
                   <TrendingUp className="w-3.5 h-3.5" />
                   Investor
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setLeftTab("forecast")}
+                  className={cn(
+                    "flex flex-1 items-center justify-center gap-1.5 py-2 text-xs font-medium transition-colors",
+                    leftTab === "forecast"
+                      ? "text-foreground border-b-2 border-primary -mb-px"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <LineChart className="w-3.5 h-3.5" />
+                  Forecast
+                </button>
               </div>
 
               {/* Tab content */}
               <div className="flex-1 overflow-y-auto">
                 {leftTab === "chat" ? (
                   <AnalyticsChatPanel projectId={projectId} />
-                ) : (
+                ) : leftTab === "investor" ? (
                   <AnalyticsInvestorPanel projectId={projectId} />
+                ) : (
+                  <AnalyticsForecastPanel projectId={projectId} />
                 )}
               </div>
             </div>
