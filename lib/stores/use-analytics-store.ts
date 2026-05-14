@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 import type { InvestorReport } from "@/lib/investor-schema";
+import type { ForecastReport } from "@/lib/forecast-schema";
 
 export type AnalysisStatus =
   | "idle"
@@ -10,6 +11,8 @@ export type AnalysisStatus =
   | "error";
 
 export type InvestorStatus = "idle" | "generating" | "ready" | "error";
+
+export type ForecastStatus = "idle" | "generating" | "ready" | "error";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -30,6 +33,10 @@ interface AnalyticsStore {
   investorStatus: InvestorStatus;
   investorError: string | null;
 
+  forecastReport: ForecastReport | null;
+  forecastStatus: ForecastStatus;
+  forecastError: string | null;
+
   setProjectId: (id: string) => void;
   setDashboard: (d: AnalysisDashboard) => void;
   setStatus: (s: AnalysisStatus) => void;
@@ -42,6 +49,10 @@ interface AnalyticsStore {
   setInvestorReport: (r: InvestorReport) => void;
   setInvestorStatus: (s: InvestorStatus) => void;
   setInvestorError: (msg: string) => void;
+
+  setForecastReport: (r: ForecastReport) => void;
+  setForecastStatus: (s: ForecastStatus) => void;
+  setForecastError: (msg: string) => void;
 
   reset: () => void;
 }
@@ -57,6 +68,9 @@ const initialState = {
   investorReport: null,
   investorStatus: "idle" as InvestorStatus,
   investorError: null,
+  forecastReport: null,
+  forecastStatus: "idle" as ForecastStatus,
+  forecastError: null,
 };
 
 export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
@@ -74,6 +88,12 @@ export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
   setInvestorStatus: (investorStatus) => set({ investorStatus }),
   setInvestorError: (investorError) =>
     set({ investorStatus: "error", investorError }),
+
+  setForecastReport: (forecastReport) =>
+    set({ forecastReport, forecastStatus: "ready", forecastError: null }),
+  setForecastStatus: (forecastStatus) => set({ forecastStatus }),
+  setForecastError: (forecastError) =>
+    set({ forecastStatus: "error", forecastError }),
 
   addChatMessage: (msg) =>
     set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
