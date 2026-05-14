@@ -111,7 +111,6 @@ export default function PromptBuildPage() {
     if (!projectId) { toast.error("Project not ready"); return; }
     const s = useBuildEditorStore.getState();
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    s.appendMessage({ id: createId(), role: "user", content: prompt, sentAt: Date.now() });
     s.setIsGenerating(true);
     try {
       const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/generate-graph`, {
@@ -135,6 +134,44 @@ export default function PromptBuildPage() {
       s.setIsGenerating(false);
     }
   }, [t]);
+
+  // ── ComponentGraph chat (website projectKind, after site is generated) ──
+  const sendGraphChat = useCallback(async (text: string) => {
+    const s = useBuildEditorStore.getState();
+    const projectId = s.sessionId;
+    if (!projectId) return false;
+    const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const history = s.messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    s.setIsGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/graph/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ message: text, history }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
+        toast.error(err.error ?? "Chat failed");
+        return true;
+      }
+      const data = await res.json() as { message: string; patched: boolean };
+      s.appendMessage({ id: createId(), role: "assistant", content: data.message, sentAt: Date.now() });
+      if (data.patched) {
+        // Force iframe reload by toggling previewUrl
+        const url = `/api/sandbox/${encodeURIComponent(projectId)}?t=${Date.now()}`;
+        s.setPreviewUrl(url);
+      }
+    } catch {
+      toast.error("Chat failed. Please try again.");
+    } finally {
+      s.setIsGenerating(false);
+    }
+    return true;
+  }, []);
 
   // ── Project scope ──
   const [projectScopeReady, setProjectScopeReady] = useState(false);
@@ -272,7 +309,12 @@ export default function PromptBuildPage() {
       }
       s.setPromptCoachDebugLine(null);
       if (projectKind === "website" && s.sessionId) {
-        void sendGenerateGraph(userOutbound);
+        if (sandboxId) {
+          s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
+          void sendGraphChat(userOutbound);
+        } else {
+          void sendGenerateGraph(userOutbound);
+        }
       } else {
         void sendChat(userOutbound);
       }
@@ -288,7 +330,7 @@ export default function PromptBuildPage() {
   }, [
     buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
     lemnityAiBridgeReady, messages, pendingTechnicalPrompt, projectKind, runPromptCoach,
-    sendChat, sendGenerateGraph, setIdea, setStage, stage, t,
+    sandboxId, sendChat, sendGenerateGraph, sendGraphChat, setIdea, setStage, stage, t,
   ]);
 
   // ── Derived values ──
