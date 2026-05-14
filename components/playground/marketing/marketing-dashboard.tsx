@@ -6,9 +6,15 @@ import { MarketingChannelCard } from "./marketing-channel-card";
 import { MarketingChartBlock } from "./marketing-chart-block";
 
 export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboard }) {
-  const { kpis, channels, summary } = dashboard;
+  const { kpis, channels, summary, meta, narrative } = dashboard;
   return (
     <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full">
+      <div className="space-y-0.5">
+        <p className="font-semibold text-base leading-tight">{meta.companyName}</p>
+        <p className="text-sm text-muted-foreground">{meta.period}</p>
+        <p className="text-xs text-muted-foreground">{meta.dataSource}</p>
+      </div>
+
       <MarketingKpiRow kpis={kpis} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -51,6 +57,15 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {narrative && (
+        <div className="rounded-xl border bg-card p-4 space-y-2">
+          <h3 className="font-semibold text-sm">Narrative</h3>
+          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+            {narrative}
+          </p>
         </div>
       )}
     </div>
