@@ -226,7 +226,7 @@ export default function PromptBuildPage() {
 
   // ── onSend ──
   const onSend = useCallback(async (text: string, files?: File[]) => {
-    if (!lemnityAiBridgeReady) { toast.message("Загрузка режима сборки…"); return; }
+    if (!lemnityAiBridgeReady && projectKind !== "website") { toast.message("Загрузка режима сборки…"); return; }
     if (isGenerating) return;
     if (buildTemplate) return;
 
