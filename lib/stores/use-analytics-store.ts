@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
+import type { InvestorReport } from "@/lib/investor-schema";
 
 export type AnalysisStatus =
   | "idle"
@@ -7,6 +8,8 @@ export type AnalysisStatus =
   | "analyzing"
   | "ready"
   | "error";
+
+export type InvestorStatus = "idle" | "generating" | "ready" | "error";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -23,6 +26,10 @@ interface AnalyticsStore {
   chatMessages: ChatMessage[];
   isChatStreaming: boolean;
 
+  investorReport: InvestorReport | null;
+  investorStatus: InvestorStatus;
+  investorError: string | null;
+
   setProjectId: (id: string) => void;
   setDashboard: (d: AnalysisDashboard) => void;
   setStatus: (s: AnalysisStatus) => void;
@@ -31,6 +38,11 @@ interface AnalyticsStore {
   addChatMessage: (msg: ChatMessage) => void;
   updateLastAssistantMessage: (content: string) => void;
   setIsChatStreaming: (v: boolean) => void;
+
+  setInvestorReport: (r: InvestorReport) => void;
+  setInvestorStatus: (s: InvestorStatus) => void;
+  setInvestorError: (msg: string) => void;
+
   reset: () => void;
 }
 
@@ -42,6 +54,9 @@ const initialState = {
   errorMessage: null,
   chatMessages: [],
   isChatStreaming: false,
+  investorReport: null,
+  investorStatus: "idle" as InvestorStatus,
+  investorError: null,
 };
 
 export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
@@ -53,6 +68,12 @@ export const useAnalyticsStore = create<AnalyticsStore>((set) => ({
   setProgress: (progress) => set({ progress }),
   setError: (errorMessage) => set({ status: "error", errorMessage }),
   setIsChatStreaming: (isChatStreaming) => set({ isChatStreaming }),
+
+  setInvestorReport: (investorReport) =>
+    set({ investorReport, investorStatus: "ready", investorError: null }),
+  setInvestorStatus: (investorStatus) => set({ investorStatus }),
+  setInvestorError: (investorError) =>
+    set({ investorStatus: "error", investorError }),
 
   addChatMessage: (msg) =>
     set((state) => ({ chatMessages: [...state.chatMessages, msg] })),
