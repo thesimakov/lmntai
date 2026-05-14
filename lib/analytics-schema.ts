@@ -3,7 +3,7 @@ import { z } from "zod";
 export const kpiSchema = z.object({
   label: z.string(),
   value: z.string(),
-  change: z.string().optional(),
+  change: z.string().nullish().transform((v) => v ?? undefined),
   trend: z.enum(["up", "down", "neutral"]),
   category: z.enum(["revenue", "profitability", "liquidity", "growth", "efficiency"]),
 });

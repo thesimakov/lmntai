@@ -38,6 +38,8 @@ describe("buildChatPrompt", () => {
     expect(result[0].role).toBe("system");
     expect(result[result.length - 1].role).toBe("user");
     expect(result[result.length - 1].content).toBe("What is EBITDA?");
+    expect(result[1]).toEqual(history[0]);
+    expect(result[2]).toEqual(history[1]);
   });
 
   it("system prompt contains dashboard data", () => {

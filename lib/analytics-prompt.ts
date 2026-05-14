@@ -30,7 +30,7 @@ Return ONLY a valid JSON object matching this exact TypeScript interface (no mar
   "charts": [                     // 2-4 charts that best visualize the data
     {
       "id": string,               // unique snake_case id
-      "type": "bar" | "line" | "area" | "pie",
+      "type": "bar" | "line" | "area" | "pie" | "waterfall",
       "title": string,
       "description": string | null,
       "data": [{ "name": string, "value": number }]
