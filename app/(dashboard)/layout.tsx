@@ -20,15 +20,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
   }
 
   return (
-    <div className="min-h-screen p-4">
-      <div className="mx-auto flex max-w-[1420px] gap-3">
-        <Sidebar />
-        <main className="glass mx-0 flex h-[calc(100vh-2rem)] min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-3xl border p-[30px] [scrollbar-gutter:stable]">
-          <div className="flex w-full min-w-0 flex-col overflow-x-hidden">
-            <DashboardStarterGate wall={wall}>{children}</DashboardStarterGate>
-          </div>
-        </main>
-      </div>
+    <div className="flex h-screen w-full min-w-0 overflow-hidden bg-background">
+      <Sidebar />
+      <main className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden border-l border-border bg-white [scrollbar-gutter:stable]">
+        <div className="flex w-full min-w-0 flex-1 flex-col px-8 py-7 overflow-x-hidden">
+          <DashboardStarterGate wall={wall}>{children}</DashboardStarterGate>
+        </div>
+      </main>
     </div>
   );
 }

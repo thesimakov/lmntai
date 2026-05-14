@@ -13,7 +13,7 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-rubik)", "ui-sans-serif", "system-ui", "sans-serif"]
+        sans: ["var(--font-sans)", "ui-sans-serif", "system-ui", "sans-serif"]
       },
       colors: {
         border: "hsl(var(--border) / <alpha-value>)",
@@ -60,19 +60,18 @@ const config: Config = {
           ring: "hsl(var(--sidebar-ring) / <alpha-value>)"
         },
         panel: "#171717",
-        // Deep-blue (confidence) accents
-        accentFrom: "#0B2A5B",
-        accentTo: "#2563EB"
+        accentFrom: "#1A52DB",
+        accentTo: "#3B82F6"
       },
       borderRadius: {
-        DEFAULT: "15px",
+        DEFAULT: "var(--radius)",
         none: "0",
-        sm: "15px",
-        md: "15px",
-        lg: "var(--radius)",
-        xl: "15px",
-        "2xl": "15px",
-        "3xl": "15px",
+        sm: "4px",
+        md: "var(--radius)",
+        lg: "8px",
+        xl: "10px",
+        "2xl": "12px",
+        "3xl": "16px",
         full: "9999px"
       },
       boxShadow: {

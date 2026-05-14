@@ -9,6 +9,8 @@ export type ZeroBlockSession = {
   fullHtml: string;
   css: string;
   returnUrl: string;
+  /** Pixel width of the GrapesJS canvas body at session start — used to sync ZbEditor canvas size. */
+  canvasBodyWidth?: number;
   cmsSiteId?: string;
   cmsPageId?: string;
   cmsProjectId?: string;

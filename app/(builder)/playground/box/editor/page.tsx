@@ -246,12 +246,14 @@ export default function PlaygroundLemnityBoxEditorPage() {
     writeLemnityBoxCanvasDraft(snap);
     const sectionHtml = extractZeroBlockSection(snap.html, blockId);
     if (!sectionHtml) { toast.error("Нулевой блок не найден в документе"); return; }
+    const canvasBodyWidth = canvasRef.current?.getCanvasBodyWidth?.() ?? 1200;
     startZeroBlockSession({
       blockId,
       sectionHtml,
       fullHtml: snap.html,
       css: snap.css,
       returnUrl: window.location.href,
+      canvasBodyWidth,
       ...(cmsMode && cmsSiteId ? { cmsSiteId } : {}),
       ...(cmsMode && cmsPageId ? { cmsPageId } : {}),
       ...(effectiveSandboxId ? { cmsProjectId: effectiveSandboxId } : {}),
@@ -344,7 +346,7 @@ export default function PlaygroundLemnityBoxEditorPage() {
           backLabel={t("playground_box_editor_back")}
           contextLine={
             cmsHeaderPageTitle ? (
-              <span className="truncate text-white/95" title={cmsHeaderPageTitle}>
+              <span className="truncate text-muted-foreground" title={cmsHeaderPageTitle}>
                 · {cmsHeaderPageTitle}
               </span>
             ) : null
@@ -352,17 +354,16 @@ export default function PlaygroundLemnityBoxEditorPage() {
           endSlot={
             <div className="max-w-[100vw] sm:max-w-none">
               <PlaygroundSharePublishActions
-                blueBarChrome
                 leadingSlot={
                   <div className="flex min-w-0 shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
                     <div
                       ref={canvasDeviceDockRef}
-                      className="playground-box-device-dock flex min-w-0 shrink-0 items-center [&_button]:border-white/30 [&_button]:bg-white/10 [&_button]:hover:bg-white/20"
+                      className="playground-box-device-dock flex min-w-0 shrink-0 items-center"
                       aria-label="Вид макета"
                     />
                     <div
                       ref={canvasOptionsDockRef}
-                      className="playground-box-options-dock flex min-w-0 shrink-0 flex-wrap items-center gap-0.5 [&_button]:border-white/30 [&_button]:bg-white/10 [&_button]:hover:bg-white/20"
+                      className="playground-box-options-dock flex min-w-0 shrink-0 flex-wrap items-center gap-0.5"
                       aria-label="Режимы редактора"
                     />
                   </div>
@@ -379,7 +380,6 @@ export default function PlaygroundLemnityBoxEditorPage() {
                       shareIsPublic={shareIsPublic}
                       onShareIsPublicChange={setShareIsPublic}
                       t={t}
-                      triggerClassName="border-white/40 bg-white/15 !text-white shadow-none hover:bg-white/25 hover:!text-white [&_svg]:!text-white"
                     />
                   )
                 }

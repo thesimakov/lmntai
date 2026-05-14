@@ -147,7 +147,7 @@ function PlaygroundPuckPageInner() {
 
   if (!data) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 bg-[#eef2f8] p-6 text-sm text-slate-600">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 bg-[#EBEBEA] p-6 text-sm text-slate-600">
         {t("puck_page_loading")}
       </div>
     );
@@ -155,7 +155,7 @@ function PlaygroundPuckPageInner() {
 
   if (!sandboxId) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-[#eef2f8] p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-[#EBEBEA] p-4">
         <Button type="button" variant="ghost" size="sm" className="w-fit" asChild>
           <a href={backToBuildHref} className="inline-flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -169,7 +169,7 @@ function PlaygroundPuckPageInner() {
 
   if (loadError === "unauthorized") {
     return (
-      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-[#eef2f8] p-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 bg-[#EBEBEA] p-4">
         <p className="text-sm text-destructive">{t("puck_page_auth_required")}</p>
         <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => router.push("/")}>
           {t("puck_page_login")}
@@ -179,7 +179,7 @@ function PlaygroundPuckPageInner() {
   }
 
   return (
-    <div className={cn("flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#eef2f8]")}>
+    <div className={cn("flex h-[100dvh] min-h-0 w-full min-w-0 flex-col overflow-hidden bg-[#EBEBEA]")}>
       <PlaygroundStudioChrome
         backHref={backToBuildHref}
         backLabel={t("playground_menu_back")}
@@ -188,7 +188,7 @@ function PlaygroundPuckPageInner() {
         }
         centerSlot={
           <div className="hidden w-full items-center justify-end pr-1 lg:flex">
-            <code className="max-w-[min(48vw,14rem)] truncate rounded-md border border-white/25 bg-white/10 px-2 py-1 font-mono text-xs text-white/90 xl:max-w-[20rem]">
+            <code className="max-w-[min(48vw,14rem)] truncate rounded-md border border-border bg-muted px-2 py-1 font-mono text-xs text-muted-foreground xl:max-w-[20rem]">
               puck.json
             </code>
           </div>
@@ -200,14 +200,11 @@ function PlaygroundPuckPageInner() {
                 type="button"
                 variant={sidePreviewOpen ? "secondary" : "outline"}
                 size="sm"
-                className={cn(
-                  "hidden h-8 gap-1.5 border-white/40 text-xs text-white md:inline-flex",
-                  sidePreviewOpen ? "bg-white text-slate-900 hover:bg-white/90" : "bg-white/10 hover:bg-white/20",
-                )}
+                className="hidden h-7 gap-1.5 text-xs md:inline-flex"
                 onClick={() => setSidePreviewOpen((v) => !v)}
                 aria-pressed={sidePreviewOpen}
               >
-                {sidePreviewOpen ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
+                {sidePreviewOpen ? <PanelRightClose className="h-3.5 w-3.5" /> : <PanelRightOpen className="h-3.5 w-3.5" />}
                 {sidePreviewOpen ? t("puck_embed_preview_hide") : t("puck_embed_preview_show")}
               </Button>
               {previewNewTabHref ? (
@@ -215,7 +212,7 @@ function PlaygroundPuckPageInner() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="h-8 gap-1 border-white/40 bg-white/10 text-xs text-white hover:bg-white/20 md:hidden"
+                  className="h-7 gap-1 text-xs md:hidden"
                   asChild
                 >
                   <a href={previewNewTabHref} target="_blank" rel="noopener noreferrer">
@@ -262,7 +259,7 @@ export default function PlaygroundPuckPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 bg-[#eef2f8] p-6 text-sm text-slate-600">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 bg-[#EBEBEA] p-6 text-sm text-slate-600">
           <Loader2 className="h-5 w-5 shrink-0 animate-spin text-[#0061FF]" aria-hidden />
         </div>
       }

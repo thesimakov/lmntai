@@ -21,6 +21,7 @@ export default function ZeroBlockEditorPage() {
   const [session, setSession] = useState<ZeroBlockSession | null>(null);
   const [initialElements, setInitialElements] = useState<ZbElement[]>([]);
   const [canvasMeta, setCanvasMeta] = useState<{ background?: string; minHeight?: number }>({});
+  const [canvasGridWidth, setCanvasGridWidth] = useState(1200);
   const [ready, setReady] = useState(false);
   const [savePending, setSavePending] = useState(false);
   const hasSavedRef = useRef(false);
@@ -36,6 +37,9 @@ export default function ZeroBlockEditorPage() {
     const elements = s.elements?.length ? s.elements : zbParseHtmlToElements(s.sectionHtml);
     setInitialElements(elements);
     setCanvasMeta(zbParseSectionMeta(s.sectionHtml));
+    if (s.canvasBodyWidth && s.canvasBodyWidth > 0) {
+      setCanvasGridWidth(s.canvasBodyWidth);
+    }
     setReady(true);
   }, [blockId]);
 
@@ -125,7 +129,7 @@ export default function ZeroBlockEditorPage() {
           onClose={handleClose}
           initialElements={initialElements}
           canvasConfig={{
-            gridWidth: 1200,
+            gridWidth: canvasGridWidth,
             background: canvasMeta.background ?? "#ffffff",
             ...(canvasMeta.minHeight ? { height: canvasMeta.minHeight } : {}),
           }}

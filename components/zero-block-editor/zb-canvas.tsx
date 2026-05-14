@@ -3,11 +3,12 @@
 import { useRef, useCallback, useState } from "react";
 import { useZbEditorStore } from "@/lib/zero-block-editor/store";
 import { computeZbSnap } from "@/lib/zero-block-editor/snap-engine";
-import { computeColLayout } from "@/lib/zero-block-editor/breakpoints";
+import { computeColLayout, COL_MARGIN_PCT, COL_WIDTH_PCT, COL_GAP_PCT } from "@/lib/zero-block-editor/breakpoints";
 
-function buildColumnPositions(gridWidth: number, columns: number): number[] {
-  const { margin, colW, gapW } = computeColLayout(columns, gridWidth);
-  const pts: number[] = [margin, gridWidth - margin];
+/** Snap column positions for a canvas of the given actual pixel width. */
+function buildColumnPositions(canvasWidth: number, columns: number): number[] {
+  const { margin, colW, gapW } = computeColLayout(columns, canvasWidth);
+  const pts: number[] = [margin, canvasWidth - margin];
   for (let i = 0; i < columns; i++) {
     const start = margin + i * (colW + gapW);
     pts.push(start, start + colW);
@@ -165,7 +166,7 @@ export function ZbCanvas() {
           ? Math.max(1, canvasEl.getBoundingClientRect().width / s.canvas.zoom)
           : s.canvas.gridWidth;
         const colPositions = s.canvas.snapToGrid
-          ? buildColumnPositions(s.canvas.gridWidth, s.canvas.columns)
+          ? buildColumnPositions(snapW, s.canvas.columns)
           : undefined;
         const { x, y, guides } = computeZbSnap(
           { x: rawX, y: rawY, w: effMoving.w, h: effMoving.h },
@@ -460,7 +461,6 @@ export function ZbCanvas() {
 // ── Grid zone indicator ───────────────────────────────────────────────────────
 
 function GridZoneIndicator({
-  gridWidth,
   columns,
   mode,
 }: {
@@ -468,68 +468,64 @@ function GridZoneIndicator({
   columns: number;
   mode: ContainerMode;
 }) {
-  const { margin, colW, gapW } = computeColLayout(columns, gridWidth);
+  // Columns fill the full canvas width using percentage positions derived from the
+  // 1200px reference layout (margin=20, col=60, gap=40). This avoids the fixed-width
+  // centered zone that caused clipping and side margins in wide viewports.
+  const marginPct = COL_MARGIN_PCT;
+  const colWPct = COL_WIDTH_PCT;
+  const gapPct = COL_GAP_PCT;
+  const colStepPct = colWPct + gapPct;
 
   return (
     <div
       className="pointer-events-none"
       style={{ position: "absolute", inset: 0, zIndex: 0, pointerEvents: "none" }}
     >
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          bottom: 0,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: mode === "window" ? "100%" : gridWidth,
-          maxWidth: "100%",
-        }}
-      >
-        {mode === "grid" && (
-          <>
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left: 0,
-                width: 1,
-                backgroundImage:
-                  "repeating-linear-gradient(to bottom, rgba(100,149,237,0.55) 0px, rgba(100,149,237,0.55) 4px, transparent 4px, transparent 8px)",
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                right: 0,
-                width: 1,
-                backgroundImage:
-                  "repeating-linear-gradient(to bottom, rgba(100,149,237,0.55) 0px, rgba(100,149,237,0.55) 4px, transparent 4px, transparent 8px)",
-              }}
-            />
-          </>
-        )}
+      {mode === "grid" && (
+        <>
+          {/* Left dashed line — right edge aligned with left boundary of column 1 */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `calc(${marginPct}% - 2px)`,
+              width: 2,
+              backgroundImage:
+                "repeating-linear-gradient(to bottom, rgba(15,15,15,0.88) 0px, rgba(15,15,15,0.88) 5px, transparent 5px, transparent 11px)",
+              backgroundRepeat: "repeat-y",
+            }}
+          />
+          {/* Right dashed line — left edge aligned with right boundary of column 12 */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              bottom: 0,
+              left: `calc(${100 - marginPct}%)`,
+              width: 2,
+              backgroundImage:
+                "repeating-linear-gradient(to bottom, rgba(15,15,15,0.88) 0px, rgba(15,15,15,0.88) 5px, transparent 5px, transparent 11px)",
+              backgroundRepeat: "repeat-y",
+            }}
+          />
+        </>
+      )}
 
-        {Array.from({ length: columns }).map((_, i) => {
-          const left = margin + i * (colW + gapW);
-          return (
-            <div
-              key={i}
-              style={{
-                position: "absolute",
-                top: 0,
-                bottom: 0,
-                left,
-                width: colW,
-                background: "rgba(100,149,237,0.04)",
-              }}
-            />
-          );
-        })}
-      </div>
+      {/* Column fills — percentage-based, always renders all columns regardless of canvas width */}
+      {Array.from({ length: columns }).map((_, i) => (
+        <div
+          key={i}
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${marginPct + i * colStepPct}%`,
+            width: `${colWPct}%`,
+            background: "rgba(251,113,133,0.12)",
+          }}
+        />
+      ))}
     </div>
   );
 }

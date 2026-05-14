@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Rubik } from "next/font/google";
+import { Manrope } from "next/font/google";
 import { cookies } from "next/headers";
 import Script from "next/script";
 
@@ -9,9 +9,9 @@ import { getSafeServerSession } from "@/lib/auth";
 import { COOKIE_KEY, parseUiLanguage, type UiLanguage } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/site";
 
-const rubik = Rubik({
+const manrope = Manrope({
   subsets: ["latin", "latin-ext", "cyrillic", "cyrillic-ext"],
-  variable: "--font-rubik",
+  variable: "--font-sans",
   display: "swap"
 });
 
@@ -31,8 +31,8 @@ export default async function RootLayout({
   const session = await getSafeServerSession();
 
   return (
-    <html lang={initialLang} className={rubik.variable} suppressHydrationWarning>
-      <body className={`${rubik.className} min-h-screen w-full min-w-0 font-sans`}>
+    <html lang={initialLang} className={manrope.variable} suppressHydrationWarning>
+      <body className={`${manrope.className} min-h-screen w-full min-w-0 font-sans`}>
         {process.env.NODE_ENV === "development" ? (
           <Script id="dev-next-static-recover" strategy="beforeInteractive">
             {`(function(){

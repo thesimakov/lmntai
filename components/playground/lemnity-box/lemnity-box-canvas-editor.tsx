@@ -122,6 +122,8 @@ export type LemnityBoxCanvasEditorProps = {
 export type LemnityBoxCanvasEditorHandle = {
   /** Сразу сбрасывает дебаунс и возвращает HTML/CSS для сохранения. */
   flushCanvasSnapshot: () => LemnityBoxCanvasContent | null;
+  /** Возвращает ширину тела canvas-фрейма в пикселях (для передачи в ZbEditor). */
+  getCanvasBodyWidth: () => number;
 };
 
 function escapeHtml(value: string) {
@@ -1277,7 +1279,7 @@ section { padding: 64px 32px; }
 .hero { min-height: 520px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #eef2ff; }
 .hero h1 { margin: 0; font-size: 56px; line-height: 1; }
 .hero p { max-width: 680px; margin: 24px auto; font-size: 20px; color: #475569; }
-a, button { display: inline-flex; border: 0; border-radius: 999px; background: #0f172a; color: white; padding: 12px 22px; text-decoration: none; font-weight: 700; }
+.hero a, .hero button { display: inline-flex; border: 0; border-radius: 999px; background: #0f172a; color: white; padding: 12px 22px; text-decoration: none; font-weight: 700; }
 input { display: block; width: 100%; margin: 12px 0; padding: 12px 14px; border: 1px solid #cbd5e1; border-radius: 12px; }
 `;
 
@@ -1406,7 +1408,12 @@ export const LemnityBoxCanvasEditor = forwardRef<LemnityBoxCanvasEditorHandle, L
       const editorCss = ed.getCss({ keepUnusedStyles: true }) ?? "";
       const css = buildPersistedCanvasCss(mergeLemnityBoxSectionMotionCss(seed.css), editorCss);
       return { html: ed.getHtml(), css };
-    }
+    },
+    getCanvasBodyWidth: () => {
+      const ed = editorRef.current;
+      if (!ed) return 1200;
+      return ed.Canvas.getDocument()?.body?.clientWidth ?? 1200;
+    },
   }));
 
   useEffect(() => {

@@ -83,18 +83,18 @@ export function PlaygroundStudioProfileMenu() {
           variant="ghost"
           size="icon"
           aria-label={t("nav_profile")}
-          className="h-9 w-9 shrink-0 rounded-full p-0 ring-2 ring-white/35 hover:bg-white/15 focus-visible:ring-white/70"
+          className="h-7 w-7 shrink-0 rounded-full p-0 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
         >
           {session?.user?.image ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={session.user.image}
               alt=""
-              className="h-9 w-9 rounded-full object-cover"
+              className="h-7 w-7 rounded-full object-cover"
               referrerPolicy="no-referrer"
             />
           ) : (
-            <span className="flex h-full w-full items-center justify-center rounded-full bg-white/20 text-xs font-semibold uppercase leading-none text-white">
+            <span className="flex h-full w-full items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[10px] font-semibold uppercase leading-none text-white">
               {displayInitials}
             </span>
           )}

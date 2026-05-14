@@ -1,5 +1,5 @@
 import type { Component, Editor, TraitProperties } from "grapesjs";
-import { buildZbGridCss, readPageGridFromDoc, resolveZbGridConfig, ZB_GRID_OVERLAY_STYLE_ID } from "@/lib/zero-block-grid";
+import { ZB_GRID_OVERLAY_STYLE_ID } from "@/lib/zero-block-grid";
 
 /** Стили только в документе iframe редактора. */
 export const BLOCK_GRID_DOC_STYLE_ID = "lemnity-block-grid-12-doc";
@@ -35,20 +35,40 @@ html[data-lemnity-grid12="on"] body {
 html[data-lemnity-grid12="on"] body::before {
   content: "";
   position: fixed;
-  left: 40px;
-  right: 40px;
+  left: 0;
+  right: 0;
   top: 0;
   bottom: 0;
   pointer-events: none;
   z-index: 2147482900;
   box-sizing: border-box;
-  background-size: calc(100% / 12) 100%;
-  background-image:
-    repeating-linear-gradient(
-      90deg,
-      rgba(251, 113, 133, 0.12) 0 1px,
-      transparent 1px calc(100% / 12)
-    );
+  background-image: linear-gradient(90deg,
+    transparent                      1.6667%,
+    rgba(251, 113, 133, 0.12)  1.6667%  6.6667%,
+    transparent                6.6667%  10%,
+    rgba(251, 113, 133, 0.12)  10%      15%,
+    transparent                15%      18.3333%,
+    rgba(251, 113, 133, 0.12)  18.3333% 23.3333%,
+    transparent                23.3333% 26.6667%,
+    rgba(251, 113, 133, 0.12)  26.6667% 31.6667%,
+    transparent                31.6667% 35%,
+    rgba(251, 113, 133, 0.12)  35%      40%,
+    transparent                40%      43.3333%,
+    rgba(251, 113, 133, 0.12)  43.3333% 48.3333%,
+    transparent                48.3333% 51.6667%,
+    rgba(251, 113, 133, 0.12)  51.6667% 56.6667%,
+    transparent                56.6667% 60%,
+    rgba(251, 113, 133, 0.12)  60%      65%,
+    transparent                65%      68.3333%,
+    rgba(251, 113, 133, 0.12)  68.3333% 73.3333%,
+    transparent                73.3333% 76.6667%,
+    rgba(251, 113, 133, 0.12)  76.6667% 81.6667%,
+    transparent                81.6667% 85%,
+    rgba(251, 113, 133, 0.12)  85%      90%,
+    transparent                90%      93.3333%,
+    rgba(251, 113, 133, 0.12)  93.3333% 98.3333%,
+    transparent                98.3333%
+  );
 }
 
 html[data-lemnity-grid12="off"] body::before {
@@ -61,21 +81,16 @@ html[data-lemnity-grid12="off"] body {
 }
 
 /*
- * ПК: содержимое секций не шире «коридора» 40px + 12 колонок. Фон секции остаётся на всю ширину блока.
- * !important обходит короткий inline-padding у шаблонов; вертикальные поля остаются из их стилей.
- * Zero-block — вольный слой, поля не навязываем.
+ * Сетка — чисто визуальный оверлей. Секции (и стандартные, и zero-block) не получают принудительный
+ * padding — оба типа блоков одинаково занимают полную ширину холста без сужения.
  */
-html[data-lemnity-grid12="on"] body > section:not(.lemnity-zero-block),
-html[data-lemnity-grid12="on"] body > * > section:not(.lemnity-zero-block) {
+html[data-lemnity-grid12="on"] body > section,
+html[data-lemnity-grid12="on"] body > * > section {
   box-sizing: border-box !important;
-  padding-left: 40px !important;
-  padding-right: 40px !important;
 }
 
-html[data-lemnity-grid12="off"] body > section:not(.lemnity-zero-block),
-html[data-lemnity-grid12="off"] body > * > section:not(.lemnity-zero-block) {
-  padding-left: unset !important;
-  padding-right: unset !important;
+html[data-lemnity-grid12="off"] body > section,
+html[data-lemnity-grid12="off"] body > * > section {
   box-sizing: unset !important;
 }
 
@@ -100,46 +115,24 @@ html[data-lemnity-grid12="on"]::after {
   );
 }
 html[data-lemnity-grid12="on"]::before {
-  left: 40px;
+  left: 1.6667%;
 }
 html[data-lemnity-grid12="on"]::after {
-  right: 40px;
+  right: 1.6667%;
 }
 
+/* Zero blocks flow through the unified page grid — body::before (position:fixed) overlays them
+   with the same 12-column pink grid as regular sections. No separate per-block overlay needed. */
 html[data-lemnity-grid12="on"] .lemnity-zero-block {
   position: relative;
-}
-html[data-lemnity-grid12="on"] .lemnity-zero-block::before,
-html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  pointer-events: none;
-  z-index: 50;
-  box-sizing: border-box;
-  background-repeat: repeat-y;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgba(15, 15, 15, 0.88) 0 5px,
-    transparent 5px 11px
-  );
-}
-html[data-lemnity-grid12="on"] .lemnity-zero-block::before {
-  left: 0;
-}
-html[data-lemnity-grid12="on"] .lemnity-zero-block::after {
-  right: 0;
+  width: 100% !important;
+  max-width: none !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
 }
 
 html[data-lemnity-grid12="off"]::before,
 html[data-lemnity-grid12="off"]::after {
-  content: none !important;
-  background-image: none !important;
-}
-html[data-lemnity-grid12="off"] .lemnity-zero-block::before,
-html[data-lemnity-grid12="off"] .lemnity-zero-block::after {
   content: none !important;
   background-image: none !important;
 }
@@ -157,33 +150,24 @@ export function syncBlockGridOverlay(editor: Editor) {
   }
   tag.textContent = CANVAS_GRID_DOC_CSS;
   html.setAttribute("data-lemnity-grid12", isDesktopLikeDevice(editor) ? "on" : "off");
+  // Direct DOM reset for zero-block sections — overrides any stale GrapesJS inline styles.
+  doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block").forEach((el) => {
+    el.style.width = "100%";
+    el.style.maxWidth = "none";
+    el.style.marginLeft = "0";
+    el.style.marginRight = "0";
+  });
   syncZeroBlockGridOverlays(editor);
 }
 
-/** Пересчитывает и инжектирует CSS колонок для каждого zero block на холсте.
- *  Zero blocks без кастомных настроек наследуют страничную сетку из атрибутов <html>. */
+/** Очищает отдельный оверлей колонок зеро-блоков в главном GrapesJS-канвасе.
+ *  Единая модульная сетка обеспечивается через body::before (position:fixed),
+ *  которая накрывает весь канвас — включая зеро-блоки — теми же розовыми колонками. */
 export function syncZeroBlockGridOverlays(editor: Editor) {
   const doc = editor.Canvas.getDocument();
   if (!doc) return;
-  let styleTag = doc.getElementById(ZB_GRID_OVERLAY_STYLE_ID) as HTMLStyleElement | null;
-  if (!styleTag) {
-    styleTag = doc.createElement("style");
-    styleTag.id = ZB_GRID_OVERLAY_STYLE_ID;
-    doc.head.appendChild(styleTag);
-  }
-  const pageGrid = readPageGridFromDoc(doc.documentElement);
-  const sections = doc.querySelectorAll<HTMLElement>("section.lemnity-zero-block[data-ln-zero-id]");
-  let css = "";
-  sections.forEach((section) => {
-    const blockId = section.getAttribute("data-ln-zero-id");
-    if (!blockId) return;
-    const attrs: Record<string, string> = {};
-    for (const attr of Array.from(section.attributes)) attrs[attr.name] = attr.value;
-    const config = resolveZbGridConfig(attrs, pageGrid);
-    const w = section.clientWidth;
-    if (w > 0) css += buildZbGridCss(blockId, w, config) + "\n";
-  });
-  styleTag.textContent = css;
+  const styleTag = doc.getElementById(ZB_GRID_OVERLAY_STYLE_ID) as HTMLStyleElement | null;
+  if (styleTag) styleTag.textContent = "";
 }
 
 function readSpan(attrs: Record<string, string>): number {
@@ -197,6 +181,12 @@ function readAlign(attrs: Record<string, string>): "left" | "center" | "right" {
   const a = attrs["data-ln-align"];
   if (a === "left" || a === "right" || a === "center") return a;
   return "center";
+}
+
+const FULL_WIDTH_ATTR = "data-ln-full";
+
+function readFullWidth(attrs: Record<string, string>): boolean {
+  return attrs[FULL_WIDTH_ATTR] === "1";
 }
 
 function isLemnityGridSection(component: Component | null | undefined): boolean {
@@ -291,11 +281,26 @@ export function applyLemnitySectionWidthLayout(component: Component) {
     return;
   }
 
+  const attrs = component.getAttributes();
+  const align = readAlign(attrs);
+
+  if (readFullWidth(attrs)) {
+    /* «Растянуть на 100%»: явно 100% ширины, без ограничения по колонкам. */
+    component.removeStyle("max-width");
+    component.addStyle({ width: "100%", "box-sizing": "border-box" });
+    if (align === "center") {
+      component.addStyle({ "margin-left": "auto", "margin-right": "auto" });
+    } else if (align === "right") {
+      component.addStyle({ "margin-left": "auto", "margin-right": "0" });
+    } else {
+      component.addStyle({ "margin-left": "0", "margin-right": "auto" });
+    }
+    return;
+  }
+
   component.removeStyle("width");
 
-  const attrs = component.getAttributes();
   const span = readSpan(attrs);
-  const align = readAlign(attrs);
   const gutter2 = LEMNITY_GRID_OUTSIDE_GUTTER_PX * 2;
 
   if (span >= 12) {
@@ -373,7 +378,49 @@ function normalizeNewSection(component: Component) {
   if (isZeroBlockSection(component)) return;
   const a = component.getAttributes();
   if (a["data-ln-span"] != null || a["data-ln-align"] != null) return;
-  component.addAttributes({ "data-ln-span": "12", "data-ln-align": "center" }, { silent: true } as never);
+  component.addAttributes({ "data-ln-span": "12", "data-ln-align": "center", "data-ln-full": "0" }, { silent: true } as never);
+}
+
+function registerFullWidthTraitType(editor: Editor) {
+  editor.TraitManager.addType("lemnity-full-width", {
+    createInput({ component }: { component: Component }) {
+      const wrap = document.createElement("label");
+      wrap.className = "lemnity-fullwidth-row";
+
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.checked = component.getAttributes()[FULL_WIDTH_ATTR] === "1";
+
+      const text = document.createElement("span");
+      text.textContent = "Растянуть на 100% ширины";
+
+      wrap.appendChild(cb);
+      wrap.appendChild(text);
+
+      const onChangeCb = () => {
+        component.addAttributes({ [FULL_WIDTH_ATTR]: cb.checked ? "1" : "0" });
+        applyLemnitySectionWidthLayout(component);
+      };
+      cb.addEventListener("change", onChangeCb);
+
+      const onAttrs = () => {
+        const checked = component.getAttributes()[FULL_WIDTH_ATTR] === "1";
+        if (cb.checked !== checked) cb.checked = checked;
+      };
+      component.on?.("change:attributes", onAttrs);
+
+      const mo = new MutationObserver(() => {
+        if (!wrap.isConnected) {
+          mo.disconnect();
+          cb.removeEventListener("change", onChangeCb);
+          component.off?.("change:attributes", onAttrs);
+        }
+      });
+      mo.observe(document.documentElement, { childList: true, subtree: true });
+
+      return wrap;
+    },
+  });
 }
 
 function registerTraitType(editor: Editor) {
@@ -510,6 +557,11 @@ function registerTraitType(editor: Editor) {
 /** Трейты секции для сетки 12 колонок (служит базой для `lemnity-box-block-settings-traits`). */
 export const LEMNITY_GRID_SECTION_BASE_TRAITS: TraitProperties[] = [
   {
+    type: "lemnity-full-width",
+    name: "data-ln-full",
+    label: "На всю ширину (100%)",
+  },
+  {
     type: "lemnity-span-12",
     name: "data-ln-span",
     label: "Ширина блока (колонок)",
@@ -545,6 +597,7 @@ function registerSectionType(editor: Editor) {
 
 /** Сетка на холсте + секции с шириной по 12 колонкам. */
 export function attachLemnityBoxSectionWidthGrid(editor: Editor): () => void {
+  registerFullWidthTraitType(editor);
   registerTraitType(editor);
   registerSectionType(editor);
 

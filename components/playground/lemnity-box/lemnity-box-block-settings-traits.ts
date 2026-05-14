@@ -4,6 +4,9 @@ import { LEMNITY_GRID_SECTION_BASE_TRAITS } from "@/components/playground/lemnit
 
 const FORM_TRAIT_NAME = "lemnity-form-settings";
 const SHOP_FILTER_TRAIT_NAME = "lemnity-shop-filters";
+const BENEFITS_HERO_TRAIT_NAME = "lemnity-benefits-hero";
+const BENEFITS_SPLIT_TRAIT_NAME = "lemnity-benefits-split";
+const BENEFITS_LINEAR_TRAIT_NAME = "lemnity-benefits-linear";
 
 type FieldKind = "text" | "email" | "tel" | "number" | "textarea";
 
@@ -76,6 +79,21 @@ function isFormSection(sec: Component): boolean {
   return Boolean(el instanceof HTMLElement && el.classList.contains("lemnity-form-s"));
 }
 
+function isBenefitsHeroSection(sec: Component): boolean {
+  const el = sec.getEl?.();
+  return Boolean(el instanceof HTMLElement && el.classList.contains("lemnity-benefits-hero-s"));
+}
+
+function isBenefitsSplitSection(sec: Component): boolean {
+  const el = sec.getEl?.();
+  return Boolean(el instanceof HTMLElement && el.classList.contains("lemnity-benefits-split-s"));
+}
+
+function isBenefitsLinearSection(sec: Component): boolean {
+  const el = sec.getEl?.();
+  return Boolean(el instanceof HTMLElement && el.classList.contains("lemnity-benefits-linear-s"));
+}
+
 function isShopFiltersSection(sec: Component): boolean {
   const el = sec.getEl?.();
   return Boolean(
@@ -92,7 +110,7 @@ function traitsWithoutBlockSettings(sec: Component): TraitProperties[] {
     .map((tr) => ({ ...(tr.props() as TraitProperties) }))
     .filter((t) => {
       const key = String(t.name ?? t.id ?? "");
-      return key !== FORM_TRAIT_NAME && key !== SHOP_FILTER_TRAIT_NAME;
+      return key !== FORM_TRAIT_NAME && key !== SHOP_FILTER_TRAIT_NAME && key !== BENEFITS_HERO_TRAIT_NAME && key !== BENEFITS_SPLIT_TRAIT_NAME && key !== BENEFITS_LINEAR_TRAIT_NAME;
     });
 }
 
@@ -109,7 +127,10 @@ function mergeTraitsForSection(editor: Editor, sec: Component) {
       key !== "data-ln-span" &&
       key !== "data-ln-align" &&
       key !== FORM_TRAIT_NAME &&
-      key !== SHOP_FILTER_TRAIT_NAME
+      key !== SHOP_FILTER_TRAIT_NAME &&
+      key !== BENEFITS_HERO_TRAIT_NAME &&
+      key !== BENEFITS_SPLIT_TRAIT_NAME &&
+      key !== BENEFITS_LINEAR_TRAIT_NAME
     );
   });
 
@@ -117,6 +138,9 @@ function mergeTraitsForSection(editor: Editor, sec: Component) {
 
   const wantForm = isFormSection(sec) && findNestedForm(sec) !== undefined;
   const wantFilters = isShopFiltersSection(sec);
+  const wantBenefitsHero = isBenefitsHeroSection(sec);
+  const wantBenefitsSplit = isBenefitsSplitSection(sec);
+  const wantBenefitsLinear = isBenefitsLinearSection(sec);
 
   if (wantForm)
     extra.push({
@@ -129,6 +153,24 @@ function mergeTraitsForSection(editor: Editor, sec: Component) {
       type: SHOP_FILTER_TRAIT_NAME,
       name: SHOP_FILTER_TRAIT_NAME,
       label: "Магазин: блоки фильтра",
+    });
+  if (wantBenefitsHero)
+    extra.push({
+      type: BENEFITS_HERO_TRAIT_NAME,
+      name: BENEFITS_HERO_TRAIT_NAME,
+      label: "Hero CTA: текст и ссылки",
+    });
+  if (wantBenefitsSplit)
+    extra.push({
+      type: BENEFITS_SPLIT_TRAIT_NAME,
+      name: BENEFITS_SPLIT_TRAIT_NAME,
+      label: "Hero Split: текст и ссылки",
+    });
+  if (wantBenefitsLinear)
+    extra.push({
+      type: BENEFITS_LINEAR_TRAIT_NAME,
+      name: BENEFITS_LINEAR_TRAIT_NAME,
+      label: "Hero Linear: анонс и кнопки",
     });
 
   sec.setTraits([...gridBase, ...inherited, ...extra]);
@@ -335,6 +377,283 @@ function registerShopFilterTrait(editor: Editor) {
   });
 }
 
+function registerBenefitsHeroTrait(editor: Editor) {
+  editor.TraitManager.addType(BENEFITS_HERO_TRAIT_NAME, {
+    createInput({ component }: { component: Component }) {
+      const root = document.createElement("div");
+      root.className = "lemnity-block-settings lemnity-block-settings--benefits-hero";
+
+      const hint = document.createElement("p");
+      hint.className = "lemnity-block-settings-hint";
+      hint.textContent = "Редактируйте текст и ссылки Hero CTA-блока.";
+      root.appendChild(hint);
+
+      function makeRow(label: string) {
+        const wrap = document.createElement("div");
+        wrap.className = "lemnity-block-settings-field";
+        const lbl = document.createElement("p");
+        lbl.className = "lemnity-block-settings-hint";
+        lbl.style.marginBottom = "4px";
+        lbl.textContent = label;
+        wrap.appendChild(lbl);
+        return wrap;
+      }
+
+      function textInput(placeholder: string, value: string, onChange: (v: string) => void) {
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.className = "lemnity-block-settings-text";
+        inp.placeholder = placeholder;
+        inp.value = value;
+        inp.addEventListener("change", () => { onChange(inp.value); editor.refresh(); });
+        return inp;
+      }
+
+      function textArea(placeholder: string, value: string, onChange: (v: string) => void) {
+        const ta = document.createElement("textarea");
+        ta.className = "lemnity-block-settings-text";
+        ta.placeholder = placeholder;
+        ta.value = value;
+        ta.rows = 3;
+        ta.style.resize = "vertical";
+        ta.addEventListener("change", () => { onChange(ta.value); editor.refresh(); });
+        return ta;
+      }
+
+      function render() {
+        const el = component.getEl?.();
+        if (!(el instanceof HTMLElement)) return;
+
+        const badge = el.querySelector<HTMLElement>(".bf-hero-badge");
+        const title = el.querySelector<HTMLElement>(".bf-hero-title");
+        const desc = el.querySelector<HTMLElement>(".bf-hero-desc");
+        const btn1 = el.querySelector<HTMLAnchorElement>(".bf-hero-btn-primary");
+        const btn2 = el.querySelector<HTMLAnchorElement>(".bf-hero-btn-ghost");
+
+        if (badge) {
+          const row = makeRow("Бэдж");
+          row.appendChild(textInput("Текст бэджа", badge.textContent?.trim() ?? "", (v) => { badge.textContent = v || "Новинка"; }));
+          root.appendChild(row);
+        }
+
+        if (title) {
+          const row = makeRow("Заголовок");
+          row.appendChild(textInput("Заголовок", title.textContent?.trim() ?? "", (v) => { title.textContent = v || "Заголовок"; }));
+          root.appendChild(row);
+        }
+
+        if (desc) {
+          const row = makeRow("Описание");
+          row.appendChild(textArea("Описание", desc.textContent?.trim() ?? "", (v) => { desc.textContent = v; }));
+          root.appendChild(row);
+        }
+
+        if (btn1) {
+          const row = makeRow("Кнопка 1 (основная)");
+          row.appendChild(textInput("Текст кнопки", btn1.textContent?.trim() ?? "", (v) => { btn1.textContent = v || "Начать"; }));
+          row.appendChild(textInput("Ссылка (href)", btn1.getAttribute("href") ?? "#", (v) => { btn1.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+
+        if (btn2) {
+          const row = makeRow("Кнопка 2 (контурная)");
+          row.appendChild(textInput("Текст кнопки", btn2.textContent?.trim() ?? "", (v) => { btn2.textContent = v || "Демо"; }));
+          row.appendChild(textInput("Ссылка (href)", btn2.getAttribute("href") ?? "#", (v) => { btn2.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+      }
+
+      render();
+      return root;
+    },
+  });
+}
+
+function registerBenefitsLinearTrait(editor: Editor) {
+  editor.TraitManager.addType(BENEFITS_LINEAR_TRAIT_NAME, {
+    createInput({ component }: { component: Component }) {
+      const root = document.createElement("div");
+      root.className = "lemnity-block-settings lemnity-block-settings--benefits-linear";
+
+      const hint = document.createElement("p");
+      hint.className = "lemnity-block-settings-hint";
+      hint.textContent = "Hero Linear: анонс, заголовок, описание и кнопки.";
+      root.appendChild(hint);
+
+      function makeRow(label: string) {
+        const wrap = document.createElement("div");
+        wrap.className = "lemnity-block-settings-field";
+        const lbl = document.createElement("p");
+        lbl.className = "lemnity-block-settings-hint";
+        lbl.style.marginBottom = "4px";
+        lbl.textContent = label;
+        wrap.appendChild(lbl);
+        return wrap;
+      }
+
+      function textInput(placeholder: string, value: string, onChange: (v: string) => void) {
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.className = "lemnity-block-settings-text";
+        inp.placeholder = placeholder;
+        inp.value = value;
+        inp.addEventListener("change", () => { onChange(inp.value); editor.refresh(); });
+        return inp;
+      }
+
+      function textArea(placeholder: string, value: string, onChange: (v: string) => void) {
+        const ta = document.createElement("textarea");
+        ta.className = "lemnity-block-settings-text";
+        ta.placeholder = placeholder;
+        ta.value = value;
+        ta.rows = 3;
+        ta.style.resize = "vertical";
+        ta.addEventListener("change", () => { onChange(ta.value); editor.refresh(); });
+        return ta;
+      }
+
+      const el = component.getEl?.();
+      if (el instanceof HTMLElement) {
+        const badge = el.querySelector<HTMLElement>(".bf-linear-new");
+        const announceText = el.querySelector<HTMLElement>(".bf-linear-announce-text");
+        const title = el.querySelector<HTMLElement>(".bf-linear-title");
+        const desc = el.querySelector<HTMLElement>(".bf-linear-desc");
+        const btn1 = el.querySelector<HTMLAnchorElement>(".bf-linear-btn-p");
+        const btn2 = el.querySelector<HTMLAnchorElement>(".bf-linear-btn-g");
+
+        if (badge) {
+          const row = makeRow("Бэдж (пилюля)");
+          row.appendChild(textInput("Текст бэджа", badge.textContent?.trim() ?? "", (v) => { badge.textContent = v || "Новинка"; }));
+          root.appendChild(row);
+        }
+        if (announceText) {
+          const row = makeRow("Текст анонса");
+          const rawText = announceText.textContent?.trim() ?? "";
+          row.appendChild(textInput("Текст объявления", rawText, (v) => {
+            const link = announceText.querySelector("a");
+            if (link) {
+              announceText.childNodes.forEach((n) => { if (n.nodeType === Node.TEXT_NODE) n.remove(); });
+              announceText.insertBefore(document.createTextNode(v + " · "), link);
+            } else {
+              announceText.textContent = v;
+            }
+          }));
+          root.appendChild(row);
+        }
+        if (title) {
+          const row = makeRow("Заголовок");
+          row.appendChild(textInput("Заголовок", title.textContent?.trim() ?? "", (v) => { title.textContent = v || "Заголовок"; }));
+          root.appendChild(row);
+        }
+        if (desc) {
+          const row = makeRow("Описание");
+          row.appendChild(textArea("Описание", desc.textContent?.trim() ?? "", (v) => { desc.textContent = v; }));
+          root.appendChild(row);
+        }
+        if (btn1) {
+          const row = makeRow("Кнопка 1 (основная)");
+          row.appendChild(textInput("Текст кнопки", btn1.textContent?.trim() ?? "", (v) => { btn1.textContent = v || "Начать"; }));
+          row.appendChild(textInput("Ссылка (href)", btn1.getAttribute("href") ?? "#", (v) => { btn1.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+        if (btn2) {
+          const row = makeRow("Кнопка 2 (контурная)");
+          row.appendChild(textInput("Текст кнопки", btn2.textContent?.trim() ?? "", (v) => { btn2.textContent = v || "Демо"; }));
+          row.appendChild(textInput("Ссылка (href)", btn2.getAttribute("href") ?? "#", (v) => { btn2.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+      }
+
+      return root;
+    },
+  });
+}
+
+function registerBenefitsSplitTrait(editor: Editor) {
+  editor.TraitManager.addType(BENEFITS_SPLIT_TRAIT_NAME, {
+    createInput({ component }: { component: Component }) {
+      const root = document.createElement("div");
+      root.className = "lemnity-block-settings lemnity-block-settings--benefits-split";
+
+      const hint = document.createElement("p");
+      hint.className = "lemnity-block-settings-hint";
+      hint.textContent = "Редактируйте текст и ссылки Hero Split блока.";
+      root.appendChild(hint);
+
+      function makeRow(label: string) {
+        const wrap = document.createElement("div");
+        wrap.className = "lemnity-block-settings-field";
+        const lbl = document.createElement("p");
+        lbl.className = "lemnity-block-settings-hint";
+        lbl.style.marginBottom = "4px";
+        lbl.textContent = label;
+        wrap.appendChild(lbl);
+        return wrap;
+      }
+
+      function textInput(placeholder: string, value: string, onChange: (v: string) => void) {
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.className = "lemnity-block-settings-text";
+        inp.placeholder = placeholder;
+        inp.value = value;
+        inp.addEventListener("change", () => { onChange(inp.value); editor.refresh(); });
+        return inp;
+      }
+
+      function textArea(placeholder: string, value: string, onChange: (v: string) => void) {
+        const ta = document.createElement("textarea");
+        ta.className = "lemnity-block-settings-text";
+        ta.placeholder = placeholder;
+        ta.value = value;
+        ta.rows = 3;
+        ta.style.resize = "vertical";
+        ta.addEventListener("change", () => { onChange(ta.value); editor.refresh(); });
+        return ta;
+      }
+
+      const el = component.getEl?.();
+      if (el instanceof HTMLElement) {
+        const badge = el.querySelector<HTMLElement>(".bf-split-hero-badge");
+        const title = el.querySelector<HTMLElement>(".bf-split-hero-title");
+        const desc = el.querySelector<HTMLElement>(".bf-split-hero-desc");
+        const btn1 = el.querySelector<HTMLAnchorElement>(".bf-split-hero-btn-p");
+        const btn2 = el.querySelector<HTMLAnchorElement>(".bf-split-hero-btn-g");
+
+        if (badge) {
+          const row = makeRow("Бэдж");
+          row.appendChild(textInput("Текст бэджа", badge.textContent?.trim() ?? "", (v) => { badge.textContent = v || "Новинка"; }));
+          root.appendChild(row);
+        }
+        if (title) {
+          const row = makeRow("Заголовок");
+          row.appendChild(textInput("Заголовок", title.textContent?.trim() ?? "", (v) => { title.textContent = v || "Заголовок"; }));
+          root.appendChild(row);
+        }
+        if (desc) {
+          const row = makeRow("Описание");
+          row.appendChild(textArea("Описание", desc.textContent?.trim() ?? "", (v) => { desc.textContent = v; }));
+          root.appendChild(row);
+        }
+        if (btn1) {
+          const row = makeRow("Кнопка 1 (основная)");
+          row.appendChild(textInput("Текст кнопки", btn1.textContent?.trim() ?? "", (v) => { btn1.textContent = v || "Начать"; }));
+          row.appendChild(textInput("Ссылка (href)", btn1.getAttribute("href") ?? "#", (v) => { btn1.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+        if (btn2) {
+          const row = makeRow("Кнопка 2 (контурная)");
+          row.appendChild(textInput("Текст кнопки", btn2.textContent?.trim() ?? "", (v) => { btn2.textContent = v || "Демо"; }));
+          row.appendChild(textInput("Ссылка (href)", btn2.getAttribute("href") ?? "#", (v) => { btn2.setAttribute("href", v || "#"); }));
+          root.appendChild(row);
+        }
+      }
+
+      return root;
+    },
+  });
+}
+
 function walkSections(sec: Component | null | undefined, fn: (c: Component) => void) {
   if (!sec?.get) return;
   const tag = String(sec.get("tagName") ?? "").toUpperCase();
@@ -350,6 +669,9 @@ function walkSections(sec: Component | null | undefined, fn: (c: Component) => v
 export function attachLemnityBoxBlockSettings(editor: Editor): () => void {
   registerFormSettingsTrait(editor);
   registerShopFilterTrait(editor);
+  registerBenefitsHeroTrait(editor);
+  registerBenefitsSplitTrait(editor);
+  registerBenefitsLinearTrait(editor);
 
   const ping = () => {
     queueMicrotask(() => {

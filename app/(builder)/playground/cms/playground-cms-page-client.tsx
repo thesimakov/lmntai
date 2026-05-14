@@ -1297,7 +1297,7 @@ export default function PlaygroundCmsPage() {
 
   return (
     <PageTransition>
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4 bg-[#eef2f8]">
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-col gap-4 bg-[#EBEBEA]">
         <PlaygroundStudioChrome
           backHref="/playground"
           backLabel={t("playground_menu_back")}
@@ -1316,7 +1316,7 @@ export default function PlaygroundCmsPage() {
                   placeholder={t("playground_cms_nav_search_placeholder")}
                   type="search"
                   aria-label={t("playground_cms_nav_search_placeholder")}
-                  className="h-10 w-full rounded-lg border border-slate-200/90 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-slate-200/80 placeholder:text-slate-400 focus-visible:border-[#0061FF]/40 focus-visible:ring-2 focus-visible:ring-[#0061FF]/25"
+                  className="h-10 w-full rounded-lg border border-slate-200/90 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 shadow-sm outline-none ring-slate-200/80 placeholder:text-slate-400 focus-visible:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary/25"
                 />
               </div>
             ) : undefined
@@ -1332,7 +1332,7 @@ export default function PlaygroundCmsPage() {
           </div>
         ) : loading ? (
           <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600 shadow-sm">
-            <Loader2 className="h-4 w-4 animate-spin text-[#0061FF]" aria-hidden />
+            <Loader2 className="h-4 w-4 animate-spin text-primary" aria-hidden />
             {t("playground_cms_loading")}
           </div>
         ) : !projects.some((p) => p.id === cmsProjectId) ? (
@@ -1364,7 +1364,7 @@ export default function PlaygroundCmsPage() {
                         className={cn(
                           "flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm transition-colors",
                           sel
-                            ? "bg-[#0061FF] font-medium text-white shadow-sm"
+                            ? "bg-primary font-medium text-white shadow-sm"
                             : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                         )}
                       >
@@ -1408,7 +1408,7 @@ export default function PlaygroundCmsPage() {
                     <div className="mb-6 shrink-0 space-y-4">
                       <div>
                         <nav className="mb-2 text-xs text-slate-500" aria-label="Breadcrumb">
-                          <Link href="/playground" className="font-medium text-slate-500 transition-colors hover:text-[#0061FF]">
+                          <Link href="/playground" className="font-medium text-slate-500 transition-colors hover:text-primary">
                             Home
                           </Link>
                           <span className="mx-2 text-slate-300">/</span>
@@ -1420,7 +1420,7 @@ export default function PlaygroundCmsPage() {
                         <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
                           <p className="text-sm text-slate-600">{t("playground_cms_pages_title")}</p>
                           <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:max-w-[min(100%,28rem)] sm:justify-end sm:text-right">
-                            <ExternalLink className="size-4 shrink-0 text-[#0061FF]" aria-hidden />
+                            <ExternalLink className="size-4 shrink-0 text-primary" aria-hidden />
                             <span className="shrink-0 font-medium uppercase tracking-wide text-slate-500">
                               {t("playground_cms_site_address_label")}
                             </span>
@@ -1428,7 +1428,7 @@ export default function PlaygroundCmsPage() {
                               href={cmsPublicUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="min-w-0 break-all font-semibold text-[#0061FF] underline-offset-2 hover:underline sm:break-normal sm:truncate"
+                              className="min-w-0 break-all font-semibold text-primary underline-offset-2 hover:underline sm:break-normal sm:truncate"
                             >
                               {cmsPublicUrl}
                             </a>
@@ -1441,7 +1441,7 @@ export default function PlaygroundCmsPage() {
                           <button
                             type="button"
                             onClick={() => setCmsActiveSection("pages")}
-                            className="inline-flex items-center gap-2 rounded-lg bg-[#0061FF] px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-white shadow-sm ring-1 ring-[#0061FF]/30 hover:bg-[#0056e6]"
+                            className="inline-flex items-center gap-2 rounded-lg bg-primary px-2.5 py-2 text-[10px] font-bold uppercase tracking-[0.08em] text-white shadow-sm ring-1 ring-primary/30 hover:bg-primary/90"
                           >
                             <FileText className="size-[1.125rem] shrink-0 text-current" strokeWidth={2.25} aria-hidden />
                             {t("playground_cms_pages_tab_pages")}
@@ -1465,18 +1465,18 @@ export default function PlaygroundCmsPage() {
                           value={createPageTitle}
                           onChange={(e) => setCreatePageTitle(e.target.value)}
                           placeholder={t("playground_cms_placeholder_new_title")}
-                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none ring-slate-100 placeholder:text-slate-400 focus-visible:border-[#0061FF]/35 focus-visible:ring-2 focus-visible:ring-[#0061FF]/20"
+                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none ring-slate-100 placeholder:text-slate-400 focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/20"
                         />
                         <input
                           value={createPageSlug}
                           onChange={(e) => setCreatePageSlug(e.target.value)}
                           placeholder={t("playground_cms_placeholder_slug")}
-                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none ring-slate-100 placeholder:text-slate-400 focus-visible:border-[#0061FF]/35 focus-visible:ring-2 focus-visible:ring-[#0061FF]/20"
+                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none ring-slate-100 placeholder:text-slate-400 focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/20"
                         />
                         <select
                           value={createParentId}
                           onChange={(e) => setCreateParentId(e.target.value)}
-                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none focus-visible:border-[#0061FF]/35 focus-visible:ring-2 focus-visible:ring-[#0061FF]/20"
+                          className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 shadow-inner outline-none focus-visible:border-primary/35 focus-visible:ring-2 focus-visible:ring-primary/20"
                         >
                           <option value="">{t("playground_cms_parent_root")}</option>
                           {pages.map((p) => (
@@ -1487,7 +1487,7 @@ export default function PlaygroundCmsPage() {
                         </select>
                         <Button
                           type="button"
-                          className="h-10 shrink-0 rounded-lg border-0 bg-[#0061FF] px-4 text-white shadow-sm hover:bg-[#0056e6]"
+                          className="h-10 shrink-0 rounded-lg border-0 bg-primary px-4 text-white shadow-sm hover:bg-primary/90"
                           onClick={() => void createPage()}
                           disabled={!selectedSiteId || busy === "create-page"}
                         >
@@ -1514,7 +1514,7 @@ export default function PlaygroundCmsPage() {
                             className={cn(
                               "overflow-hidden rounded-xl bg-white text-xs shadow-sm transition-[border-color,box-shadow]",
                               isSelected
-                                ? "border-2 border-[#0061FF]/55"
+                                ? "border-2 border-primary/55"
                                 : "border border-slate-200 hover:border-slate-300",
                             )}
                           >

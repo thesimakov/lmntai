@@ -461,4 +461,127 @@ ${BENEFITS_CSS}
 </div>
 </section>`,
   },
+  {
+    id: "benefits-bf15-hero-linear",
+    badge: "BF15",
+    title: "Hero Linear: анонс + заголовок + кнопки",
+    hint: "100% копия референса: пилюля, заголовок слева, CTA справа",
+    content: `<section data-gjs-name="Преимущества: Hero Linear" class="lemnity-benefits-s lemnity-benefits-linear-s lemnity-section" style="margin:0;padding:clamp(40px,5.5vw,64px) clamp(18px,5vw,56px);background:#ffffff;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#111827;">
+${BENEFITS_CSS}
+<style>
+.bf-linear-wrap{max-width:1200px;margin:0 auto}
+.bf-linear-announce{display:flex;align-items:center;gap:10px;margin-bottom:clamp(22px,3.5vw,36px)}
+.bf-linear-new{display:inline-block;padding:4px 13px;border-radius:999px;background:#ede9fe;color:#4f46e5;font-size:12px;font-weight:600;letter-spacing:0.01em;flex-shrink:0}
+.bf-linear-announce-text{font-size:13px;color:#4b5563;line-height:1.4}
+.bf-linear-announce-text a{display:inline;background:transparent;border:none;border-radius:0;padding:0;color:inherit;text-decoration:none}
+.bf-linear-announce-text a:hover{text-decoration:underline;background:transparent}
+.bf-linear-body{display:grid;grid-template-columns:1fr auto;gap:clamp(36px,5vw,80px);align-items:center}
+.bf-linear-content{}
+.bf-linear-title{margin:0 0 clamp(12px,1.8vw,18px);font-size:clamp(1.9rem,4vw,3.2rem);font-weight:500;line-height:1.12;letter-spacing:-0.03em;color:#111827}
+.bf-linear-desc{margin:0;font-size:clamp(13px,1.4vw,15px);line-height:1.65;color:#6b7280;max-width:460px}
+.bf-linear-btns{display:flex;flex-direction:column;gap:10px;flex-shrink:0;min-width:172px}
+.bf-linear-btn-p{display:block;padding:13px 24px;border-radius:8px;background:#111827;color:#ffffff;font-size:14px;font-weight:500;text-decoration:none;text-align:center;white-space:nowrap}
+.bf-linear-btn-p:hover{background:#1f2937}
+.bf-linear-btn-g{display:block;padding:12px 22px;border-radius:8px;border:1px solid #d1d5db;background:#ffffff;color:#111827;font-size:14px;font-weight:500;text-decoration:none;text-align:center;white-space:nowrap}
+.bf-linear-btn-g:hover{background:#f9fafb;border-color:#9ca3af}
+@media(max-width:820px){
+  .bf-linear-body{grid-template-columns:1fr}
+  .bf-linear-btns{flex-direction:row;min-width:0;margin-top:clamp(20px,3vw,28px)}
+  .bf-linear-btn-p,.bf-linear-btn-g{flex:1}
+}
+@media(max-width:480px){
+  .bf-linear-btns{flex-direction:column}
+  .bf-linear-btn-p,.bf-linear-btn-g{flex:none}
+}
+</style>
+<div class="bf-linear-wrap">
+  <div class="bf-linear-announce">
+    <span class="bf-linear-new">Новинка</span>
+    <span class="bf-linear-announce-text">Используйте ИИ для автоматической оптимизации кода · <a href="#" style="display:inline;background:transparent;border:none;border-radius:0;padding:0;color:inherit;text-decoration:none;font-size:inherit;font-weight:inherit;">Подробнее →</a></span>
+  </div>
+  <div class="bf-linear-body">
+    <div class="bf-linear-content">
+      <h2 class="bf-linear-title">Код работает на полную мощность с полной видимостью и контролем</h2>
+      <p class="bf-linear-desc">ИИ прекрасно пишет код, но не видит как он работает в продакшене. Дайте агенту контекст выполнения на уровне строк.</p>
+    </div>
+    <div class="bf-linear-btns">
+      <a href="#" class="bf-linear-btn-p">Начать бесплатно</a>
+      <a href="#" class="bf-linear-btn-g">Запросить демо</a>
+    </div>
+  </div>
+</div>
+</section>`,
+  },
+  {
+    id: "benefits-bf14-hero-split-dark",
+    badge: "BF14",
+    title: "Hero Split: тёмный, контент + CTA",
+    hint: "badge слева, кнопки справа, dark-режим",
+    content: `<section data-gjs-name="Преимущества: Hero Split Dark" class="lemnity-benefits-s lemnity-benefits-split-s lemnity-section" style="margin:0;padding:clamp(56px,8vw,96px) clamp(18px,5vw,64px);background:#0c0c0e;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;color:#f0ece4;">
+${BENEFITS_CSS}
+<style>
+.bf-split-hero{display:grid;grid-template-columns:1fr 300px;gap:clamp(40px,6vw,72px);align-items:center;max-width:1200px;margin:0 auto}
+.bf-split-hero-badge{display:inline-flex;align-items:center;gap:8px;padding:5px 14px;border:1px solid rgba(255,107,53,0.45);border-radius:999px;color:#ff6b35;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:clamp(18px,3vw,28px)}
+.bf-split-hero-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:#ff6b35;flex-shrink:0;animation:bf-blink 2s ease-in-out infinite}
+@keyframes bf-blink{0%,100%{opacity:1}50%{opacity:0.35}}
+.bf-split-hero-title{margin:0 0 clamp(14px,2.5vw,22px);font-size:clamp(2rem,4.5vw,3.5rem);font-weight:900;line-height:1.08;letter-spacing:-0.04em;color:#f0ece4}
+.bf-split-hero-desc{margin:0;font-size:clamp(14px,1.5vw,16px);line-height:1.7;color:#7a7671;max-width:520px}
+.bf-split-hero-cta{display:flex;flex-direction:column;gap:10px;padding-left:clamp(24px,4vw,40px);border-left:1px solid rgba(240,236,228,0.1)}
+.bf-split-hero-btn-p{display:block;padding:14px 24px;border-radius:8px;background:#ff6b35;color:#0c0c0e;font-size:14px;font-weight:700;text-decoration:none;text-align:center;letter-spacing:-0.01em;white-space:nowrap}
+.bf-split-hero-btn-p:hover{background:#ff8554}
+.bf-split-hero-btn-g{display:block;padding:13px 24px;border-radius:8px;border:1px solid rgba(240,236,228,0.2);background:rgba(240,236,228,0.06);color:#c8c4bc;font-size:14px;font-weight:500;text-decoration:none;text-align:center;white-space:nowrap}
+.bf-split-hero-btn-g:hover{border-color:rgba(240,236,228,0.45);background:rgba(240,236,228,0.12);color:#f0ece4}
+@media(max-width:780px){
+  .bf-split-hero{grid-template-columns:1fr}
+  .bf-split-hero-cta{padding-left:0;border-left:none;border-top:1px solid rgba(240,236,228,0.1);padding-top:28px;flex-direction:row;flex-wrap:wrap;gap:10px}
+  .bf-split-hero-btn-p,.bf-split-hero-btn-g{flex:1;min-width:130px}
+}
+@media(max-width:420px){
+  .bf-split-hero-cta{flex-direction:column}
+  .bf-split-hero-btn-p,.bf-split-hero-btn-g{flex:none}
+}
+</style>
+<div class="bf-split-hero">
+  <div>
+    <span class="bf-split-hero-badge">Новинка</span>
+    <h2 class="bf-split-hero-title">Ваш продукт.<br>На полную мощность.</h2>
+    <p class="bf-split-hero-desc">Сделайте код быстрее и надёжнее — с полной видимостью и контролем над каждым запуском.</p>
+  </div>
+  <div class="bf-split-hero-cta">
+    <a href="#" class="bf-split-hero-btn-p">Начать бесплатно →</a>
+    <a href="#" class="bf-split-hero-btn-g">Запросить демо</a>
+  </div>
+</div>
+</section>`,
+  },
+  {
+    id: "benefits-bf13-hero-cta",
+    badge: "BF13",
+    title: "Hero CTA: бэдж, заголовок, кнопки",
+    hint: "badge + крупный заголовок + 2 кнопки",
+    content: `<section data-gjs-name="Преимущества: Hero CTA" class="lemnity-benefits-s lemnity-benefits-hero-s lemnity-section" style="margin:0;padding:clamp(64px,10vw,112px) clamp(18px,5vw,48px);background:#ffffff;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#0f172a;text-align:center;">
+${BENEFITS_CSS}
+<style>
+.bf-hero-wrap{max-width:720px;margin:0 auto}
+.bf-hero-badge{display:inline-block;padding:5px 16px;border-radius:999px;background:#ede9fe;color:#4f46e5;font-size:13px;font-weight:600;letter-spacing:0.01em;margin-bottom:clamp(18px,3vw,28px)}
+.bf-hero-title{margin:0 0 clamp(14px,2.5vw,22px);font-size:clamp(1.75rem,5vw,3rem);font-weight:800;line-height:1.15;letter-spacing:-0.03em;color:#0f172a}
+.bf-hero-desc{margin:0 auto clamp(28px,4vw,44px);max-width:600px;font-size:clamp(14px,1.8vw,18px);line-height:1.65;color:#475569}
+.bf-hero-btns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;align-items:center}
+.bf-hero-btn-primary{display:inline-block;padding:13px 30px;border-radius:8px;background:#0f172a;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none;transition:background 0.15s}
+.bf-hero-btn-primary:hover{background:#1e293b}
+.bf-hero-btn-ghost{display:inline-block;padding:12px 28px;border-radius:8px;border:1.5px solid #cbd5e1;background:#ffffff;color:#0f172a;font-size:15px;font-weight:500;text-decoration:none;transition:border-color 0.15s,background 0.15s}
+.bf-hero-btn-ghost:hover{border-color:#94a3b8;background:#f8fafc}
+@media(max-width:600px){.bf-hero-btns{flex-direction:column;align-items:center}.bf-hero-btn-primary,.bf-hero-btn-ghost{width:100%;max-width:280px;text-align:center}}
+</style>
+<div class="bf-hero-wrap">
+  <span class="bf-hero-badge">Новинка</span>
+  <h2 class="bf-hero-title">Ваш продукт. На полную мощность.</h2>
+  <p class="bf-hero-desc">Сделайте код быстрее и надёжнее — с полной видимостью и контролем над каждым запуском.</p>
+  <div class="bf-hero-btns">
+    <a href="#" class="bf-hero-btn-primary">Начать бесплатно</a>
+    <a href="#" class="bf-hero-btn-ghost">Запросить демо</a>
+  </div>
+</div>
+</section>`,
+  },
 ];

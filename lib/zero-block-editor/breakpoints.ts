@@ -35,3 +35,8 @@ export function computeColLayout(columns: number, gridWidth: number): {
   const colW = Math.max(8, Math.round((gridWidth - 2 * margin - (columns - 1) * gapW) / columns));
   return { margin, colW, gapW };
 }
+
+/** Reference ratios for percentage-based CSS column layout (independent of canvas width). */
+export const COL_MARGIN_PCT = (REF_MARGIN / REF_TOTAL) * 100;
+export const COL_WIDTH_PCT = (REF_COL / REF_TOTAL) * 100;
+export const COL_GAP_PCT = (REF_GAP / REF_TOTAL) * 100;

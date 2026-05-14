@@ -32,32 +32,32 @@ export function PlaygroundStudioChrome({
   return (
     <header
       className={cn(
-        "flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-white/20 bg-[#0061FF] px-4 py-3 text-white shadow-sm md:flex-nowrap md:gap-x-3",
+        "flex h-12 shrink-0 flex-wrap items-center gap-x-2 gap-y-2 border-b border-border bg-white px-3 text-foreground md:flex-nowrap md:gap-x-3",
         className,
       )}
     >
-      <div className="flex min-w-0 flex-[1_1_auto] flex-wrap items-center gap-x-2 gap-y-2 md:flex-nowrap md:gap-x-3">
+      <div className="flex min-w-0 flex-[1_1_auto] flex-wrap items-center gap-x-1.5 gap-y-2 md:flex-nowrap md:gap-x-2">
         {backHref ? (
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="h-9 w-fit shrink-0 gap-2 px-2 text-white hover:bg-white/15 hover:text-white"
+            className="h-7 w-fit shrink-0 gap-1.5 px-2 text-muted-foreground hover:bg-muted hover:text-foreground"
             asChild
           >
             <Link href={backHref}>
-              <ArrowLeft className="h-4 w-4" aria-hidden />
+              <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
               {backLabel}
             </Link>
           </Button>
         ) : null}
         {segmentLabel || contextLine ? (
-          <div className="flex min-w-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-1.5">
             {segmentLabel ? (
-              <span className="text-[18px] font-semibold leading-tight tracking-tight">{segmentLabel}</span>
+              <span className="text-sm font-semibold leading-tight">{segmentLabel}</span>
             ) : null}
             {contextLine ? (
-              <span className="min-w-0 max-w-[min(42vw,16rem)] truncate text-[18px] font-medium leading-tight text-white/90 sm:max-w-[20rem]">
+              <span className="min-w-0 max-w-[min(42vw,16rem)] truncate text-sm text-muted-foreground sm:max-w-[20rem]">
                 {contextLine}
               </span>
             ) : null}
@@ -67,7 +67,7 @@ export function PlaygroundStudioChrome({
 
       <div
         className={cn(
-          "flex min-h-[2.25rem] min-w-0 items-center justify-end overflow-hidden",
+          "flex min-h-[2rem] min-w-0 items-center justify-end overflow-hidden",
           centerSlot ? "order-last w-full flex-[1_1_280px] md:order-none md:w-auto md:flex-1 md:max-w-xl" : "flex-1",
         )}
       >
@@ -76,7 +76,7 @@ export function PlaygroundStudioChrome({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 sm:gap-3 md:order-none">
+      <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2 md:order-none">
         {endSlot}
         <PlaygroundStudioProfileMenu />
       </div>

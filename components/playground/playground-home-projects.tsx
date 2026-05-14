@@ -129,7 +129,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
           <Button
             type="button"
             size="sm"
-            className="h-9 shrink-0 gap-2 border-0 bg-[#0061FF] px-3 font-semibold text-white shadow-sm hover:bg-[#0056e6]"
+            className="h-9 shrink-0 gap-2 border-0 bg-primary px-3 font-semibold text-white shadow-sm hover:bg-primary/90"
             onClick={() => router.push("/projects/new")}
           >
             <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
@@ -176,7 +176,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
                   href={project.openUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex max-w-full items-center gap-1 text-xs font-semibold text-[#0061FF] hover:underline"
+                  className="inline-flex max-w-full items-center gap-1 text-xs font-semibold text-primary hover:underline"
                 >
                   <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
                   <span className="truncate">{t("projects_open")}</span>
