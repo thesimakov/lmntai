@@ -37,14 +37,16 @@ export async function POST(
   if (!(file instanceof File)) return apiError("No file provided", 400);
   if (!file.type.includes("pdf")) return apiError("Only PDF files are supported", 400);
 
+  if (file.size > MAX_PDF_BYTES) return apiError("PDF too large (max 50 MB)", 413);
   const buffer = Buffer.from(await file.arrayBuffer());
-  if (buffer.byteLength > MAX_PDF_BYTES) return apiError("PDF too large (max 50 MB)", 413);
 
   let extractedText: string;
+  let pageCount: number;
   try {
     const parser = new PDFParse({ data: buffer });
     const result = await parser.getText();
     extractedText = result.text.trim();
+    pageCount = result.total;
   } catch {
     return apiError(
       "Could not read the PDF. Try a different file or a text-based PDF.",
@@ -74,5 +76,5 @@ export async function POST(
     title: file.name.replace(/\.pdf$/i, ""),
   });
 
-  return apiOk({ pages: extractedText.length, filename: file.name });
+  return apiOk({ pages: pageCount, filename: file.name });
 }
