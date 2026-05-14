@@ -45,6 +45,7 @@ import { formatBuildElapsed, formatBuildTotalDuration } from "@/lib/build-time-i
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 import { getStreamStepTitle } from "@/lib/stream-step-title";
 import { saveBuilderHandoff } from "@/lib/landing-handoff";
+import { isProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 
 export default function PromptBuildPage() {
   const { t, lang } = useI18n();
@@ -54,6 +55,7 @@ export default function PromptBuildPage() {
   const { ready: lemnityAiBridgeReady } = useLemnityAiBridgeFromServer();
 
   const requestedSessionId = searchParams.get("sessionId");
+  const requestedProjectKind = searchParams.get("projectKind");
 
   // ── Store ──
   const sessionId = useBuildEditorStore((s) => s.sessionId);
@@ -86,6 +88,7 @@ export default function PromptBuildPage() {
   const publishDialogOpen = useBuildEditorStore((s) => s.publishDialogOpen);
 
   const setSessionId = useBuildEditorStore((s) => s.setSessionId);
+  const setProjectKind = useBuildEditorStore((s) => s.setProjectKind);
   const setShareIsPublic = useBuildEditorStore((s) => s.setShareIsPublic);
   const setStage = useBuildEditorStore((s) => s.setStage);
   const setIdea = useBuildEditorStore((s) => s.setIdea);
@@ -101,6 +104,37 @@ export default function PromptBuildPage() {
   const { steps: streamSteps, toolLine: streamToolLine } = useBuildStreamLog();
   const { sendChat, templatePreviewSandboxIdRef } = useAiSession();
   const { runPromptCoach } = usePromptCoach();
+
+  // ── ComponentGraph generation (website projectKind) ──
+  const sendGenerateGraph = useCallback(async (prompt: string) => {
+    const projectId = useBuildEditorStore.getState().sessionId;
+    if (!projectId) { toast.error("Project not ready"); return; }
+    const s = useBuildEditorStore.getState();
+    const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    s.appendMessage({ id: createId(), role: "user", content: prompt, sentAt: Date.now() });
+    s.setIsGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/generate-graph`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
+        toast.error(err.error ?? "Generation failed");
+        s.setIsGenerating(false);
+        return;
+      }
+      s.setSandboxId(projectId);
+      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
+      s.appendMessage({ id: createId(), role: "assistant", content: "Сайт сгенерирован. Вы можете редактировать его в Lemnity Box.", sentAt: Date.now() });
+    } catch {
+      toast.error("Generation failed. Please try again.");
+    } finally {
+      s.setIsGenerating(false);
+    }
+  }, [t]);
 
   // ── Project scope ──
   const [projectScopeReady, setProjectScopeReady] = useState(false);
@@ -123,6 +157,12 @@ export default function PromptBuildPage() {
     if (!requestedSessionId?.trim()) return;
     setSessionId(requestedSessionId.trim());
   }, [requestedSessionId, setSessionId]);
+
+  // ── Load projectKind from URL param (e.g. ?projectKind=website) ──
+  useEffect(() => {
+    if (!requestedProjectKind?.trim()) return;
+    if (isProjectKind(requestedProjectKind)) setProjectKind(requestedProjectKind);
+  }, [requestedProjectKind, setProjectKind]);
 
   // ── Template preview ──
   const templatePreviewAbortRef = useRef<AbortController | null>(null);
@@ -231,7 +271,11 @@ export default function PromptBuildPage() {
         s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       }
       s.setPromptCoachDebugLine(null);
-      void sendChat(userOutbound);
+      if (projectKind === "website" && s.sessionId) {
+        void sendGenerateGraph(userOutbound);
+      } else {
+        void sendChat(userOutbound);
+      }
       return;
     }
 
@@ -243,8 +287,8 @@ export default function PromptBuildPage() {
     void runPromptCoach(nextThread);
   }, [
     buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
-    lemnityAiBridgeReady, messages, pendingTechnicalPrompt, runPromptCoach,
-    sendChat, setIdea, setStage, stage, t,
+    lemnityAiBridgeReady, messages, pendingTechnicalPrompt, projectKind, runPromptCoach,
+    sendChat, sendGenerateGraph, setIdea, setStage, stage, t,
   ]);
 
   // ── Derived values ──

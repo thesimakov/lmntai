@@ -25,15 +25,17 @@ export function buildPlaygroundBuildEditUrl(opts: {
   sessionId?: string | null;
   /** Черновик без песочницы / сессии — как при bridge-orphan. */
   preferProjectIdQuery?: boolean;
+  projectKind?: string | null;
 }): string {
   const id = opts.projectId.trim();
+  const kindSuffix = opts.projectKind ? `&projectKind=${encodeURIComponent(opts.projectKind)}` : "";
   if (opts.sessionId) {
-    return `/playground/build?sessionId=${encodeURIComponent(opts.sessionId)}`;
+    return `/playground/build?sessionId=${encodeURIComponent(opts.sessionId)}${kindSuffix}`;
   }
   if (opts.preferProjectIdQuery) {
-    return `/playground/build?projectId=${encodeURIComponent(id)}`;
+    return `/playground/build?projectId=${encodeURIComponent(id)}${kindSuffix}`;
   }
-  return `/playground/build?sandboxId=${encodeURIComponent(id)}`;
+  return `/playground/build?sandboxId=${encodeURIComponent(id)}${kindSuffix}`;
 }
 
 /** Визуальный редактор Lemnity Box (canvas). */
