@@ -6,6 +6,8 @@ import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { useRouter } from "next/navigation";
 
+import NextTopLoader from "nextjs-toploader";
+
 import { ChunkLoadRecovery } from "@/components/chunk-load-recovery";
 import { I18nProvider } from "@/components/i18n-provider";
 import { ReferralCapture } from "@/components/referral-capture";
@@ -59,6 +61,14 @@ export function Providers({ children, initialLang, session }: ProvidersProps) {
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
         <NextUIRouterProvider locale={initialLang}>
           <I18nProvider initialLang={initialLang}>
+            <NextTopLoader
+              color="linear-gradient(90deg, #3b82f6, #818cf8, #c084fc, #6366f1)"
+              height={3}
+              showSpinner={false}
+              easing="cubic-bezier(0.22,1,0.36,1)"
+              speed={300}
+              shadow="0 0 10px #6366f1, 0 0 5px #3b82f6"
+            />
             <ChunkLoadRecovery />
             <ReferralCapture />
             {children}

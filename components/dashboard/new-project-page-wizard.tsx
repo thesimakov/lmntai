@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
-  ArrowRight,
   Bot,
   Check,
   Globe,
@@ -31,7 +30,7 @@ import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
-type BuilderChoice = "none" | "ai" | "box";
+type BuilderChoice = "none" | "ai";
 
 const TEMPLATE_TAB_IDS = [
   "business",
@@ -185,43 +184,6 @@ export function NewProjectPageWizard() {
   const canProceed =
     nameValid && domainValid && subdomainCheck === "available" && !creatingProject && !domainTakenBlocking;
 
-  const navigateNewProjectToEditor = useCallback(
-    async (starter: "empty" | "universal" | "consultation") => {
-      setAttemptedSubmit(true);
-      if (!nameValid || !domainValid || subdomainCheck !== "available") {
-        toast.message(t("projects_template_fix_form_toast"));
-        return;
-      }
-      if (creatingProject) return;
-      setCreatingProject(true);
-      try {
-        const projectId = await createProjectCell("box");
-        persistHandoff();
-        clearLemnityBoxCanvasDraft();
-        router.push(
-          `/playground/box/editor?sandboxId=${encodeURIComponent(projectId)}&boxStarter=${encodeURIComponent(starter)}`
-        );
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
-        }
-      } catch (e) {
-        toastProjectCreateFailure(e, t("projects_create_failed"));
-      } finally {
-        setCreatingProject(false);
-      }
-    },
-    [
-      creatingProject,
-      createProjectCell,
-      domainValid,
-      nameValid,
-      persistHandoff,
-      router,
-      subdomainCheck,
-      t
-    ]
-  );
-
   const navigateNewProjectToLemnityAiBuild = useCallback(
     async (_starter: "empty" | "universal" | "consultation") => {
       setAttemptedSubmit(true);
@@ -257,6 +219,28 @@ export function NewProjectPageWizard() {
     ]
   );
 
+  const navigateNewProjectToWebsite = useCallback(async () => {
+    setAttemptedSubmit(true);
+    if (!nameValid || !domainValid || subdomainCheck !== "available") {
+      toast.message(t("projects_template_fix_form_toast"));
+      return;
+    }
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const projectId = await createProjectCell("build");
+      clearLemnityBoxCanvasDraft();
+      router.push(buildPlaygroundBuildEditUrl({ projectId, projectKind: "website" }));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+      }
+    } catch (e) {
+      toastProjectCreateFailure(e, t("projects_create_failed"));
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [creatingProject, createProjectCell, domainValid, nameValid, router, subdomainCheck, t]);
+
   const onNameBlur = () => {
     if (domainInput.trim()) return;
     setDomainInput(suggestDomainFromDisplayName(displayName));
@@ -269,30 +253,26 @@ export function NewProjectPageWizard() {
     }
   };
 
-  const renderTemplates = (variant: "box" | "ai") => {
-    const isAi = variant === "ai";
+  const renderTemplates = () => {
     const nav = (starter: "empty" | "universal" | "consultation") => {
-      if (isAi) {
-        void navigateNewProjectToLemnityAiBuild(starter);
-        return;
-      }
-      void navigateNewProjectToEditor(starter);
+      void navigateNewProjectToLemnityAiBuild(starter);
     };
     const boxGate = !canProceed || creatingProject;
     const emptyDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
     const pairDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
+    const websiteDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
 
     return (
       <>
         <header className="space-y-2 rounded-xl border border-border/60 bg-muted/25 px-4 py-4 sm:px-5 sm:py-5">
           <h2
-            id={isAi ? "ai-page-templates-heading" : "new-page-templates-heading"}
+            id="ai-page-templates-heading"
             className="text-xl font-semibold tracking-tight text-foreground"
           >
-            {isAi ? t("projects_new_via_ai") : t("projects_new_page_title")}
+            {t("projects_new_via_ai")}
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {isAi ? t("projects_new_via_ai_desc") : t("projects_new_page_subtitle")}
+            {t("projects_new_via_ai_desc")}
           </p>
         </header>
 
@@ -445,6 +425,35 @@ export function NewProjectPageWizard() {
                   {t("projects_template_view")}
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col gap-0 overflow-hidden border-sky-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-sky-800/60">
+            <CardContent className="flex flex-1 flex-col gap-4 p-4">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-sky-500/20 via-cyan-400/10 to-emerald-500/15">
+                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
+                <span className="relative flex flex-col items-center gap-2">
+                  <Globe className="size-12 text-sky-600 dark:text-sky-300" strokeWidth={1.25} aria-hidden />
+                  <Badge className="bg-sky-600 font-bold uppercase tracking-wide text-white hover:bg-sky-600">
+                    NEW
+                  </Badge>
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">Сайт (ComponentGraph)</h3>
+                <p className="text-sm text-muted-foreground">
+                  AI генерирует структурированный JSON-граф сайта — легко редактировать отдельные блоки.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-auto w-full rounded-full border-sky-300/80 font-semibold text-sky-700 hover:border-sky-400 hover:bg-sky-50/50 dark:border-sky-700/60 dark:text-sky-300 dark:hover:bg-sky-950/30"
+                disabled={websiteDisabled}
+                onClick={() => void navigateNewProjectToWebsite()}
+              >
+                {t("projects_template_generate")}
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -652,66 +661,15 @@ export function NewProjectPageWizard() {
                 </CardContent>
               </Card>
 
-              <Card
-                role="button"
-                tabIndex={creatingProject ? -1 : 0}
-                aria-pressed={builderChoice === "box"}
-                onClick={() => {
-                  if (creatingProject) return;
-                  setBuilderChoice("box");
-                }}
-                onKeyDown={(e) => {
-                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
-                  e.preventDefault();
-                  setBuilderChoice("box");
-                }}
-                className={cn(
-                  "gap-0 overflow-hidden border-2 py-0 shadow-md transition-[border-color,box-shadow,background,ring]",
-                  "cursor-pointer border-sky-200/90 bg-gradient-to-br from-sky-50 via-background to-violet-50/40",
-                  "hover:border-sky-400/80 hover:from-sky-50/90 hover:shadow-lg dark:border-sky-900/60 dark:from-sky-950/55 dark:to-violet-950/30 dark:hover:border-sky-700",
-                  builderChoice === "box" && "ring-2 ring-sky-500/45 shadow-sky-500/10",
-                  creatingProject && "pointer-events-none opacity-55"
-                )}
-              >
-                <CardContent className="flex gap-4 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-900 dark:bg-sky-950/80 dark:text-sky-50">
-                    {creatingProject ? (
-                      <Loader2 className="size-5 shrink-0 animate-spin text-sky-800 dark:text-sky-200" aria-hidden />
-                    ) : (
-                      <LayoutTemplate className="size-5" aria-hidden />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1 space-y-1 self-center">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-semibold text-foreground">{t("projects_new_via_box")}</span>
-                      <span className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 dark:text-sky-300">
-                        {t("projects_format_step2_pick_box")}
-                        <ArrowRight className="size-3.5" aria-hidden />
-                      </span>
-                    </div>
-                    <p className="text-sm leading-snug text-muted-foreground">{t("projects_new_via_box_desc")}</p>
-                    {!canProceed ? (
-                      <p className="text-xs text-muted-foreground">{t("projects_template_box_card_hint")}</p>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </section>
 
-          {builderChoice === "box" ? (
-            <section
-              className="space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6"
-              aria-labelledby="new-page-templates-heading"
-            >
-              {renderTemplates("box")}
-            </section>
-          ) : builderChoice === "ai" ? (
+          {builderChoice === "ai" ? (
             <section
               className="space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6"
               aria-labelledby="ai-page-templates-heading"
             >
-              {renderTemplates("ai")}
+              {renderTemplates()}
             </section>
           ) : null}
         </div>

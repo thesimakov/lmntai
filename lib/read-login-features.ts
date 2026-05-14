@@ -2,9 +2,6 @@ import { headers } from "next/headers";
 
 import type { LoginFeatures } from "@/components/login-form";
 
-/** Иначе при `next build` на CI/без .env флаги провайдеров «запекаются», и кнопки (Яндекс и др.) исчезают на проде даже при .env на сервере. */
-export const LOGIN_PAGE_DYNAMIC = "force-dynamic" as const;
-
 function isRequestLocalhostHost(hostHeader: string | null): boolean {
   if (!hostHeader) {
     return false;

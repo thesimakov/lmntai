@@ -280,6 +280,18 @@ export default function PromptBuildPage() {
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const s = useBuildEditorStore.getState();
 
+    // Short-circuit for ComponentGraph website projects — skip Bridge and prompt coach entirely
+    if (projectKind === "website") {
+      if (!s.sessionId) { toast.error("Проект не готов"); return; }
+      s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
+      if (sandboxId) {
+        void sendGraphChat(userOutbound);
+      } else {
+        void sendGenerateGraph(userOutbound);
+      }
+      return;
+    }
+
     if (coachAwaitingConfirm) {
       if (!pendingTechnicalPrompt) return;
       const userMsg = { id: createId(), role: "user" as const, content: displayContent, sentAt: Date.now(), ...userExtras };
@@ -308,16 +320,7 @@ export default function PromptBuildPage() {
         s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       }
       s.setPromptCoachDebugLine(null);
-      if (projectKind === "website" && s.sessionId) {
-        if (sandboxId) {
-          s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
-          void sendGraphChat(userOutbound);
-        } else {
-          void sendGenerateGraph(userOutbound);
-        }
-      } else {
-        void sendChat(userOutbound);
-      }
+      void sendChat(userOutbound);
       return;
     }
 
