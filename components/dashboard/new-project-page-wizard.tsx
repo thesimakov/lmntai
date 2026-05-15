@@ -11,6 +11,7 @@ import {
   Globe,
   LayoutTemplate,
   Loader2,
+  Presentation,
   Search,
   Sparkles,
   TrendingUp
@@ -507,6 +508,31 @@ export function NewProjectPageWizard() {
                 asChild
               >
                 <Link href="/api/marketing/new">{t("projects_template_generate")}</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="flex flex-col gap-0 overflow-hidden border-orange-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-orange-800/60">
+            <CardContent className="flex flex-1 flex-col gap-4 p-4">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-400/10 to-yellow-500/15">
+                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
+                <span className="relative flex flex-col items-center gap-2">
+                  <Presentation className="size-12 text-orange-600 dark:text-orange-300" strokeWidth={1.25} aria-hidden />
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">Презентация AI</h3>
+                <p className="text-sm text-muted-foreground">
+                  Опишите тему — AI сгенерирует слайды. Редактируйте кликом, экспортируйте в PPTX.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-auto w-full rounded-full border-orange-300/80 font-semibold text-orange-700 hover:border-orange-400 hover:bg-orange-50/50 dark:border-orange-700/60 dark:text-orange-300 dark:hover:bg-orange-950/30"
+                asChild
+              >
+                <Link href="/api/presentation/new">{t("projects_template_generate")}</Link>
               </Button>
             </CardContent>
           </Card>

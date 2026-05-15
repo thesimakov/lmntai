@@ -1,11 +1,12 @@
 /** Значение в колонке `Project.preferredEditor`. */
-export type PreferredPlaygroundEditor = "build" | "box" | "analytics" | "marketing";
+export type PreferredPlaygroundEditor = "build" | "box" | "analytics" | "marketing" | "presentation";
 
 export function parsePreferredPlaygroundEditor(raw: unknown): PreferredPlaygroundEditor | undefined {
   if (raw === "box") return "box";
   if (raw === "build") return "build";
   if (raw === "analytics") return "analytics";
   if (raw === "marketing") return "marketing";
+  if (raw === "presentation") return "presentation";
   /** Старое значение в БД и клиентах → трактуем как build. */
   if (raw === "webstudio") return "build";
   return undefined;
@@ -15,6 +16,7 @@ export function normalizePreferredPlaygroundEditor(raw: string | null | undefine
   if (raw === "box") return "box";
   if (raw === "analytics") return "analytics";
   if (raw === "marketing") return "marketing";
+  if (raw === "presentation") return "presentation";
   if (raw === "webstudio") return "build";
   return "build";
 }
@@ -53,6 +55,11 @@ export function buildPlaygroundMarketingEditUrl(projectId: string): string {
   return `/playground/marketing?projectId=${encodeURIComponent(projectId)}`;
 }
 
+/** Presentation (SlideGraph) editor — uses build page with projectKind=presentation. */
+export function buildPlaygroundPresentationEditUrl(projectId: string): string {
+  return `/playground/build?projectId=${encodeURIComponent(projectId)}&projectKind=presentation`;
+}
+
 export function buildPlaygroundEditUrlForStoredEditor(
   editor: PreferredPlaygroundEditor,
   opts: {
@@ -69,6 +76,9 @@ export function buildPlaygroundEditUrlForStoredEditor(
   }
   if (editor === "marketing") {
     return buildPlaygroundMarketingEditUrl(opts.projectId);
+  }
+  if (editor === "presentation") {
+    return buildPlaygroundPresentationEditUrl(opts.projectId);
   }
   return buildPlaygroundBuildEditUrl({
     projectId: opts.projectId,
