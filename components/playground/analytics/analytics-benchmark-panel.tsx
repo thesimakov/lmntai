@@ -152,6 +152,9 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
           <p className="text-xs font-medium">{report!.industry.name}</p>
           <p className="text-[10px] text-muted-foreground">
             {new Date(report!.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {report!.sampleCount != null && report!.sampleCount > 0 && (
+              <span className="ml-1 text-green-600">· {report!.sampleCount} real samples</span>
+            )}
           </p>
         </div>
         <Button

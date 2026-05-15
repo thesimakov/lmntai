@@ -14,6 +14,7 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { chargeTokensSafely } from "@/lib/token-billing";
 import { detectIndustry, matchKpiToBenchmarks } from "@/lib/analytics-benchmarks";
 import type { BenchmarkComparison } from "@/lib/analytics-benchmarks";
+import { persistBenchmarkSamples, getEnrichedIndustryBenchmark, getBenchmarkSampleCount } from "@/lib/benchmark-db";
 
 const BENCHMARK_MODEL = "anthropic/claude-haiku-4.5";
 
@@ -22,6 +23,7 @@ export type BenchmarkReport = {
   industry: { id: string; name: string };
   comparisons: BenchmarkComparison[];
   narrative: string;
+  sampleCount?: number;
 };
 
 export async function POST(
@@ -61,7 +63,10 @@ export async function POST(
     state.files["raw_text.txt"]?.slice(0, 2000) ?? "",
   ].join(" ");
 
-  const industry = detectIndustry(fingerprint);
+  const industryHardcoded = detectIndustry(fingerprint);
+
+  // Enrich benchmarks with real DB data (falls back gracefully if < 5 samples)
+  const industry = await getEnrichedIndustryBenchmark(industryHardcoded.id) ?? industryHardcoded;
 
   // Build KPI text for numeric extraction
   const kpiText = dashboard.kpis
@@ -69,6 +74,11 @@ export async function POST(
     .join("\n");
 
   const comparisons = matchKpiToBenchmarks(kpiText, industry);
+
+  // Persist anonymised samples for future cross-company benchmarking
+  await persistBenchmarkSamples(industry.id, comparisons).catch(() => {});
+
+  const sampleCount = await getBenchmarkSampleCount(industry.id).catch(() => 0);
 
   // AI narrative
   const comparedStr = comparisons
@@ -124,6 +134,7 @@ ${kpiText}`;
     industry: { id: industry.id, name: industry.name },
     comparisons,
     narrative,
+    sampleCount,
   };
 
   // Persist

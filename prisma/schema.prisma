@@ -840,3 +840,16 @@ model UserSavedBlock {
   @@index([userId])
   @@index([teamProjectId])
 }
+
+/// Анонимные KPI-сэмплы для cross-company бенчмаркинга.
+/// Компания и проект не хранятся — только отрасль + метрика + значение.
+model BenchmarkSample {
+  id        String   @id @default(cuid())
+  industry  String
+  metricKey String
+  value     Float
+  unit      String
+  createdAt DateTime @default(now())
+
+  @@index([industry, metricKey])
+}
