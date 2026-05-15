@@ -55,6 +55,56 @@ describe("renderComponentGraph", () => {
   });
 });
 
+describe("renderComponentGraph — multi-page", () => {
+  const multiPageGraph: ComponentGraph = {
+    ...baseGraph,
+    pages: [
+      {
+        id: "page_1",
+        slug: "index",
+        title: "Home",
+        nodes: [{ id: "hero_1", type: "Hero", props: { title: "Home Hero" }, styles: {} }],
+      },
+      {
+        id: "page_2",
+        slug: "pricing",
+        title: "Pricing",
+        nodes: [{ id: "hero_2", type: "Hero", props: { title: "Pricing Hero" } , styles: {} }],
+      },
+    ],
+  };
+
+  it("renders all pages", () => {
+    const html = renderComponentGraph(multiPageGraph);
+    expect(html).toContain("Home Hero");
+    expect(html).toContain("Pricing Hero");
+  });
+
+  it("wraps pages in divs with correct ids", () => {
+    const html = renderComponentGraph(multiPageGraph);
+    expect(html).toContain('id="lmnt-page-index"');
+    expect(html).toContain('id="lmnt-page-pricing"');
+  });
+
+  it("first page visible, second hidden", () => {
+    const html = renderComponentGraph(multiPageGraph);
+    expect(html).toContain('id="lmnt-page-index" class="lmnt-page">');
+    expect(html).toContain('id="lmnt-page-pricing" class="lmnt-page" style="display:none"');
+  });
+
+  it("includes multi-page nav script", () => {
+    const html = renderComponentGraph(multiPageGraph);
+    expect(html).toContain("lmnt-page-");
+    expect(html).toContain("hashchange");
+  });
+
+  it("single-page graph has no wrapper divs", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).not.toContain('class="lmnt-page"');
+    expect(html).not.toContain("hashchange");
+  });
+});
+
 describe("renderNode", () => {
   it("renders Heading node with correct tag", () => {
     const node: ComponentNode = {

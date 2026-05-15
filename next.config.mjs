@@ -9,7 +9,7 @@ const nextConfig = {
   outputFileTracingRoot: __dirname,
   /** esbuild — только для серверного бандла превью Lovable; не тянуть .d.ts в client graph. */
   /** Prisma обязан браться из `node_modules` после `generate`; иначе бандлер иногда подмешивает устаревший DMMF (нет `preferredEditor`). */
-  serverExternalPackages: ["esbuild", "nodemailer", "@prisma/client"],
+  serverExternalPackages: ["esbuild", "nodemailer", "@prisma/client", "pdf-parse", "pptxgenjs"],
   experimental: {
     /** Lucide — barrel + `sideEffects: false`; без этого в SSR/dev иногда ломается чанк: `Cannot read properties of undefined (reading 'call')`. */
     optimizePackageImports: ["lucide-react"],

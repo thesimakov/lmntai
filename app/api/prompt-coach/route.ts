@@ -105,14 +105,17 @@ async function postPromptCoach(req: NextRequest) {
 
       const parsed = parsePromptCoachJson(text);
       if (!parsed) {
+        // Model returned non-JSON — use raw text as a gathering-phase reply so the
+        // conversation continues naturally instead of showing a confusing error.
+        const rawReply = text.trim();
+        if (rawReply) {
+          return Response.json(
+            { reply: rawReply, phase: "gathering" as const, technical_prompt: null, fallback: true },
+            { status: 200 }
+          );
+        }
         return Response.json(
-          {
-            reply:
-              "Не удалось разобрать ответ модели. Повтори сообщение или упрости формулировку.",
-            phase: "gathering" as const,
-            technical_prompt: null,
-            fallback: true
-          },
+          { reply: "Попробуй уточнить идею ещё раз.", phase: "gathering" as const, technical_prompt: null, fallback: true },
           { status: 200 }
         );
       }

@@ -75,6 +75,11 @@ function renderChildren(children?: ComponentNode[]): string {
 }
 
 export function renderNode(node: ComponentNode): string {
+  const html = renderNodeInner(node);
+  return html.replace(/^(<[a-zA-Z][a-zA-Z0-9-]*)(\s|>)/, `$1 data-lmnt-node-id="${node.id}"$2`);
+}
+
+function renderNodeInner(node: ComponentNode): string {
   const { type, props, styles, children } = node;
   const style = attr(styles);
 
@@ -280,10 +285,15 @@ function renderPage(nodes: ComponentNode[]): string {
   return nodes.map(renderNode).join("\n");
 }
 
+const CLICK_HANDLER_SCRIPT = `<script>(function(){var sel=null;document.addEventListener('click',function(e){var el=e.target;while(el&&el!==document.body){if(el.dataset&&el.dataset.lmntNodeId){e.preventDefault();if(sel){sel.style.outline='';sel.style.outlineOffset='';}sel=el;el.style.outline='2px solid #4F8EF7';el.style.outlineOffset='2px';window.parent.postMessage({type:'lmnt-node-selected',nodeId:el.dataset.lmntNodeId},'*');return;}el=el.parentElement;}if(sel){sel.style.outline='';sel.style.outlineOffset='';sel=null;}window.parent.postMessage({type:'lmnt-node-deselected'},'*');});})();<\/script>`;
+
+const MULTI_PAGE_NAV_SCRIPT = `<script>(function(){function show(s){document.querySelectorAll('.lmnt-page').forEach(function(p){p.style.display='none';});var t=document.getElementById('lmnt-page-'+s);if(t){t.style.display='';}else{var f=document.querySelector('.lmnt-page');if(f)f.style.display='';}}function slug(){return location.hash.replace(/^#/,'');}document.addEventListener('click',function(e){var a=e.target;while(a&&a.tagName!=='A'){a=a.parentElement;}if(!a)return;var h=a.getAttribute('href')||'';if(h.charAt(0)==='/'&&h.charAt(1)!=='/'){var s=h.slice(1).split('/')[0]||'index';if(document.getElementById('lmnt-page-'+s)){e.preventDefault();show(s);history.pushState(null,'','#'+s);return;}}if(h.charAt(0)==='#'){var s=h.slice(1);if(document.getElementById('lmnt-page-'+s)){e.preventDefault();show(s);return;}}});window.addEventListener('hashchange',function(){var s=slug();if(s)show(s);});var init=slug();if(init)show(init);}());<\/script>`;
+
 export function renderComponentGraph(graph: ComponentGraph): string {
   const { meta, pages } = graph;
   const { theme, language } = meta;
-  const page = pages[0];
+  const firstPage = pages[0];
+  const multiPage = pages.length > 1;
 
   const baseStyles = `
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -342,17 +352,27 @@ body { font-family: ${theme.fontFamily}; background-color: ${theme.backgroundCol
 }
 `.trim();
 
+  const bodyContent = multiPage
+    ? pages
+        .map((page, i) =>
+          `<div id="lmnt-page-${page.slug}" class="lmnt-page"${i > 0 ? ' style="display:none"' : ""}>\n${renderPage(page.nodes)}\n</div>`
+        )
+        .join("\n")
+    : renderPage(firstPage.nodes);
+
   return `<!DOCTYPE html>
 <html lang="${language}">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>${esc(page.title)}</title>
-${page.description ? `<meta name="description" content="${esc(page.description)}" />` : ""}
+<title>${esc(firstPage.title)}</title>
+${firstPage.description ? `<meta name="description" content="${esc(firstPage.description)}" />` : ""}
 <style>${baseStyles}</style>
 </head>
 <body>
-${renderPage(page.nodes)}
+${bodyContent}
+${CLICK_HANDLER_SCRIPT}
+${multiPage ? MULTI_PAGE_NAV_SCRIPT : ""}
 </body>
 </html>`;
 }

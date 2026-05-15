@@ -5,13 +5,15 @@ import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowLeft,
+  BarChart2,
   Bot,
   Check,
   Globe,
   LayoutTemplate,
   Loader2,
   Search,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { toast } from "sonner";
@@ -453,6 +455,58 @@ export function NewProjectPageWizard() {
                 onClick={() => void navigateNewProjectToWebsite()}
               >
                 {t("projects_template_generate")}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Analytics BI */}
+          <Card className="flex flex-col gap-0 overflow-hidden border-violet-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-violet-800/60">
+            <CardContent className="flex flex-1 flex-col gap-4 p-4">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-500/20 via-purple-400/10 to-blue-500/15">
+                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
+                <span className="relative flex flex-col items-center gap-2">
+                  <BarChart2 className="size-12 text-violet-600 dark:text-violet-300" strokeWidth={1.25} aria-hidden />
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">Аналитика BI</h3>
+                <p className="text-sm text-muted-foreground">
+                  Загрузите PDF-отчёт — AI построит финансовый дашборд, прогноз и инвестиционную презентацию.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-auto w-full rounded-full border-violet-300/80 font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-50/50 dark:border-violet-700/60 dark:text-violet-300 dark:hover:bg-violet-950/30"
+                asChild
+              >
+                <Link href="/api/analytics/new">{t("projects_template_generate")}</Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Marketing AI */}
+          <Card className="flex flex-col gap-0 overflow-hidden border-emerald-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-emerald-800/60">
+            <CardContent className="flex flex-1 flex-col gap-4 p-4">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/20 via-teal-400/10 to-cyan-500/15">
+                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
+                <span className="relative flex flex-col items-center gap-2">
+                  <TrendingUp className="size-12 text-emerald-600 dark:text-emerald-300" strokeWidth={1.25} aria-hidden />
+                </span>
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-semibold text-foreground">Маркетинг AI</h3>
+                <p className="text-sm text-muted-foreground">
+                  Загрузите данные по каналам — AI проанализирует маркетинг и экспортирует в PPTX.
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-auto w-full rounded-full border-emerald-300/80 font-semibold text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-emerald-700/60 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
+                asChild
+              >
+                <Link href="/api/marketing/new">{t("projects_template_generate")}</Link>
               </Button>
             </CardContent>
           </Card>

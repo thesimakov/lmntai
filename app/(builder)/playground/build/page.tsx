@@ -247,6 +247,37 @@ export default function PromptBuildPage() {
     runPromptCoach,
   });
 
+  // ── Visual Runtime — selected graph node ──
+  const [selectedGraphNodeId, setSelectedGraphNodeId] = useState<string | null>(null);
+  const [inlineEditText, setInlineEditText] = useState("");
+  const inlineInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "lmnt-node-selected") {
+        setSelectedGraphNodeId(e.data.nodeId as string);
+        setInlineEditText("");
+        setTimeout(() => inlineInputRef.current?.focus(), 50);
+      } else if (e.data?.type === "lmnt-node-deselected") {
+        setSelectedGraphNodeId(null);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  const handleInlineEdit = useCallback(async () => {
+    const trimmed = inlineEditText.trim();
+    if (!trimmed || !selectedGraphNodeId || !sandboxId) return;
+    const s = useBuildEditorStore.getState();
+    if (!s.sessionId) return;
+    const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    s.appendMessage({ id: createId(), role: "user", content: trimmed, sentAt: Date.now() });
+    const nodeContext = `[Блок: ${selectedGraphNodeId}] `;
+    setInlineEditText("");
+    setSelectedGraphNodeId(null);
+    void sendGraphChat(nodeContext + trimmed);
+  }, [inlineEditText, sandboxId, selectedGraphNodeId, sendGraphChat]);
+
   // ── Build timer ──
   const [buildTimerTick, setBuildTimerTick] = useState(0);
   const buildStartRef = useRef<number | null>(null);
@@ -285,7 +316,9 @@ export default function PromptBuildPage() {
       if (!s.sessionId) { toast.error("Проект не готов"); return; }
       s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       if (sandboxId) {
-        void sendGraphChat(userOutbound);
+        const nodeContext = selectedGraphNodeId ? `[Блок: ${selectedGraphNodeId}] ` : "";
+        setSelectedGraphNodeId(null);
+        void sendGraphChat(nodeContext + userOutbound);
       } else {
         void sendGenerateGraph(userOutbound);
       }
@@ -333,7 +366,8 @@ export default function PromptBuildPage() {
   }, [
     buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
     lemnityAiBridgeReady, messages, pendingTechnicalPrompt, projectKind, runPromptCoach,
-    sandboxId, sendChat, sendGenerateGraph, sendGraphChat, setIdea, setStage, stage, t,
+    sandboxId, selectedGraphNodeId, sendChat, sendGenerateGraph, sendGraphChat,
+    setIdea, setStage, stage, t,
   ]);
 
   // ── Derived values ──
@@ -382,10 +416,12 @@ export default function PromptBuildPage() {
     return "Сборка промпта";
   }, [stage, coachAwaitingConfirm, buildTemplate, t]);
 
-  const studioChatPlaceholder = useMemo(
-    () => buildTemplate ? t("playground_chat_placeholder_template_focus") : t("playground_chat_input_placeholder_studio"),
-    [buildTemplate, t]
-  );
+  const studioChatPlaceholder = useMemo(() => {
+    if (projectKind === "website" && selectedGraphNodeId) return `Опишите изменения для блока ${selectedGraphNodeId}…`;
+    if (projectKind === "website") return "Опишите сайт или желаемые изменения…";
+    if (buildTemplate) return t("playground_chat_placeholder_template_focus");
+    return t("playground_chat_input_placeholder_studio");
+  }, [buildTemplate, projectKind, selectedGraphNodeId, t]);
 
   const interfaceBuildElapsedLabel = useMemo(() => {
     void buildTimerTick;
@@ -518,7 +554,7 @@ export default function PromptBuildPage() {
           <StudioChatRailCollapseButton compact tooltipSide="bottom" leftCollapsed={leftHidden} onToggleCollapse={toggleLeft} />
         }
         messages={messages}
-        disabled={isGenerating || promptCoachLoading || !lemnityAiBridgeReady || Boolean(buildTemplate)}
+        disabled={isGenerating || Boolean(buildTemplate) || (projectKind !== "website" && (promptCoachLoading || !lemnityAiBridgeReady))}
         studioStreamActive={isGenerating}
         onSend={onSend}
         placeholder={studioChatPlaceholder}
@@ -535,7 +571,16 @@ export default function PromptBuildPage() {
         }
         threadScrollKey={chatThreadScrollKey}
         footerSlot={
-          isGenerating ? (
+          <>
+          {projectKind === "website" && selectedGraphNodeId ? (
+            <div className="flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-2 text-xs">
+              <span className="text-sky-700 dark:text-sky-300">
+                Редактировать: <code className="font-mono font-semibold">{selectedGraphNodeId}</code>
+              </span>
+              <button type="button" onClick={() => setSelectedGraphNodeId(null)} className="ml-auto rounded px-1 text-sky-600 hover:text-sky-800 dark:text-sky-400" aria-label="Снять выделение">×</button>
+            </div>
+          ) : null}
+          {isGenerating ? (
             <div className="space-y-1.5 rounded-lg border border-border bg-muted/50 px-2.5 py-2">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
@@ -564,7 +609,8 @@ export default function PromptBuildPage() {
             <div className="truncate rounded-lg border border-dashed border-border bg-muted/40 px-2.5 py-2 text-[11px] text-muted-foreground">
               {promptCoachDebugLine}
             </div>
-          ) : null
+          ) : null}
+          </>
         }
       />
       {!leftHidden ? (
@@ -620,6 +666,41 @@ export default function PromptBuildPage() {
         }
       />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        {projectKind === "website" && selectedGraphNodeId && contentTab === "preview" && !isGenerating && (
+          <div className="absolute bottom-5 left-1/2 z-50 w-[min(480px,90%)] -translate-x-1/2 pointer-events-auto">
+            <form
+              onSubmit={(e) => { e.preventDefault(); void handleInlineEdit(); }}
+              className="flex items-center gap-2 rounded-2xl border border-sky-400/40 bg-background/95 px-3 py-2 shadow-xl shadow-sky-500/10 ring-1 ring-border/60 backdrop-blur-md"
+            >
+              <span className="shrink-0 rounded-md bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-sky-700 dark:text-sky-300">
+                {selectedGraphNodeId}
+              </span>
+              <input
+                ref={inlineInputRef}
+                type="text"
+                value={inlineEditText}
+                onChange={(e) => setInlineEditText(e.target.value)}
+                placeholder="Опишите изменение…"
+                className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              />
+              <button
+                type="submit"
+                disabled={!inlineEditText.trim()}
+                className="shrink-0 rounded-lg bg-sky-500 px-3 py-1 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              >
+                AI Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedGraphNodeId(null)}
+                className="shrink-0 rounded-md px-1.5 py-1 text-muted-foreground hover:text-foreground"
+                aria-label="Закрыть"
+              >
+                ✕
+              </button>
+            </form>
+          </div>
+        )}
         <div className={cn("flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-background", contentTab !== "preview" && contentTab !== "document" ? "pointer-events-none invisible absolute inset-0 z-0" : "relative z-10")} aria-hidden={contentTab !== "preview" && contentTab !== "document"}>
           <RightPanel
             mode={isGenerating ? "generating" : previewUrl ? "preview" : "idle"}
