@@ -44,7 +44,7 @@ async function callInvestorAI(
     const result = await requestRouterAIJson({
       messages,
       model: INVESTOR_MODEL,
-      settings: { temperature: 0.1, max_completion_tokens: 12000 },
+      settings: { temperature: 0.1, max_completion_tokens: 8000 },
       user: userId,
     });
     if (result.usage) {

@@ -44,7 +44,7 @@ async function callForecastAI(
     const result = await requestRouterAIJson({
       messages,
       model: FORECAST_MODEL,
-      settings: { temperature: 0.1, max_completion_tokens: 12000 },
+      settings: { temperature: 0.1, max_completion_tokens: 8000 },
       user: userId,
     });
     if (result.usage) {
@@ -98,7 +98,8 @@ export async function POST(
   let result1: Awaited<ReturnType<typeof callForecastAI>>;
   try {
     result1 = await callForecastAI(messages, user.id, projectId);
-  } catch {
+  } catch (err) {
+    console.error("[forecast] AI call failed:", err instanceof Error ? err.message : err);
     return apiError("AI service temporarily unavailable", 502);
   }
   const v1 = tryParseReport(result1.text);
@@ -127,7 +128,8 @@ export async function POST(
   let result2: Awaited<ReturnType<typeof callForecastAI>>;
   try {
     result2 = await callForecastAI(retryMessages, user.id, projectId);
-  } catch {
+  } catch (err) {
+    console.error("[forecast] AI retry failed:", err instanceof Error ? err.message : err);
     return apiError("AI service temporarily unavailable", 502);
   }
   const v2 = tryParseReport(result2.text);
