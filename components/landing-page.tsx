@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ChevronDown, Globe, Image as ImageIcon, Layers, Paperclip, Sparkles, BarChart2, Upload } from "lucide-react";
+import { ArrowUp, ChevronDown, Globe, Image as ImageIcon, Layers, Paperclip, Presentation, Sparkles, BarChart2, TrendingUp, Upload } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { saveBuilderHandoff } from "@/lib/landing-handoff";
+import { fileToLandingPendingFile, useLandingFilesStore } from "@/lib/stores/use-landing-files-store";
 import {
   getShowcaseCardHref,
   LANDING_SHOWCASE_ITEMS,
@@ -22,7 +23,7 @@ import { setPostLoginRedirect } from "@/lib/post-login-redirect";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
-type LandingMode = "site" | "analytics";
+type LandingMode = "site" | "analytics" | "marketing" | "presentation";
 
 const SHOWCASE_FILTER_ORDER: LandingShowcaseCategory[] = ["website", "resume", "presentation", "other"];
 
@@ -55,6 +56,9 @@ export function LandingPage() {
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const siteFileInputRef = useRef<HTMLInputElement>(null);
+  const setPendingFiles = useLandingFilesStore((s) => s.setPendingFiles);
+  const pendingFiles = useLandingFilesStore((s) => s.pendingFiles);
 
   const [showcaseFilter, setShowcaseFilter] = useState<"all" | LandingShowcaseCategory>("all");
   const [showcaseBySlug, setShowcaseBySlug] = useState<Record<string, ShowcaseImageEntry> | null>(null);
@@ -118,7 +122,7 @@ export function LandingPage() {
   }, []);
 
   useEffect(() => {
-    if (mode !== "site") return;
+    if (mode !== "site" && mode !== "marketing" && mode !== "presentation") return;
     if (prompt.trim().length > 0 || isFocused) {
       setTyped("");
       return;
@@ -176,6 +180,40 @@ export function LandingPage() {
     router.push(authed ? "/playground/analytics" : "/login");
   }, [authed, router]);
 
+  const goMarketing = useCallback(async () => {
+    const text = prompt.trim();
+    if (!text) return;
+    try {
+      sessionStorage.setItem("lemnity.landing.marketing.prompt", text);
+    } catch {
+      // ignore
+    }
+    if (!authed) {
+      setPostLoginRedirect("/playground/marketing");
+      router.push("/login");
+      return;
+    }
+    try {
+      const res = await fetch("/api/marketing/new", { redirect: "manual" });
+      const location = res.headers.get("location") ?? res.url;
+      if (location && !location.includes("/api/marketing/new")) {
+        router.push(location);
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    router.push("/playground/marketing");
+  }, [authed, prompt, router]);
+
+  const goPresentation = useCallback(() => {
+    const text = prompt.trim();
+    if (!text) return;
+    saveBuilderHandoff(text, "presentation", null);
+    setPostLoginRedirect("/playground/build");
+    router.push(authed ? "/playground/build" : "/login");
+  }, [authed, prompt, router]);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -189,12 +227,24 @@ export function LandingPage() {
     e.target.value = "";
   }, []);
 
+  const handleSiteFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) {
+      setPendingFiles(
+        [...pendingFiles, ...files.map(fileToLandingPendingFile)].slice(0, 5)
+      );
+    }
+    e.target.value = "";
+  }, [pendingFiles, setPendingFiles]);
+
   const handleModeSwitch = useCallback((next: LandingMode) => {
     setMode(next);
-    if (next === "site") {
+    if (next === "analytics") {
+      setPendingFiles([]);
+    } else {
       setUploadedFiles([]);
     }
-  }, []);
+  }, [setPendingFiles]);
 
   return (
     <div className="relative min-h-screen font-sans text-foreground">
@@ -283,64 +333,7 @@ export function LandingPage() {
               {/* Content area */}
               <div className="flex flex-1 flex-col p-5 sm:p-6">
                 <AnimatePresence mode="wait">
-                  {mode === "site" ? (
-                    <motion.div
-                      key="site-mode"
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -4 }}
-                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <div className="relative min-h-[100px]">
-                        <textarea
-                          value={prompt}
-                          onChange={(e) => setPrompt(e.target.value)}
-                          onFocus={() => setIsFocused(true)}
-                          onBlur={() => setIsFocused(false)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                              e.preventDefault();
-                              goApp();
-                            }
-                          }}
-                          placeholder=""
-                          rows={4}
-                          aria-label={t("landing_simple_placeholder")}
-                          className="min-h-[100px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
-                        />
-                        <AnimatePresence mode="wait">
-                          {!prompt.trim() && !isFocused ? (
-                            <motion.div
-                              key="landing-typewriter"
-                              initial={{ opacity: 0, y: 4 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -3 }}
-                              transition={{
-                                type: "spring",
-                                stiffness: 260,
-                                damping: 28,
-                                mass: 0.85,
-                                opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
-                              }}
-                              className="pointer-events-none absolute left-0 top-0 z-10 pr-12 text-[15px] leading-snug text-zinc-400 sm:text-base sm:leading-relaxed"
-                            >
-                              <span>{typed}</span>
-                              <motion.span
-                                aria-hidden
-                                className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/70"
-                                animate={{ opacity: [0.35, 1, 0.35] }}
-                                transition={{
-                                  duration: 1.65,
-                                  repeat: Number.POSITIVE_INFINITY,
-                                  ease: "easeInOut"
-                                }}
-                              />
-                            </motion.div>
-                          ) : null}
-                        </AnimatePresence>
-                      </div>
-                    </motion.div>
-                  ) : (
+                  {mode === "analytics" ? (
                     <motion.div
                       key="analytics-mode"
                       initial={{ opacity: 0, y: 6 }}
@@ -423,19 +416,107 @@ export function LandingPage() {
                         onChange={handleFileChange}
                       />
                     </motion.div>
+                  ) : (
+                    <motion.div
+                      key={mode}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -4 }}
+                      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <div className="relative min-h-[100px]">
+                        <textarea
+                          value={prompt}
+                          onChange={(e) => setPrompt(e.target.value)}
+                          onFocus={() => setIsFocused(true)}
+                          onBlur={() => setIsFocused(false)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                              e.preventDefault();
+                              if (mode === "marketing") void goMarketing();
+                              else if (mode === "presentation") goPresentation();
+                              else goApp();
+                            }
+                          }}
+                          placeholder=""
+                          rows={4}
+                          aria-label={t("landing_simple_placeholder")}
+                          className="min-h-[100px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
+                        />
+                        <AnimatePresence mode="wait">
+                          {!prompt.trim() && !isFocused ? (
+                            <motion.div
+                              key="landing-typewriter"
+                              initial={{ opacity: 0, y: 4 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -3 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 260,
+                                damping: 28,
+                                mass: 0.85,
+                                opacity: { duration: 0.55, ease: [0.22, 1, 0.36, 1] }
+                              }}
+                              className="pointer-events-none absolute left-0 top-0 z-10 pr-12 text-[15px] leading-snug text-zinc-400 sm:text-base sm:leading-relaxed"
+                            >
+                              <span>{typed}</span>
+                              <motion.span
+                                aria-hidden
+                                className="ml-0.5 inline-block h-[1.1em] w-px translate-y-px bg-zinc-400/70"
+                                animate={{ opacity: [0.35, 1, 0.35] }}
+                                transition={{
+                                  duration: 1.65,
+                                  repeat: Number.POSITIVE_INFINITY,
+                                  ease: "easeInOut"
+                                }}
+                              />
+                            </motion.div>
+                          ) : null}
+                        </AnimatePresence>
+                        {/* Pending file chips (site/marketing/presentation) */}
+                        {pendingFiles.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {pendingFiles.map((pf) => (
+                              <div
+                                key={pf.id}
+                                className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700"
+                              >
+                                <Paperclip className="h-3 w-3 shrink-0 text-zinc-400" strokeWidth={1.75} />
+                                <span className="max-w-[140px] truncate">{pf.file.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPendingFiles(pendingFiles.filter((x) => x.id !== pf.id))}
+                                  className="shrink-0 text-zinc-400 hover:text-zinc-700"
+                                  aria-label="Удалить файл"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        ref={siteFileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={handleSiteFileChange}
+                      />
+                    </motion.div>
                   )}
                 </AnimatePresence>
               </div>
 
               {/* Bottom bar: mode toggle + action */}
-              <div className="flex items-center justify-between gap-3 border-t border-zinc-100 px-5 py-3 sm:px-6">
+              <div className="flex items-center justify-between gap-2 border-t border-zinc-100 px-5 py-3 sm:px-6">
                 {/* Mode toggle */}
-                <div className="flex items-center gap-1 rounded-xl bg-zinc-100 p-1">
+                <div className="flex min-w-0 items-center gap-0.5 overflow-x-auto rounded-xl bg-zinc-100 p-1">
                   <button
                     type="button"
                     onClick={() => handleModeSwitch("site")}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                      "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
                       mode === "site"
                         ? "bg-white text-zinc-900 shadow-sm"
                         : "text-zinc-500 hover:text-zinc-700"
@@ -448,7 +529,7 @@ export function LandingPage() {
                     type="button"
                     onClick={() => handleModeSwitch("analytics")}
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all",
+                      "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
                       mode === "analytics"
                         ? "bg-white text-zinc-900 shadow-sm"
                         : "text-zinc-500 hover:text-zinc-700"
@@ -457,13 +538,49 @@ export function LandingPage() {
                     <BarChart2 className="h-3 w-3" strokeWidth={2} />
                     {t("landing_mode_analytics")}
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch("marketing")}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+                      mode === "marketing"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    )}
+                  >
+                    <TrendingUp className="h-3 w-3" strokeWidth={2} />
+                    {t("nav_marketing_bi")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleModeSwitch("presentation")}
+                    className={cn(
+                      "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all",
+                      mode === "presentation"
+                        ? "bg-white text-zinc-900 shadow-sm"
+                        : "text-zinc-500 hover:text-zinc-700"
+                    )}
+                  >
+                    <Presentation className="h-3 w-3" strokeWidth={2} />
+                    {t("nav_presentation")}
+                  </button>
                 </div>
 
                 {/* Action */}
-                {mode === "site" ? (
-                  <div className="flex items-center gap-1">
+                {mode === "analytics" ? (
+                  <button
+                    type="button"
+                    onClick={goAnalytics}
+                    className="flex shrink-0 items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
+                  >
+                    {t("landing_analytics_cta")}
+                    <ArrowUp className="h-3 w-3 rotate-90" strokeWidth={2.5} />
+                  </button>
+                ) : (
+                  <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
+                      onClick={() => siteFileInputRef.current?.click()}
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
                       aria-label={t("landing_simple_attach")}
                     >
@@ -471,14 +588,13 @@ export function LandingPage() {
                     </button>
                     <button
                       type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-800"
-                      aria-label={t("landing_dark_image_attach_aria")}
-                    >
-                      <ImageIcon className="h-4 w-4" strokeWidth={1.75} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={goApp}
+                      onClick={
+                        mode === "marketing"
+                          ? () => { void goMarketing(); }
+                          : mode === "presentation"
+                            ? goPresentation
+                            : goApp
+                      }
                       disabled={!prompt.trim()}
                       className="ml-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
                       aria-label="Send"
@@ -486,15 +602,6 @@ export function LandingPage() {
                       <ArrowUp className="h-4 w-4" strokeWidth={2.35} />
                     </button>
                   </div>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={goAnalytics}
-                    className="flex items-center gap-1.5 rounded-full bg-blue-600 px-4 py-1.5 text-xs font-medium text-white shadow-sm transition hover:bg-blue-700"
-                  >
-                    {t("landing_analytics_cta")}
-                    <ArrowUp className="h-3 w-3 rotate-90" strokeWidth={2.5} />
-                  </button>
                 )}
               </div>
             </div>

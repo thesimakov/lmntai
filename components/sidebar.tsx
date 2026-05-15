@@ -46,7 +46,7 @@ const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot; fullNav?
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
   { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2, fullNav: true, activePath: "/playground/analytics" },
   { href: "/api/marketing/new", labelKey: "nav_marketing_bi", icon: TrendingUp, fullNav: true, activePath: "/playground/marketing" },
-  { href: "/api/presentation/new", labelKey: "nav_presentation", icon: Presentation, fullNav: true },
+  { href: "/presentations", labelKey: "nav_presentation", icon: Presentation, fullNav: true, activePath: "/presentations" },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },
   { href: "/profile", labelKey: "nav_profile", icon: UserCircle2 },
   { href: "/team", labelKey: "nav_team", icon: Users },

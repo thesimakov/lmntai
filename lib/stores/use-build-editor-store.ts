@@ -4,6 +4,7 @@ import { create } from "zustand";
 
 import type { ChatMessage } from "@/components/playground/agent-chat";
 import type { AgentPickerLabel } from "@/lib/agent-models";
+import type { LandingPendingFile } from "@/lib/stores/use-landing-files-store";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 
 // ─── Existing slices (preserved as-is) ────────────────────────────────────────
@@ -123,6 +124,11 @@ interface StreamSlice {
   setBuildTemplate: (v: BuildTemplate | null) => void;
 }
 
+interface HandoffSlice {
+  initialAttachments: LandingPendingFile[] | null;
+  setInitialAttachments: (v: LandingPendingFile[] | null) => void;
+}
+
 // ─── Composed store type ───────────────────────────────────────────────────────
 
 type BuildEditorStore =
@@ -132,7 +138,8 @@ type BuildEditorStore =
   VersionSlice &
   ChatSlice &
   CoachSlice &
-  StreamSlice;
+  StreamSlice &
+  HandoffSlice;
 
 // ─── Store ────────────────────────────────────────────────────────────────────
 
@@ -233,4 +240,8 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
     set((s) => ({ streamArtifactChars: typeof v === "function" ? v(s.streamArtifactChars) : v })),
   setShareIsPublic: (shareIsPublic) => set({ shareIsPublic }),
   setBuildTemplate: (buildTemplate) => set({ buildTemplate }),
+
+  // Handoff from landing page
+  initialAttachments: null,
+  setInitialAttachments: (initialAttachments) => set({ initialAttachments }),
 }));

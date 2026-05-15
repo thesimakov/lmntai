@@ -127,6 +127,8 @@ type AgentChatProps = {
   /** Выбранный шаблон сборки (Vite+TSX с БД); null — генерация без базы. */
   buildTemplate?: { slug: string; name: string; defaultUserPrompt?: string } | null;
   onBuildTemplateChange?: (next: { slug: string; name: string; defaultUserPrompt: string } | null) => void;
+  /** Начальные вложения из лендинга (передаются один раз при монтировании). */
+  initialAttachments?: Array<{ id: string; file: File; kind: "image" | "video" | "file" }>;
 };
 
 export function AgentChat({
@@ -152,7 +154,8 @@ export function AgentChat({
   studioToolbarSlot,
   studioToolbarTrailingSlot,
   buildTemplate = null,
-  onBuildTemplateChange
+  onBuildTemplateChange,
+  initialAttachments,
 }: AgentChatProps) {
   const { t, lang } = useI18n();
   const inputPlaceholder = placeholderProp ?? t("playground_chat_input_placeholder");
