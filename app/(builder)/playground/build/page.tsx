@@ -135,6 +135,72 @@ export default function PromptBuildPage() {
     }
   }, [t]);
 
+  // ── SlideGraph generation (presentation projectKind) ──
+  const sendGenerateSlides = useCallback(async (prompt: string) => {
+    const projectId = useBuildEditorStore.getState().sessionId;
+    if (!projectId) { toast.error("Project not ready"); return; }
+    const s = useBuildEditorStore.getState();
+    const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    s.setIsGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/generate-slides`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ prompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
+        toast.error(err.error ?? "Generation failed");
+        s.setIsGenerating(false);
+        return;
+      }
+      s.setSandboxId(projectId);
+      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
+      s.appendMessage({ id: createId(), role: "assistant", content: "Презентация сгенерирована. Кликайте по слайдам для редактирования.", sentAt: Date.now() });
+    } catch {
+      toast.error("Generation failed. Please try again.");
+    } finally {
+      s.setIsGenerating(false);
+    }
+  }, []);
+
+  // ── SlideGraph chat (presentation projectKind, after slides generated) ──
+  const sendSlidesChat = useCallback(async (text: string) => {
+    const s = useBuildEditorStore.getState();
+    const projectId = s.sessionId;
+    if (!projectId) return false;
+    const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const history = s.messages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .slice(-10)
+      .map((m) => ({ role: m.role as "user" | "assistant", content: m.content }));
+    s.setIsGenerating(true);
+    try {
+      const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/slides/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ message: text, history }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
+        toast.error(err.error ?? "Chat failed");
+        return true;
+      }
+      const data = await res.json() as { message: string; patched: boolean };
+      s.appendMessage({ id: createId(), role: "assistant", content: data.message, sentAt: Date.now() });
+      if (data.patched) {
+        s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}?t=${Date.now()}`);
+      }
+    } catch {
+      toast.error("Chat failed. Please try again.");
+    } finally {
+      s.setIsGenerating(false);
+    }
+    return true;
+  }, []);
+
   // ── ComponentGraph chat (website projectKind, after site is generated) ──
   const sendGraphChat = useCallback(async (text: string) => {
     const s = useBuildEditorStore.getState();
@@ -259,6 +325,13 @@ export default function PromptBuildPage() {
         setTimeout(() => inlineInputRef.current?.focus(), 50);
       } else if (e.data?.type === "lmnt-node-deselected") {
         setSelectedGraphNodeId(null);
+      } else if (e.data?.type === "lmnt-elem-selected") {
+        const id = `${e.data.slideId as string}/${e.data.elemId as string}`;
+        setSelectedGraphNodeId(id);
+        setInlineEditText("");
+        setTimeout(() => inlineInputRef.current?.focus(), 50);
+      } else if (e.data?.type === "lmnt-elem-deselected") {
+        setSelectedGraphNodeId(null);
       }
     };
     window.addEventListener("message", handler);
@@ -272,11 +345,14 @@ export default function PromptBuildPage() {
     if (!s.sessionId) return;
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     s.appendMessage({ id: createId(), role: "user", content: trimmed, sentAt: Date.now() });
-    const nodeContext = `[Блок: ${selectedGraphNodeId}] `;
     setInlineEditText("");
     setSelectedGraphNodeId(null);
-    void sendGraphChat(nodeContext + trimmed);
-  }, [inlineEditText, sandboxId, selectedGraphNodeId, sendGraphChat]);
+    if (projectKind === "presentation") {
+      void sendSlidesChat(`[Элемент: ${selectedGraphNodeId}] ${trimmed}`);
+    } else {
+      void sendGraphChat(`[Блок: ${selectedGraphNodeId}] ${trimmed}`);
+    }
+  }, [inlineEditText, projectKind, sandboxId, selectedGraphNodeId, sendGraphChat, sendSlidesChat]);
 
   // ── Build timer ──
   const [buildTimerTick, setBuildTimerTick] = useState(0);
@@ -294,7 +370,7 @@ export default function PromptBuildPage() {
 
   // ── onSend ──
   const onSend = useCallback(async (text: string, files?: File[]) => {
-    if (!lemnityAiBridgeReady && projectKind !== "website") { toast.message("Загрузка режима сборки…"); return; }
+    if (!lemnityAiBridgeReady && projectKind !== "website" && projectKind !== "presentation") { toast.message("Загрузка режима сборки…"); return; }
     if (isGenerating) return;
     if (buildTemplate) return;
 
@@ -321,6 +397,20 @@ export default function PromptBuildPage() {
         void sendGraphChat(nodeContext + userOutbound);
       } else {
         void sendGenerateGraph(userOutbound);
+      }
+      return;
+    }
+
+    // Short-circuit for SlideGraph presentation projects
+    if (projectKind === "presentation") {
+      if (!s.sessionId) { toast.error("Проект не готов"); return; }
+      s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
+      if (sandboxId) {
+        const elemContext = selectedGraphNodeId ? `[Элемент: ${selectedGraphNodeId}] ` : "";
+        setSelectedGraphNodeId(null);
+        void sendSlidesChat(elemContext + userOutbound);
+      } else {
+        void sendGenerateSlides(userOutbound);
       }
       return;
     }
@@ -366,8 +456,8 @@ export default function PromptBuildPage() {
   }, [
     buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
     lemnityAiBridgeReady, messages, pendingTechnicalPrompt, projectKind, runPromptCoach,
-    sandboxId, selectedGraphNodeId, sendChat, sendGenerateGraph, sendGraphChat,
-    setIdea, setStage, stage, t,
+    sandboxId, selectedGraphNodeId, sendChat, sendGenerateGraph, sendGenerateSlides,
+    sendGraphChat, sendSlidesChat, setIdea, setStage, stage, t,
   ]);
 
   // ── Derived values ──
@@ -419,6 +509,8 @@ export default function PromptBuildPage() {
   const studioChatPlaceholder = useMemo(() => {
     if (projectKind === "website" && selectedGraphNodeId) return `Опишите изменения для блока ${selectedGraphNodeId}…`;
     if (projectKind === "website") return "Опишите сайт или желаемые изменения…";
+    if (projectKind === "presentation" && selectedGraphNodeId) return `Опишите изменения для элемента…`;
+    if (projectKind === "presentation") return "Опишите презентацию или желаемые изменения…";
     if (buildTemplate) return t("playground_chat_placeholder_template_focus");
     return t("playground_chat_input_placeholder_studio");
   }, [buildTemplate, projectKind, selectedGraphNodeId, t]);
@@ -554,7 +646,7 @@ export default function PromptBuildPage() {
           <StudioChatRailCollapseButton compact tooltipSide="bottom" leftCollapsed={leftHidden} onToggleCollapse={toggleLeft} />
         }
         messages={messages}
-        disabled={isGenerating || Boolean(buildTemplate) || (projectKind !== "website" && (promptCoachLoading || !lemnityAiBridgeReady))}
+        disabled={isGenerating || Boolean(buildTemplate) || (projectKind !== "website" && projectKind !== "presentation" && (promptCoachLoading || !lemnityAiBridgeReady))}
         studioStreamActive={isGenerating}
         onSend={onSend}
         placeholder={studioChatPlaceholder}
@@ -572,10 +664,11 @@ export default function PromptBuildPage() {
         threadScrollKey={chatThreadScrollKey}
         footerSlot={
           <>
-          {projectKind === "website" && selectedGraphNodeId ? (
+          {(projectKind === "website" || projectKind === "presentation") && selectedGraphNodeId ? (
             <div className="flex items-center gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-2.5 py-2 text-xs">
               <span className="text-sky-700 dark:text-sky-300">
-                Редактировать: <code className="font-mono font-semibold">{selectedGraphNodeId}</code>
+                {projectKind === "presentation" ? "Слайд:" : "Редактировать:"}{" "}
+                <code className="font-mono font-semibold">{selectedGraphNodeId}</code>
               </span>
               <button type="button" onClick={() => setSelectedGraphNodeId(null)} className="ml-auto rounded px-1 text-sky-600 hover:text-sky-800 dark:text-sky-400" aria-label="Снять выделение">×</button>
             </div>
@@ -666,7 +759,7 @@ export default function PromptBuildPage() {
         }
       />
       <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-        {projectKind === "website" && selectedGraphNodeId && contentTab === "preview" && !isGenerating && (
+        {(projectKind === "website" || projectKind === "presentation") && selectedGraphNodeId && contentTab === "preview" && !isGenerating && (
           <div className="absolute bottom-5 left-1/2 z-50 w-[min(480px,90%)] -translate-x-1/2 pointer-events-auto">
             <form
               onSubmit={(e) => { e.preventDefault(); void handleInlineEdit(); }}
