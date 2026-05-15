@@ -61,9 +61,9 @@ export function MarketingEditor() {
     setProjectId(projectId);
     fetch(`/api/marketing/${projectId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { data?: { report?: MarketingDashboardType } } | null) => {
-        if (data?.data?.report) {
-          setDashboard(data.data.report);
+      .then((data: { report?: MarketingDashboardType } | null) => {
+        if (data?.report) {
+          setDashboard(data.report);
         }
       })
       .catch(() => {});
@@ -79,9 +79,9 @@ export function MarketingEditor() {
         setError(err.error ?? "Analysis failed");
         return;
       }
-      const data = (await res.json()) as { data?: { report?: MarketingDashboardType } };
-      if (data?.data?.report) {
-        setDashboard(data.data.report);
+      const data = (await res.json()) as { report?: MarketingDashboardType };
+      if (data?.report) {
+        setDashboard(data.report);
       } else {
         setError("No report returned from analysis");
       }
