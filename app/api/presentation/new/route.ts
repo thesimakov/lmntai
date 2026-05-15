@@ -25,5 +25,5 @@ export async function GET() {
     return apiError("Failed to create presentation project", 500);
   }
 
-  redirect(`/playground/build?projectId=${projectId}&projectKind=presentation`);
+  redirect(`/playground/build?sessionId=${projectId}&projectKind=presentation`);
 }

@@ -10,6 +10,7 @@ import {
 } from "@/lib/sandbox-project-state-db";
 import { ocrPdfBuffer } from "@/lib/ocr-pdf";
 import { docxToText } from "@/lib/docx-parser";
+import { upsertChunks } from "@/lib/analytics-embedding-store";
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -146,7 +147,7 @@ export async function POST(
 
   await upsertSandboxProjectState({
     projectId,
-    sandboxId: existing?.sandboxId ?? "",
+    sandboxId: existing?.sandboxId ?? projectId,
     ownerId: user.id,
     html: existing?.html ?? "",
     files: {
@@ -154,6 +155,11 @@ export async function POST(
       "raw_text.txt": extractedText,
     },
     title: baseName,
+  });
+
+  // Embed chunks in the background — non-blocking, failures are silent
+  upsertChunks(projectId, extractedText).catch((err) => {
+    console.warn("[analytics] embedding failed:", err instanceof Error ? err.message : err);
   });
 
   return apiOk({ pages: pageCount, filename: file.name, fileType });

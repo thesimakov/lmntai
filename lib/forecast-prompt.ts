@@ -1,6 +1,9 @@
 import type { AnalysisDashboard } from "./analytics-schema";
+import { computeDashboardStats, formatStatsForPrompt } from "./analytics-stats";
 
-const SYSTEM_PROMPT = `You are a financial forecasting analyst. Given a structured financial analysis, generate a 24-month forward forecast.
+const SYSTEM_PROMPT = `You are a financial forecasting analyst. Given a structured financial analysis with pre-computed statistics, generate a 24-month forward forecast.
+
+Use the provided statistical pre-computations (CAGR, linear regression slopes, moving averages) as anchors for your projections — your forecast values should be consistent with these numbers rather than contradicting them.
 
 Return ONLY a valid JSON object matching this exact structure (no markdown, no code fences):
 
@@ -43,11 +46,13 @@ type Message = { role: "system" | "user" | "assistant"; content: string };
 export function buildForecastPrompt(dashboard: AnalysisDashboard): Message[] {
   const now = new Date().toISOString();
   const dashboardJson = JSON.stringify(dashboard, null, 2);
+  const stats = computeDashboardStats(dashboard);
+  const statsText = formatStatsForPrompt(stats);
   return [
     { role: "system", content: SYSTEM_PROMPT },
     {
       role: "user",
-      content: `Current timestamp: ${now}\n\nCompany: ${dashboard.meta.companyName}\nPeriod: ${dashboard.meta.period}\nCurrency: ${dashboard.meta.currency}\n\n--- ANALYSIS DATA ---\n\n${dashboardJson}`,
+      content: `Current timestamp: ${now}\n\nCompany: ${dashboard.meta.companyName}\nPeriod: ${dashboard.meta.period}\nCurrency: ${dashboard.meta.currency}\n\n${statsText}\n\n--- ANALYSIS DATA ---\n\n${dashboardJson}`,
     },
   ];
 }

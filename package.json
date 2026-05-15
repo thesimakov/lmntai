@@ -101,6 +101,7 @@
     "react-router-dom": "^7.6.0",
     "recharts": "^2.13.3",
     "sanitize-html": "^2.17.3",
+    "simple-statistics": "^7.8.9",
     "sonner": "^1.7.1",
     "swiper": "^11.1.0",
     "tailwind-merge": "^2.5.5",

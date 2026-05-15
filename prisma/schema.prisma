@@ -870,3 +870,15 @@ model AnalyticsShare {
   @@index([projectId])
   @@index([token])
 }
+
+/// Векторные эмбеддинги чанков текста для семантического поиска в аналитике.
+model AnalyticsChunkEmbedding {
+  id        String   @id @default(cuid())
+  projectId String
+  position  Int
+  chunkText String   @db.Text
+  vector    Json
+  createdAt DateTime @default(now())
+
+  @@index([projectId])
+}

@@ -57,7 +57,7 @@ export function buildPlaygroundMarketingEditUrl(projectId: string): string {
 
 /** Presentation (SlideGraph) editor — uses build page with projectKind=presentation. */
 export function buildPlaygroundPresentationEditUrl(projectId: string): string {
-  return `/playground/build?projectId=${encodeURIComponent(projectId)}&projectKind=presentation`;
+  return `/playground/build?sessionId=${encodeURIComponent(projectId)}&projectKind=presentation`;
 }
 
 export function buildPlaygroundEditUrlForStoredEditor(
