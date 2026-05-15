@@ -4,6 +4,7 @@ import {
   BookOpen,
   Code2,
   Database,
+  Download,
   Eye,
   FileSearch,
   FileText,
@@ -188,6 +189,8 @@ type BuildPreviewChromeProps = {
   sandboxId?: string | null;
   onPublish: () => void;
   publishDisabled?: boolean;
+  /** URL для скачивания сайта как ZIP (только для website-проектов с готовым сайтом) */
+  downloadSiteUrl?: string | null;
   /** На вкладке «Превью» — визуальный редактор макета в iframe */
   previewEditorToggle?: {
     active: boolean;
@@ -206,6 +209,7 @@ export function BuildPreviewChrome({
   sandboxId = null,
   onPublish,
   publishDisabled = false,
+  downloadSiteUrl = null,
   previewEditorToggle,
   onHistoryClick,
   expandChatRailSlot = null
@@ -324,6 +328,19 @@ export function BuildPreviewChrome({
           shareMenu={shareMenu}
           onPublish={onPublish}
           publishDisabled={publishDisabled}
+          leadingSlot={
+            downloadSiteUrl ? (
+              <a
+                href={downloadSiteUrl}
+                download
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                aria-label="Скачать сайт ZIP"
+                title="Скачать сайт как ZIP"
+              >
+                <Download className="h-4 w-4" />
+              </a>
+            ) : null
+          }
         />
       </div>
     </div>

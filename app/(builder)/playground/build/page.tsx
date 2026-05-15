@@ -769,6 +769,7 @@ export default function PromptBuildPage() {
         }
         onPublish={() => setPublishDialogOpen(true)}
         publishDisabled={!previewUrl || !sandboxId}
+        downloadSiteUrl={projectKind === "website" && sessionId && sandboxId ? `/api/projects/${encodeURIComponent(sessionId)}/export-site` : null}
         onHistoryClick={() => router.push("/projects")}
         previewEditorToggle={
           contentTab === "preview" || contentTab === "document"
