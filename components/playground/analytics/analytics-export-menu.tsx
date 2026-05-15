@@ -1,8 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileText, Presentation, TableIcon, Loader2 } from "lucide-react";
+import { Download, FileText, Link2, Loader2, Presentation, TableIcon } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +20,8 @@ import {
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { useI18n } from "@/components/i18n-provider";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
+import type { AnalyticsRole } from "@/lib/analytics-share-db";
+import { ANALYTICS_ROLES } from "@/lib/analytics-share-db";
 
 interface Props {
   projectId: string;
@@ -67,7 +76,35 @@ function dashboardToCsv(dashboard: AnalysisDashboard): string {
 export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
   const { t } = useI18n();
   const [loadingPptx, setLoadingPptx] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareRole, setShareRole] = useState<AnalyticsRole>("viewer");
   const { dashboard } = useAnalyticsStore();
+
+  async function createShareLink() {
+    setShareLoading(true);
+    try {
+      const res = await fetch(`/api/analytics/${projectId}/share`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: shareRole }),
+      });
+      if (!res.ok) throw new Error("Failed to create share link");
+      const data = await res.json() as { data: { url: string } };
+      setShareUrl(data.data.url);
+    } catch {
+      toast.error("Could not create share link");
+    } finally {
+      setShareLoading(false);
+    }
+  }
+
+  function copyShareUrl() {
+    if (!shareUrl) return;
+    void navigator.clipboard.writeText(shareUrl);
+    toast.success("Link copied to clipboard");
+  }
 
   async function exportPptx() {
     if (!dashboard) return;
@@ -117,28 +154,91 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
   }
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" disabled={!dashboard}>
-          <Download className="w-3.5 h-3.5" />
-          {t("analytics_bi_export")}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-44">
-        <DropdownMenuItem onClick={() => void exportPdf()} className="gap-2 cursor-pointer text-sm">
-          <FileText className="w-3.5 h-3.5" />
-          {t("analytics_bi_export_pdf")}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => void exportPptx()} disabled={loadingPptx} className="gap-2 cursor-pointer text-sm">
-          {loadingPptx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Presentation className="w-3.5 h-3.5" />}
-          {t("analytics_bi_export_pptx")}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={exportCsv} className="gap-2 cursor-pointer text-sm">
-          <TableIcon className="w-3.5 h-3.5" />
-          {t("analytics_bi_export_csv")}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="gap-2 h-8 text-xs" disabled={!dashboard}>
+            <Download className="w-3.5 h-3.5" />
+            {t("analytics_bi_export")}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuItem onClick={() => void exportPdf()} className="gap-2 cursor-pointer text-sm">
+            <FileText className="w-3.5 h-3.5" />
+            {t("analytics_bi_export_pdf")}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => void exportPptx()} disabled={loadingPptx} className="gap-2 cursor-pointer text-sm">
+            {loadingPptx ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Presentation className="w-3.5 h-3.5" />}
+            {t("analytics_bi_export_pptx")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={exportCsv} className="gap-2 cursor-pointer text-sm">
+            <TableIcon className="w-3.5 h-3.5" />
+            {t("analytics_bi_export_csv")}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onClick={() => { setShareUrl(null); setShareDialogOpen(true); }}
+            className="gap-2 cursor-pointer text-sm"
+          >
+            <Link2 className="w-3.5 h-3.5" />
+            Share link…
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold">Share analytics dashboard</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <p className="text-xs text-muted-foreground font-medium">Access level</p>
+              <div className="grid gap-1.5">
+                {(Object.entries(ANALYTICS_ROLES) as [AnalyticsRole, { label: string; description: string }][]).map(([role, info]) => (
+                  <label key={role} className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-border p-2.5 hover:bg-muted/40 has-[:checked]:border-foreground/40 has-[:checked]:bg-muted/30">
+                    <input
+                      type="radio"
+                      name="share-role"
+                      value={role}
+                      checked={shareRole === role}
+                      onChange={() => { setShareRole(role); setShareUrl(null); }}
+                      className="mt-0.5 shrink-0"
+                    />
+                    <div>
+                      <p className="text-xs font-medium">{info.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{info.description}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {shareUrl ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+                  <span className="flex-1 truncate text-xs font-mono text-foreground/70">{shareUrl}</span>
+                  <button type="button" onClick={copyShareUrl} className="shrink-0 text-xs font-medium text-primary hover:underline">
+                    Copy
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Anyone with this link can view the dashboard.</p>
+              </div>
+            ) : (
+              <Button
+                size="sm"
+                className="w-full gap-2 text-xs"
+                onClick={() => void createShareLink()}
+                disabled={shareLoading}
+              >
+                {shareLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
+                Generate link
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

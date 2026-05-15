@@ -21,6 +21,7 @@ model Project {
 
   sandboxShare        SandboxShare?
   sandboxState        SandboxProjectState?
+  analyticsShares     AnalyticsShare[]
   manusSessionLink    ManusSessionLink?
   publishDomains      PublishDomainBinding[]
   imageAssets         ProjectImageAsset[]
@@ -852,4 +853,20 @@ model BenchmarkSample {
   createdAt DateTime @default(now())
 
   @@index([industry, metricKey])
+}
+
+/// Публичная ссылка на аналитический дашборд с ролью доступа.
+model AnalyticsShare {
+  id        String    @id @default(cuid())
+  token     String    @unique @default(cuid())
+  projectId String
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ownerId   String
+  role      String    @default("viewer")
+  label     String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([projectId])
+  @@index([token])
 }
