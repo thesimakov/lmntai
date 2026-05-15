@@ -1,6 +1,7 @@
 import { type NextRequest } from "next/server";
 import * as XLSX from "xlsx";
 import { PDFParse } from "pdf-parse";
+import { docxToText } from "@/lib/docx-parser";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiOk, apiError, apiGuardError } from "@/lib/api-response";
@@ -16,6 +17,7 @@ const SUPPORTED_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
   "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
 function isCsvOrXlsx(file: File): boolean {
@@ -31,6 +33,13 @@ function isCsvOrXlsx(file: File): boolean {
 
 function isPdf(file: File): boolean {
   return file.type === "application/pdf" || file.name.endsWith(".pdf");
+}
+
+function isDocx(file: File): boolean {
+  return (
+    file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+    file.name.endsWith(".docx")
+  );
 }
 
 async function extractCsvText(buffer: Buffer, filename: string): Promise<string> {
@@ -99,9 +108,9 @@ export async function POST(
     if (file.size > MAX_FILE_BYTES) {
       return apiError(`File "${file.name}" exceeds 50 MB limit`, 413);
     }
-    if (!SUPPORTED_TYPES.has(file.type) && !isCsvOrXlsx(file) && !isPdf(file)) {
+    if (!SUPPORTED_TYPES.has(file.type) && !isCsvOrXlsx(file) && !isPdf(file) && !isDocx(file)) {
       return apiError(
-        `Unsupported file type for "${file.name}". Use CSV, XLSX, or PDF.`,
+        `Unsupported file type for "${file.name}". Use CSV, XLSX, PDF, or DOCX.`,
         400
       );
     }
@@ -112,6 +121,10 @@ export async function POST(
     try {
       if (isPdf(file)) {
         text = await extractPdfText(buffer, file.name);
+      } else if (isDocx(file)) {
+        const raw = await docxToText(buffer);
+        if (!raw) throw new Error(`The DOCX "${file.name}" appears to be empty or unreadable.`);
+        text = `=== File: ${file.name} ===\n${raw}`;
       } else {
         text = await extractCsvText(buffer, file.name);
       }

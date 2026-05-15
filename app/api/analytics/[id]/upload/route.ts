@@ -9,6 +9,7 @@ import {
   getSandboxProjectState,
 } from "@/lib/sandbox-project-state-db";
 import { ocrPdfBuffer } from "@/lib/ocr-pdf";
+import { docxToText } from "@/lib/docx-parser";
 
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
@@ -19,9 +20,10 @@ const ACCEPTED_TYPES = new Set([
   "text/csv",
   "application/json",
   "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ]);
 
-function detectType(file: File): "pdf" | "xlsx" | "csv" | "json" | null {
+function detectType(file: File): "pdf" | "xlsx" | "csv" | "json" | "docx" | null {
   const mime = file.type.toLowerCase();
   const name = file.name.toLowerCase();
   if (mime.includes("pdf") || name.endsWith(".pdf")) return "pdf";
@@ -34,6 +36,7 @@ function detectType(file: File): "pdf" | "xlsx" | "csv" | "json" | null {
     return "xlsx";
   if (mime.includes("csv") || name.endsWith(".csv")) return "csv";
   if (mime.includes("json") || name.endsWith(".json")) return "json";
+  if (mime.includes("wordprocessingml") || name.endsWith(".docx")) return "docx";
   return null;
 }
 
@@ -114,6 +117,11 @@ export async function POST(
       if (extractedText.trim().length < 10) {
         return apiError("The CSV file appears to be empty.", 422);
       }
+    } else if (fileType === "docx") {
+      extractedText = await docxToText(buffer);
+      if (!extractedText) {
+        return apiError("DOCX file appears to be empty or unreadable.", 422);
+      }
     } else {
       // json
       const raw = buffer.toString("utf-8");
@@ -134,7 +142,7 @@ export async function POST(
   const existing = await getSandboxProjectState(projectId);
   const existingFiles = existing?.files ?? {};
 
-  const baseName = file.name.replace(/\.(pdf|xlsx|xls|csv|json)$/i, "");
+  const baseName = file.name.replace(/\.(pdf|xlsx|xls|csv|json|docx)$/i, "");
 
   await upsertSandboxProjectState({
     projectId,

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { FileText, FileSpreadsheet, FileJson, UploadCloud } from "lucide-react";
+import { FileText, FileSpreadsheet, FileJson, FileType, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -10,14 +10,16 @@ interface Props {
   disabled?: boolean;
 }
 
-const ACCEPTED_EXTENSIONS = [".pdf", ".xlsx", ".xls", ".csv", ".json"];
-const ACCEPT_ATTR = "application/pdf,.xlsx,.xls,text/csv,application/json";
+const ACCEPTED_EXTENSIONS = [".pdf", ".xlsx", ".xls", ".csv", ".json", ".docx"];
+const ACCEPT_ATTR =
+  "application/pdf,.xlsx,.xls,text/csv,application/json,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const MAX_BYTES = 50 * 1024 * 1024;
 
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   if (ext === "xlsx" || ext === "xls" || ext === "csv") return FileSpreadsheet;
   if (ext === "json") return FileJson;
+  if (ext === "docx") return FileType;
   return FileText;
 }
 
@@ -81,6 +83,10 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
         <span className="text-border">·</span>
         <span className="flex items-center gap-1">
           <FileJson className="w-3 h-3" /> JSON
+        </span>
+        <span className="text-border">·</span>
+        <span className="flex items-center gap-1">
+          <FileType className="w-3 h-3" /> DOCX
         </span>
       </div>
     </label>

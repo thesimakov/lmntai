@@ -59,7 +59,7 @@ describe("POST /api/marketing/[id]/upload", () => {
 
   it("returns 400 for unsupported file type", async () => {
     const form = new FormData();
-    form.append("files", new File(["data"], "report.docx", { type: "application/msword" }));
+    form.append("files", new File(["data"], "report.pptx", { type: "application/vnd.openxmlformats-officedocument.presentationml.presentation" }));
     const req = new Request("http://localhost/api/marketing/p1/upload", {
       method: "POST",
       body: form,
