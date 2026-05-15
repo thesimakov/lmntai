@@ -23,13 +23,18 @@ export const authEvents: NextAuthOptions["events"] = {
     } catch {
       // ignore referral code collisions/transient issues; profile route will retry later.
     }
+    // For credentials users emailVerified is null — welcome email is deferred until they confirm their address.
+    // For OAuth providers the adapter sets emailVerified immediately, so we can send it now.
     const email = user.email?.trim();
     if (email) {
       try {
-        await sendWelcomeEmailAfterRegistration({
-          email,
-          name: user.name ?? null
+        const record = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { emailVerified: true, name: true }
         });
+        if (record?.emailVerified) {
+          await sendWelcomeEmailAfterRegistration({ email, name: record.name ?? user.name ?? null });
+        }
       } catch (e) {
         console.error("[auth] welcome email (oauth) failed", e);
       }

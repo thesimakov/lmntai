@@ -8,6 +8,7 @@ import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIStream } from "@/lib/routerai-client";
 import { splitSseLines, extractDataJson } from "@/lib/sse-parser";
 import { buildChatPrompt } from "@/lib/analytics-prompt";
+import { retrieveRelevantChunks } from "@/lib/text-rag";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
 
@@ -58,7 +59,13 @@ export async function POST(
     content: m.content,
   }));
 
-  const messages = buildChatPrompt(dashboard, body.message, history);
+  // RAG: retrieve relevant chunks from the raw source document
+  const rawText = state.files["raw_text.txt"] ?? "";
+  const ragChunks = rawText.length > 100
+    ? retrieveRelevantChunks(rawText, body.message)
+    : [];
+
+  const messages = buildChatPrompt(dashboard, body.message, history, ragChunks);
 
   const routerRes = await requestRouterAIStream({
     messages,

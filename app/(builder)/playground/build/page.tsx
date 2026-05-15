@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowLeftRight, ChevronDown, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, ChevronDown, Loader2, Layers } from "lucide-react";
 
 import { AiEditorShell, AiEditorVersionHistoryButton } from "@/components/ai-editor";
 import { AgentChat } from "@/components/playground/agent-chat";
@@ -578,8 +578,10 @@ export default function PromptBuildPage() {
   }, []);
 
   const handleAiEdit = useCallback((elementId: string, elementLabel: string) => {
-    useBuildEditorStore.getState().setSelectedElementId(elementId);
-    toast.info(`Контекст выбран: ${elementLabel}. Введите промпт для AI-правки.`);
+    setSelectedGraphNodeId(elementId);
+    setInlineEditText("");
+    setTimeout(() => inlineInputRef.current?.focus(), 50);
+    toast.info(`Контекст: ${elementLabel}. Опишите правку.`);
   }, []);
 
   const handleBuildTemplateChange = useCallback((next: typeof buildTemplate) => {
@@ -640,6 +642,22 @@ export default function PromptBuildPage() {
             </Tooltip>
             <MenuDrawer compact toolbarLayout="inline" hideCollapseButton lemnityAiBridgeReady={lemnityAiBridgeReady} shouldUseLemnityAiBridge={true} />
             <AiEditorVersionHistoryButton projectId={sessionId ?? ""} isGenerating={isGenerating} onVersionRestoreHtml={handleVersionRestoreHtml} />
+            {projectKind === "presentation" && sandboxId && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 rounded-lg text-muted-foreground"
+                    onClick={() => router.push(`/playground/slides?projectId=${sessionId ?? ""}`)}
+                  >
+                    <Layers className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">Визуальный редактор слайдов</TooltipContent>
+              </Tooltip>
+            )}
           </>
         }
         studioToolbarTrailingSlot={

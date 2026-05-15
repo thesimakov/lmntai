@@ -40,12 +40,12 @@ import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
-const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot; fullNav?: boolean }[] = [
+const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot; fullNav?: boolean; activePath?: string }[] = [
   { href: "/playground", labelKey: "nav_playground", icon: Bot },
   { href: "/pricing", labelKey: "nav_pricing", icon: CreditCard },
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
-  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2, fullNav: true },
-  { href: "/api/marketing/new", labelKey: "nav_marketing_bi", icon: TrendingUp, fullNav: true },
+  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2, fullNav: true, activePath: "/playground/analytics" },
+  { href: "/api/marketing/new", labelKey: "nav_marketing_bi", icon: TrendingUp, fullNav: true, activePath: "/playground/marketing" },
   { href: "/api/presentation/new", labelKey: "nav_presentation", icon: Presentation, fullNav: true },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },
   { href: "/profile", labelKey: "nav_profile", icon: UserCircle2 },
@@ -143,7 +143,9 @@ function SidebarBody({ className }: { className?: string }) {
         <div className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = !item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`));
+            const isActive =
+              (item.activePath && pathname.startsWith(item.activePath)) ||
+              (!item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
             const itemClass = cn(
               "group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
               isActive

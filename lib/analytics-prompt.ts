@@ -68,16 +68,23 @@ export function buildAnalysisPrompt(documentText: string): Message[] {
 export function buildChatPrompt(
   dashboard: AnalysisDashboard,
   userMessage: string,
-  history: Array<{ role: "user" | "assistant"; content: string }>
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  ragChunks: string[] = []
 ): Message[] {
   const contextJson = JSON.stringify(dashboard, null, 2);
+
+  const ragSection = ragChunks.length > 0
+    ? `\n\n## Relevant excerpts from the source document\n\n${ragChunks.map((c, i) => `[Excerpt ${i + 1}]\n${c}`).join("\n\n")}`
+    : "";
+
   const system = `You are a senior financial analyst. You have already analyzed a financial document. Here is the structured analysis:
 
 \`\`\`json
 ${contextJson}
 \`\`\`
+${ragSection}
 
-Answer the user's questions based solely on this analysis. Be concise, accurate, and use specific numbers from the data. Format your responses in Markdown.`;
+Answer the user's questions using the structured analysis and source excerpts above. Be concise, accurate, and cite specific numbers. Format your responses in Markdown.`;
 
   return [
     { role: "system", content: system },

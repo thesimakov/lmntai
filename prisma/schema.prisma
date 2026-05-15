@@ -443,7 +443,8 @@ model User {
   createdByAdminId  String?
   createdByAdmin    User?  @relation("AdminCreatedStaff", fields: [createdByAdminId], references: [id], onDelete: SetNull)
   createdStaff      User[] @relation("AdminCreatedStaff")
-  passwordResetTokens PasswordResetToken[]
+  passwordResetTokens      PasswordResetToken[]
+  emailVerificationTokens  EmailVerificationToken[]
 
   @@index([partnerApprovedById])
   @@index([referredById])
@@ -543,6 +544,18 @@ model Account {
 }
 
 /// Одноразовый токен сброса пароля (email+пароль). Хранится только хеш SHA-256 от секрета из письма.
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model PasswordResetToken {
   id        String   @id @default(cuid())
   userId    String

@@ -1,21 +1,36 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Upload, FileText } from "lucide-react";
+import { FileText, FileSpreadsheet, FileJson, UploadCloud } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Props {
   onFile: (file: File) => void;
   disabled?: boolean;
 }
 
+const ACCEPTED_EXTENSIONS = [".pdf", ".xlsx", ".xls", ".csv", ".json"];
+const ACCEPT_ATTR = "application/pdf,.xlsx,.xls,text/csv,application/json";
+const MAX_BYTES = 50 * 1024 * 1024;
+
+function getFileIcon(name: string) {
+  const ext = name.split(".").pop()?.toLowerCase();
+  if (ext === "xlsx" || ext === "xls" || ext === "csv") return FileSpreadsheet;
+  if (ext === "json") return FileJson;
+  return FileText;
+}
+
 export function AnalyticsUploadZone({ onFile, disabled }: Props) {
+  const { t } = useI18n();
   const [dragging, setDragging] = useState(false);
 
   const handle = useCallback(
     (file: File) => {
-      if (file.type !== "application/pdf") return;
-      if (file.size > 50 * 1024 * 1024) return;
+      const name = file.name.toLowerCase();
+      const ok = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+      if (!ok) return;
+      if (file.size > MAX_BYTES) return;
       onFile(file);
     },
     [onFile]
@@ -24,9 +39,12 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
   return (
     <label
       className={cn(
-        "flex flex-col items-center justify-center gap-4 w-full max-w-lg h-64",
-        "border-2 border-dashed rounded-xl cursor-pointer transition-colors",
-        dragging ? "border-primary bg-primary/5" : "border-muted-foreground/30 hover:border-primary/50",
+        "flex flex-col items-center justify-center gap-4 w-full max-w-md",
+        "rounded-xl border-2 border-dashed cursor-pointer transition-all duration-150",
+        "px-8 py-10",
+        dragging
+          ? "border-foreground/40 bg-foreground/[0.03]"
+          : "border-border hover:border-foreground/25 bg-white",
         disabled && "opacity-50 pointer-events-none"
       )}
       onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -40,20 +58,30 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
     >
       <input
         type="file"
-        accept="application/pdf"
+        accept={ACCEPT_ATTR}
         className="sr-only"
         disabled={disabled}
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) handle(f); e.currentTarget.value = ""; }}
       />
-      <div className="p-4 rounded-full bg-primary/10">
-        <FileText className="w-8 h-8 text-primary" />
+      <div className="w-10 h-10 rounded-lg border border-border bg-muted/50 flex items-center justify-center">
+        <UploadCloud className="w-5 h-5 text-muted-foreground" />
       </div>
       <div className="text-center">
-        <p className="font-medium">Drop a PDF here or click to browse</p>
-        <p className="text-sm text-muted-foreground mt-1">P&L, balance sheets, cash flow reports · max 50 MB</p>
+        <p className="text-sm font-medium text-foreground">{t("analytics_bi_drop_hint")}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t("analytics_bi_format_hint")}</p>
       </div>
-      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Upload className="w-3 h-3" /> PDF only
+      <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70">
+        <span className="flex items-center gap-1">
+          <FileText className="w-3 h-3" /> PDF
+        </span>
+        <span className="text-border">·</span>
+        <span className="flex items-center gap-1">
+          <FileSpreadsheet className="w-3 h-3" /> XLSX / CSV
+        </span>
+        <span className="text-border">·</span>
+        <span className="flex items-center gap-1">
+          <FileJson className="w-3 h-3" /> JSON
+        </span>
       </div>
     </label>
   );

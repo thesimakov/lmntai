@@ -17,7 +17,7 @@ import {
   registerUserWithPassword
 } from "@/lib/token-manager";
 import { normalizeEmail } from "@/lib/auth-normalizers";
-import { sendWelcomeEmailAfterRegistration } from "@/lib/notisend-email";
+import { createEmailVerificationToken, sendVerificationEmail } from "@/lib/email-verification";
 
 function smtpConfigured() {
   return Boolean(
@@ -159,12 +159,14 @@ export function buildAuthProviders(): NextAuthOptions["providers"] {
               console.error("[auth] admin env bootstrap (register) failed", e);
             }
             try {
-              await sendWelcomeEmailAfterRegistration({
+              const verToken = await createEmailVerificationToken(created.id);
+              await sendVerificationEmail({
                 email: created.email,
-                name: created.name ?? displayName
+                name: created.name ?? displayName,
+                token: verToken
               });
             } catch (e) {
-              console.error("[auth] welcome email failed", e);
+              console.error("[auth] verification email failed", e);
             }
             return {
               id: created.id,
