@@ -333,6 +333,25 @@ export function PreviewFrame({
     }
   }
 
+  async function handleDownloadSlidesPptx() {
+    if (!guardPresentationExportPaid()) return;
+    setExportTask("pptx");
+    try {
+      const response = await fetch(`/api/projects/${encodeURIComponent(sandboxId)}/slides/export`, {
+        method: "POST",
+        credentials: "include",
+      });
+      await downloadBlobFromResponse(
+        response,
+        downloadFilename?.trim() || `presentation-${sandboxId.slice(0, 8)}.pptx`
+      );
+    } catch (e) {
+      toast.error(t("build_export_failed"), { description: unknownToErrorMessage(e) });
+    } finally {
+      setExportTask(null);
+    }
+  }
+
   async function handleDownloadServerPdf() {
     if (!guardPresentationExportPaid()) return;
     if (!presentationPdfExport) return;
@@ -789,21 +808,21 @@ export function PreviewFrame({
             <>
               <Button
                 size="sm"
-                variant="secondary"
+                variant="default"
                 className="h-8"
                 disabled={exportBusy}
-                onClick={() => void handleClientPdf()}
+                onClick={() => void handleDownloadSlidesPptx()}
               >
-                {exportTask === "pdfClient" ? "…" : t("build_export_pdf")}
+                {exportTask === "pptx" ? "…" : t("build_export_pptx")}
               </Button>
               <Button
                 size="sm"
                 variant="secondary"
                 className="h-8"
                 disabled={exportBusy}
-                onClick={() => handlePresentationPptxFromHtmlHint()}
+                onClick={() => void handleClientPdf()}
               >
-                {t("build_export_pptx")}
+                {exportTask === "pdfClient" ? "…" : t("build_export_pdf")}
               </Button>
             </>
           ) : null}
