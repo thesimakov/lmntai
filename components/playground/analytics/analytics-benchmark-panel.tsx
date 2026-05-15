@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Target, Loader2, Play, TrendingUp, TrendingDown, Minus, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 import type { BenchmarkReport } from "@/app/api/analytics/[id]/benchmark/route";
 import type { BenchmarkComparison } from "@/lib/analytics-benchmarks";
 
@@ -11,15 +12,15 @@ interface AnalyticsBenchmarkPanelProps {
   projectId: string;
 }
 
-const STATUS_CONFIG = {
-  above: { icon: TrendingUp, color: "text-green-500", label: "Above median" },
-  below: { icon: TrendingDown, color: "text-red-500", label: "Below median" },
-  "on-par": { icon: Minus, color: "text-yellow-500", label: "On par" },
-  unknown: { icon: Minus, color: "text-muted-foreground", label: "No data" },
-} satisfies Record<BenchmarkComparison["status"], { icon: React.ComponentType<{ className?: string }>; color: string; label: string }>;
+const STATUS_STYLES = {
+  above: { icon: TrendingUp, color: "text-green-500" },
+  below: { icon: TrendingDown, color: "text-red-500" },
+  "on-par": { icon: Minus, color: "text-yellow-500" },
+  unknown: { icon: Minus, color: "text-muted-foreground" },
+} satisfies Record<BenchmarkComparison["status"], { icon: React.ComponentType<{ className?: string }>; color: string }>;
 
-function BenchmarkBar({ comparison }: { comparison: BenchmarkComparison }) {
-  const { icon: Icon, color, label } = STATUS_CONFIG[comparison.status];
+function BenchmarkBar({ comparison, statusLabel, yourValueLabel }: { comparison: BenchmarkComparison; statusLabel: string; yourValueLabel: string }) {
+  const { icon: Icon, color } = STATUS_STYLES[comparison.status];
   const { median, p25, p75, unit } = comparison;
 
   const range = p75 - p25;
@@ -44,7 +45,7 @@ function BenchmarkBar({ comparison }: { comparison: BenchmarkComparison }) {
         </span>
         <div className={cn("flex items-center gap-1", color)}>
           <Icon className="w-3 h-3" />
-          <span className="text-xs">{label}</span>
+          <span className="text-xs">{statusLabel}</span>
         </div>
       </div>
 
@@ -75,7 +76,7 @@ function BenchmarkBar({ comparison }: { comparison: BenchmarkComparison }) {
 
       {comparison.companyValue !== null && (
         <p className="text-[10px] text-muted-foreground">
-          Your value: <span className={cn("font-medium", color)}>{fmt(comparison.companyValue)}</span>
+          {yourValueLabel} <span className={cn("font-medium", color)}>{fmt(comparison.companyValue)}</span>
         </p>
       )}
     </div>
@@ -83,15 +84,27 @@ function BenchmarkBar({ comparison }: { comparison: BenchmarkComparison }) {
 }
 
 export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelProps) {
+  const { t } = useI18n();
   const [report, setReport] = useState<BenchmarkReport | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const statusLabels: Record<BenchmarkComparison["status"], string> = {
+    above: t("analytics_bi_benchmark_above"),
+    below: t("analytics_bi_benchmark_below"),
+    "on-par": t("analytics_bi_benchmark_on_par"),
+    unknown: t("analytics_bi_benchmark_no_data"),
+  };
 
   const runBenchmark = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setRunning(true);
     setError(null);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/benchmark`, { method: "POST" });
+      const res = await fetch(`/api/analytics/${projectId}/benchmark`, { method: "POST", signal: controller.signal });
       const data = await res.json() as { data?: { report: BenchmarkReport }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Benchmark failed");
@@ -99,6 +112,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
         setReport(data.data.report);
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setRunning(false);
@@ -111,13 +125,13 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
         <div className="p-2.5 rounded-full bg-primary/10">
           <Target className="w-6 h-6 text-primary" />
         </div>
-        <p className="text-sm font-medium">Industry Benchmarks</p>
+        <p className="text-sm font-medium">{t("analytics_bi_benchmark_title")}</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Compare your KPIs against industry medians. We auto-detect your sector from the analysis.
+          {t("analytics_bi_benchmark_desc")}
         </p>
         <Button size="sm" className="gap-1.5 mt-1" onClick={() => void runBenchmark()}>
           <Play className="w-3.5 h-3.5" />
-          Run Benchmark
+          {t("analytics_bi_benchmark_run")}
         </Button>
       </div>
     );
@@ -127,7 +141,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
     return (
       <div className="flex flex-col items-center justify-center gap-3 p-6 h-full">
         <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        <p className="text-sm font-medium">Benchmarking against industry data...</p>
+        <p className="text-sm font-medium">{t("analytics_bi_benchmark_running")}</p>
       </div>
     );
   }
@@ -138,7 +152,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
         <XCircle className="w-6 h-6 text-red-500" />
         <p className="text-sm text-red-500">{error}</p>
         <Button size="sm" variant="outline" onClick={() => void runBenchmark()}>
-          Retry
+          {t("analytics_bi_benchmark_retry")}
         </Button>
       </div>
     );
@@ -153,7 +167,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
           <p className="text-[10px] text-muted-foreground">
             {new Date(report!.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
             {report!.sampleCount != null && report!.sampleCount > 0 && (
-              <span className="ml-1 text-green-600">· {report!.sampleCount} real samples</span>
+              <span className="ml-1 text-green-600">· {report!.sampleCount} {t("analytics_bi_benchmark_samples")}</span>
             )}
           </p>
         </div>
@@ -165,7 +179,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
           disabled={running}
         >
           <Play className="w-3 h-3" />
-          Re-run
+          {t("analytics_bi_benchmark_rerun")}
         </Button>
       </div>
 
@@ -173,14 +187,19 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
         {/* Metric comparisons */}
         <div className="p-3 space-y-4 border-b border-border">
           {report!.comparisons.map((c) => (
-            <BenchmarkBar key={c.label} comparison={c} />
+            <BenchmarkBar
+              key={c.label}
+              comparison={c}
+              statusLabel={statusLabels[c.status]}
+              yourValueLabel={t("analytics_bi_benchmark_your_value")}
+            />
           ))}
         </div>
 
         {/* AI narrative */}
         {report!.narrative && (
           <div className="p-3">
-            <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">Assessment</p>
+            <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">{t("analytics_bi_benchmark_assessment")}</p>
             <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {report!.narrative}
             </p>

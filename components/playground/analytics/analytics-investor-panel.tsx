@@ -4,37 +4,17 @@ import { useState, useCallback } from "react";
 import { TrendingUp, Loader2, Download, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
+import { useI18n } from "@/components/i18n-provider";
 import { cn } from "@/lib/utils";
 
 interface Props {
   projectId: string;
 }
 
-const FORMAT_CARDS = [
-  {
-    id: "investor-vc-pptx" as const,
-    label: "VC Pitch",
-    description: "10 slides · Fundraising",
-    color: "text-blue-400",
-    borderColor: "border-blue-500/30",
-    bgColor: "bg-blue-500/10",
-  },
-  {
-    id: "investor-board-pptx" as const,
-    label: "Board Report",
-    description: "14 slides · CFO & Board",
-    color: "text-green-400",
-    borderColor: "border-green-500/30",
-    bgColor: "bg-green-500/10",
-  },
-  {
-    id: "investor-dd-pptx" as const,
-    label: "Due Diligence",
-    description: "8 slides · Investors",
-    color: "text-amber-400",
-    borderColor: "border-amber-500/30",
-    bgColor: "bg-amber-500/10",
-  },
+const FORMAT_CARD_STYLES = [
+  { id: "investor-vc-pptx" as const, color: "text-blue-400", borderColor: "border-blue-500/30", bgColor: "bg-blue-500/10" },
+  { id: "investor-board-pptx" as const, color: "text-green-400", borderColor: "border-green-500/30", bgColor: "bg-green-500/10" },
+  { id: "investor-dd-pptx" as const, color: "text-amber-400", borderColor: "border-amber-500/30", bgColor: "bg-amber-500/10" },
 ];
 
 function riskColor(score: number) {
@@ -61,14 +41,23 @@ async function downloadPptx(projectId: string, format: string, label: string) {
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${label}.pptx`;
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${label}.pptx`;
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function AnalyticsInvestorPanel({ projectId }: Props) {
+  const { t } = useI18n();
+  const FORMAT_CARDS = [
+    { ...FORMAT_CARD_STYLES[0]!, label: t("analytics_bi_investor_vc_label"), description: t("analytics_bi_investor_vc_desc") },
+    { ...FORMAT_CARD_STYLES[1]!, label: t("analytics_bi_investor_board_label"), description: t("analytics_bi_investor_board_desc") },
+    { ...FORMAT_CARD_STYLES[2]!, label: t("analytics_bi_investor_dd_label"), description: t("analytics_bi_investor_dd_desc") },
+  ];
   const {
     dashboard,
     investorReport,
@@ -83,7 +72,6 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const handleGenerate = useCallback(async () => {
-    setInvestorError("");
     setInvestorStatus("generating");
     setDownloadError(null);
     try {
@@ -97,6 +85,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       const { investorReportSchema } = await import("@/lib/investor-schema");
       const parsed = investorReportSchema.safeParse(data.data?.report);
       if (!parsed.success) {
+        setInvestorStatus("idle");
         setInvestorError("Invalid response from server");
         return;
       }
@@ -125,7 +114,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     return (
       <div className="flex flex-col gap-3 p-4">
         <p className="text-xs text-muted-foreground">
-          Upload and analyze a PDF first to generate investor materials.
+          {t("analytics_bi_investor_need_pdf")}
         </p>
       </div>
     );
@@ -135,7 +124,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     return (
       <div className="flex flex-col gap-3 p-4">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Generate investor-ready reports from your financial analysis.
+          {t("analytics_bi_investor_desc")}
         </p>
 
         <div className="flex flex-col gap-2">
@@ -160,7 +149,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
           onClick={() => void handleGenerate()}
         >
           <TrendingUp className="w-3.5 h-3.5" />
-          Generate Investor Report
+          {t("analytics_bi_investor_generate")}
         </Button>
       </div>
     );
@@ -171,9 +160,9 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       <div className="flex flex-col items-center justify-center gap-3 p-6">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
         <p className="text-xs text-muted-foreground text-center">
-          Generating investor reports…
+          {t("analytics_bi_investor_generating")}
           <br />
-          This may take 30–60 seconds.
+          {t("analytics_bi_forecast_wait")}
         </p>
       </div>
     );
@@ -188,7 +177,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     <div className="flex flex-col gap-3 p-4">
       {/* Risk score */}
       <div className={cn("rounded-md border p-3", riskBgCls)}>
-        <p className="text-[11px] text-muted-foreground mb-1">Investment Risk Score</p>
+        <p className="text-[11px] text-muted-foreground mb-1">{t("analytics_bi_investor_risk_label")}</p>
         <div className="flex items-baseline gap-2">
           <span className={cn("text-2xl font-bold", riskCls)}>{report.riskScore}</span>
           <span className="text-xs text-muted-foreground">/100 · {report.riskLabel}</span>
@@ -197,14 +186,15 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
 
       {/* Forecast preview */}
       <div className="rounded-md border border-border p-3 text-xs">
-        <p className="text-[11px] font-medium text-foreground mb-1.5">12M Forecast</p>
+        <p className="text-[11px] font-medium text-foreground mb-1.5">{t("analytics_bi_investor_forecast_label")}</p>
         <div className="flex flex-col gap-1">
           {(["optimistic", "base", "pessimistic"] as const).map((key) => {
             const s = report.forecast.scenarios[key];
             const color = key === "optimistic" ? "text-green-400" : key === "pessimistic" ? "text-red-400" : "text-muted-foreground";
+            const label = key === "optimistic" ? t("analytics_bi_forecast_optimistic") : key === "pessimistic" ? t("analytics_bi_forecast_pessimistic") : t("analytics_bi_forecast_base");
             return (
               <div key={key} className="flex items-center justify-between">
-                <span className={cn("capitalize", color)}>{key}</span>
+                <span className={cn("capitalize", color)}>{label}</span>
                 <span className="text-muted-foreground">{s.revenue}</span>
               </div>
             );
@@ -214,7 +204,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
 
       {/* Download buttons */}
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] text-muted-foreground font-medium">Download PPTX</p>
+        <p className="text-[11px] text-muted-foreground font-medium">{t("analytics_bi_investor_download_pptx")}</p>
         {FORMAT_CARDS.map((card) => (
           <Button
             key={card.id}
@@ -245,7 +235,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
         onClick={() => void handleGenerate()}
       >
         <ChevronRight className="w-3 h-3" />
-        Regenerate
+        {t("analytics_bi_investor_regenerate")}
       </Button>
     </div>
   );

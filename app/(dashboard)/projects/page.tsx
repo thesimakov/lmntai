@@ -46,6 +46,8 @@ function ProjectsPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deletingBulk, setDeletingBulk] = useState(false);
 
   const loadProjects = useCallback(async () => {
     setIsLoading(true);
@@ -113,6 +115,42 @@ function ProjectsPageContent() {
     [t]
   );
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const deleteSelected = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    const confirmed =
+      typeof window !== "undefined" &&
+      window.confirm(`Удалить ${count} ${count === 1 ? "проект" : "проекта(-ов)"}?`);
+    if (!confirmed) return;
+    setDeletingBulk(true);
+    const ids = Array.from(selectedIds);
+    const results = await Promise.allSettled(
+      ids.map((id) =>
+        fetch(`/api/projects/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+          credentials: "include"
+        })
+      )
+    );
+    const deletedIds = ids.filter((_, i) => results[i]?.status === "fulfilled" && (results[i] as PromiseFulfilledResult<Response>).value.ok);
+    setProjects((prev) => prev.filter((p) => !deletedIds.includes(p.id)));
+    setSelectedIds(new Set());
+    setDeletingBulk(false);
+    const failed = ids.length - deletedIds.length;
+    if (failed > 0) {
+      window.alert(`Не удалось удалить ${failed} проект(а).`);
+    }
+  }, [selectedIds]);
+
   function formatCreatedAt(raw: string) {
     const date = new Date(raw);
     if (Number.isNaN(date.getTime())) return raw;
@@ -135,10 +173,28 @@ function ProjectsPageContent() {
               {projects.length} {t("projects_count")}
             </p>
           </div>
-          <Button type="button" onClick={() => router.push("/projects/new")}>
-            <Rocket className="h-4 w-4" />
-            {t("projects_new")}
-          </Button>
+          <div className="flex items-center gap-2">
+            {selectedIds.size > 0 ? (
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={deletingBulk}
+                onClick={() => void deleteSelected()}
+                className="gap-1.5"
+              >
+                {deletingBulk ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4" />
+                )}
+                Удалить {selectedIds.size}
+              </Button>
+            ) : null}
+            <Button type="button" onClick={() => router.push("/projects/new")}>
+              <Rocket className="h-4 w-4" />
+              {t("projects_new")}
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -164,12 +220,15 @@ function ProjectsPageContent() {
 
         {!isLoading && !loadError && projects.length > 0 ? (
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-            {projects.map((project) => (
+            {projects.map((project) => {
+              const isSelected = selectedIds.has(project.id);
+              return (
               <Card
                 key={project.id}
                 className={cn(
                   "overflow-hidden border-border/80 p-0 shadow-sm transition-all",
-                  "hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+                  "hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md",
+                  isSelected && "border-primary/50 ring-2 ring-primary/20"
                 )}
               >
                 <div className="relative aspect-video w-full overflow-hidden bg-muted/50">
@@ -191,6 +250,15 @@ function ProjectsPageContent() {
                     className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-black/5 dark:ring-white/10"
                     aria-hidden
                   />
+                  <div className="absolute left-2.5 top-2.5">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(project.id)}
+                      aria-label={`Выбрать проект ${project.name}`}
+                      className="size-5 cursor-pointer rounded border-2 border-white/80 bg-background/80 accent-primary shadow-sm backdrop-blur-sm"
+                    />
+                  </div>
                 </div>
 
                 <CardContent className="space-y-3 p-4 pt-3">
@@ -235,7 +303,8 @@ function ProjectsPageContent() {
                   </div>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         ) : null}
       </div>

@@ -1,5 +1,19 @@
 {
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash /Users/thesimakov/Documents/GitHub/lmntai/.claude/hooks/tsc-check.sh",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }

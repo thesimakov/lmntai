@@ -94,7 +94,7 @@ export async function POST(
   try {
     result1 = await callAI(messages);
   } catch {
-    return apiError("AI service temporarily unavailable", 502);
+    return apiError("AI сервис временно недоступен", 502);
   }
 
   const v1 = tryParseGraph(result1.text);
@@ -112,7 +112,7 @@ export async function POST(
   try {
     result2 = await callAI(retryMessages);
   } catch {
-    return apiError("AI service temporarily unavailable", 502);
+    return apiError("AI сервис временно недоступен", 502);
   }
 
   const v2 = tryParseGraph(result2.text);

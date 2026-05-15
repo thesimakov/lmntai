@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { LineChart, Loader2, Download, ChevronRight } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import {
   ComposedChart,
   Area,
@@ -54,14 +55,18 @@ async function downloadForecastPptx(projectId: string) {
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "forecast.pptx";
-  a.click();
-  URL.revokeObjectURL(url);
+  try {
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "forecast.pptx";
+    a.click();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function AnalyticsForecastPanel({ projectId }: Props) {
+  const { t } = useI18n();
   const dashboard = useAnalyticsStore((s) => s.dashboard);
   const forecastReport = useAnalyticsStore((s) => s.forecastReport);
   const forecastStatus = useAnalyticsStore((s) => s.forecastStatus);
@@ -71,7 +76,6 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
   const setForecastError = useAnalyticsStore((s) => s.setForecastError);
 
   const handleGenerate = useCallback(async () => {
-    setForecastError("");
     setForecastStatus("generating");
     try {
       const res = await fetch(`/api/analytics/${projectId}/forecast`, {
@@ -85,6 +89,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
       const data = (await res.json()) as { data?: { report?: unknown } };
       const parsed = forecastReportSchema.safeParse(data.data?.report);
       if (!parsed.success) {
+        setForecastStatus("idle");
         setForecastError("Invalid response from server");
         return;
       }
@@ -100,7 +105,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
     return (
       <div className="flex flex-col gap-3 p-4">
         <p className="text-xs text-muted-foreground">
-          Run base analysis first to generate a forecast.
+          {t("analytics_bi_forecast_need_analysis")}
         </p>
       </div>
     );
@@ -111,9 +116,9 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
       <div className="flex flex-col items-center justify-center gap-3 p-6">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
         <p className="text-xs text-muted-foreground text-center">
-          Generating forecast…
+          {t("analytics_bi_forecast_generating")}
           <br />
-          This may take 30–60 seconds.
+          {t("analytics_bi_forecast_wait")}
         </p>
       </div>
     );
@@ -123,7 +128,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
     return (
       <div className="flex flex-col gap-3 p-4">
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Generate a 24-month financial forecast with confidence intervals.
+          {t("analytics_bi_forecast_desc")}
         </p>
         {forecastStatus === "error" && forecastError && (
           <p className="text-xs text-red-500">{forecastError}</p>
@@ -134,7 +139,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
           onClick={() => void handleGenerate()}
         >
           <LineChart className="w-3.5 h-3.5" />
-          Generate Forecast
+          {t("analytics_bi_forecast_generate")}
         </Button>
       </div>
     );
@@ -158,6 +163,7 @@ function ReadyState({
   report: ForecastReport;
   handleGenerate: () => Promise<void>;
 }) {
+  const { t } = useI18n();
   const [selectedMetric, setSelectedMetric] = useState(0);
   const [horizon, setHorizon] = useState<Horizon>("12m");
   const [downloading, setDownloading] = useState(false);
@@ -316,7 +322,7 @@ function ReadyState({
               await downloadForecastPptx(projectId);
             } catch (err) {
               setDownloadError(
-                err instanceof Error ? err.message : "Download failed"
+                err instanceof Error ? err.message : t("analytics_bi_forecast_download")
               );
             } finally {
               setDownloading(false);
@@ -328,7 +334,7 @@ function ReadyState({
           ) : (
             <Download className="w-3 h-3" />
           )}
-          Download Forecast PPTX
+          {t("analytics_bi_forecast_download")}
         </Button>
         {downloadError && (
           <p className="text-xs text-red-500">{downloadError}</p>
@@ -343,7 +349,7 @@ function ReadyState({
         onClick={() => void handleGenerate()}
       >
         <ChevronRight className="w-3 h-3" />
-        Regenerate
+        {t("analytics_bi_forecast_regenerate")}
       </Button>
     </div>
   );

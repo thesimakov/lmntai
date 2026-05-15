@@ -86,7 +86,6 @@ export async function POST(
             type: "error",
             message: "AI returned invalid JSON. Please try again.",
           });
-          controller.close();
           return;
         }
 
@@ -96,7 +95,6 @@ export async function POST(
             type: "error",
             message: "AI response did not match expected schema. Please try again.",
           });
-          controller.close();
           return;
         }
 

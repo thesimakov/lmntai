@@ -108,7 +108,7 @@ export default function PromptBuildPage() {
   // ── ComponentGraph generation (website projectKind) ──
   const sendGenerateGraph = useCallback(async (prompt: string) => {
     const projectId = useBuildEditorStore.getState().sessionId;
-    if (!projectId) { toast.error("Project not ready"); return; }
+    if (!projectId) { toast.error("Проект не готов"); return; }
     const s = useBuildEditorStore.getState();
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     s.setIsGenerating(true);
@@ -121,7 +121,7 @@ export default function PromptBuildPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
-        toast.error(err.error ?? "Generation failed");
+        toast.error(err.error ?? t("playground_generation_failed"));
         s.setIsGenerating(false);
         return;
       }
@@ -129,7 +129,7 @@ export default function PromptBuildPage() {
       s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
       s.appendMessage({ id: createId(), role: "assistant", content: "Сайт сгенерирован. Вы можете редактировать его в Lemnity Box.", sentAt: Date.now() });
     } catch {
-      toast.error("Generation failed. Please try again.");
+      toast.error(t("playground_generation_failed"));
     } finally {
       s.setIsGenerating(false);
     }
@@ -138,7 +138,7 @@ export default function PromptBuildPage() {
   // ── SlideGraph generation (presentation projectKind) ──
   const sendGenerateSlides = useCallback(async (prompt: string) => {
     const projectId = useBuildEditorStore.getState().sessionId;
-    if (!projectId) { toast.error("Project not ready"); return; }
+    if (!projectId) { toast.error("Проект не готов"); return; }
     const s = useBuildEditorStore.getState();
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     s.setIsGenerating(true);
@@ -151,7 +151,7 @@ export default function PromptBuildPage() {
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: "Unknown error" })) as { error?: string };
-        toast.error(err.error ?? "Generation failed");
+        toast.error(err.error ?? t("playground_generation_failed"));
         s.setIsGenerating(false);
         return;
       }
@@ -159,11 +159,11 @@ export default function PromptBuildPage() {
       s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
       s.appendMessage({ id: createId(), role: "assistant", content: "Презентация сгенерирована. Кликайте по слайдам для редактирования.", sentAt: Date.now() });
     } catch {
-      toast.error("Generation failed. Please try again.");
+      toast.error(t("playground_generation_failed"));
     } finally {
       s.setIsGenerating(false);
     }
-  }, []);
+  }, [t]);
 
   // ── SlideGraph chat (presentation projectKind, after slides generated) ──
   const sendSlidesChat = useCallback(async (text: string) => {
@@ -479,6 +479,22 @@ export default function PromptBuildPage() {
   );
   useEffect(() => { if (!documentTabVisible && contentTab === "document") setContentTab("preview"); }, [documentTabVisible, contentTab, setContentTab]);
   useEffect(() => { if (contentTab === "document") setVisualLayoutEditor(true); }, [contentTab, setVisualLayoutEditor]);
+
+  // ── Load snapshot versions on mount / when project changes ──
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    void fetch(`/api/projects/${encodeURIComponent(sessionId)}/snapshots`, { credentials: "include" })
+      .then(async (res) => {
+        if (!res.ok || cancelled) return;
+        const data = (await res.json().catch(() => null)) as { snapshots?: import("@/lib/stores/use-build-editor-store").ProjectSnapshotMeta[] } | null;
+        if (Array.isArray(data?.snapshots) && !cancelled) {
+          useBuildEditorStore.getState().setVersions(data.snapshots);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [sessionId]);
 
   const planFromSession = String(session?.user?.plan ?? "");
   const hasCustomDomainAccess = planFromSession === "PRO" || planFromSession === "TEAM" || planFromSession === "BUSINESS";

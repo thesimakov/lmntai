@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Bot, CheckCircle2, XCircle, Loader2, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 
 type AgentResult = {
   name: string;
@@ -21,29 +22,38 @@ interface AnalyticsAgentsPanelProps {
 }
 
 export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
+  const { t } = useI18n();
   const [insights, setInsights] = useState<AgentInsights | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const runAgents = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const isFirstRun = insights === null;
     setRunning(true);
     setError(null);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/agents`, { method: "POST" });
+      const res = await fetch(`/api/analytics/${projectId}/agents`, { method: "POST", signal: controller.signal });
       const data = await res.json() as { data?: { insights: AgentInsights }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Agents failed");
       } else if (data.data?.insights) {
         setInsights(data.data.insights);
-        setExpandedAgent(data.data.insights.agents[0]?.name ?? null);
+        if (isFirstRun) {
+          setExpandedAgent(data.data.insights.agents[0]?.name ?? null);
+        }
       }
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setRunning(false);
     }
-  }, [projectId]);
+  }, [projectId, insights]);
 
   if (!insights && !running && !error) {
     return (
@@ -51,13 +61,13 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
         <div className="p-2.5 rounded-full bg-primary/10">
           <Bot className="w-6 h-6 text-primary" />
         </div>
-        <p className="text-sm font-medium">AI Agent Analysis</p>
+        <p className="text-sm font-medium">{t("analytics_bi_agents_title")}</p>
         <p className="text-xs text-muted-foreground leading-relaxed">
-          Three specialized AI agents analyze your data in parallel: Financial Analyst, BI Insight, and Schema Mapping.
+          {t("analytics_bi_agents_desc")}
         </p>
         <Button size="sm" className="gap-1.5 mt-1" onClick={() => void runAgents()}>
           <Play className="w-3.5 h-3.5" />
-          Run Agents
+          {t("analytics_bi_agents_run")}
         </Button>
       </div>
     );
@@ -67,9 +77,9 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 p-6 text-center h-full">
         <Loader2 className="w-6 h-6 text-primary animate-spin" />
-        <p className="text-sm font-medium">Running agents in parallel...</p>
+        <p className="text-sm font-medium">{t("analytics_bi_agents_running")}</p>
         <p className="text-xs text-muted-foreground">
-          Financial Analyst · BI Insight · Schema Mapping
+          {t("analytics_bi_agents_names")}
         </p>
       </div>
     );
@@ -81,7 +91,7 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
         <XCircle className="w-6 h-6 text-red-500" />
         <p className="text-sm text-red-500">{error}</p>
         <Button size="sm" variant="outline" onClick={() => void runAgents()}>
-          Retry
+          {t("analytics_bi_agents_retry")}
         </Button>
       </div>
     );
@@ -104,7 +114,7 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
           disabled={running}
         >
           <Play className="w-3 h-3" />
-          Re-run
+          {t("analytics_bi_agents_rerun")}
         </Button>
       </div>
 

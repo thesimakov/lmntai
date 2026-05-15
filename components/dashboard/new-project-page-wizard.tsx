@@ -33,7 +33,7 @@ import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
-type BuilderChoice = "none" | "ai";
+type BuilderChoice = "none" | "ai" | "marketing" | "presentation";
 
 const TEMPLATE_TAB_IDS = [
   "business",
@@ -90,6 +90,10 @@ export function NewProjectPageWizard() {
 
   const [builderChoice, setBuilderChoice] = useState<BuilderChoice>("none");
   const [activeTemplateTab, setActiveTemplateTab] = useState<TemplateTabId>("business");
+  const [marketingGoal, setMarketingGoal] = useState("");
+  const [marketingChannel, setMarketingChannel] = useState("");
+  const [presentationTopic, setPresentationTopic] = useState("");
+  const [presentationSlides, setPresentationSlides] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [domainInput, setDomainInput] = useState("");
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -243,6 +247,56 @@ export function NewProjectPageWizard() {
       setCreatingProject(false);
     }
   }, [creatingProject, createProjectCell, domainValid, nameValid, router, subdomainCheck, t]);
+
+  const navigateNewProjectToMarketing = useCallback(async () => {
+    setAttemptedSubmit(true);
+    if (!nameValid || !domainValid || subdomainCheck !== "available") {
+      toast.message(t("projects_template_fix_form_toast"));
+      return;
+    }
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const projectId = await createProjectCell("build");
+      const params = new URLSearchParams({ projectKind: "marketing" });
+      if (marketingGoal) params.set("goal", marketingGoal);
+      if (marketingChannel) params.set("channel", marketingChannel);
+      clearLemnityBoxCanvasDraft();
+      router.push(`${buildPlaygroundBuildEditUrl({ projectId })}?${params.toString()}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+      }
+    } catch (e) {
+      toastProjectCreateFailure(e, t("projects_create_failed"));
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [creatingProject, createProjectCell, domainValid, marketingChannel, marketingGoal, nameValid, router, subdomainCheck, t]);
+
+  const navigateNewProjectToPresentation = useCallback(async () => {
+    setAttemptedSubmit(true);
+    if (!nameValid || !domainValid || subdomainCheck !== "available") {
+      toast.message(t("projects_template_fix_form_toast"));
+      return;
+    }
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const projectId = await createProjectCell("build");
+      const params = new URLSearchParams({ projectKind: "presentation" });
+      if (presentationTopic) params.set("topic", presentationTopic);
+      if (presentationSlides) params.set("slides", presentationSlides);
+      clearLemnityBoxCanvasDraft();
+      router.push(`${buildPlaygroundBuildEditUrl({ projectId })}?${params.toString()}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+      }
+    } catch (e) {
+      toastProjectCreateFailure(e, t("projects_create_failed"));
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [creatingProject, createProjectCell, domainValid, nameValid, presentationSlides, presentationTopic, router, subdomainCheck, t]);
 
   const onNameBlur = () => {
     if (domainInput.trim()) return;
@@ -741,6 +795,79 @@ export function NewProjectPageWizard() {
                 </CardContent>
               </Card>
 
+
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "marketing"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("marketing");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("marketing");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                  "cursor-pointer border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-background to-background",
+                  "hover:border-emerald-400/80 hover:shadow-md dark:border-emerald-900/55 dark:from-emerald-950/40 dark:hover:border-emerald-700",
+                  builderChoice === "marketing" && "ring-2 ring-emerald-500/35",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-50">
+                    <TrendingUp className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      Маркетинг AI
+                    </span>
+                    <p className="text-sm font-normal leading-snug text-muted-foreground">
+                      Анализ каналов, рекламных кампаний и аудитории. Экспорт отчёта.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "presentation"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("presentation");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("presentation");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                  "cursor-pointer border-orange-200/90 bg-gradient-to-br from-orange-50 via-background to-background",
+                  "hover:border-orange-400/80 hover:shadow-md dark:border-orange-900/55 dark:from-orange-950/40 dark:hover:border-orange-700",
+                  builderChoice === "presentation" && "ring-2 ring-orange-500/35",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-50">
+                    <Presentation className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      Презентация AI
+                    </span>
+                    <p className="text-sm font-normal leading-snug text-muted-foreground">
+                      Опишите тему — AI сгенерирует слайды. Редактируйте и экспортируйте в PPTX.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
             </div>
           </section>
 
@@ -750,6 +877,121 @@ export function NewProjectPageWizard() {
               aria-labelledby="ai-page-templates-heading"
             >
               {renderTemplates()}
+            </section>
+          ) : null}
+
+          {builderChoice === "marketing" ? (
+            <section className="space-y-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20 sm:p-6">
+              <header className="space-y-1">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
+                  Маркетинг AI
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Укажите цель и каналы — AI проанализирует данные и подготовит отчёт.
+                </p>
+              </header>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Цель кампании
+                  </label>
+                  <Input
+                    value={marketingGoal}
+                    onChange={(e) => setMarketingGoal(e.target.value)}
+                    placeholder="Увеличить продажи на 30%..."
+                    className="h-11 border-emerald-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/30 dark:border-emerald-800/60"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Каналы продвижения
+                  </label>
+                  <Input
+                    value={marketingChannel}
+                    onChange={(e) => setMarketingChannel(e.target.value)}
+                    placeholder="Instagram, VK, Google Ads..."
+                    className="h-11 border-emerald-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-emerald-500/30 dark:border-emerald-800/60"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                disabled={!canProceed || creatingProject}
+                onClick={() => void navigateNewProjectToMarketing()}
+                className="w-full rounded-full border-emerald-300/80 bg-emerald-600 font-semibold text-white hover:bg-emerald-700 dark:bg-emerald-700 dark:hover:bg-emerald-600 sm:w-auto sm:min-w-[200px]"
+              >
+                {creatingProject ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                    Создание...
+                  </>
+                ) : (
+                  <>
+                    <TrendingUp className="mr-2 size-4" aria-hidden />
+                    Создать маркетинговый проект
+                  </>
+                )}
+              </Button>
+            </section>
+          ) : null}
+
+          {builderChoice === "presentation" ? (
+            <section className="space-y-5 rounded-xl border border-orange-200/60 bg-orange-50/30 p-5 dark:border-orange-800/40 dark:bg-orange-950/20 sm:p-6">
+              <header className="space-y-1">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Presentation className="size-5 text-orange-600 dark:text-orange-400" aria-hidden />
+                  Презентация AI
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Опишите тему и количество слайдов — AI сгенерирует готовую презентацию.
+                </p>
+              </header>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Тема презентации
+                  </label>
+                  <Input
+                    value={presentationTopic}
+                    onChange={(e) => setPresentationTopic(e.target.value)}
+                    placeholder="Стратегия развития компании на 2026 год..."
+                    className="h-11 border-orange-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-orange-500/30 dark:border-orange-800/60"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">
+                    Количество слайдов
+                  </label>
+                  <Input
+                    value={presentationSlides}
+                    onChange={(e) => setPresentationSlides(e.target.value)}
+                    placeholder="10"
+                    type="number"
+                    min={3}
+                    max={50}
+                    className="h-11 border-orange-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-orange-500/30 dark:border-orange-800/60"
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                disabled={!canProceed || creatingProject}
+                onClick={() => void navigateNewProjectToPresentation()}
+                className="w-full rounded-full bg-orange-600 font-semibold text-white hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 sm:w-auto sm:min-w-[200px]"
+              >
+                {creatingProject ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                    Создание...
+                  </>
+                ) : (
+                  <>
+                    <Presentation className="mr-2 size-4" aria-hidden />
+                    Создать презентацию
+                  </>
+                )}
+              </Button>
             </section>
           ) : null}
         </div>

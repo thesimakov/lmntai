@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
+import { useI18n } from "@/components/i18n-provider";
 
 interface Props { projectId: string }
 
 export function AnalyticsChatPanel({ projectId }: Props) {
+  const { t } = useI18n();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
@@ -55,20 +57,27 @@ export function AnalyticsChatPanel({ projectId }: Props) {
       let buf = "";
       let accumulated = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
+      function processSseLine(line: string) {
+        if (!line.startsWith("data: ")) return;
+        try {
           const payload = JSON.parse(line.slice(6)) as { type: string; text?: string };
           if (payload.type === "delta" && payload.text) {
             accumulated += payload.text;
             updateLastAssistantMessage(accumulated);
           }
+        } catch { /* ignore malformed SSE frame */ }
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (buf) processSseLine(buf);
+          break;
         }
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+        for (const line of lines) processSseLine(line);
       }
     } finally {
       setIsChatStreaming(false);
@@ -78,13 +87,13 @@ export function AnalyticsChatPanel({ projectId }: Props) {
   return (
     <div className="flex flex-col h-full border-r bg-card">
       <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        AI Chat
+        {t("analytics_bi_chat_header")}
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {chatMessages.length === 0 && (
           <p className="text-xs text-muted-foreground text-center pt-6">
-            Ask anything about the financial data
+            {t("analytics_bi_chat_empty")}
           </p>
         )}
         {chatMessages.map((msg) => (
@@ -109,7 +118,7 @@ export function AnalyticsChatPanel({ projectId }: Props) {
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about the data..."
+          placeholder={t("analytics_bi_chat_placeholder")}
           className="text-xs resize-none min-h-[60px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void sendMessage(); }

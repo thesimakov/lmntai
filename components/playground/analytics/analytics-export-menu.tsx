@@ -90,11 +90,11 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: shareRole }),
       });
-      if (!res.ok) throw new Error("Failed to create share link");
+      if (!res.ok) throw new Error(t("analytics_bi_share_error"));
       const data = await res.json() as { data: { url: string } };
       setShareUrl(data.data.url);
     } catch {
-      toast.error("Could not create share link");
+      toast.error(t("analytics_bi_share_error"));
     } finally {
       setShareLoading(false);
     }
@@ -103,7 +103,7 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
   function copyShareUrl() {
     if (!shareUrl) return;
     void navigator.clipboard.writeText(shareUrl);
-    toast.success("Link copied to clipboard");
+    toast.success(t("analytics_bi_share_copied"));
   }
 
   async function exportPptx() {
@@ -115,14 +115,17 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ format: "pptx" }),
       });
-      if (!res.ok) throw new Error("Export failed");
+      if (!res.ok) throw new Error(t("analytics_bi_export"));
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${dashboard.meta.companyName}_${dashboard.meta.period}.pptx`.replace(/\s+/g, "_");
-      a.click();
-      URL.revokeObjectURL(url);
+      try {
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${dashboard.meta.companyName}_${dashboard.meta.period}.pptx`.replace(/\s+/g, "_");
+        a.click();
+      } finally {
+        URL.revokeObjectURL(url);
+      }
     } finally {
       setLoadingPptx(false);
     }
@@ -138,6 +141,7 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
       );
     } catch (err) {
       console.error("[analytics] PDF export failed:", err);
+      toast.error(t("build_export_pdf_error"));
     }
   }
 
@@ -146,11 +150,14 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
     const csv = dashboardToCsv(dashboard);
     const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${dashboard.meta.companyName}_${dashboard.meta.period}_data.csv`.replace(/\s+/g, "_");
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${dashboard.meta.companyName}_${dashboard.meta.period}_data.csv`.replace(/\s+/g, "_");
+      a.click();
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   }
 
   return (
@@ -182,7 +189,7 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
             className="gap-2 cursor-pointer text-sm"
           >
             <Link2 className="w-3.5 h-3.5" />
-            Share link…
+            {t("analytics_bi_share_link")}
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -190,11 +197,11 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
       <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle className="text-sm font-semibold">Share analytics dashboard</DialogTitle>
+            <DialogTitle className="text-sm font-semibold">{t("analytics_bi_share_dialog_title")}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-1">
             <div className="space-y-1.5">
-              <p className="text-xs text-muted-foreground font-medium">Access level</p>
+              <p className="text-xs text-muted-foreground font-medium">{t("analytics_bi_share_access_level")}</p>
               <div className="grid gap-1.5">
                 {(Object.entries(ANALYTICS_ROLES) as [AnalyticsRole, { label: string; description: string }][]).map(([role, info]) => (
                   <label key={role} className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-border p-2.5 hover:bg-muted/40 has-[:checked]:border-foreground/40 has-[:checked]:bg-muted/30">
@@ -220,10 +227,10 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
                 <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
                   <span className="flex-1 truncate text-xs font-mono text-foreground/70">{shareUrl}</span>
                   <button type="button" onClick={copyShareUrl} className="shrink-0 text-xs font-medium text-primary hover:underline">
-                    Copy
+                    {t("analytics_bi_share_copy")}
                   </button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Anyone with this link can view the dashboard.</p>
+                <p className="text-[11px] text-muted-foreground">{t("analytics_bi_share_hint")}</p>
               </div>
             ) : (
               <Button
@@ -233,7 +240,7 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
                 disabled={shareLoading}
               >
                 {shareLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Link2 className="w-3.5 h-3.5" />}
-                Generate link
+                {t("analytics_bi_share_generate")}
               </Button>
             )}
           </div>

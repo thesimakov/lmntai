@@ -21,7 +21,11 @@ import { AnalyticsChatPanel } from "./analytics-chat-panel";
 import { AnalyticsProgressOverlay } from "./analytics-progress-overlay";
 import { AnalyticsExportMenu } from "./analytics-export-menu";
 import { AnalyticsInvestorPanel } from "./analytics-investor-panel";
-import { AnalyticsForecastPanel } from "./analytics-forecast-panel";
+import dynamic from "next/dynamic";
+const AnalyticsForecastPanel = dynamic(
+  () => import("./analytics-forecast-panel").then((m) => ({ default: m.AnalyticsForecastPanel })),
+  { ssr: false, loading: () => <div className="p-4 text-xs text-muted-foreground">Загрузка…</div> }
+);
 import { AnalyticsAgentsPanel } from "./analytics-agents-panel";
 import { AnalyticsBenchmarkPanel } from "./analytics-benchmark-panel";
 import { cn } from "@/lib/utils";
@@ -83,32 +87,40 @@ export function AnalyticsEditor() {
       let buf = "";
       let isDone = false;
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
+      function processSseLine(line: string): boolean {
+        if (!line.startsWith("data: ")) return false;
+        try {
           const payload = JSON.parse(line.slice(6)) as {
             type: string;
             progress?: number;
             dashboard?: AnalysisDashboard;
             message?: string;
           };
-
           if (payload.type === "progress" && payload.progress !== undefined) {
             setProgress(payload.progress);
           } else if (payload.type === "complete" && payload.dashboard) {
             setDashboard(payload.dashboard);
-            isDone = true;
-            break;
+            return true;
           } else if (payload.type === "error") {
             setError(payload.message ?? "Analysis failed");
           }
+        } catch { /* ignore malformed SSE frame */ }
+        return false;
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          if (buf) isDone = processSseLine(buf);
+          break;
+        }
+
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (processSseLine(line)) { isDone = true; break; }
         }
 
         if (isDone) break;
