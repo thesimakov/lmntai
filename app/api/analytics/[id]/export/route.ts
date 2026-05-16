@@ -15,6 +15,7 @@ import {
   buildBoardReportPptx,
   buildDueDiligencePptx,
 } from "@/lib/investor-pptx-export";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const exportBodySchema = z.object({
   format: z.enum(["pptx", "investor-vc-pptx", "investor-board-pptx", "investor-dd-pptx", "forecast-pptx"]),
@@ -45,6 +46,7 @@ export async function POST(
   const bodyResult = await parseBody(req, exportBodySchema);
   if (!bodyResult.ok) return bodyResult.response;
   const { format } = bodyResult.data;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
 
   const state = await getSandboxProjectState(projectId);
   if (!state) return apiError("No analysis found", 404);
@@ -98,16 +100,16 @@ export async function POST(
   }
 
   if (format === "investor-vc-pptx") {
-    const buffer = await buildVcPitchPptx(report, dashboard);
+    const buffer = await buildVcPitchPptx(report, dashboard, uiLanguage);
     return pptxResponse(buffer, `${baseFilename}_VC_Pitch.pptx`);
   }
 
   if (format === "investor-board-pptx") {
-    const buffer = await buildBoardReportPptx(report, dashboard);
+    const buffer = await buildBoardReportPptx(report, dashboard, uiLanguage);
     return pptxResponse(buffer, `${baseFilename}_Board_Report.pptx`);
   }
 
   // investor-dd-pptx
-  const buffer = await buildDueDiligencePptx(report, dashboard);
+  const buffer = await buildDueDiligencePptx(report, dashboard, uiLanguage);
   return pptxResponse(buffer, `${baseFilename}_Due_Diligence.pptx`);
 }

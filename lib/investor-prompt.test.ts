@@ -48,4 +48,14 @@ describe("buildInvestorPrompt", () => {
     const messages = buildInvestorPrompt(MOCK_DASHBOARD);
     expect(messages[0].content).toContain("riskScore");
   });
+
+  it("uses russian language instructions by default", () => {
+    const messages = buildInvestorPrompt(MOCK_DASHBOARD);
+    expect(messages[0].content).toContain("Target language for all human-readable text fields: Russian");
+  });
+
+  it("uses english language instructions when explicitly requested", () => {
+    const messages = buildInvestorPrompt(MOCK_DASHBOARD, "en");
+    expect(messages[0].content).toContain("Target language for all human-readable text fields: English");
+  });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   MessageSquare,
@@ -32,6 +32,8 @@ import { cn } from "@/lib/utils";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 
 type LeftTab = "chat" | "investor" | "forecast" | "agents" | "benchmark";
+const MIN_LEFT_PANEL_WIDTH = 240;
+const MAX_LEFT_PANEL_WIDTH = 480;
 
 export function AnalyticsEditor() {
   const { t, lang } = useI18n();
@@ -40,11 +42,13 @@ export function AnalyticsEditor() {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>("chat");
+  const [leftPanelWidth, setLeftPanelWidth] = useState(MIN_LEFT_PANEL_WIDTH);
 
   const {
     status,
     progress,
     dashboard,
+    forecastReport,
     errorMessage,
     setProjectId,
     setDashboard,
@@ -179,6 +183,35 @@ export function AnalyticsEditor() {
     { id: "benchmark", Icon: Target, labelKey: "analytics_bi_tab_benchmark" },
   ];
 
+  const startLeftPanelResize = useCallback(
+    (event: ReactMouseEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      const startX = event.clientX;
+      const startWidth = leftPanelWidth;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        const nextWidth = Math.max(
+          MIN_LEFT_PANEL_WIDTH,
+          Math.min(MAX_LEFT_PANEL_WIDTH, startWidth + (moveEvent.clientX - startX))
+        );
+        setLeftPanelWidth(nextWidth);
+      };
+
+      const onMouseUp = () => {
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+      };
+
+      window.addEventListener("mousemove", onMouseMove);
+      window.addEventListener("mouseup", onMouseUp);
+    },
+    [leftPanelWidth]
+  );
+
   return (
     <div className="flex flex-col w-full h-full">
       {/* ── Top bar ── */}
@@ -307,7 +340,10 @@ export function AnalyticsEditor() {
           /* ── Two-column workspace ── */
           <div className="flex flex-1 overflow-hidden">
             {/* Left panel */}
-            <div className="w-60 shrink-0 flex flex-col border-r border-border overflow-hidden bg-white">
+            <div
+              className="shrink-0 flex flex-col border-r border-border overflow-hidden bg-white"
+              style={{ width: `${leftPanelWidth}px` }}
+            >
               <div className="flex shrink-0 border-b border-border">
                 {leftTabs.map(({ id, Icon, labelKey }) => (
                   <button
@@ -342,9 +378,17 @@ export function AnalyticsEditor() {
               </div>
             </div>
 
+            <div
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize analytics sidebar"
+              className="w-1 shrink-0 cursor-col-resize bg-border/40 hover:bg-primary/40 transition-colors"
+              onMouseDown={startLeftPanelResize}
+            />
+
             {/* Main dashboard area */}
             <div ref={dashboardRef} className="flex-1 overflow-auto bg-[#FAFAFA]">
-              <AnalyticsDashboard dashboard={dashboard!} />
+              <AnalyticsDashboard dashboard={dashboard!} forecastReport={forecastReport} />
             </div>
           </div>
         ) : null}

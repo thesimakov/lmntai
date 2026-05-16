@@ -9,13 +9,20 @@ import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { forecastReportSchema } from "@/lib/forecast-schema";
 import { normalizeForecastReport } from "@/lib/forecast-report-normalize";
 import { chargeTokensSafely } from "@/lib/token-billing";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
+import type { UiLanguage } from "@/lib/i18n";
 
 const FORECAST_MODEL = "anthropic/claude-sonnet-4.5";
 
-const RETRY_MESSAGE =
-  "Your response was not valid JSON or did not match the required schema. " +
-  "Return ONLY the JSON object, no markdown, no code fences. " +
-  "Ensure metrics has 3-5 items, each with at least 1 point, generatedAt is a valid ISO timestamp, and trend is only up/down/neutral.";
+function buildRetryMessage(lang: UiLanguage): string {
+  const language = lang === "en" ? "English" : lang === "tg" ? "Tajik" : "Russian";
+  return (
+    "Your response was not valid JSON or did not match the required schema. " +
+    "Return ONLY the JSON object, no markdown, no code fences. " +
+    `All human-readable text fields must be in ${language}. ` +
+    "Ensure metrics has 3-5 items, each with at least 1 point, generatedAt is a valid ISO timestamp, and trend is only up/down/neutral."
+  );
+}
 
 function tryParseReport(text: string): ReturnType<typeof forecastReportSchema.safeParse> | null {
   try {
@@ -67,12 +74,13 @@ async function callForecastAI(
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const user = guard.data.user;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
 
   const { id: projectId } = await params;
 
@@ -97,7 +105,7 @@ export async function POST(
     return apiError("Analysis data is corrupted.", 422);
   }
 
-  const messages = buildForecastPrompt(dashboard);
+  const messages = buildForecastPrompt(dashboard, uiLanguage);
 
   // First attempt
   let result1: Awaited<ReturnType<typeof callForecastAI>>;
@@ -128,7 +136,7 @@ export async function POST(
   const retryMessages = [
     ...messages,
     { role: "assistant" as const, content: result1.text },
-    { role: "user" as const, content: RETRY_MESSAGE },
+    { role: "user" as const, content: buildRetryMessage(uiLanguage) },
   ];
   let result2: Awaited<ReturnType<typeof callForecastAI>>;
   try {

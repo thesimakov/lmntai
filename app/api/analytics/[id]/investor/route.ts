@@ -5,12 +5,11 @@ import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildInvestorPrompt } from "@/lib/investor-prompt";
-import { analysisDashboardSchema } from "@/lib/analytics-schema";
+import { analysisDashboardSchema, type AnalysisDashboard } from "@/lib/analytics-schema";
 import { investorReportSchema, type InvestorReport } from "@/lib/investor-schema";
 import { normalizeInvestorReport } from "@/lib/investor-report-normalize";
 import { chargeTokensSafely } from "@/lib/token-billing";
 import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
-import type { AnalysisDashboard } from "@/lib/analytics-schema";
 import type { UiLanguage } from "@/lib/i18n";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +17,16 @@ export const runtime = "nodejs";
 
 const INVESTOR_MODEL = "anthropic/claude-sonnet-4.5";
 
-const RETRY_MESSAGE =
-  "Your response was not valid JSON or did not match the required schema. " +
-  "Return ONLY the JSON object, no markdown, no code fences. " +
-  "Ensure vcPitch has 10 slides, boardReport has 14 slides, dueDiligence has 8 slides. " +
-  "Use riskLabel only: Low, Medium, High, Critical. Use severity only: low, medium, high.";
+function buildRetryMessage(lang: UiLanguage): string {
+  const language = lang === "en" ? "English" : lang === "tg" ? "Tajik" : "Russian";
+  return (
+    "Your response was not valid JSON or did not match the required schema. " +
+    "Return ONLY the JSON object, no markdown, no code fences. " +
+    `All human-readable text must be in ${language}. ` +
+    "Ensure vcPitch has 10 slides, boardReport has 14 slides, dueDiligence has 8 slides. " +
+    "Use riskLabel only: Low, Medium, High, Critical. Use severity only: low, medium, high."
+  );
+}
 
 function tryParseReport(text: string): ReturnType<typeof investorReportSchema.safeParse> | null {
   try {
@@ -307,7 +311,7 @@ export async function POST(
       return apiError("Analysis data is corrupted.", 422);
     }
 
-    const messages = buildInvestorPrompt(dashboard);
+    const messages = buildInvestorPrompt(dashboard, uiLanguage);
 
     // First attempt
     let result1: Awaited<ReturnType<typeof callInvestorAI>>;
@@ -337,7 +341,7 @@ export async function POST(
     const retryMessages = [
       ...messages,
       { role: "assistant" as const, content: result1.text },
-      { role: "user" as const, content: RETRY_MESSAGE },
+      { role: "user" as const, content: buildRetryMessage(uiLanguage) },
     ];
     let result2: Awaited<ReturnType<typeof callInvestorAI>>;
     try {

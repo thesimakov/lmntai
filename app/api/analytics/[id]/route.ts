@@ -5,7 +5,7 @@ import { apiOk, apiError, apiGuardError } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
-import { localizeAnalysisDashboard } from "@/lib/analytics-dashboard-localization";
+import { localizeAnalysisDashboard, applyDashboardLanguageFallback } from "@/lib/analytics-dashboard-localization";
 
 export async function GET(
   req: NextRequest,
@@ -60,6 +60,22 @@ export async function GET(
     } catch (err) {
       console.warn("[analytics] localization skipped:", err);
     }
+  }
+
+  const fallbackLocalizedDashboard = applyDashboardLanguageFallback(dashboard, lang);
+  if (lang !== "en" && JSON.stringify(fallbackLocalizedDashboard) !== JSON.stringify(dashboard)) {
+    dashboard = fallbackLocalizedDashboard;
+    await upsertSandboxProjectState({
+      projectId,
+      sandboxId: state.sandboxId,
+      ownerId: state.ownerId,
+      title: state.title,
+      html: state.html,
+      files: {
+        ...state.files,
+        [localizedKey]: JSON.stringify(dashboard),
+      },
+    });
   }
 
   return apiOk({

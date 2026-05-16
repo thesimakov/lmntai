@@ -19,7 +19,19 @@ const STATUS_STYLES = {
   unknown: { icon: Minus, color: "text-muted-foreground" },
 } satisfies Record<BenchmarkComparison["status"], { icon: React.ComponentType<{ className?: string }>; color: string }>;
 
-function BenchmarkBar({ comparison, statusLabel, yourValueLabel }: { comparison: BenchmarkComparison; statusLabel: string; yourValueLabel: string }) {
+function BenchmarkBar({
+  comparison,
+  statusLabel,
+  yourValueLabel,
+  medianLabel,
+  monthSuffix,
+}: {
+  comparison: BenchmarkComparison;
+  statusLabel: string;
+  yourValueLabel: string;
+  medianLabel: string;
+  monthSuffix: string;
+}) {
   const { icon: Icon, color } = STATUS_STYLES[comparison.status];
   const { median, p25, p75, unit } = comparison;
 
@@ -35,7 +47,7 @@ function BenchmarkBar({ comparison, statusLabel, yourValueLabel }: { comparison:
       ? `${n}%`
       : unit === "x"
       ? `${n}x`
-      : `${n}mo`;
+      : `${n}${monthSuffix}`;
 
   return (
     <div className="space-y-1">
@@ -70,7 +82,7 @@ function BenchmarkBar({ comparison, statusLabel, yourValueLabel }: { comparison:
       {/* Labels */}
       <div className="flex justify-between text-[10px] text-muted-foreground">
         <span>P25: {fmt(p25)}</span>
-        <span>Median: {fmt(median)}</span>
+        <span>{medianLabel}: {fmt(median)}</span>
         <span>P75: {fmt(p75)}</span>
       </div>
 
@@ -84,7 +96,7 @@ function BenchmarkBar({ comparison, statusLabel, yourValueLabel }: { comparison:
 }
 
 export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [report, setReport] = useState<BenchmarkReport | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +109,9 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
     unknown: t("analytics_bi_benchmark_no_data"),
   };
 
+  const medianLabel = lang === "en" ? "Median" : lang === "tg" ? "Медиана" : "Медиана";
+  const monthSuffix = lang === "en" ? "mo" : lang === "tg" ? " моҳ" : " мес";
+
   const runBenchmark = useCallback(async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
@@ -104,7 +119,10 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
     setRunning(true);
     setError(null);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/benchmark`, { method: "POST", signal: controller.signal });
+      const res = await fetch(`/api/analytics/${projectId}/benchmark?lang=${encodeURIComponent(lang)}`, {
+        method: "POST",
+        signal: controller.signal,
+      });
       const data = await res.json() as { report?: BenchmarkReport; data?: { report?: BenchmarkReport }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Benchmark failed");
@@ -123,7 +141,7 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
     } finally {
       setRunning(false);
     }
-  }, [projectId]);
+  }, [lang, projectId]);
 
   if (!report && !running && !error) {
     return (
@@ -198,6 +216,8 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
               comparison={c}
               statusLabel={statusLabels[c.status]}
               yourValueLabel={t("analytics_bi_benchmark_your_value")}
+              medianLabel={medianLabel}
+              monthSuffix={monthSuffix}
             />
           ))}
         </div>

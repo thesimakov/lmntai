@@ -30,8 +30,8 @@ function riskBg(score: number) {
   return "bg-red-500/10 border-red-500/30";
 }
 
-async function downloadPptx(projectId: string, format: string, label: string) {
-  const res = await fetch(`/api/analytics/${projectId}/export`, {
+async function downloadPptx(projectId: string, format: string, label: string, lang: string) {
+  const res = await fetch(`/api/analytics/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ format }),
@@ -53,7 +53,7 @@ async function downloadPptx(projectId: string, format: string, label: string) {
 }
 
 export function AnalyticsInvestorPanel({ projectId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const FORMAT_CARDS = [
     { ...FORMAT_CARD_STYLES[0]!, label: t("analytics_bi_investor_vc_label"), description: t("analytics_bi_investor_vc_desc") },
     { ...FORMAT_CARD_STYLES[1]!, label: t("analytics_bi_investor_board_label"), description: t("analytics_bi_investor_board_desc") },
@@ -76,7 +76,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     setInvestorStatus("generating");
     setDownloadError(null);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/investor`, { method: "POST" });
+      const res = await fetch(`/api/analytics/${projectId}/investor?lang=${encodeURIComponent(lang)}`, { method: "POST" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({})) as { error?: string };
         setInvestorError(err.error ?? "Generation failed");
@@ -97,21 +97,21 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       }
       setInvestorError(err instanceof Error ? err.message : "Generation failed");
     }
-  }, [projectId, setInvestorReport, setInvestorStatus, setInvestorError]);
+  }, [lang, projectId, setInvestorReport, setInvestorStatus, setInvestorError]);
 
   const handleDownload = useCallback(
     async (format: string, label: string) => {
       setDownloadingFormat(format);
       setDownloadError(null);
       try {
-        await downloadPptx(projectId, format, label);
+        await downloadPptx(projectId, format, label, lang);
       } catch (err) {
         setDownloadError(err instanceof Error ? err.message : "Download failed");
       } finally {
         setDownloadingFormat(null);
       }
     },
-    [projectId]
+    [lang, projectId]
   );
 
   if (!dashboard) {

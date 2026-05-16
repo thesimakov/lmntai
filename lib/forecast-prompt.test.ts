@@ -43,4 +43,14 @@ describe("buildForecastPrompt", () => {
     const msgs = buildForecastPrompt(MOCK_DASHBOARD);
     expect(msgs[1].content).toContain("Acme Corp");
   });
+
+  it("uses russian language instructions by default", () => {
+    const msgs = buildForecastPrompt(MOCK_DASHBOARD);
+    expect(msgs[0].content).toContain("Target language for all human-readable text fields: Russian");
+  });
+
+  it("uses english language instructions when requested", () => {
+    const msgs = buildForecastPrompt(MOCK_DASHBOARD, "en");
+    expect(msgs[0].content).toContain("Target language for all human-readable text fields: English");
+  });
 });

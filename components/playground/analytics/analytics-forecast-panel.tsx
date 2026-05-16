@@ -28,6 +28,20 @@ type Horizon = keyof typeof HORIZON_COUNTS;
 
 const CHART_MARGIN = { top: 8, right: 4, left: -20, bottom: 0 } as const;
 
+const METRIC_LABELS: Record<string, { ru: string; en: string; tg: string }> = {
+  revenue: { ru: "Общая выручка", en: "Total Revenue", tg: "Даромади умумӣ" },
+  burn_rate: { ru: "Месячные расходы на разработку", en: "Monthly Development Costs", tg: "Хароҷоти моҳонаи рушд" },
+  mrr: { ru: "Ежемесячный регулярный доход (подписки)", en: "Monthly Recurring Revenue (Subscriptions)", tg: "Даромади такрории моҳона (обуна)" },
+  gross_profit: { ru: "Валовая прибыль", en: "Gross Profit", tg: "Фоидаи умумӣ" },
+  runway: { ru: "Финансовый runway", en: "Cash Runway", tg: "Runway-и нақдӣ" },
+  ebitda: { ru: "EBITDA", en: "EBITDA", tg: "EBITDA" },
+};
+
+function localizedMetricLabel(metric: ForecastMetric, lang: string): string {
+  const langKey = lang === "en" ? "en" : lang === "tg" ? "tg" : "ru";
+  return METRIC_LABELS[metric.key]?.[langKey] ?? metric.label;
+}
+
 function buildChartData(metric: ForecastMetric, horizon: Horizon) {
   const historical = metric.points.filter((p) => p.isHistorical);
   const forecast = metric.points
@@ -43,8 +57,8 @@ function buildChartData(metric: ForecastMetric, horizon: Horizon) {
   }));
 }
 
-async function downloadForecastPptx(projectId: string) {
-  const res = await fetch(`/api/analytics/${projectId}/export`, {
+async function downloadForecastPptx(projectId: string, lang: string) {
+  const res = await fetch(`/api/analytics/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ format: "forecast-pptx" }),
@@ -66,7 +80,7 @@ async function downloadForecastPptx(projectId: string) {
 }
 
 export function AnalyticsForecastPanel({ projectId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const dashboard = useAnalyticsStore((s) => s.dashboard);
   const forecastReport = useAnalyticsStore((s) => s.forecastReport);
   const forecastStatus = useAnalyticsStore((s) => s.forecastStatus);
@@ -78,7 +92,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
   const handleGenerate = useCallback(async () => {
     setForecastStatus("generating");
     try {
-      const res = await fetch(`/api/analytics/${projectId}/forecast`, {
+      const res = await fetch(`/api/analytics/${projectId}/forecast?lang=${encodeURIComponent(lang)}`, {
         method: "POST",
       });
       if (!res.ok) {
@@ -103,7 +117,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
         err instanceof Error ? err.message : "Generation failed"
       );
     }
-  }, [projectId, setForecastReport, setForecastStatus, setForecastError]);
+  }, [lang, projectId, setForecastReport, setForecastStatus, setForecastError]);
 
   if (!dashboard) {
     return (
@@ -167,7 +181,7 @@ function ReadyState({
   report: ForecastReport;
   handleGenerate: () => Promise<void>;
 }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [selectedMetric, setSelectedMetric] = useState(0);
   const [horizon, setHorizon] = useState<Horizon>("12m");
   const [downloading, setDownloading] = useState(false);
@@ -193,7 +207,7 @@ function ReadyState({
                 : "border-border text-muted-foreground hover:text-foreground"
             )}
           >
-            {m.label}
+            {localizedMetricLabel(m, lang)}
           </button>
         ))}
       </div>
@@ -323,7 +337,7 @@ function ReadyState({
             setDownloading(true);
             setDownloadError(null);
             try {
-              await downloadForecastPptx(projectId);
+              await downloadForecastPptx(projectId, lang);
             } catch (err) {
               setDownloadError(
                 err instanceof Error ? err.message : t("analytics_bi_forecast_download")

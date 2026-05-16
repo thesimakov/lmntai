@@ -1,6 +1,7 @@
 import PptxGenJS from "pptxgenjs";
 import type { InvestorReport } from "./investor-schema";
 import type { AnalysisDashboard } from "./analytics-schema";
+import type { UiLanguage } from "./i18n";
 
 const THEME = {
   bg: "1A1A2E",
@@ -47,10 +48,16 @@ function addTitleSlide(pptx: PptxGenJS, heading: string, sub: string, badge: str
   });
 }
 
-function addBulletsSlide(pptx: PptxGenJS, title: string, items: string[], color = THEME.text) {
+function addBulletsSlide(
+  pptx: PptxGenJS,
+  title: string,
+  items: string[],
+  noDataText: string,
+  color = THEME.text
+) {
   const s = addSlide(pptx, title);
   if (items.length === 0) {
-    s.addText("No data available.", { x: 0.5, y: 1.2, w: "90%", h: 0.5, fontSize: 14, color: THEME.subtext });
+    s.addText(noDataText, { x: 0.5, y: 1.2, w: "90%", h: 0.5, fontSize: 14, color: THEME.subtext });
     return s;
   }
   const parts = items.map((item) => ({ text: `• ${item}`, options: { color } }));
@@ -76,14 +83,50 @@ function addContentSlide(pptx: PptxGenJS, title: string, content: string, bullet
   return s;
 }
 
-function addRiskSlide(pptx: PptxGenJS, report: InvestorReport) {
-  const s = addSlide(pptx, "Risk Assessment");
+function deckTexts(lang: UiLanguage) {
+  if (lang === "en") {
+    return {
+      noData: "No data available.",
+      riskAssessment: "Risk Assessment",
+      riskLevel: "Risk Level",
+      vcDeck: "VC Pitch Deck",
+      confidential: "CONFIDENTIAL INVESTOR MATERIALS",
+      investmentHighlights: "Investment Highlights",
+      keyMetrics: "Key Metrics",
+      boardReport: "Board Report",
+      prepared: "Prepared",
+      dueDiligence: "Due Diligence",
+      ddPackage: "INVESTOR DUE DILIGENCE PACKAGE",
+      keyDdQuestions: "Key Due Diligence Questions",
+      dataRoomChecklist: "Data Room Checklist",
+    } as const;
+  }
+  return {
+    noData: "Данные отсутствуют.",
+    riskAssessment: "Оценка рисков",
+    riskLevel: "Уровень риска",
+    vcDeck: "Питч-дек для VC",
+    confidential: "КОНФИДЕНЦИАЛЬНЫЕ МАТЕРИАЛЫ ДЛЯ ИНВЕСТОРОВ",
+    investmentHighlights: "Ключевые инвестиционные тезисы",
+    keyMetrics: "Ключевые метрики",
+    boardReport: "Отчёт совету директоров",
+    prepared: "Подготовлено",
+    dueDiligence: "Комплексная проверка",
+    ddPackage: "ПАКЕТ ДОКУМЕНТОВ ДЛЯ DUE DILIGENCE",
+    keyDdQuestions: "Ключевые вопросы due diligence",
+    dataRoomChecklist: "Чеклист data room",
+  } as const;
+}
+
+function addRiskSlide(pptx: PptxGenJS, report: InvestorReport, lang: UiLanguage) {
+  const texts = deckTexts(lang);
+  const s = addSlide(pptx, texts.riskAssessment);
   const color = riskColor(report.riskScore);
   s.addText(`${report.riskScore}/100`, {
     x: 0.5, y: 1.0, w: 4.0, h: 1.5,
     fontSize: 52, bold: true, color, align: "center",
   });
-  s.addText(`Risk Level: ${report.riskLabel}`, {
+  s.addText(`${texts.riskLevel}: ${report.riskLabel}`, {
     x: 0.5, y: 2.5, w: 4.0, h: 0.5,
     fontSize: 16, color, align: "center",
   });
@@ -104,17 +147,19 @@ function addRiskSlide(pptx: PptxGenJS, report: InvestorReport) {
 
 export async function buildVcPitchPptx(
   report: InvestorReport,
-  dashboard: AnalysisDashboard
+  dashboard: AnalysisDashboard,
+  lang: UiLanguage = "ru"
 ): Promise<Buffer> {
+  const texts = deckTexts(lang);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · VC Pitch Deck`, "CONFIDENTIAL INVESTOR MATERIALS");
+  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · ${texts.vcDeck}`, texts.confidential);
 
-  addBulletsSlide(pptx, "Investment Highlights", report.investmentHighlights, THEME.green);
+  addBulletsSlide(pptx, texts.investmentHighlights, report.investmentHighlights, texts.noData, THEME.green);
 
   // Key Metrics slide using dashboard KPIs
-  const kpiSlide = addSlide(pptx, "Key Metrics");
+  const kpiSlide = addSlide(pptx, texts.keyMetrics);
   const kpis = dashboard.kpis.slice(0, 6);
   const cols = 3;
   const cellW = 4.0;
@@ -146,12 +191,20 @@ export async function buildVcPitchPptx(
 
 export async function buildBoardReportPptx(
   report: InvestorReport,
-  dashboard: AnalysisDashboard
+  dashboard: AnalysisDashboard,
+  lang: UiLanguage = "ru"
 ): Promise<Buffer> {
+  const texts = deckTexts(lang);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · Board Report`, `Prepared ${new Date(report.generatedAt).toLocaleDateString()}`);
+  const locale = lang === "en" ? "en-US" : "ru-RU";
+  addTitleSlide(
+    pptx,
+    dashboard.meta.companyName,
+    `${dashboard.meta.period} · ${texts.boardReport}`,
+    `${texts.prepared} ${new Date(report.generatedAt).toLocaleDateString(locale)}`
+  );
 
   report.boardReport.slides.slice(1).forEach((slide) => {
     addContentSlide(pptx, slide.title, slide.content, slide.bullets);
@@ -167,21 +220,23 @@ export async function buildBoardReportPptx(
 
 export async function buildDueDiligencePptx(
   report: InvestorReport,
-  dashboard: AnalysisDashboard
+  dashboard: AnalysisDashboard,
+  lang: UiLanguage = "ru"
 ): Promise<Buffer> {
+  const texts = deckTexts(lang);
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · Due Diligence`, "INVESTOR DUE DILIGENCE PACKAGE");
+  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · ${texts.dueDiligence}`, texts.ddPackage);
 
-  addRiskSlide(pptx, report);
+  addRiskSlide(pptx, report, lang);
 
   report.dueDiligence.slides.slice(2, 7).forEach((slide) => {
     addContentSlide(pptx, slide.title, slide.content, slide.bullets);
   });
 
-  addBulletsSlide(pptx, "Key Due Diligence Questions", report.dueDiligence.keyQuestions);
-  addBulletsSlide(pptx, "Data Room Checklist", report.dueDiligence.dataRoomChecklist, THEME.gold);
+  addBulletsSlide(pptx, texts.keyDdQuestions, report.dueDiligence.keyQuestions, texts.noData);
+  addBulletsSlide(pptx, texts.dataRoomChecklist, report.dueDiligence.dataRoomChecklist, texts.noData, THEME.gold);
 
   const output = await pptx.write({ outputType: "arraybuffer" });
   return Buffer.from(output as ArrayBuffer);

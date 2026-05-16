@@ -1,9 +1,24 @@
 import type { AnalysisDashboard } from "./analytics-schema";
 import { computeDashboardStats, formatStatsForPrompt } from "./analytics-stats";
+import type { UiLanguage } from "./i18n";
 
-const SYSTEM_PROMPT = `You are a financial forecasting analyst. Given a structured financial analysis with pre-computed statistics, generate a 24-month forward forecast.
+type Message = { role: "system" | "user" | "assistant"; content: string };
+
+function promptLanguageLabel(lang: UiLanguage): string {
+  if (lang === "en") return "English";
+  if (lang === "tg") return "Tajik";
+  return "Russian";
+}
+
+function buildSystemPrompt(lang: UiLanguage): string {
+  const languageLabel = promptLanguageLabel(lang);
+  return `You are a financial forecasting analyst. Given a structured financial analysis with pre-computed statistics, generate a 24-month forward forecast.
 
 Use the provided statistical pre-computations (CAGR, linear regression slopes, moving averages) as anchors for your projections — your forecast values should be consistent with these numbers rather than contradicting them.
+
+Target language for all human-readable text fields: ${languageLabel}.
+- "label", "narrative", and "executiveSummary" must be in ${languageLabel}.
+- Enum values and keys must remain schema-valid English tokens ("up", "down", "neutral", and metric keys).
 
 Return ONLY a valid JSON object matching this exact structure (no markdown, no code fences):
 
@@ -40,16 +55,15 @@ Rules:
 - "burn_rate" trend is "down" if decreasing (improving), "up" if worsening.
 - All values must be raw numbers — no currency symbols, no commas, no "M" or "K" suffixes.
 - Return ONLY the JSON — no preamble, no explanation, no markdown.`;
+}
 
-type Message = { role: "system" | "user" | "assistant"; content: string };
-
-export function buildForecastPrompt(dashboard: AnalysisDashboard): Message[] {
+export function buildForecastPrompt(dashboard: AnalysisDashboard, lang: UiLanguage = "ru"): Message[] {
   const now = new Date().toISOString();
   const dashboardJson = JSON.stringify(dashboard, null, 2);
   const stats = computeDashboardStats(dashboard);
   const statsText = formatStatsForPrompt(stats);
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: buildSystemPrompt(lang) },
     {
       role: "user",
       content: `Current timestamp: ${now}\n\nCompany: ${dashboard.meta.companyName}\nPeriod: ${dashboard.meta.period}\nCurrency: ${dashboard.meta.currency}\n\n${statsText}\n\n--- ANALYSIS DATA ---\n\n${dashboardJson}`,
