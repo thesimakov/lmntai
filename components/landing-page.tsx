@@ -25,6 +25,42 @@ import type { MessageKey } from "@/lib/i18n";
 
 type LandingMode = "site" | "analytics" | "marketing" | "presentation";
 
+const LANDING_PROMPT_PLACEHOLDER_KEY: Record<
+  Exclude<LandingMode, "analytics">,
+  MessageKey
+> = {
+  site: "landing_simple_placeholder",
+  marketing: "landing_placeholder_marketing",
+  presentation: "landing_placeholder_presentation",
+};
+
+const LANDING_PROMPT_TYPEWRITER_KEYS: Record<
+  Exclude<LandingMode, "analytics">,
+  readonly MessageKey[]
+> = {
+  site: [
+    "landing_dark_typewriter",
+    "landing_typewriter_site_2",
+    "landing_typewriter_site_3",
+    "landing_typewriter_site_4",
+    "landing_typewriter_site_5",
+  ],
+  marketing: [
+    "landing_typewriter_marketing",
+    "landing_typewriter_marketing_2",
+    "landing_typewriter_marketing_3",
+    "landing_typewriter_marketing_4",
+    "landing_typewriter_marketing_5",
+  ],
+  presentation: [
+    "landing_typewriter_presentation",
+    "landing_typewriter_presentation_2",
+    "landing_typewriter_presentation_3",
+    "landing_typewriter_presentation_4",
+    "landing_typewriter_presentation_5",
+  ],
+};
+
 const SHOWCASE_FILTER_ORDER: LandingShowcaseCategory[] = ["website", "resume", "presentation", "other"];
 
 const SHOWCASE_FILTER_LABEL: Record<LandingShowcaseCategory, MessageKey> = {
@@ -63,7 +99,16 @@ export function LandingPage() {
   const [showcaseFilter, setShowcaseFilter] = useState<"all" | LandingShowcaseCategory>("all");
   const [showcaseBySlug, setShowcaseBySlug] = useState<Record<string, ShowcaseImageEntry> | null>(null);
 
-  const placeholderPhrase = useMemo(() => t("landing_dark_typewriter"), [t]);
+  const promptPlaceholderKey =
+    mode === "analytics" ? LANDING_PROMPT_PLACEHOLDER_KEY.site : LANDING_PROMPT_PLACEHOLDER_KEY[mode];
+
+  const typewriterPhrases = useMemo(
+    () =>
+      mode === "analytics"
+        ? []
+        : LANDING_PROMPT_TYPEWRITER_KEYS[mode].map((key) => t(key)),
+    [mode, t]
+  );
 
   const landingProjectsFormatted = useMemo(() => {
     const loc = lang === "ru" ? "ru-RU" : lang === "tg" ? "tg-TJ" : "en-US";
@@ -128,9 +173,11 @@ export function LandingPage() {
       return;
     }
 
+    if (typewriterPhrases.length === 0) return;
+
     let cancelled = false;
     let charIndex = 0;
-    const phrase = placeholderPhrase;
+    let phraseIndex = 0;
 
     function nextCharDelayMs(char: string) {
       const base = 88;
@@ -141,6 +188,7 @@ export function LandingPage() {
 
     function tick() {
       if (cancelled) return;
+      const phrase = typewriterPhrases[phraseIndex] ?? typewriterPhrases[0]!;
       charIndex += 1;
       setTyped(phrase.slice(0, charIndex));
 
@@ -154,6 +202,7 @@ export function LandingPage() {
         if (cancelled) return;
         charIndex = 0;
         setTyped("");
+        phraseIndex = (phraseIndex + 1) % typewriterPhrases.length;
         window.setTimeout(tick, 720);
       }, 2200);
     }
@@ -165,7 +214,7 @@ export function LandingPage() {
       cancelled = true;
       window.clearTimeout(start);
     };
-  }, [mode, prompt, isFocused, placeholderPhrase]);
+  }, [mode, prompt, isFocused, typewriterPhrases]);
 
   const goApp = useCallback(() => {
     const text = prompt.trim();
@@ -331,7 +380,7 @@ export function LandingPage() {
               <div className="landing-card-stripe" />
 
               {/* Content area */}
-              <div className="flex flex-1 flex-col p-5 sm:p-6">
+              <div className="flex min-h-[60px] flex-1 flex-col px-5 pt-5 pb-[22px] sm:px-6 sm:pt-[22px] sm:pb-[22px]">
                 <AnimatePresence mode="wait">
                   {mode === "analytics" ? (
                     <motion.div
@@ -424,7 +473,7 @@ export function LandingPage() {
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <div className="relative min-h-[100px]">
+                      <div className="relative min-h-[10px]">
                         <textarea
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
@@ -440,13 +489,13 @@ export function LandingPage() {
                           }}
                           placeholder=""
                           rows={4}
-                          aria-label={t("landing_simple_placeholder")}
-                          className="min-h-[100px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
+                          aria-label={t(promptPlaceholderKey)}
+                          className="h-[10px] min-h-[10px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
                         />
                         <AnimatePresence mode="wait">
                           {!prompt.trim() && !isFocused ? (
                             <motion.div
-                              key="landing-typewriter"
+                              key={`landing-typewriter-${mode}`}
                               initial={{ opacity: 0, y: 4 }}
                               animate={{ opacity: 1, y: 0 }}
                               exit={{ opacity: 0, y: -3 }}
@@ -683,31 +732,6 @@ export function LandingPage() {
             </div>
           </motion.section>
 
-          {/* How it works */}
-          <motion.section
-            className="mx-auto mt-20 w-full"
-            initial={{ opacity: 0, y: 28 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
-          >
-            <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-              {([
-                { num: "01", titleKey: "landing_how_step_1_title", descKey: "landing_how_step_1_desc" },
-                { num: "02", titleKey: "landing_how_step_2_title", descKey: "landing_how_step_2_desc" },
-                { num: "03", titleKey: "landing_how_step_3_title", descKey: "landing_how_step_3_desc" },
-              ] as const).map(({ num, titleKey, descKey }) => (
-                <div key={titleKey} className="flex flex-col gap-3">
-                  <span className="font-mono text-3xl font-bold text-blue-600/80 tabular-nums">{num}</span>
-                  <div>
-                    <h3 className="text-base font-semibold text-zinc-900">{t(titleKey)}</h3>
-                    <p className="mt-1 text-sm leading-relaxed text-zinc-500">{t(descKey)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.section>
-
           {/* Bottom CTA */}
           <motion.section
             className="mx-auto mt-20 w-full rounded-3xl border border-zinc-200/80 bg-white px-8 py-14 text-center shadow-sm"
@@ -728,13 +752,6 @@ export function LandingPage() {
                 className="rounded-full px-7"
               >
                 {t("landing_simple_badge_trial")}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => router.push(authed ? "/playground" : "/login")}
-                className="rounded-full border-zinc-300 bg-transparent px-7 text-zinc-800 hover:bg-zinc-50"
-              >
-                {t("landing_login")}
               </Button>
             </div>
           </motion.section>

@@ -3,86 +3,69 @@ import type { InvestorReport } from "./investor-schema";
 import type { AnalysisDashboard } from "./analytics-schema";
 import type { UiLanguage } from "./i18n";
 
-const THEME = {
-  bg: "1A1A2E",
-  accent: "4F8EF7",
-  gold: "F59E0B",
-  text: "FFFFFF",
-  subtext: "AAAACC",
-  dark: "16213E",
-  green: "4CAF50",
-  red: "F44336",
-  yellow: "FFC107",
+// ── Design System ─────────────────────────────────────────────────────────────
+const T = {
+  bg:     "FFFFFF",
+  card:   "F7F8FC",
+  border: "E2E8F0",
+  accent: "2563EB",
+  sky:    "0EA5E9",
+  text:   "111827",
+  sub:    "6B7280",
+  mute:   "9CA3AF",
+  green:  "10B981",
+  red:    "EF4444",
+  amber:  "F59E0B",
 };
 
-function riskColor(score: number): string {
-  if (score < 40) return THEME.green;
-  if (score < 70) return THEME.yellow;
-  return THEME.red;
+const SW = 13.33;
+const MX = 0.40;
+const HY = 0.66;
+const FY = 6.84;
+const CY = HY + 0.14;
+const CW = SW - MX * 2;
+
+// ── Frame ─────────────────────────────────────────────────────────────────────
+function addFrame(s: PptxGenJS.Slide, pptx: PptxGenJS, docName: string, page: number, website: string) {
+  s.addShape(pptx.ShapeType.rect, { x: MX, y: 0.13, w: 1.55, h: 0.38, fill: { color: T.card }, line: { color: T.border, width: 0.75 } });
+  s.addText("LOGO", { x: MX, y: 0.13, w: 1.55, h: 0.38, fontSize: 8.5, color: T.mute, align: "center", valign: "middle", bold: true, charSpacing: 2 });
+  s.addText(website, { x: SW - MX - 3.0, y: 0.19, w: 3.0, h: 0.28, fontSize: 8.5, color: T.sub, align: "right" });
+  s.addShape(pptx.ShapeType.rect, { x: MX, y: HY, w: CW, h: 0.012, fill: { color: T.border }, line: { color: T.border, width: 0 } });
+  s.addShape(pptx.ShapeType.rect, { x: MX, y: FY, w: CW, h: 0.012, fill: { color: T.border }, line: { color: T.border, width: 0 } });
+  s.addText(docName, { x: MX, y: FY + 0.09, w: 8.0, h: 0.28, fontSize: 7.5, color: T.mute });
+  s.addText(String(page), { x: SW - MX - 0.7, y: FY + 0.09, w: 0.7, h: 0.28, fontSize: 7.5, color: T.mute, align: "right" });
 }
 
-function addSlide(pptx: PptxGenJS, title: string) {
+function addSlide(pptx: PptxGenJS, title: string, docName: string, page: number, website: string) {
   const s = pptx.addSlide();
-  s.background = { color: THEME.bg };
-  s.addText(title, {
-    x: 0.5, y: 0.2, w: "90%", h: 0.6,
-    fontSize: 24, bold: true, color: THEME.accent,
-  });
+  s.background = { color: T.bg };
+  addFrame(s, pptx, docName, page, website);
+  s.addText(title, { x: MX, y: CY, w: CW, h: 0.44, fontSize: 18, bold: true, color: T.text });
+  s.addShape(pptx.ShapeType.rect, { x: MX, y: CY + 0.44, w: 0.38, h: 0.035, fill: { color: T.accent }, line: { color: T.accent, width: 0 } });
   return s;
 }
 
-function addTitleSlide(pptx: PptxGenJS, heading: string, sub: string, badge: string) {
-  const s = pptx.addSlide();
-  s.background = { color: THEME.dark };
-  s.addText(heading, {
-    x: 0.5, y: 1.8, w: "90%", h: 1.2,
-    fontSize: 36, bold: true, color: THEME.text, align: "center",
-  });
-  s.addText(sub, {
-    x: 0.5, y: 3.2, w: "90%", h: 0.6,
-    fontSize: 18, color: THEME.subtext, align: "center",
-  });
-  s.addText(badge, {
-    x: 0.5, y: 4.0, w: "90%", h: 0.4,
-    fontSize: 12, color: THEME.gold, align: "center",
-  });
-}
-
-function addBulletsSlide(
+// ── KPI card ──────────────────────────────────────────────────────────────────
+function addKpiCard(
+  s: PptxGenJS.Slide,
   pptx: PptxGenJS,
-  title: string,
-  items: string[],
-  noDataText: string,
-  color = THEME.text
+  x: number, y: number, w: number, h: number,
+  value: string, label: string, valueColor = T.accent,
 ) {
-  const s = addSlide(pptx, title);
-  if (items.length === 0) {
-    s.addText(noDataText, { x: 0.5, y: 1.2, w: "90%", h: 0.5, fontSize: 14, color: THEME.subtext });
-    return s;
-  }
-  const parts = items.map((item) => ({ text: `• ${item}`, options: { color } }));
-  s.addText(parts, { x: 0.5, y: 1.0, w: "90%", h: 4.5, fontSize: 15, paraSpaceAfter: 8, valign: "top" });
-  return s;
+  s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: T.card }, line: { color: T.border, width: 0.75 } });
+  s.addShape(pptx.ShapeType.rect, { x: x + 0.02, y, w: w - 0.04, h: 0.045, fill: { color: T.accent }, line: { color: T.accent, width: 0 } });
+  s.addText(value, { x, y: y + 0.12, w, h: 0.72, fontSize: 22, bold: true, color: valueColor, align: "center", valign: "middle" });
+  s.addText(label, { x, y: y + h - 0.38, w, h: 0.34, fontSize: 10, color: T.sub, align: "center" });
 }
 
-function addContentSlide(pptx: PptxGenJS, title: string, content: string, bullets?: string[]) {
-  const s = addSlide(pptx, title);
-  const hasContent = content && content.trim().length > 0;
-  const hasBullets = bullets && bullets.length > 0;
-
-  if (hasContent && !hasBullets) {
-    s.addText(content, { x: 0.5, y: 1.0, w: "90%", h: 4.5, fontSize: 14, color: THEME.text, valign: "top" });
-  } else if (hasBullets) {
-    if (hasContent) {
-      s.addText(content, { x: 0.5, y: 1.0, w: "90%", h: 1.0, fontSize: 13, color: THEME.subtext, valign: "top" });
-    }
-    const yStart = hasContent ? 2.1 : 1.0;
-    const parts = bullets!.map((b) => ({ text: `• ${b}`, options: { color: THEME.text } }));
-    s.addText(parts, { x: 0.5, y: yStart, w: "90%", h: 4.0 - (hasContent ? 1.1 : 0), fontSize: 14, paraSpaceAfter: 6, valign: "top" });
-  }
-  return s;
+// ── Risk color ────────────────────────────────────────────────────────────────
+function riskColor(score: number): string {
+  if (score < 40) return T.green;
+  if (score < 70) return T.amber;
+  return T.red;
 }
 
+// ── Localisation ──────────────────────────────────────────────────────────────
 function deckTexts(lang: UiLanguage) {
   if (lang === "en") {
     return {
@@ -118,26 +101,118 @@ function deckTexts(lang: UiLanguage) {
   } as const;
 }
 
-function addRiskSlide(pptx: PptxGenJS, report: InvestorReport, lang: UiLanguage) {
+// ── Cover slide ───────────────────────────────────────────────────────────────
+function addCoverSlide(
+  pptx: PptxGenJS,
+  company: string,
+  docType: string,
+  badge: string,
+  docName: string,
+  website: string,
+) {
+  const s = pptx.addSlide();
+  s.background = { color: T.bg };
+  addFrame(s, pptx, docName, 1, website);
+  s.addShape(pptx.ShapeType.rect, { x: 0, y: 3.58, w: SW, h: 0.06, fill: { color: T.accent }, line: { color: T.accent, width: 0 } });
+  s.addText(company, { x: MX, y: 1.7, w: CW, h: 1.6, fontSize: 46, bold: true, color: T.text, align: "center", valign: "bottom" });
+  s.addText(docType, { x: MX, y: 3.76, w: CW, h: 0.62, fontSize: 19, color: T.accent, align: "center" });
+  s.addText(badge, { x: MX, y: 4.46, w: CW, h: 0.42, fontSize: 11, color: T.sub, align: "center" });
+}
+
+// ── Bullets slide ─────────────────────────────────────────────────────────────
+function addBulletsSlide(
+  pptx: PptxGenJS,
+  title: string,
+  items: string[],
+  noDataText: string,
+  docName: string,
+  page: number,
+  website: string,
+  bulletColor = T.text,
+) {
+  const s = addSlide(pptx, title, docName, page, website);
+  const contentY = CY + 0.58;
+  if (items.length === 0) {
+    s.addText(noDataText, { x: MX, y: contentY, w: CW, h: 0.5, fontSize: 13, color: T.sub });
+    return s;
+  }
+  items.forEach((item, i) => {
+    const y = contentY + i * 0.52;
+    if (y + 0.44 > FY) return;
+    s.addShape(pptx.ShapeType.rect, { x: MX, y: y + 0.13, w: 0.1, h: 0.1, fill: { color: T.accent }, line: { color: T.accent, width: 0 } });
+    s.addText(item, { x: MX + 0.22, y, w: CW - 0.22, h: 0.44, fontSize: 13, color: bulletColor });
+  });
+  return s;
+}
+
+// ── Content slide (narrative + optional bullets) ───────────────────────────────
+function addContentSlide(
+  pptx: PptxGenJS,
+  title: string,
+  content: string,
+  docName: string,
+  page: number,
+  website: string,
+  bullets?: string[],
+) {
+  const s = addSlide(pptx, title, docName, page, website);
+  const contentY = CY + 0.58;
+  const hasContent = content.trim().length > 0;
+  const hasBullets = bullets && bullets.length > 0;
+
+  if (hasContent) {
+    const h = hasBullets ? 0.9 : 1.6;
+    s.addText(content, { x: MX, y: contentY, w: CW, h, fontSize: 12.5, color: T.sub, italic: true, valign: "top" });
+  }
+
+  if (hasBullets) {
+    const bulletsY = contentY + (hasContent ? 1.0 : 0);
+    bullets!.forEach((item, i) => {
+      const y = bulletsY + i * 0.50;
+      if (y + 0.42 > FY) return;
+      s.addShape(pptx.ShapeType.rect, { x: MX, y: y + 0.12, w: 0.1, h: 0.1, fill: { color: T.accent }, line: { color: T.accent, width: 0 } });
+      s.addText(item, { x: MX + 0.22, y, w: CW - 0.22, h: 0.42, fontSize: 12.5, color: T.text });
+    });
+  }
+  return s;
+}
+
+// ── Risk slide ────────────────────────────────────────────────────────────────
+function addRiskSlide(
+  pptx: PptxGenJS,
+  report: InvestorReport,
+  lang: UiLanguage,
+  docName: string,
+  page: number,
+  website: string,
+) {
   const texts = deckTexts(lang);
-  const s = addSlide(pptx, texts.riskAssessment);
+  const s = addSlide(pptx, texts.riskAssessment, docName, page, website);
   const color = riskColor(report.riskScore);
-  s.addText(`${report.riskScore}/100`, {
-    x: 0.5, y: 1.0, w: 4.0, h: 1.5,
-    fontSize: 52, bold: true, color, align: "center",
-  });
-  s.addText(`${texts.riskLevel}: ${report.riskLabel}`, {
-    x: 0.5, y: 2.5, w: 4.0, h: 0.5,
-    fontSize: 16, color, align: "center",
-  });
+  const contentY = CY + 0.58;
+
+  // Large risk score card on the left
+  const cardW = 3.6;
+  const cardH = 2.4;
+  const cardX = MX;
+  const cardY = contentY;
+  s.addShape(pptx.ShapeType.rect, { x: cardX, y: cardY, w: cardW, h: cardH, fill: { color: T.card }, line: { color: T.border, width: 0.75 } });
+  s.addShape(pptx.ShapeType.rect, { x: cardX + 0.02, y: cardY, w: cardW - 0.04, h: 0.045, fill: { color }, line: { color, width: 0 } });
+  s.addText(`${report.riskScore}`, { x: cardX, y: cardY + 0.2, w: cardW, h: 1.4, fontSize: 72, bold: true, color, align: "center", valign: "middle" });
+  s.addText(`/ 100`, { x: cardX, y: cardY + 1.55, w: cardW, h: 0.38, fontSize: 14, color: T.mute, align: "center" });
+  s.addText(`${texts.riskLevel}: ${report.riskLabel}`, { x: cardX, y: cardY + 1.95, w: cardW, h: 0.34, fontSize: 12, bold: true, color, align: "center" });
+
+  // Risk factors list on the right
   if (report.riskFactors.length > 0) {
-    const parts = report.riskFactors.map((rf) => ({
-      text: `• ${rf.factor}`,
-      options: {
-        color: rf.severity === "high" ? THEME.red : rf.severity === "medium" ? THEME.yellow : THEME.subtext,
-      },
-    }));
-    s.addText(parts, { x: 4.8, y: 1.0, w: 7.7, h: 4.5, fontSize: 14, paraSpaceAfter: 6, valign: "top" });
+    const listX = MX + cardW + 0.4;
+    const listW = CW - cardW - 0.4;
+    report.riskFactors.forEach((rf, i) => {
+      const y = contentY + i * 0.52;
+      if (y + 0.44 > FY) return;
+      const fc = rf.severity === "high" ? T.red : rf.severity === "medium" ? T.amber : T.sub;
+      s.addShape(pptx.ShapeType.rect, { x: listX, y: y + 0.13, w: 0.1, h: 0.1, fill: { color: fc }, line: { color: fc, width: 0 } });
+      s.addText(rf.factor, { x: listX + 0.22, y, w: listW - 0.22, h: 0.44, fontSize: 12.5, color: T.text });
+    });
   }
 }
 
@@ -154,31 +229,45 @@ export async function buildVcPitchPptx(
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · ${texts.vcDeck}`, texts.confidential);
+  const company = dashboard.meta.companyName;
+  const period  = dashboard.meta.period;
+  const docName = `${texts.vcDeck} · ${period}`;
+  const website = company.toLowerCase().replace(/\s+/g, "") + ".com";
 
-  addBulletsSlide(pptx, texts.investmentHighlights, report.investmentHighlights, texts.noData, THEME.green);
+  let page = 0;
 
-  // Key Metrics slide using dashboard KPIs
-  const kpiSlide = addSlide(pptx, texts.keyMetrics);
-  const kpis = dashboard.kpis.slice(0, 6);
-  const cols = 3;
-  const cellW = 4.0;
-  const cellH = 1.4;
-  kpis.forEach((kpi, i) => {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = 0.5 + col * (cellW + 0.2);
-    const y = 1.1 + row * (cellH + 0.15);
-    kpiSlide.addShape(pptx.ShapeType.rect, { x, y, w: cellW, h: cellH, fill: { color: THEME.dark }, line: { color: THEME.accent, width: 1 } });
-    kpiSlide.addText(kpi.value, { x, y: y + 0.1, w: cellW, h: 0.7, fontSize: 22, bold: true, color: THEME.accent, align: "center" });
-    kpiSlide.addText(kpi.label, { x, y: y + 0.75, w: cellW, h: 0.35, fontSize: 11, color: THEME.subtext, align: "center" });
-  });
+  // 1. Cover
+  page++;
+  addCoverSlide(pptx, company, texts.vcDeck, `${period}  ·  ${texts.confidential}`, docName, website);
 
-  // Slides 4–10 from AI-generated VC pitch slides (indices 3–9)
+  // 2. Investment Highlights
+  page++;
+  addBulletsSlide(pptx, texts.investmentHighlights, report.investmentHighlights, texts.noData, docName, page, website, T.text);
+
+  // 3. Key Metrics grid
+  page++;
+  {
+    const s = addSlide(pptx, texts.keyMetrics, docName, page, website);
+    const kpis = dashboard.kpis.slice(0, 6);
+    const cols = 3;
+    const cardW = (CW - (cols - 1) * 0.22) / cols;
+    const cardH = 1.55;
+    kpis.forEach((kpi, i) => {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = MX + col * (cardW + 0.22);
+      const y = CY + 0.58 + row * (cardH + 0.2);
+      addKpiCard(s, pptx, x, y, cardW, cardH, kpi.value, kpi.label, T.accent);
+    });
+  }
+
+  // 4–10. VC pitch slides (indices 3–9)
   const vcSlides = report.vcPitch.slides;
   [3, 4, 5, 6, 7, 8, 9].forEach((idx) => {
     const slide = vcSlides[idx];
-    if (slide) addContentSlide(pptx, slide.title, slide.content, slide.bullets);
+    if (!slide) return;
+    page++;
+    addContentSlide(pptx, slide.title, slide.content, docName, page, website, slide.bullets);
   });
 
   const output = await pptx.write({ outputType: "arraybuffer" });
@@ -198,16 +287,26 @@ export async function buildBoardReportPptx(
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  const locale = lang === "en" ? "en-US" : "ru-RU";
-  addTitleSlide(
-    pptx,
-    dashboard.meta.companyName,
-    `${dashboard.meta.period} · ${texts.boardReport}`,
-    `${texts.prepared} ${new Date(report.generatedAt).toLocaleDateString(locale)}`
+  const company = dashboard.meta.companyName;
+  const period  = dashboard.meta.period;
+  const docName = `${texts.boardReport} · ${period}`;
+  const website = company.toLowerCase().replace(/\s+/g, "") + ".com";
+  const locale  = lang === "en" ? "en-US" : "ru-RU";
+
+  let page = 0;
+
+  // 1. Cover
+  page++;
+  addCoverSlide(
+    pptx, company, texts.boardReport,
+    `${texts.prepared} ${new Date(report.generatedAt).toLocaleDateString(locale)}  ·  ${period}`,
+    docName, website,
   );
 
+  // Remaining slides from boardReport
   report.boardReport.slides.slice(1).forEach((slide) => {
-    addContentSlide(pptx, slide.title, slide.content, slide.bullets);
+    page++;
+    addContentSlide(pptx, slide.title, slide.content, docName, page, website, slide.bullets);
   });
 
   const output = await pptx.write({ outputType: "arraybuffer" });
@@ -227,16 +326,34 @@ export async function buildDueDiligencePptx(
   const pptx = new PptxGenJS();
   pptx.layout = "LAYOUT_WIDE";
 
-  addTitleSlide(pptx, dashboard.meta.companyName, `${dashboard.meta.period} · ${texts.dueDiligence}`, texts.ddPackage);
+  const company = dashboard.meta.companyName;
+  const period  = dashboard.meta.period;
+  const docName = `${texts.dueDiligence} · ${period}`;
+  const website = company.toLowerCase().replace(/\s+/g, "") + ".com";
 
-  addRiskSlide(pptx, report, lang);
+  let page = 0;
 
+  // 1. Cover
+  page++;
+  addCoverSlide(pptx, company, texts.dueDiligence, `${period}  ·  ${texts.ddPackage}`, docName, website);
+
+  // 2. Risk Assessment
+  page++;
+  addRiskSlide(pptx, report, lang, docName, page, website);
+
+  // 3–7. Due diligence content slides (indices 2–6)
   report.dueDiligence.slides.slice(2, 7).forEach((slide) => {
-    addContentSlide(pptx, slide.title, slide.content, slide.bullets);
+    page++;
+    addContentSlide(pptx, slide.title, slide.content, docName, page, website, slide.bullets);
   });
 
-  addBulletsSlide(pptx, texts.keyDdQuestions, report.dueDiligence.keyQuestions, texts.noData);
-  addBulletsSlide(pptx, texts.dataRoomChecklist, report.dueDiligence.dataRoomChecklist, texts.noData, THEME.gold);
+  // Key DD questions
+  page++;
+  addBulletsSlide(pptx, texts.keyDdQuestions, report.dueDiligence.keyQuestions, texts.noData, docName, page, website);
+
+  // Data room checklist
+  page++;
+  addBulletsSlide(pptx, texts.dataRoomChecklist, report.dueDiligence.dataRoomChecklist, texts.noData, docName, page, website, T.accent);
 
   const output = await pptx.write({ outputType: "arraybuffer" });
   return Buffer.from(output as ArrayBuffer);
