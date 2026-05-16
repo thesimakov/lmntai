@@ -4,6 +4,8 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIJson } from "@/lib/routerai-client";
+import { appendBrandKitToSystemPrompt } from "@/lib/brand-kit-library";
+import { getBrandKitPromptBlock } from "@/lib/brand-kit-service";
 import { buildAnalysisPrompt } from "@/lib/analytics-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
@@ -43,6 +45,13 @@ export async function POST(
     : rawText;
   const uiLanguage = resolveUiLanguageFromRequest(req);
   const messages = buildAnalysisPrompt(truncatedText, uiLanguage);
+  const brandKitBlock = await getBrandKitPromptBlock(user.id);
+  if (messages[0]?.role === "system") {
+    messages[0] = {
+      role: "system",
+      content: appendBrandKitToSystemPrompt(messages[0].content, brandKitBlock),
+    };
+  }
 
   const stream = new ReadableStream({
     async start(controller) {

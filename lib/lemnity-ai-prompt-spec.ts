@@ -71,7 +71,9 @@ export function buildRouterGenerationPrompt(
   userPrompt: string,
   projectKind?: ProjectKind | null,
   /** Стартовые файлы + правила с БД; агент правит по запросу, а не пишет с нуля */
-  buildTemplateBlock?: string | null
+  buildTemplateBlock?: string | null,
+  /** Глобальная библиотека стиля бренда пользователя */
+  brandKitBlock?: string | null
 ): string {
   const trimmed = userPrompt.trim();
   const lang = detectWorkingLanguage(trimmed);
@@ -201,12 +203,17 @@ export function buildRouterGenerationPrompt(
         ]
       : [];
 
+  const brandKitSection = brandKitBlock?.trim()
+    ? ["", "---", brandKitBlock.trim()]
+    : [];
+
   return [
     baseHeader.join("\n"),
     "",
     "Format & structure:",
     ...formatBlock.map((l) => `- ${l}`),
     ...templateSection,
+    ...brandKitSection,
     "",
     "---",
     "User request (follow intent; if conflict, user intent wins over generic templates):",

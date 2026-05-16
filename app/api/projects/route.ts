@@ -5,7 +5,7 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { isLemnityAiBridgeEnabledServer } from "@/lib/lemnity-ai-bridge-config";
 import { listLemnityAiSessionsForUser } from "@/lib/lemnity-ai-session-links";
 import { prisma } from "@/lib/prisma";
-import { checkProjectCreationAllowed } from "@/lib/project-limits";
+import { checkProjectCreationAllowed, getUserProjectQuota } from "@/lib/project-limits";
 import { normalizeProjectSubdomain, upsertProjectCell } from "@/lib/project-context";
 import { sanitizeProjectTitleForUser } from "@/lib/display-title";
 import {
@@ -27,6 +27,8 @@ async function getProjects(req: NextRequest) {
   }
 
   try {
+    const quota = await getUserProjectQuota(guard.data.user.id, guard.data.user.plan);
+
     if (isLemnityAiBridgeEnabledServer()) {
       const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
     const ids = Array.from(
@@ -113,7 +115,7 @@ async function getProjects(req: NextRequest) {
     const merged = [...aiProjects, ...orphanProjects].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
-    return Response.json({ projects: merged });
+    return Response.json({ projects: merged, quota });
     }
 
     const rows = await sandboxManager.listSandboxesByOwner(guard.data.user.id);
@@ -132,7 +134,7 @@ async function getProjects(req: NextRequest) {
       openUrl: `/api/sandbox/${row.sandboxId}`
     }));
 
-    return Response.json({ projects: sandboxProjects });
+    return Response.json({ projects: sandboxProjects, quota });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     const prismaCode =

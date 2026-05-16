@@ -2,30 +2,30 @@ import PptxGenJS from "pptxgenjs";
 import type { AnalysisDashboard, Chart } from "./analytics-schema";
 import type { UiLanguage } from "./i18n";
 
-// ── Infographic Design System ─────────────────────────────────────────────────
+// ── Corporate Clean Design System ─────────────────────────────────────────────
 const T = {
-  bg:     "F3EDE3",  // warm cream canvas
-  panel:  "FDFAF5",  // light panel / card
-  border: "D6CEBD",  // warm border
-  a1:     "3D7FA6",  // teal (primary accent)
-  a2:     "9A4535",  // terracotta (secondary accent)
-  gold:   "B8862A",  // warm gold
-  text:   "1A1A1A",  // near-black
-  sub:    "5E5650",  // warm mid-gray
-  mute:   "9A908A",  // warm muted
-  green:  "3A8A65",  // earthy green
-  red:    "AC3828",  // warm red
-  amber:  "C08A2A",  // amber
+  bg:     "FFFFFF",
+  navy:   "0F1C35",   // primary dark navy
+  blue:   "1D4ED8",   // accent blue
+  panel:  "F8FAFC",   // subtle panel
+  border: "D1D5DB",   // clean gray border
+  text:   "0F1C35",
+  sub:    "374151",
+  mute:   "6B7280",
+  green:  "059669",
+  red:    "DC2626",
+  amber:  "D97706",
 };
 
-const SW = 13.33;
-const MX = 0.40;
-const HY = 0.66;
-const FY = 6.84;
-const CY = HY + 0.14;
-const CW = SW - MX * 2;
+const SW    = 13.33;
+const MX    = 0.48;
+const HY    = 0.56;
+const FY    = 6.84;
+const CY    = HY + 0.10;
+const CW    = SW - MX * 2;
+const SPLIT = 7.8;   // cover: left text panel / right navy panel
 
-const CHART_COLORS = ["3D7FA6", "9A4535", "3A8A65", "B8862A", "AC3828", "6B5EA8"];
+const CHART_COLORS = ["1D4ED8", "0F1C35", "3B82F6", "60A5FA", "6B7280", "D1D5DB"];
 
 // ── Localisation ──────────────────────────────────────────────────────────────
 function i18n(lang: UiLanguage) {
@@ -53,7 +53,7 @@ function i18n(lang: UiLanguage) {
     noOpportunities: "Имкониятҳои мушаххас муайян карда нашуданд.",
     noFindings:      "Бозёфтҳо мавҷуд нестанд.",
   };
-  return { // ru (default)
+  return {
     analysis:        "Финансовый анализ",
     execSummary:     "Исполнительное резюме",
     keyMetrics:      "Ключевые показатели",
@@ -65,99 +65,6 @@ function i18n(lang: UiLanguage) {
     noOpportunities: "Специфических возможностей не выявлено.",
     noFindings:      "Ключевые выводы отсутствуют.",
   };
-}
-
-// ── Frame ─────────────────────────────────────────────────────────────────────
-function addFrame(s: PptxGenJS.Slide, pptx: PptxGenJS, docName: string, page: number, website: string) {
-  // Logo placeholder (top-left)
-  s.addShape(pptx.ShapeType.rect, { x: MX, y: 0.13, w: 1.55, h: 0.38, fill: { color: T.panel }, line: { color: T.border, width: 0.75 } });
-  s.addText("LOGO", { x: MX, y: 0.13, w: 1.55, h: 0.38, fontSize: 8.5, color: T.mute, align: "center", valign: "middle", bold: true, charSpacing: 2 });
-  // Website (top-right)
-  s.addText(website, { x: SW - MX - 3.0, y: 0.19, w: 3.0, h: 0.28, fontSize: 8.5, color: T.sub, align: "right" });
-  // Header divider (warm)
-  s.addShape(pptx.ShapeType.rect, { x: MX, y: HY, w: CW, h: 0.01, fill: { color: T.border }, line: { color: T.border, width: 0 } });
-  // Footer divider
-  s.addShape(pptx.ShapeType.rect, { x: MX, y: FY, w: CW, h: 0.01, fill: { color: T.border }, line: { color: T.border, width: 0 } });
-  // Doc name (bottom-left)
-  s.addText(docName, { x: MX, y: FY + 0.09, w: 8.0, h: 0.28, fontSize: 7.5, color: T.mute });
-  // Page number (bottom-right)
-  s.addText(String(page), { x: SW - MX - 0.7, y: FY + 0.09, w: 0.7, h: 0.28, fontSize: 7.5, color: T.mute, align: "right" });
-}
-
-// ── Cover slide ───────────────────────────────────────────────────────────────
-function addCoverSlide(pptx: PptxGenJS, company: string, docType: string, period: string, date: string, docName: string, website: string, lang: string) {
-  const s = pptx.addSlide();
-  s.background = { color: T.bg };
-  addFrame(s, pptx, docName, 1, website);
-
-  // Left decorative band
-  s.addShape(pptx.ShapeType.rect, { x: 0, y: HY + 0.01, w: 0.18, h: FY - HY - 0.01, fill: { color: T.a1 }, line: { color: T.a1, width: 0 } });
-  s.addShape(pptx.ShapeType.rect, { x: 0.22, y: HY + 0.01, w: 0.08, h: FY - HY - 0.01, fill: { color: T.a2 }, line: { color: T.a2, width: 0 } });
-  s.addShape(pptx.ShapeType.rect, { x: 0.34, y: HY + 0.01, w: 0.04, fill: { color: T.gold }, h: FY - HY - 0.01, line: { color: T.gold, width: 0 } });
-
-  // Decorative horizontal accent below header
-  s.addShape(pptx.ShapeType.rect, { x: MX + 0.2, y: CY + 0.06, w: CW * 0.22, h: 0.055, fill: { color: T.a1 }, line: { color: T.a1, width: 0 } });
-
-  // Company name (large)
-  s.addText(company, { x: MX + 0.2, y: 1.6, w: CW - 0.2, h: 1.8, fontSize: 52, bold: true, color: T.text, valign: "bottom" });
-
-  // Horizontal accent bar
-  s.addShape(pptx.ShapeType.rect, { x: MX + 0.2, y: 3.55, w: CW - 0.2, h: 0.055, fill: { color: T.a2 }, line: { color: T.a2, width: 0 } });
-
-  // Document type
-  s.addText(docType, { x: MX + 0.2, y: 3.72, w: CW - 0.2, h: 0.6, fontSize: 20, color: T.a1, bold: false });
-
-  // Period · Date
-  s.addText(`${period}  ·  ${date}`, { x: MX + 0.2, y: 4.42, w: CW - 0.2, h: 0.42, fontSize: 12, color: T.sub });
-}
-
-// ── Content slide ─────────────────────────────────────────────────────────────
-function addSlide(pptx: PptxGenJS, title: string, docName: string, page: number, website: string) {
-  const s = pptx.addSlide();
-  s.background = { color: T.bg };
-  addFrame(s, pptx, docName, page, website);
-
-  // Left side accent strip
-  s.addShape(pptx.ShapeType.rect, { x: 0, y: HY + 0.01, w: 0.06, h: FY - HY - 0.01, fill: { color: T.a1 }, line: { color: T.a1, width: 0 } });
-
-  s.addText(title, { x: MX, y: CY, w: CW, h: 0.44, fontSize: 18, bold: true, color: T.text });
-  // Warm accent underline
-  s.addShape(pptx.ShapeType.rect, { x: MX, y: CY + 0.44, w: 0.45, h: 0.035, fill: { color: T.a2 }, line: { color: T.a2, width: 0 } });
-  s.addShape(pptx.ShapeType.rect, { x: MX + 0.49, y: CY + 0.44, w: 0.14, h: 0.035, fill: { color: T.a1 }, line: { color: T.a1, width: 0 } });
-
-  return s;
-}
-
-// ── KPI card (infographic style) ──────────────────────────────────────────────
-function addKpiCard(
-  s: PptxGenJS.Slide, pptx: PptxGenJS,
-  kpi: { label: string; value: string; change?: string; trend?: string },
-  x: number, y: number, w: number, h: number,
-) {
-  // Card body
-  s.addShape(pptx.ShapeType.rect, { x, y, w, h, fill: { color: T.panel }, line: { color: T.border, width: 0.75 } });
-
-  // Small accent dot (top-left)
-  s.addShape(pptx.ShapeType.ellipse, { x: x + 0.12, y: y + 0.12, w: 0.2, h: 0.2, fill: { color: T.a1 }, line: { color: T.a1, width: 0 } });
-
-  // Value
-  s.addText(kpi.value, { x, y: y + 0.08, w, h: h * 0.48, fontSize: 21, bold: true, color: T.a1, align: "center", valign: "middle" });
-
-  // Label
-  s.addText(kpi.label, { x: x + 0.08, y: y + h * 0.55, w: w - 0.16, h: h * 0.26, fontSize: 9.5, color: T.text, align: "center" });
-
-  // Change / trend
-  if (kpi.change) {
-    const cc = kpi.trend === "up" ? T.green : kpi.trend === "down" ? T.red : T.sub;
-    const arrow = kpi.trend === "up" ? " ▲" : kpi.trend === "down" ? " ▼" : "";
-    s.addText(`${kpi.change}${arrow}`, { x, y: y + h * 0.82, w, h: h * 0.16, fontSize: 9, color: cc, align: "center" });
-  }
-}
-
-// ── Numbered step circle ──────────────────────────────────────────────────────
-function addStepCircle(s: PptxGenJS.Slide, pptx: PptxGenJS, n: number, x: number, y: number, color: string) {
-  s.addShape(pptx.ShapeType.ellipse, { x, y, w: 0.42, h: 0.42, fill: { color }, line: { color, width: 0 } });
-  s.addText(String(n), { x, y, w: 0.42, h: 0.42, fontSize: 11, bold: true, color: "FFFFFF", align: "center", valign: "middle" });
 }
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
@@ -182,62 +89,144 @@ function analyticsChartToBarData(chart: Chart): BarSeries[] {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLanguage = "ru"): Promise<Buffer> {
-  const pptx = new PptxGenJS();
-  pptx.layout = "LAYOUT_WIDE";
+  const instance = new PptxGenJS();
+  instance.layout = "LAYOUT_WIDE";
 
-  const d = dashboard;
-  const tx = i18n(lang);
-  const locale = lang === "en" ? "en-US" : lang === "tg" ? "ru-RU" : "ru-RU";
+  const d      = dashboard;
+  const tx     = i18n(lang);
+  const locale = lang === "en" ? "en-US" : "ru-RU";
   const docName = `${tx.analysis} · ${d.meta.period}`;
   const website = d.meta.companyName.toLowerCase().replace(/\s+/g, "") + ".com";
-  const date = new Date(d.meta.analyzedAt).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
+  const date    = new Date(d.meta.analyzedAt).toLocaleDateString(locale, { day: "numeric", month: "long", year: "numeric" });
 
   let page = 0;
 
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const cover = (company: string, docType: string, period: string, dt: string, dn: string, web: string) => {
+    const s = instance.addSlide();
+    s.background = { color: T.bg };
+
+    // Right dark navy panel
+    s.addShape(instance.ShapeType.rect, { x: SPLIT, y: 0, w: SW - SPLIT, h: 7.5, fill: { color: T.navy }, line: { type: "none" } });
+
+    // Right panel: horizontal accent lines
+    [1.5, 2.5, 3.5, 4.5, 5.5].forEach((y) => {
+      s.addShape(instance.ShapeType.rect, {
+        x: SPLIT + 0.36, y, w: SW - SPLIT - 0.72, h: 0.010,
+        fill: { color: "FFFFFF", transparency: 78 }, line: { type: "none" },
+      });
+    });
+    // Large subtle circle
+    s.addShape(instance.ShapeType.ellipse, {
+      x: SPLIT + 0.8, y: 3.8, w: 4.4, h: 4.4,
+      fill: { color: "FFFFFF", transparency: 94 }, line: { type: "none" },
+    });
+    // Small accent dots
+    s.addShape(instance.ShapeType.ellipse, { x: SPLIT + 0.38, y: 6.42, w: 0.14, h: 0.14, fill: { color: "FFFFFF", transparency: 60 }, line: { type: "none" } });
+    s.addShape(instance.ShapeType.ellipse, { x: SPLIT + 0.60, y: 6.44, w: 0.10, h: 0.10, fill: { color: "FFFFFF", transparency: 70 }, line: { type: "none" } });
+
+    // Logo on right panel (white, frosted)
+    s.addShape(instance.ShapeType.rect, { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fill: { color: "FFFFFF", transparency: 88 }, line: { color: "FFFFFF", width: 0.75, transparency: 60 } });
+    s.addText("LOGO", { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fontSize: 9, color: "FFFFFF", fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    // Web on right panel
+    s.addText(web, { x: SPLIT + 0.36, y: 6.58, w: SW - SPLIT - 0.72, h: 0.26, fontSize: 7.5, color: "FFFFFF", fontFace: "Calibri", transparency: 40 });
+
+    // Left: company name
+    s.addText(company, { x: MX, y: 1.8, w: SPLIT - MX * 2, h: 1.1, fontSize: 38, bold: true, fontFace: "Calibri", color: T.navy, valign: "middle" });
+    // Blue accent bar
+    s.addShape(instance.ShapeType.rect, { x: MX, y: 3.02, w: 2.8, h: 0.048, fill: { color: T.blue }, line: { type: "none" } });
+    // Doc type
+    s.addText(docType.toUpperCase(), { x: MX, y: 3.16, w: SPLIT - MX * 2, h: 0.46, fontSize: 11, color: T.blue, fontFace: "Calibri", charSpacing: 3.5 });
+    // Divider
+    s.addShape(instance.ShapeType.rect, { x: MX, y: 3.74, w: SPLIT - MX * 2 - 0.2, h: 0.010, fill: { color: T.border }, line: { type: "none" } });
+    // Period & date
+    s.addText(`${period}  ·  ${dt}`, { x: MX, y: 3.90, w: SPLIT - MX * 2, h: 0.38, fontSize: 11, color: T.mute, fontFace: "Calibri" });
+
+    // Footer (left side only)
+    s.addShape(instance.ShapeType.rect, { x: MX, y: FY, w: SPLIT - MX - 0.2, h: 0.010, fill: { color: T.border }, line: { type: "none" } });
+    s.addText(dn, { x: MX, y: FY + 0.08, w: SPLIT - MX - 0.2, h: 0.26, fontSize: 7.5, color: T.mute, fontFace: "Calibri" });
+  };
+
+  const frame = (s: PptxGenJS.Slide, dn: string, pg: number, web: string) => {
+    // Logo box
+    s.addShape(instance.ShapeType.rect, { x: MX, y: 0.12, w: 1.6, h: 0.36, fill: { color: T.panel }, line: { color: T.border, width: 0.5 } });
+    s.addText("LOGO", { x: MX, y: 0.12, w: 1.6, h: 0.36, fontSize: 8, color: T.navy, fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    // Website
+    s.addText(web, { x: SW - MX - 3.0, y: 0.16, w: 2.6, h: 0.28, fontSize: 8.5, color: T.mute, fontFace: "Calibri", align: "right" });
+    // Separator
+    s.addShape(instance.ShapeType.rect, { x: MX, y: HY, w: CW, h: 0.012, fill: { color: T.border }, line: { type: "none" } });
+    // Footer
+    s.addShape(instance.ShapeType.rect, { x: MX, y: FY, w: CW, h: 0.010, fill: { color: T.border }, line: { type: "none" } });
+    s.addText(dn, { x: MX, y: FY + 0.08, w: 8.0, h: 0.26, fontSize: 7.5, color: T.mute, fontFace: "Calibri" });
+    s.addText(String(pg), { x: SW - MX - 0.7, y: FY + 0.08, w: 0.7, h: 0.26, fontSize: 7.5, color: T.mute, fontFace: "Calibri", align: "right" });
+  };
+
+  const slide = (title: string, dn: string, pg: number, web: string) => {
+    const s = instance.addSlide();
+    s.background = { color: T.bg };
+    frame(s, dn, pg, web);
+    s.addShape(instance.ShapeType.rect, { x: MX, y: CY + 0.07, w: 0.10, h: 0.28, fill: { color: T.blue }, line: { type: "none" } });
+    s.addText(title, { x: MX + 0.18, y: CY, w: CW - 1.8, h: 0.44, fontSize: 20, bold: true, fontFace: "Calibri", color: T.navy });
+    return s;
+  };
+
+  const kpiCard = (s: PptxGenJS.Slide, kpi: { label: string; value: string; change?: string; trend?: string }, x: number, y: number, w: number, h: number) => {
+    s.addShape(instance.ShapeType.rect, { x, y, w, h, fill: { color: T.bg }, line: { color: T.border, width: 0.75 } });
+    s.addShape(instance.ShapeType.rect, { x, y, w: 0.06, h, fill: { color: T.blue }, line: { type: "none" } });
+    s.addText(kpi.value, { x: x + 0.08, y: y + 0.08, w: w - 0.16, h: h * 0.52, fontSize: 28, bold: true, color: T.navy, align: "center", valign: "middle", fontFace: "Calibri" });
+    s.addText(kpi.label, { x: x + 0.10, y: y + h * 0.62, w: w - 0.20, h: h * 0.25, fontSize: 9, color: T.mute, align: "center", fontFace: "Calibri" });
+    if (kpi.change) {
+      const cc = kpi.trend === "up" ? T.green : kpi.trend === "down" ? T.red : T.mute;
+      const arrow = kpi.trend === "up" ? " ▲" : kpi.trend === "down" ? " ▼" : "";
+      s.addText(`${kpi.change}${arrow}`, { x, y: y + h * 0.87, w, h: h * 0.12, fontSize: 8.5, color: cc, align: "center", fontFace: "Calibri" });
+    }
+  };
+
+  const stepBox = (s: PptxGenJS.Slide, n: number, x: number, y: number, color: string) => {
+    s.addShape(instance.ShapeType.rect, { x, y, w: 0.36, h: 0.36, fill: { color }, line: { type: "none" }, rectRadius: 0.04 });
+    s.addText(String(n).padStart(2, "0"), { x, y, w: 0.36, h: 0.36, fontSize: 10, bold: true, color: "FFFFFF", align: "center", valign: "middle", fontFace: "Calibri" });
+  };
+
   // ── 1. Cover ──────────────────────────────────────────────────────────────
   page++;
-  addCoverSlide(pptx, d.meta.companyName, d.meta.documentType || tx.analysis, d.meta.period, `${tx.analyzedOn}: ${date}`, docName, website, lang);
+  cover(d.meta.companyName, d.meta.documentType || tx.analysis, d.meta.period, `${tx.analyzedOn}: ${date}`, docName, website);
 
   // ── 2. Executive Summary ──────────────────────────────────────────────────
   page++;
   {
-    const s = addSlide(pptx, tx.execSummary, docName, page, website);
-    s.addText(d.summary.executive, {
-      x: MX, y: CY + 0.58, w: CW, h: FY - CY - 0.74,
-      fontSize: 13, color: T.sub, valign: "top", paraSpaceAfter: 5,
-    });
+    const s = slide(tx.execSummary, docName, page, website);
+    s.addText(d.summary.executive, { x: MX, y: CY + 0.58, w: CW, h: FY - CY - 0.76, fontSize: 13, color: T.sub, valign: "top", paraSpaceAfter: 5, fontFace: "Calibri" });
   }
 
-  // ── 3. Key Metrics (KPI grid + first chart) ───────────────────────────────
+  // ── 3. Key Metrics ────────────────────────────────────────────────────────
   page++;
+  let firstChartOnMetrics = false;
   {
-    const s = addSlide(pptx, tx.keyMetrics, docName, page, website);
+    const s = slide(tx.keyMetrics, docName, page, website);
     const kpis = d.kpis.slice(0, 6);
     const hasChart = d.charts.length > 0;
-
-    const gridW = hasChart ? 7.4 : CW;
-    const cols = 3;
-    const cardW = (gridW - (cols - 1) * 0.22) / cols;
-    const cardH = 1.68;
-    const gridY = CY + 0.60;
+    const gridW  = hasChart ? 7.4 : CW;
+    const cols   = 3;
+    const cardW  = (gridW - (cols - 1) * 0.22) / cols;
+    const cardH  = 1.66;
+    const gridY  = CY + 0.60;
 
     kpis.forEach((kpi, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
-      addKpiCard(s, pptx, kpi, MX + col * (cardW + 0.22), gridY + row * (cardH + 0.24), cardW, cardH);
+      kpiCard(s, kpi, MX + (i % cols) * (cardW + 0.22), gridY + Math.floor(i / cols) * (cardH + 0.22), cardW, cardH);
     });
 
     if (hasChart) {
       const barData = analyticsChartToBarData(d.charts[0]!);
       if (barData.length) {
+        firstChartOnMetrics = true;
         const cx = MX + gridW + 0.35;
         const cw = SW - cx - MX;
-        s.addText(d.charts[0]!.title, { x: cx, y: CY + 0.56, w: cw, h: 0.3, fontSize: 9, color: T.sub, bold: true });
-        s.addChart(pptx.ChartType.bar, barData, {
+        s.addText(d.charts[0]!.title, { x: cx, y: CY + 0.56, w: cw, h: 0.28, fontSize: 8.5, color: T.sub, bold: true, fontFace: "Calibri" });
+        s.addChart(instance.ChartType.bar, barData, {
           x: cx, y: CY + 0.88, w: cw, h: FY - CY - 1.04,
           barDir: "col", barGapWidthPct: 55,
           chartColors: CHART_COLORS,
-          catAxisLabelColor: T.sub, valAxisLabelColor: T.sub,
+          catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
           catAxisLabelFontSize: 8, valAxisLabelFontSize: 8,
           showLegend: barData.length > 1, legendPos: "b", legendFontSize: 8,
           showTitle: false, showValue: false,
@@ -246,21 +235,22 @@ export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLa
     }
   }
 
-  // ── 4. Chart slides (up to 2) ─────────────────────────────────────────────
-  for (const chart of d.charts.slice(0, 2)) {
+  // ── 4. Chart slides — skip chart[0] if already shown on metrics ───────────
+  const chartsToShow = firstChartOnMetrics ? d.charts.slice(1, 3) : d.charts.slice(0, 2);
+  for (const chart of chartsToShow) {
     const barData = analyticsChartToBarData(chart);
     if (!barData.length) continue;
     page++;
-    const s = addSlide(pptx, chart.title, docName, page, website);
+    const s = slide(chart.title, docName, page, website);
     if (chart.description) {
-      s.addText(chart.description, { x: MX, y: CY + 0.56, w: CW, h: 0.3, fontSize: 9.5, color: T.sub, italic: true });
+      s.addText(chart.description, { x: MX, y: CY + 0.56, w: CW, h: 0.30, fontSize: 9.5, color: T.mute, italic: true, fontFace: "Calibri" });
     }
     const chartY = chart.description ? CY + 0.94 : CY + 0.58;
-    s.addChart(pptx.ChartType.bar, barData, {
-      x: MX, y: chartY, w: CW, h: FY - chartY - 0.15,
+    s.addChart(instance.ChartType.bar, barData, {
+      x: MX, y: chartY, w: CW, h: FY - chartY - 0.16,
       barDir: "col", barGapWidthPct: 55,
       chartColors: CHART_COLORS,
-      catAxisLabelColor: T.sub, valAxisLabelColor: T.sub,
+      catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
       catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
       showLegend: barData.length > 1, legendPos: "b", legendFontSize: 9,
       showTitle: false, showValue: false,
@@ -270,28 +260,28 @@ export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLa
   // ── 5. Key Findings & Red Flags ───────────────────────────────────────────
   page++;
   {
-    const s = addSlide(pptx, `${tx.keyFindings} & ${tx.redFlags}`, docName, page, website);
+    const s = slide(`${tx.keyFindings} & ${tx.redFlags}`, docName, page, website);
     const contentY = CY + 0.60;
-    const leftW = CW * 0.5 - 0.18;
+    const leftW    = CW * 0.5 - 0.18;
     const findings = d.summary.keyFindings.length > 0 ? d.summary.keyFindings : [tx.noFindings];
 
     findings.slice(0, 6).forEach((f, i) => {
-      const y = contentY + i * 0.56;
+      const y = contentY + i * 0.58;
       if (y + 0.46 > FY) return;
-      addStepCircle(s, pptx, i + 1, MX, y + 0.03, T.a1);
-      s.addText(f, { x: MX + 0.54, y, w: leftW - 0.54, h: 0.48, fontSize: 11.5, color: T.text, valign: "middle" });
+      stepBox(s, i + 1, MX, y + 0.04, T.navy);
+      s.addText(f, { x: MX + 0.48, y, w: leftW - 0.52, h: 0.48, fontSize: 11, color: T.sub, valign: "middle", fontFace: "Calibri" });
     });
 
     if (d.summary.redFlags.length > 0) {
-      s.addShape(pptx.ShapeType.rect, { x: MX + leftW + 0.18, y: contentY, w: 0.01, h: FY - contentY - 0.15, fill: { color: T.border }, line: { color: T.border, width: 0 } });
+      s.addShape(instance.ShapeType.rect, { x: MX + leftW + 0.18, y: contentY, w: 0.012, h: FY - contentY - 0.16, fill: { color: T.border }, line: { type: "none" } });
       const rx = MX + leftW + 0.36;
       const rw = CW - leftW - 0.36;
-      s.addText(tx.redFlags, { x: rx, y: contentY, w: rw, h: 0.34, fontSize: 11, bold: true, color: T.red });
+      s.addText(tx.redFlags, { x: rx, y: contentY, w: rw, h: 0.34, fontSize: 11, bold: true, color: T.red, fontFace: "Calibri" });
       d.summary.redFlags.slice(0, 6).forEach((f, i) => {
-        const y = contentY + 0.40 + i * 0.52;
+        const y = contentY + 0.40 + i * 0.54;
         if (y + 0.44 > FY) return;
-        s.addShape(pptx.ShapeType.rect, { x: rx, y: y + 0.14, w: 0.18, h: 0.035, fill: { color: T.red }, line: { color: T.red, width: 0 } });
-        s.addText(f, { x: rx + 0.26, y, w: rw - 0.26, h: 0.44, fontSize: 11.5, color: T.text, valign: "middle" });
+        s.addShape(instance.ShapeType.rect, { x: rx, y: y + 0.15, w: 0.18, h: 0.036, fill: { color: T.red }, line: { type: "none" } });
+        s.addText(f, { x: rx + 0.26, y, w: rw - 0.26, h: 0.44, fontSize: 11, color: T.sub, valign: "middle", fontFace: "Calibri" });
       });
     }
   }
@@ -300,47 +290,43 @@ export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLa
   if (d.tables.length > 0) {
     page++;
     const tbl = d.tables[0]!;
-    const s = addSlide(pptx, tbl.title || tx.dataTable, docName, page, website);
-    const headers = tbl.headers.map((h) => ({ text: h, options: { bold: true, color: T.panel, fill: { color: T.a1 } } }));
-    const rows = tbl.rows.slice(0, 12).map((row, ri) => row.map((cell) => ({
-      text: cell,
-      options: { color: T.text, fill: { color: ri % 2 === 0 ? T.panel : T.bg } },
-    })));
+    const s   = slide(tbl.title || tx.dataTable, docName, page, website);
+    const headers = tbl.headers.map((h) => ({ text: h, options: { bold: true, color: "FFFFFF", fill: { color: T.navy } } }));
+    const rows = tbl.rows.slice(0, 12).map((row, ri) =>
+      row.map((cell) => ({ text: cell, options: { color: T.sub, fill: { color: ri % 2 === 0 ? T.panel : T.bg } } })),
+    );
     s.addTable([headers, ...rows], { x: MX, y: CY + 0.60, w: CW, fontSize: 10, border: { color: T.border, pt: 0.5 }, rowH: 0.32 });
   }
 
   // ── 7. Opportunities ─────────────────────────────────────────────────────
   page++;
   {
-    const s = addSlide(pptx, tx.opportunities, docName, page, website);
+    const s     = slide(tx.opportunities, docName, page, website);
     const items = d.summary.opportunities.length > 0 ? d.summary.opportunities : [tx.noOpportunities];
-
-    // Two-column layout if many items
-    const mid = Math.ceil(Math.min(items.length, 8) / 2);
-    const leftItems = items.slice(0, mid);
-    const rightItems = items.slice(mid, 8);
-    const colW = rightItems.length > 0 ? CW * 0.5 - 0.15 : CW;
+    const mid   = Math.ceil(Math.min(items.length, 8) / 2);
+    const left  = items.slice(0, mid);
+    const right = items.slice(mid, 8);
+    const colW  = right.length > 0 ? CW * 0.5 - 0.15 : CW;
     const contentY = CY + 0.62;
 
-    leftItems.forEach((opp, i) => {
+    left.forEach((opp, i) => {
       const y = contentY + i * 0.72;
-      if (y + 0.55 > FY) return;
-      addStepCircle(s, pptx, i + 1, MX, y + 0.08, T.a2);
-      s.addShape(pptx.ShapeType.rect, { x: MX + 0.42, y: y + 0.22, w: colW - 0.54, h: 0.01, fill: { color: T.border }, line: { color: T.border, width: 0 } });
-      s.addText(opp, { x: MX + 0.52, y, w: colW - 0.54, h: 0.56, fontSize: 11.5, color: T.text, valign: "middle" });
+      if (y + 0.56 > FY) return;
+      stepBox(s, i + 1, MX, y + 0.10, T.blue);
+      s.addText(opp, { x: MX + 0.48, y, w: colW - 0.52, h: 0.56, fontSize: 11, color: T.sub, valign: "middle", fontFace: "Calibri" });
     });
 
-    if (rightItems.length > 0) {
-      const rx = MX + colW + 0.3;
-      rightItems.forEach((opp, i) => {
+    if (right.length > 0) {
+      const rx = MX + colW + 0.30;
+      right.forEach((opp, i) => {
         const y = contentY + i * 0.72;
-        if (y + 0.55 > FY) return;
-        addStepCircle(s, pptx, mid + i + 1, rx, y + 0.08, T.a2);
-        s.addText(opp, { x: rx + 0.52, y, w: colW - 0.54, h: 0.56, fontSize: 11.5, color: T.text, valign: "middle" });
+        if (y + 0.56 > FY) return;
+        stepBox(s, mid + i + 1, rx, y + 0.10, T.blue);
+        s.addText(opp, { x: rx + 0.48, y, w: colW - 0.52, h: 0.56, fontSize: 11, color: T.sub, valign: "middle", fontFace: "Calibri" });
       });
     }
   }
 
-  const output = await pptx.write({ outputType: "arraybuffer" });
+  const output = await instance.write({ outputType: "arraybuffer" });
   return Buffer.from(output as ArrayBuffer);
 }

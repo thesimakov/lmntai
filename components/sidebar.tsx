@@ -91,6 +91,20 @@ function activePlanLabelKey(plan: PlanId): MessageKey {
   }
 }
 
+const navLinkClass = (isActive: boolean) =>
+  cn(
+    "group flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-[15px] leading-snug transition-colors",
+    isActive
+      ? "bg-zinc-100 font-semibold text-black"
+      : "text-black hover:bg-zinc-100"
+  );
+
+const navIconClass = (isActive: boolean) =>
+  cn(
+    "h-[18px] w-[18px] shrink-0",
+    isActive ? "text-black" : "text-zinc-700 group-hover:text-black"
+  );
+
 function SidebarBody({ className }: { className?: string }) {
   const pathname = usePathname();
   const { data: session } = useSession();
@@ -150,22 +164,17 @@ function SidebarBody({ className }: { className?: string }) {
             const isActive =
               (item.activePath && pathname.startsWith(item.activePath)) ||
               (!item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
-            const itemClass = cn(
-              "group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-              isActive
-                ? "bg-accent text-accent-foreground font-medium"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            );
+            const itemClass = navLinkClass(isActive);
             const itemContent = (
               <>
-                <Icon className={cn("h-4 w-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground/70 group-hover:text-foreground/70")} />
+                <Icon className={navIconClass(isActive)} />
                 <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
                 {item.href === "/pricing" ? (
                   <Badge
                     variant="secondary"
                     className={cn(
-                      "ml-auto shrink-0 truncate px-1.5 py-0 text-[10px] font-medium",
-                      isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                      "ml-auto shrink-0 truncate px-1.5 py-0 text-[11px] font-medium",
+                      isActive ? "bg-zinc-200 text-black" : "text-zinc-700"
                     )}
                     title={t(activePlanLabelKey(activePlan))}
                   >
@@ -187,14 +196,11 @@ function SidebarBody({ className }: { className?: string }) {
           {session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER" ? (
             <Link
               href="/admin/users"
-              className={cn(
-                "group flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-                (pathname === "/admin" || pathname.startsWith("/admin/"))
-                  ? "bg-accent text-accent-foreground font-medium"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
+              className={navLinkClass(pathname === "/admin" || pathname.startsWith("/admin/"))}
             >
-              <Shield className="h-4 w-4 shrink-0 text-muted-foreground/70 group-hover:text-foreground/70" />
+              <Shield
+                className={navIconClass(pathname === "/admin" || pathname.startsWith("/admin/"))}
+              />
               <span>{t("nav_admin")}</span>
             </Link>
           ) : null}
@@ -202,9 +208,9 @@ function SidebarBody({ className }: { className?: string }) {
 
         {/* Upgrade nudge */}
         <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
-          <p className="text-[13px] font-semibold text-foreground">{t("profile_upgrade_to_pro")}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground leading-relaxed">{t("sidebar_pro_desc")}</p>
-          <Button size="sm" className="mt-2.5 h-7 w-full text-xs" onClick={() => (window.location.href = "/pricing")}>
+          <p className="text-[15px] font-semibold text-black">{t("profile_upgrade_to_pro")}</p>
+          <p className="mt-0.5 text-sm leading-relaxed text-zinc-800">{t("sidebar_pro_desc")}</p>
+          <Button size="sm" className="mt-2.5 h-8 w-full text-sm" onClick={() => (window.location.href = "/pricing")}>
             {t("sidebar_open_pricing")}
           </Button>
         </div>
@@ -222,14 +228,14 @@ function SidebarBody({ className }: { className?: string }) {
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-foreground leading-tight">
+                <p className="truncate text-[15px] font-medium leading-tight text-black">
                   {session?.user?.name ?? t("user_display_fallback")}
                 </p>
-                <p className="truncate text-[11px] text-muted-foreground">
+                <p className="truncate text-[13px] text-zinc-800">
                   {tokenBalance === null ? (
                     <>{t("playground_home_tokens")} {t("playground_home_tokens_none")}</>
                   ) : (
-                    <><span className="font-medium text-foreground">{tokenBalance.toLocaleString(numberLocale)}</span>{" "}{t("playground_home_tokens_suffix")}</>
+                    <><span className="font-medium text-black">{tokenBalance.toLocaleString(numberLocale)}</span>{" "}{t("playground_home_tokens_suffix")}</>
                   )}
                 </p>
               </div>
@@ -247,7 +253,7 @@ function SidebarBody({ className }: { className?: string }) {
                   <div key={`logout-${idx}`}>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem
-                      className="cursor-pointer gap-2 rounded-md py-1.5 text-sm text-destructive focus:text-destructive"
+                      className="cursor-pointer gap-2 rounded-md py-2 text-[15px] text-destructive focus:text-destructive"
                       onSelect={(e) => {
                         e.preventDefault();
                         void signOut({ callbackUrl: `${SITE_URL}/` });
@@ -268,11 +274,11 @@ function SidebarBody({ className }: { className?: string }) {
                     href={row.href}
                     {...(row.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
                     className={cn(
-                      "flex cursor-pointer items-center gap-2 rounded-md py-1.5 text-sm",
-                      active && "bg-accent"
+                      "flex cursor-pointer items-center gap-2 rounded-md py-2 text-[15px] text-black",
+                      active && "bg-zinc-100 font-semibold"
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
+                    <Icon className="h-4 w-4 shrink-0 text-zinc-700" />
                     <span className="flex-1 truncate">{t(row.labelKey)}</span>
                     {row.chevron ? (
                       <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/60" />

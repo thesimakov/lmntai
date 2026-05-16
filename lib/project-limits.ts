@@ -5,6 +5,21 @@ export async function countUserProjectsForQuota(userId: string): Promise<number>
   return prisma.project.count({ where: { ownerId: userId } });
 }
 
+export type UserProjectQuota = {
+  current: number;
+  limit: number;
+  canCreate: boolean;
+};
+
+export async function getUserProjectQuota(
+  userId: string,
+  plan: string | null | undefined
+): Promise<UserProjectQuota> {
+  const limit = getMaxActiveProjectsForPlan(plan);
+  const current = await countUserProjectsForQuota(userId);
+  return { current, limit, canCreate: current < limit };
+}
+
 export type ProjectLimitResult =
   | { ok: true }
   | { ok: false; status: 403; limit: number; current: number; message: string };

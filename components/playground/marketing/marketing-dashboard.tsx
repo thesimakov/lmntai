@@ -19,7 +19,7 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       <MarketingKpiRow kpis={kpis} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="flex flex-col gap-4">
         {channels.map((ch) => (
           <MarketingChannelCard key={ch.name} channel={ch} />
         ))}

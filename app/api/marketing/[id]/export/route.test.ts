@@ -60,8 +60,8 @@ function makeParams(id: string) {
   return { params: Promise.resolve({ id }) };
 }
 
-function makeRequest(body: unknown) {
-  return new Request("http://localhost/api/marketing/p1/export", {
+function makeRequest(body: unknown, lang = "ru") {
+  return new Request(`http://localhost/api/marketing/p1/export?lang=${lang}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -98,5 +98,14 @@ describe("POST /api/marketing/[id]/export", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Type")).toBe(PPTX_MIME);
     expect(mockBuildPptx).toHaveBeenCalledOnce();
+  });
+
+  it("exports from report in request body without reading sandbox state", async () => {
+    mockGetState.mockResolvedValue({ files: {} });
+    const req = makeRequest({ format: "marketing-pptx", report: validDashboard });
+    const res = await POST(req as never, makeParams("p1"));
+    expect(res.status).toBe(200);
+    expect(mockGetState).not.toHaveBeenCalled();
+    expect(mockBuildPptx).toHaveBeenCalledWith(validDashboard, expect.any(String));
   });
 });

@@ -25,6 +25,18 @@ export function mergeSandboxIndexHtml(
   return merged;
 }
 
+/** Объединяет файлы из Prisma и snapshot на диске (оба источника, без потери ключей). */
+export function resolveSandboxProjectFiles(
+  dbFiles: unknown,
+  storageFiles: Record<string, string>,
+  html: string
+): Record<string, string> {
+  const fromDb = sanitizeFiles(dbFiles);
+  const merged =
+    Object.keys(storageFiles).length > 0 ? { ...fromDb, ...storageFiles } : fromDb;
+  return mergeSandboxIndexHtml(merged, html);
+}
+
 export type SandboxProjectStateRow = {
   projectId: string;
   sandboxId: string;
@@ -91,8 +103,7 @@ export async function getSandboxProjectState(projectId: string): Promise<Sandbox
   });
   if (!row) return null;
   const filesFromStorage = await readProjectFilesSnapshot(row.projectId);
-  const rawFiles = Object.keys(filesFromStorage).length > 0 ? filesFromStorage : sanitizeFiles(row.files);
-  const files = mergeSandboxIndexHtml(rawFiles, row.html);
+  const files = resolveSandboxProjectFiles(row.files, filesFromStorage, row.html);
   return {
     projectId: row.projectId,
     sandboxId: row.sandboxId,

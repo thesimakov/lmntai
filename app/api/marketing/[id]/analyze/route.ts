@@ -4,6 +4,8 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIJson } from "@/lib/routerai-client";
+import { appendBrandKitToSystemPrompt } from "@/lib/brand-kit-library";
+import { getBrandKitPromptBlock } from "@/lib/brand-kit-service";
 import { buildMarketingPrompt } from "@/lib/marketing-prompt";
 import { marketingDashboardSchema, type MarketingDashboard } from "@/lib/marketing-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
@@ -64,6 +66,13 @@ export async function POST(
       : rawText;
 
   const messages = buildMarketingPrompt(truncated, uiLanguage);
+  const brandKitBlock = await getBrandKitPromptBlock(user.id);
+  if (messages[0]?.role === "system") {
+    messages[0] = {
+      role: "system",
+      content: appendBrandKitToSystemPrompt(messages[0].content, brandKitBlock),
+    };
+  }
 
   // state is non-null here: the !rawText guard above proves state?.files existed
   const nonNullState = state!;

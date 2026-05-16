@@ -32,7 +32,8 @@ import { cn } from "@/lib/utils";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 
 type LeftTab = "chat" | "investor" | "forecast" | "agents" | "benchmark";
-const MIN_LEFT_PANEL_WIDTH = 240;
+const DEFAULT_LEFT_PANEL_WIDTH = 375;
+const MIN_LEFT_PANEL_WIDTH = 280;
 const MAX_LEFT_PANEL_WIDTH = 480;
 
 export function AnalyticsEditor() {
@@ -42,7 +43,7 @@ export function AnalyticsEditor() {
   const dashboardRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [leftTab, setLeftTab] = useState<LeftTab>("chat");
-  const [leftPanelWidth, setLeftPanelWidth] = useState(MIN_LEFT_PANEL_WIDTH);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(DEFAULT_LEFT_PANEL_WIDTH);
 
   const {
     status,
@@ -264,43 +265,6 @@ export function AnalyticsEditor() {
             >
               <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
               {t("analytics_bi_reanalyze")}
-            </Button>
-            <div className="w-px h-4 bg-border mx-1 shrink-0 hidden md:block" />
-            <Button
-              variant={leftTab === "investor" ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5 h-8 px-2.5 text-xs hidden md:flex"
-              onClick={() => setLeftTab("investor")}
-            >
-              <TrendingUp className="w-3.5 h-3.5" />
-              {t("analytics_bi_investor_deck")}
-            </Button>
-            <Button
-              variant={leftTab === "forecast" ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5 h-8 px-2.5 text-xs hidden md:flex"
-              onClick={() => setLeftTab("forecast")}
-            >
-              <LineChart className="w-3.5 h-3.5" />
-              {t("analytics_bi_forecast")}
-            </Button>
-            <Button
-              variant={leftTab === "agents" ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5 h-8 px-2.5 text-xs hidden md:flex"
-              onClick={() => setLeftTab("agents")}
-            >
-              <Bot className="w-3.5 h-3.5" />
-              {t("analytics_bi_ai_agents")}
-            </Button>
-            <Button
-              variant={leftTab === "benchmark" ? "secondary" : "ghost"}
-              size="sm"
-              className="gap-1.5 h-8 px-2.5 text-xs hidden md:flex"
-              onClick={() => setLeftTab("benchmark")}
-            >
-              <Target className="w-3.5 h-3.5" />
-              {t("analytics_bi_benchmarks")}
             </Button>
           </>
         )}

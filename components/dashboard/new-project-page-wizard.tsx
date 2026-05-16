@@ -8,7 +8,9 @@ import {
   BarChart2,
   Bot,
   Check,
+  ChevronDown,
   Globe,
+  Palette,
   LayoutTemplate,
   Loader2,
   Presentation,
@@ -16,7 +18,7 @@ import {
   Sparkles,
   TrendingUp
 } from "lucide-react";
-import { useCallback, useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
@@ -27,8 +29,14 @@ import { Input } from "@/components/ui/input";
 import { saveBuilderHandoff } from "@/lib/landing-handoff";
 import { clearLemnityBoxCanvasDraft } from "@/lib/lemnity-box-editor-persistence";
 import type { MessageKey } from "@/lib/i18n";
+import {
+  emptyProjectBrandKit,
+  ProjectBrandKitFields,
+  type ProjectBrandKitState
+} from "@/components/dashboard/project-brand-kit-fields";
 import { buildPlaygroundBuildEditUrl } from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
+import { fetchBrandKitLibrary } from "@/lib/brand-kit-client";
 import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
@@ -101,6 +109,21 @@ export function NewProjectPageWizard() {
   const [subdomainCheck, setSubdomainCheck] = useState<
     "idle" | "checking" | "available" | "taken" | "error"
   >("idle");
+  const [showBrandKit, setShowBrandKit] = useState(false);
+  const [brandKit, setBrandKit] = useState<ProjectBrandKitState>(emptyProjectBrandKit);
+  const brandKitHydratedRef = useRef(false);
+
+  useEffect(() => {
+    if (!showBrandKit || brandKitHydratedRef.current) return;
+    brandKitHydratedRef.current = true;
+    void fetchBrandKitLibrary()
+      .then(({ state }) => {
+        if (state) setBrandKit(state);
+      })
+      .catch(() => {
+        /* библиотека опциональна при первом открытии */
+      });
+  }, [showBrandKit]);
 
   const trimmedName = displayName.trim();
   const trimmedDomain = finalizeSubdomain(domainInput);
@@ -740,6 +763,31 @@ export function NewProjectPageWizard() {
                       <AlertCircle className="size-3.5 shrink-0" aria-hidden />
                       {t("projects_format_subdomain_check_failed")}
                     </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-3 border-t border-border/60 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 w-full justify-between border-border/80 bg-background/80 px-4 font-medium text-foreground shadow-sm"
+                    aria-expanded={showBrandKit}
+                    onClick={() => setShowBrandKit((open) => !open)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Palette className="size-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
+                      {t("projects_brand_style_toggle")}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        showBrandKit && "rotate-180"
+                      )}
+                      aria-hidden
+                    />
+                  </Button>
+                  {showBrandKit ? (
+                    <ProjectBrandKitFields value={brandKit} onChange={setBrandKit} />
                   ) : null}
                 </div>
               </CardContent>

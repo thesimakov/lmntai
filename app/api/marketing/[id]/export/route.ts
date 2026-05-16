@@ -11,6 +11,8 @@ import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const exportBodySchema = z.object({
   format: z.literal("marketing-pptx"),
+  /** Резерв: отчёт с клиента, если snapshot на диске отстаёт от Prisma. */
+  report: marketingDashboardSchema.optional(),
 });
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
@@ -37,19 +39,23 @@ export async function POST(
   if (!bodyResult.ok) return bodyResult.response;
   const uiLanguage = resolveUiLanguageFromRequest(req);
 
-  const state = await getSandboxProjectState(projectId);
-  if (!state) return apiError("No analysis found", 404);
+  let report: ReturnType<typeof marketingDashboardSchema.parse> | undefined =
+    bodyResult.data.report;
 
-  const localizedKey = `marketing.${uiLanguage}.json`;
-  const files = state.files ?? {};
-  const raw = files[localizedKey] ?? files["marketing.json"];
-  if (!raw) return apiError("No analysis found", 404);
+  if (!report) {
+    const state = await getSandboxProjectState(projectId);
+    if (!state) return apiError("No analysis found", 404);
 
-  let report: ReturnType<typeof marketingDashboardSchema.parse>;
-  try {
-    report = marketingDashboardSchema.parse(JSON.parse(raw));
-  } catch {
-    return apiError("Marketing data is corrupted.", 422);
+    const localizedKey = `marketing.${uiLanguage}.json`;
+    const files = state.files ?? {};
+    const raw = files[localizedKey] ?? files["marketing.json"];
+    if (!raw) return apiError("No analysis found", 404);
+
+    try {
+      report = marketingDashboardSchema.parse(JSON.parse(raw));
+    } catch {
+      return apiError("Marketing data is corrupted.", 422);
+    }
   }
 
   let buffer: Buffer;

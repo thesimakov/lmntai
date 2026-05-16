@@ -7,6 +7,8 @@ import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIStream } from "@/lib/routerai-client";
 import { splitSseLines, extractDataJson } from "@/lib/sse-parser";
+import { appendBrandKitToSystemPrompt } from "@/lib/brand-kit-library";
+import { getBrandKitPromptBlock } from "@/lib/brand-kit-service";
 import { buildMarketingChatPrompt } from "@/lib/marketing-prompt";
 import { marketingDashboardSchema } from "@/lib/marketing-schema";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
@@ -62,6 +64,13 @@ export async function POST(
   }));
 
   const messages = buildMarketingChatPrompt(dashboard, body.message, history, uiLanguage);
+  const brandKitBlock = await getBrandKitPromptBlock(user.id);
+  if (messages[0]?.role === "system") {
+    messages[0] = {
+      role: "system",
+      content: appendBrandKitToSystemPrompt(messages[0].content, brandKitBlock),
+    };
+  }
 
   const routerRes = await requestRouterAIStream({
     messages,

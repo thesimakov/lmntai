@@ -5,10 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import {
   Camera,
   Copy,
-  RefreshCw,
   Check,
-  Eye,
-  EyeOff,
   Share2,
   Zap,
   FolderOpen,
@@ -80,9 +77,6 @@ export function Profile() {
   const [profile, setProfile] = useState<ProfileApiUser | null>(null)
   const [isLoadingProfile, setIsLoadingProfile] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [isGeneratingKey, setIsGeneratingKey] = useState(false)
-  const [copied, setCopied] = useState(false)
-  const [showKey, setShowKey] = useState(false)
   const [refCopied, setRefCopied] = useState(false)
   const [formName, setFormName] = useState("")
   const [formCompany, setFormCompany] = useState("")
@@ -142,7 +136,6 @@ export function Profile() {
   const userName = profile?.name ?? session?.user?.name ?? "User"
   const userCompany = profile?.company ?? ""
   const avatarUrl = profile?.avatar ?? undefined
-  const apiKey = profile?.apiKey ?? ""
   const referralLink = profile?.referralCode
     ? `${SITE_URL}/?ref=${encodeURIComponent(profile.referralCode)}`
     : `${SITE_URL}/`
@@ -163,23 +156,9 @@ export function Profile() {
   const dailyCoinsLeft = Math.max(0, stats.dailyLimit - stats.dailyCoinsUsed)
   const dailyProgress = stats.dailyLimit === 0 ? 0 : (dailyCoinsLeft / stats.dailyLimit) * 100
 
-  const maskedApiKey = useMemo(() => {
-    if (!apiKey) return "—"
-    if (showKey) return apiKey
-    if (apiKey.length <= 16) return `${apiKey.slice(0, 8)}...`
-    return `${apiKey.slice(0, 12)}...`
-  }, [apiKey, showKey])
-
   const isFormDirty =
     (formName.trim() !== (profile?.name ?? "").trim()) ||
     (formCompany.trim() !== userCompany.trim())
-
-  function copyApiKey() {
-    if (!apiKey) return
-    void navigator.clipboard.writeText(apiKey)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
 
   function copyReferral() {
     void navigator.clipboard.writeText(referralLink)
@@ -298,30 +277,6 @@ export function Profile() {
       toast.error(t("retry"))
     } finally {
       setIsSaving(false)
-    }
-  }
-
-  async function generateApiKey() {
-    if (isGeneratingKey) return
-    setIsGeneratingKey(true)
-    try {
-      const res = await fetch("/api/profile?action=generate-api-key", {
-        method: "POST",
-        credentials: "include"
-      })
-      if (!res.ok) {
-        throw new Error("generate_key_failed")
-      }
-      const data = (await res.json()) as { apiKey?: string }
-      const nextApiKey = data.apiKey ?? null
-      if (nextApiKey) {
-        setProfile((prev) => (prev ? { ...prev, apiKey: nextApiKey } : prev))
-        setShowKey(true)
-      }
-    } catch {
-      toast.error(t("retry"))
-    } finally {
-      setIsGeneratingKey(false)
     }
   }
 
@@ -651,81 +606,6 @@ export function Profile() {
         </Button>
       </motion.div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.3 }}
-        className="glass rounded-2xl p-6"
-      >
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-lg font-medium text-foreground">{t("profile_api_keys")}</h3>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={generateApiKey}
-            disabled={isGeneratingKey}
-          >
-            <RefreshCw className="mr-2 h-4 w-4" />
-            {isGeneratingKey ? t("loading") : t("profile_generate_new_key")}
-          </Button>
-        </div>
-
-        <div className="rounded-xl bg-muted/30 p-4">
-          <div className="flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <code className="block truncate font-mono text-sm text-foreground">{maskedApiKey}</code>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={() => setShowKey((prev) => !prev)}
-                disabled={!apiKey}
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                onClick={copyApiKey}
-                disabled={!apiKey}
-              >
-                <AnimatePresence mode="wait">
-                  {copied ? (
-                    <motion.div key="check" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                      <Check className="h-4 w-4 text-green-400" />
-                    </motion.div>
-                  ) : (
-                    <motion.div key="copy" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
-                      <Copy className="h-4 w-4" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Button>
-            </div>
-          </div>
-          <AnimatePresence>
-            {copied ? (
-              <motion.p
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="mt-2 text-sm text-green-400"
-              >
-                {t("profile_copied_to_clipboard")}
-              </motion.p>
-            ) : null}
-          </AnimatePresence>
-        </div>
-
-        <p className="mt-4 text-sm text-muted-foreground">{t("profile_api_key_security_note")}</p>
-      </motion.div>
     </motion.div>
   )
 }

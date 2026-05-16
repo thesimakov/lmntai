@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { mergeSandboxIndexHtml } from "./sandbox-project-state-db";
+import { mergeSandboxIndexHtml, resolveSandboxProjectFiles } from "./sandbox-project-state-db";
 
 describe("mergeSandboxIndexHtml", () => {
   it("adds index.html from html when files lack it", () => {
@@ -18,5 +18,18 @@ describe("mergeSandboxIndexHtml", () => {
       "<html>other</html>"
     );
     expect(files["index.html"]).toBe("<html>saved</html>");
+  });
+});
+
+describe("resolveSandboxProjectFiles", () => {
+  it("keeps marketing.json from DB when disk snapshot only has raw upload", () => {
+    const report = '{"meta":{"companyName":"Acme"}}';
+    const files = resolveSandboxProjectFiles(
+      { "marketing.json": report, "marketing_raw.txt": "csv data" },
+      { "marketing_raw.txt": "stale csv only" },
+      ""
+    );
+    expect(files["marketing.json"]).toBe(report);
+    expect(files["marketing_raw.txt"]).toBe("stale csv only");
   });
 });

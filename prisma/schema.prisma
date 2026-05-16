@@ -429,6 +429,7 @@ model User {
   publishDomains PublishDomainBinding[]
   sandboxProjects SandboxProjectState[]
   virtualWorkspace UserVirtualWorkspace?
+  brandKitLibrary UserBrandKitLibrary?
   cmsSitesOwned CmsSite[] @relation("CmsSiteOwner")
   cmsSiteMemberships CmsSiteMember[]
   cmsPageRevisions CmsPageRevision[] @relation("CmsPageRevisionAuthor")
@@ -462,6 +463,14 @@ model UserVirtualWorkspace {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   entries    UserVirtualEntry[]
+}
+
+/// Глобальная библиотека стиля бренда пользователя (фирменный набор для всех модулей).
+model UserBrandKitLibrary {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manifest  Json
+  updatedAt DateTime @updatedAt
 }
 
 /// Виртуальные артефакты (requests/data) внутри пользовательской папки.

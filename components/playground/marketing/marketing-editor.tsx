@@ -15,7 +15,17 @@ import type { MarketingDashboard as MarketingDashboardType } from "@/lib/marketi
 
 type LeftTab = "upload" | "chat";
 
-function ExportButton({ projectId, label, lang }: { projectId: string; label: string; lang: string }) {
+function ExportButton({
+  projectId,
+  label,
+  lang,
+  report,
+}: {
+  projectId: string;
+  label: string;
+  lang: string;
+  report: MarketingDashboardType | null;
+}) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
@@ -23,10 +33,14 @@ function ExportButton({ projectId, label, lang }: { projectId: string; label: st
     if (!projectId || busy) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/marketing/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
+      const res = await fetch(`/api/marketing/${encodeURIComponent(projectId)}/export?lang=${encodeURIComponent(lang)}`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format: "marketing-pptx" }),
+        body: JSON.stringify({
+          format: "marketing-pptx",
+          ...(report ? { report } : {}),
+        }),
       });
 
       if (!res.ok) {
@@ -169,7 +183,12 @@ export function MarketingEditor() {
         <div className="flex-1" />
 
         {hasDashboard && (
-          <ExportButton projectId={projectId} label={t("marketing_bi_export_pptx")} lang={lang} />
+          <ExportButton
+            projectId={projectId}
+            label={t("marketing_bi_export_pptx")}
+            lang={lang}
+            report={dashboard}
+          />
         )}
       </header>
 
