@@ -2,7 +2,8 @@
 
 import { useEffect, useCallback, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Upload, MessageSquare, RefreshCw, TrendingUp } from "lucide-react";
+import { Upload, MessageSquare, RefreshCw, TrendingUp, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
@@ -15,26 +16,64 @@ import type { MarketingDashboard as MarketingDashboardType } from "@/lib/marketi
 type LeftTab = "upload" | "chat";
 
 function ExportButton({ projectId, label, lang }: { projectId: string; label: string; lang: string }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+
   const handleExport = async () => {
-    const res = await fetch(`/api/marketing/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ format: "marketing-pptx" }),
-    });
-    if (res.ok) {
+    if (!projectId || busy) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/marketing/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format: "marketing-pptx" }),
+      });
+
+      if (!res.ok) {
+        let message = t("marketing_bi_export_error");
+        const ct = res.headers.get("content-type") ?? "";
+        if (ct.includes("application/json")) {
+          const data = (await res.json().catch(() => null)) as { error?: string } | null;
+          if (data?.error) message = data.error;
+        }
+        toast.error(message);
+        return;
+      }
+
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "marketing.pptx";
-      a.click();
-      URL.revokeObjectURL(url);
+      try {
+        const cd = res.headers.get("Content-Disposition");
+        const m = cd?.match(/filename="([^"]+)"/);
+        const filename = m?.[1] ?? "marketing.pptx";
+
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.rel = "noopener";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      toast.error(t("marketing_bi_export_error"));
+    } finally {
+      setBusy(false);
     }
   };
 
   return (
-    <Button size="sm" variant="outline" className="gap-1.5 h-8 text-xs" onClick={() => void handleExport()}>
-      <Upload className="w-3.5 h-3.5" />
+    <Button
+      size="sm"
+      variant="outline"
+      className="gap-1.5 h-8 text-xs"
+      disabled={busy || !projectId}
+      onClick={() => void handleExport()}
+    >
+      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
       {label}
     </Button>
   );

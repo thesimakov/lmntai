@@ -1,27 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
 import type { MarketingChannel } from "@/lib/marketing-schema";
 import { localizeMarketingKpiLabel } from "@/lib/marketing-dashboard-localization";
-
-const TREND_COLOR = {
-  up: "text-green-500",
-  down: "text-red-500",
-  neutral: "text-muted-foreground",
-};
-
-const TREND_DOT_COLOR = {
-  up: "bg-green-500",
-  down: "bg-red-500",
-  neutral: "bg-muted-foreground",
-};
-
-const TREND_LABEL = {
-  up: "↑",
-  down: "↓",
-  neutral: "—",
-};
+import { MarketingTrendBadge } from "./marketing-trend-badge";
 
 export function MarketingChannelCard({ channel }: { channel: MarketingChannel }) {
   const { t, lang } = useI18n();
@@ -33,10 +15,7 @@ export function MarketingChannelCard({ channel }: { channel: MarketingChannel })
     <div className="rounded-xl border bg-card p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
         <span className="font-semibold text-sm truncate">{name}</span>
-        <div className={cn("flex items-center gap-1.5 text-xs font-medium shrink-0", TREND_COLOR[trend])}>
-          <span className={cn("w-2 h-2 rounded-full", TREND_DOT_COLOR[trend])} />
-          {TREND_LABEL[trend]}
-        </div>
+        <MarketingTrendBadge trend={trend} showDot />
       </div>
 
       {(spend != null || revenue != null) && (

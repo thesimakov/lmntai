@@ -196,8 +196,16 @@ function addChannelsOverviewSlide(pptx: PptxGenJS, r: MarketingDashboard, texts:
 }
 
 function pickTopChannel(channels: MarketingChannel[]): MarketingChannel {
+  if (!channels.length) {
+    return {
+      name: "—",
+      kpis: [],
+      trend: "neutral",
+      narrative: "",
+    };
+  }
   const sorted = [...channels].sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0));
-  return sorted[0];
+  return sorted[0]!;
 }
 
 function addTopChannelSlide(pptx: PptxGenJS, r: MarketingDashboard, texts: ReturnType<typeof deckTexts>) {
@@ -233,7 +241,18 @@ function addChannelComparisonSlide(pptx: PptxGenJS, r: MarketingDashboard, texts
       { text: topKpi ? `${topKpi.label}: ${topKpi.value}` : "—", options: { color: THEME.text, fill: { color: THEME.bg } } },
     ];
   });
-  s.addTable([headers, ...dataRows], {
+  const tableRows =
+    dataRows.length > 0
+      ? dataRows
+      : [
+          [
+            { text: "—", options: { color: THEME.text, fill: { color: THEME.bg } } },
+            { text: "—", options: { color: THEME.text, fill: { color: THEME.bg } } },
+            { text: "—", options: { color: THEME.text, fill: { color: THEME.bg } } },
+            { text: "—", options: { color: THEME.text, fill: { color: THEME.bg } } },
+          ],
+        ];
+  s.addTable([headers, ...tableRows], {
     x: 0.5, y: 1.0, w: 12.0, fontSize: 11,
     border: { color: THEME.accent, pt: 0.5 },
   });

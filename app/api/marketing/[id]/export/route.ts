@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
-import { apiError, apiGuardError, apiFile } from "@/lib/api-response";
+import { apiError, apiGuardError, apiFile, apiServerError } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { marketingDashboardSchema } from "@/lib/marketing-schema";
@@ -14,6 +14,8 @@ const exportBodySchema = z.object({
 });
 
 const PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+export const runtime = "nodejs";
 
 export async function POST(
   req: NextRequest,
@@ -39,7 +41,8 @@ export async function POST(
   if (!state) return apiError("No analysis found", 404);
 
   const localizedKey = `marketing.${uiLanguage}.json`;
-  const raw = state.files[localizedKey] ?? state.files["marketing.json"];
+  const files = state.files ?? {};
+  const raw = files[localizedKey] ?? files["marketing.json"];
   if (!raw) return apiError("No analysis found", 404);
 
   let report: ReturnType<typeof marketingDashboardSchema.parse>;
@@ -49,7 +52,12 @@ export async function POST(
     return apiError("Marketing data is corrupted.", 422);
   }
 
-  const buffer = await buildMarketingPptx(report, uiLanguage);
+  let buffer: Buffer;
+  try {
+    buffer = await buildMarketingPptx(report, uiLanguage);
+  } catch (e) {
+    return apiServerError(e, "marketing/export");
+  }
   const filename = `${report.meta.companyName.replace(/\s+/g, "_")}_${report.meta.period.replace(/\s+/g, "_")}_Marketing.pptx`;
   return apiFile(buffer, filename, PPTX_MIME);
 }

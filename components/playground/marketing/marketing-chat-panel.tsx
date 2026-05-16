@@ -81,7 +81,7 @@ export function MarketingChatPanel({ projectId }: Props) {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+      <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground tracking-wide">
         {t("marketing_bi_chat_header")}
       </div>
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
