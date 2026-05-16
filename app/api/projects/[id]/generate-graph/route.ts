@@ -5,14 +5,13 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
-import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildComponentGraphPrompt, COMPONENT_GRAPH_RETRY_MESSAGE } from "@/lib/component-graph/prompt";
 import { componentGraphSchema } from "@/lib/component-graph/schema";
 import { renderComponentGraph } from "@/lib/component-graph/renderer";
 import { chargeTokensSafely } from "@/lib/token-billing";
 import type { ComponentGraph } from "@/lib/component-graph/types";
-
-const GRAPH_MODEL = "anthropic/claude-sonnet-4-7";
+import { requestStructuredJsonForProjectKind } from "@/lib/structured-json-ai";
+import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(4000),
@@ -54,18 +53,19 @@ export async function POST(
   async function callAI(
     msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>
   ) {
-    const result = await requestRouterAIJson({
-      messages: msgs,
-      model: GRAPH_MODEL,
-      settings: { temperature: 0.3, max_completion_tokens: 8000 },
-      user: user.id,
-    });
+    const result = await requestStructuredJsonForProjectKind(
+      {
+        messages: msgs,
+        settings: { temperature: 0.3, max_completion_tokens: 8000 },
+      },
+      { plan: user.plan, projectKind: "website", userId: user.id }
+    );
     if (result.usage) {
       await chargeTokensSafely({
         userId: user.id,
         projectId,
         usage: result.usage,
-        model: result.model ?? GRAPH_MODEL,
+        model: result.model ?? result.requestedModel,
       });
     }
     return result;
@@ -93,7 +93,8 @@ export async function POST(
   let result1: Awaited<ReturnType<typeof callAI>>;
   try {
     result1 = await callAI(messages);
-  } catch {
+  } catch (e) {
+    console.error("[generate-graph]", unknownToErrorMessage(e));
     return apiError("AI сервис временно недоступен", 502);
   }
 
@@ -111,7 +112,8 @@ export async function POST(
   let result2: Awaited<ReturnType<typeof callAI>>;
   try {
     result2 = await callAI(retryMessages);
-  } catch {
+  } catch (e) {
+    console.error("[generate-graph] retry", unknownToErrorMessage(e));
     return apiError("AI сервис временно недоступен", 502);
   }
 

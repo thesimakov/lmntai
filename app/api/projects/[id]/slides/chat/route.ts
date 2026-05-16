@@ -5,14 +5,13 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
-import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildSlideChatPrompt, SLIDE_CHAT_RETRY_MESSAGE } from "@/lib/slide-graph/prompt";
 import { slideGraphSchema } from "@/lib/slide-graph/schema";
 import { slidePatchResponseSchema, applySlidePatches } from "@/lib/slide-graph/patch";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
 import { chargeTokensSafely } from "@/lib/token-billing";
-
-const SLIDE_MODEL = "anthropic/claude-sonnet-4-7";
+import { requestStructuredJsonForProjectKind } from "@/lib/structured-json-ai";
+import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -81,18 +80,19 @@ export async function POST(
   const messages = buildSlideChatPrompt(graph, history ?? [], message);
 
   async function callAI(msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>) {
-    const result = await requestRouterAIJson({
-      messages: msgs,
-      model: SLIDE_MODEL,
-      settings: { temperature: 0.2, max_completion_tokens: 2000 },
-      user: user.id,
-    });
+    const result = await requestStructuredJsonForProjectKind(
+      {
+        messages: msgs,
+        settings: { temperature: 0.2, max_completion_tokens: 2000 },
+      },
+      { plan: user.plan, projectKind: "presentation", userId: user.id }
+    );
     if (result.usage) {
       await chargeTokensSafely({
         userId: user.id,
         projectId,
         usage: result.usage,
-        model: result.model ?? SLIDE_MODEL,
+        model: result.model ?? result.requestedModel,
       });
     }
     return result;
@@ -101,8 +101,9 @@ export async function POST(
   let result1: Awaited<ReturnType<typeof callAI>>;
   try {
     result1 = await callAI(messages);
-  } catch {
-    return apiError("AI service temporarily unavailable", 502);
+  } catch (e) {
+    console.error("[slides/chat]", unknownToErrorMessage(e));
+    return apiError("AI сервис временно недоступен", 502);
   }
 
   const v1 = tryParsePatch(result1.text);
@@ -115,8 +116,9 @@ export async function POST(
     let result2: Awaited<ReturnType<typeof callAI>>;
     try {
       result2 = await callAI(retryMessages);
-    } catch {
-      return apiError("AI service temporarily unavailable", 502);
+    } catch (e) {
+      console.error("[slides/chat] retry", unknownToErrorMessage(e));
+      return apiError("AI сервис временно недоступен", 502);
     }
     const v2 = tryParsePatch(result2.text);
     if (!v2?.success) {
