@@ -59,9 +59,10 @@ export function AnalyticsEditor() {
 
     fetch(`/api/analytics/${projectId}`)
       .then((r) => (r.ok ? r.json() : null))
-      .then((data: { data?: { dashboard?: AnalysisDashboard } } | null) => {
-        if (data?.data?.dashboard) {
-          setDashboard(data.data.dashboard);
+      .then((data: { dashboard?: AnalysisDashboard; data?: { dashboard?: AnalysisDashboard } } | null) => {
+        const resolvedDashboard = data?.dashboard ?? data?.data?.dashboard;
+        if (resolvedDashboard) {
+          setDashboard(resolvedDashboard);
         }
       })
       .catch(() => {});

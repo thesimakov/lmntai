@@ -20,8 +20,8 @@ import {
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { useI18n } from "@/components/i18n-provider";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
-import type { AnalyticsRole } from "@/lib/analytics-share-db";
-import { ANALYTICS_ROLES } from "@/lib/analytics-share-db";
+import type { AnalyticsRole } from "@/lib/analytics-share-contract";
+import { ANALYTICS_ROLES } from "@/lib/analytics-share-contract";
 
 interface Props {
   projectId: string;
