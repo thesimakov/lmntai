@@ -8,10 +8,17 @@ import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox
 import { buildComponentGraphPrompt, COMPONENT_GRAPH_RETRY_MESSAGE } from "@/lib/component-graph/prompt";
 import { componentGraphSchema } from "@/lib/component-graph/schema";
 import { renderComponentGraph } from "@/lib/component-graph/renderer";
-import { chargeTokensSafely } from "@/lib/token-billing";
 import type { ComponentGraph } from "@/lib/component-graph/types";
-import { requestStructuredJsonForProjectKind } from "@/lib/structured-json-ai";
+import {
+  chargeStructuredJsonUsageSafely,
+  requestStructuredJsonForProjectKind,
+} from "@/lib/structured-json-ai";
+import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(4000),
@@ -60,14 +67,13 @@ export async function POST(
       },
       { plan: user.plan, projectKind: "website", userId: user.id }
     );
-    if (result.usage) {
-      await chargeTokensSafely({
-        userId: user.id,
-        projectId,
-        usage: result.usage,
-        model: result.model ?? result.requestedModel,
-      });
-    }
+    await chargeStructuredJsonUsageSafely({
+      userId: user.id,
+      projectId,
+      usage: result.usage,
+      model: result.model ?? result.requestedModel,
+      label: "generate-graph",
+    });
     return result;
   }
 
@@ -95,7 +101,7 @@ export async function POST(
     result1 = await callAI(messages);
   } catch (e) {
     console.error("[generate-graph]", unknownToErrorMessage(e));
-    return apiError("AI сервис временно недоступен", 502);
+    return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
   const v1 = tryParseGraph(result1.text);
@@ -114,7 +120,7 @@ export async function POST(
     result2 = await callAI(retryMessages);
   } catch (e) {
     console.error("[generate-graph] retry", unknownToErrorMessage(e));
-    return apiError("AI сервис временно недоступен", 502);
+    return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
   const v2 = tryParseGraph(result2.text);

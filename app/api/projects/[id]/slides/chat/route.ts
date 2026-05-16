@@ -9,9 +9,16 @@ import { buildSlideChatPrompt, SLIDE_CHAT_RETRY_MESSAGE } from "@/lib/slide-grap
 import { slideGraphSchema } from "@/lib/slide-graph/schema";
 import { slidePatchResponseSchema, applySlidePatches } from "@/lib/slide-graph/patch";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
-import { chargeTokensSafely } from "@/lib/token-billing";
-import { requestStructuredJsonForProjectKind } from "@/lib/structured-json-ai";
+import {
+  chargeStructuredJsonUsageSafely,
+  requestStructuredJsonForProjectKind,
+} from "@/lib/structured-json-ai";
+import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
 const messageSchema = z.object({
   role: z.enum(["user", "assistant"]),
@@ -87,14 +94,13 @@ export async function POST(
       },
       { plan: user.plan, projectKind: "presentation", userId: user.id }
     );
-    if (result.usage) {
-      await chargeTokensSafely({
-        userId: user.id,
-        projectId,
-        usage: result.usage,
-        model: result.model ?? result.requestedModel,
-      });
-    }
+    await chargeStructuredJsonUsageSafely({
+      userId: user.id,
+      projectId,
+      usage: result.usage,
+      model: result.model ?? result.requestedModel,
+      label: "slides/chat",
+    });
     return result;
   }
 
@@ -103,7 +109,7 @@ export async function POST(
     result1 = await callAI(messages);
   } catch (e) {
     console.error("[slides/chat]", unknownToErrorMessage(e));
-    return apiError("AI сервис временно недоступен", 502);
+    return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
   const v1 = tryParsePatch(result1.text);
@@ -118,7 +124,7 @@ export async function POST(
       result2 = await callAI(retryMessages);
     } catch (e) {
       console.error("[slides/chat] retry", unknownToErrorMessage(e));
-      return apiError("AI сервис временно недоступен", 502);
+      return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
     }
     const v2 = tryParsePatch(result2.text);
     if (!v2?.success) {

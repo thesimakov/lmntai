@@ -8,9 +8,16 @@ import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox
 import { buildSlideGraphPrompt, SLIDE_GRAPH_RETRY_MESSAGE } from "@/lib/slide-graph/prompt";
 import { slideGraphSchema } from "@/lib/slide-graph/schema";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
-import { chargeTokensSafely } from "@/lib/token-billing";
-import { requestStructuredJsonForProjectKind } from "@/lib/structured-json-ai";
+import {
+  chargeStructuredJsonUsageSafely,
+  requestStructuredJsonForProjectKind,
+} from "@/lib/structured-json-ai";
+import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
+
+export const runtime = "nodejs";
+export const maxDuration = 300;
+export const dynamic = "force-dynamic";
 
 const bodySchema = z.object({
   prompt: z.string().min(1).max(4000),
@@ -57,14 +64,13 @@ export async function POST(
       },
       { plan: user.plan, projectKind: "presentation", userId: user.id }
     );
-    if (result.usage) {
-      await chargeTokensSafely({
-        userId: user.id,
-        projectId,
-        usage: result.usage,
-        model: result.model ?? result.requestedModel,
-      });
-    }
+    await chargeStructuredJsonUsageSafely({
+      userId: user.id,
+      projectId,
+      usage: result.usage,
+      model: result.model ?? result.requestedModel,
+      label: "generate-slides",
+    });
     return result;
   }
 
@@ -73,7 +79,7 @@ export async function POST(
     result1 = await callAI(messages);
   } catch (e) {
     console.error("[generate-slides]", unknownToErrorMessage(e));
-    return apiError("AI сервис временно недоступен", 502);
+    return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
   const v1 = tryParseSlideGraph(result1.text);
@@ -88,7 +94,7 @@ export async function POST(
       result2 = await callAI(retryMessages);
     } catch (e) {
       console.error("[generate-slides] retry", unknownToErrorMessage(e));
-      return apiError("AI сервис временно недоступен", 502);
+      return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
     }
     const v2 = tryParseSlideGraph(result2.text);
     if (!v2?.success) {
