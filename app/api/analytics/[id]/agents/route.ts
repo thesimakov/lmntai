@@ -13,6 +13,7 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
 import { retrieveRelevantChunks } from "@/lib/text-rag";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const AGENT_MODEL = "anthropic/claude-haiku-4.5";
 
@@ -58,12 +59,14 @@ async function runAgent(
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const { user } = guard.data;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
+  const outputLanguage = uiLanguage === "en" ? "English" : uiLanguage === "tg" ? "Tajik" : "Russian";
 
   const { id: projectId } = await params;
 
@@ -106,7 +109,8 @@ export async function POST(
       `You are an expert CFO-level financial analyst. Given a structured financial analysis,
 provide a deep dive into: EBITDA health, margin trends, burn rate, runway, unit economics,
 and operational leverage. Identify the 3 most critical financial signals.
-Be specific, use exact numbers from the data. Max 300 words. Use bullet points.`,
+Be specific, use exact numbers from the data. Max 300 words. Use bullet points.
+Write output in ${outputLanguage}.`,
       `Analyze this financial data:\n\n${sharedContext}`,
       user.id,
       projectId
@@ -117,7 +121,8 @@ Be specific, use exact numbers from the data. Max 300 words. Use bullet points.`
       `You are a business intelligence specialist. Given financial data,
 identify cross-metric correlations, benchmark against typical SaaS/startup metrics,
 and surface non-obvious insights. Focus on: growth efficiency, cohort health signals,
-leading vs lagging indicators. Provide 3-5 actionable BI insights. Max 300 words.`,
+leading vs lagging indicators. Provide 3-5 actionable BI insights. Max 300 words.
+Write output in ${outputLanguage}.`,
       `Find BI insights in this data:\n\n${sharedContext}`,
       user.id,
       projectId
@@ -130,7 +135,8 @@ leading vs lagging indicators. Provide 3-5 actionable BI insights. Max 300 words
 2. What key fields are missing that would improve the analysis
 3. What data sources could enrich this dataset (e.g., Stripe, QuickBooks, CRM)
 4. Confidence level of the extracted metrics (HIGH/MEDIUM/LOW) with reasoning.
-Max 250 words. Be structured.`,
+Max 250 words. Be structured.
+Write output in ${outputLanguage}.`,
       `Map the schema for this financial data:\n\n${sharedContext}`,
       user.id,
       projectId

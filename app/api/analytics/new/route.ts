@@ -1,16 +1,19 @@
+import type { NextRequest } from "next/server";
 import { requireDbUser } from "@/lib/auth-guards";
 import { apiGuardError, apiError } from "@/lib/api-response";
 import { upsertProjectCell } from "@/lib/project-context";
 import { prisma } from "@/lib/prisma";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const { user } = guard.data;
+  const lang = resolveUiLanguageFromRequest(req);
 
   // Reuse existing analytics project instead of always creating new ones
   const existing = await prisma.project.findFirst({
@@ -20,7 +23,7 @@ export async function GET() {
   });
 
   if (existing) {
-    redirect(`/playground/analytics?projectId=${existing.id}`);
+    redirect(`/playground/analytics?projectId=${existing.id}&lang=${lang}`);
   }
 
   let projectId: string;
@@ -37,5 +40,5 @@ export async function GET() {
     return apiError("Failed to create analytics project", 500);
   }
 
-  redirect(`/playground/analytics?projectId=${projectId}`);
+  redirect(`/playground/analytics?projectId=${projectId}&lang=${lang}`);
 }

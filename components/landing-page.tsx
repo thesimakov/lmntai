@@ -194,7 +194,7 @@ export function LandingPage() {
       return;
     }
     try {
-      const res = await fetch("/api/marketing/new", { redirect: "manual" });
+      const res = await fetch(`/api/marketing/new?lang=${encodeURIComponent(lang)}`, { redirect: "manual" });
       const location = res.headers.get("location") ?? res.url;
       if (location && !location.includes("/api/marketing/new")) {
         router.push(location);
@@ -203,8 +203,8 @@ export function LandingPage() {
     } catch {
       // fallback
     }
-    router.push("/playground/marketing");
-  }, [authed, prompt, router]);
+    router.push(`/playground/marketing?lang=${encodeURIComponent(lang)}`);
+  }, [authed, lang, prompt, router]);
 
   const goPresentation = useCallback(() => {
     const text = prompt.trim();

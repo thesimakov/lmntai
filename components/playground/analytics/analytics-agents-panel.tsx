@@ -22,7 +22,7 @@ interface AnalyticsAgentsPanelProps {
 }
 
 export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [insights, setInsights] = useState<AgentInsights | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,7 +37,10 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
     setRunning(true);
     setError(null);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/agents`, { method: "POST", signal: controller.signal });
+      const res = await fetch(`/api/analytics/${projectId}/agents?lang=${encodeURIComponent(lang)}`, {
+        method: "POST",
+        signal: controller.signal,
+      });
       const data = await res.json() as { insights?: AgentInsights; data?: { insights?: AgentInsights }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Agents failed");
@@ -60,7 +63,7 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
     } finally {
       setRunning(false);
     }
-  }, [projectId, insights]);
+  }, [lang, projectId, insights]);
 
   if (!insights && !running && !error) {
     return (

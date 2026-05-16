@@ -1,7 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import { useI18n } from "@/components/i18n-provider";
 import type { MarketingChannel } from "@/lib/marketing-schema";
+import { localizeMarketingKpiLabel } from "@/lib/marketing-dashboard-localization";
 
 const TREND_COLOR = {
   up: "text-green-500",
@@ -21,12 +23,12 @@ const TREND_LABEL = {
   neutral: "—",
 };
 
-function formatNumber(n: number): string {
-  return n.toLocaleString("en-US", { maximumFractionDigits: 0 });
-}
-
 export function MarketingChannelCard({ channel }: { channel: MarketingChannel }) {
+  const { t, lang } = useI18n();
   const { name, trend, spend, revenue, kpis, narrative } = channel;
+  const locale = lang === "en" ? "en-US" : lang === "tg" ? "tg-TJ" : "ru-RU";
+  const formatLocalizedNumber = (value: number) =>
+    value.toLocaleString(locale, { maximumFractionDigits: 0 });
   return (
     <div className="rounded-xl border bg-card p-4 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
@@ -40,10 +42,10 @@ export function MarketingChannelCard({ channel }: { channel: MarketingChannel })
       {(spend != null || revenue != null) && (
         <div className="flex gap-4 text-xs text-muted-foreground">
           {spend != null && (
-            <span>Spend: <span className="font-medium text-foreground">{formatNumber(spend)}</span></span>
+            <span>{t("marketing_bi_spend_label")}: <span className="font-medium text-foreground">{formatLocalizedNumber(spend)}</span></span>
           )}
           {revenue != null && (
-            <span>Revenue: <span className="font-medium text-foreground">{formatNumber(revenue)}</span></span>
+            <span>{t("marketing_bi_revenue_label")}: <span className="font-medium text-foreground">{formatLocalizedNumber(revenue)}</span></span>
           )}
         </div>
       )}
@@ -52,7 +54,7 @@ export function MarketingChannelCard({ channel }: { channel: MarketingChannel })
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           {kpis.slice(0, 4).map((kpi) => (
             <div key={kpi.label} className="flex justify-between text-xs">
-              <span className="text-muted-foreground truncate">{kpi.label}</span>
+              <span className="text-muted-foreground truncate">{localizeMarketingKpiLabel(kpi.label, lang)}</span>
               <span className="font-medium ml-2 shrink-0">{kpi.value}</span>
             </div>
           ))}

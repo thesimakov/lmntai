@@ -7,14 +7,22 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildMarketingPrompt } from "@/lib/marketing-prompt";
 import { marketingDashboardSchema, type MarketingDashboard } from "@/lib/marketing-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
+import type { UiLanguage } from "@/lib/i18n";
+import { applyMarketingLanguageFallback } from "@/lib/marketing-dashboard-localization";
 
 const MARKETING_MODEL = "anthropic/claude-sonnet-4.5";
 const MAX_RAW_CHARS = 200_000;
 
-const RETRY_MESSAGE =
-  "Your response was not valid JSON or did not match the required schema. " +
-  "Return ONLY the JSON object, no markdown, no code fences. " +
-  "Ensure channels array has 1–6 items.";
+function buildRetryMessage(lang: UiLanguage): string {
+  const responseLanguage = lang === "en" ? "English" : lang === "tg" ? "Tajik" : "Russian";
+  return (
+    "Your response was not valid JSON or did not match the required schema. " +
+    "Return ONLY the JSON object, no markdown, no code fences. " +
+    `All human-readable text fields must be in ${responseLanguage}. ` +
+    "Ensure channels array has 1–6 items."
+  );
+}
 
 function tryParseDashboard(text: string): ReturnType<typeof marketingDashboardSchema.safeParse> | null {
   try {
@@ -28,12 +36,13 @@ function tryParseDashboard(text: string): ReturnType<typeof marketingDashboardSc
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const user = guard.data.user;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
 
   const { id: projectId } = await params;
 
@@ -54,13 +63,17 @@ export async function POST(
       ? rawText.slice(0, MAX_RAW_CHARS) + "\n\n[Data truncated — first 200k characters shown]"
       : rawText;
 
-  const messages = buildMarketingPrompt(truncated);
+  const messages = buildMarketingPrompt(truncated, uiLanguage);
 
   // state is non-null here: the !rawText guard above proves state?.files existed
   const nonNullState = state!;
 
   async function saveReport(data: MarketingDashboard) {
-    const report = { ...data, meta: { ...data.meta, analyzedAt: new Date().toISOString() } };
+    const report = applyMarketingLanguageFallback(
+      { ...data, meta: { ...data.meta, analyzedAt: new Date().toISOString() } },
+      uiLanguage
+    );
+    const localizedKey = `marketing.${uiLanguage}.json`;
     const freshState = await getSandboxProjectState(projectId);
     await upsertSandboxProjectState({
       projectId,
@@ -68,7 +81,11 @@ export async function POST(
       ownerId: user.id,
       title: nonNullState.title,
       html: nonNullState.html,
-      files: { ...(freshState?.files ?? {}), "marketing.json": JSON.stringify(report) },
+      files: {
+        ...(freshState?.files ?? {}),
+        "marketing.json": JSON.stringify(report),
+        [localizedKey]: JSON.stringify(report),
+      },
     });
     return apiOk({ report });
   }
@@ -106,7 +123,7 @@ export async function POST(
   const retryMessages = [
     ...messages,
     { role: "assistant" as const, content: result1.text },
-    { role: "user" as const, content: RETRY_MESSAGE },
+    { role: "user" as const, content: buildRetryMessage(uiLanguage) },
   ];
 
   let result2: Awaited<ReturnType<typeof callAI>>;

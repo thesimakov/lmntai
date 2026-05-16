@@ -10,6 +10,7 @@ import { splitSseLines, extractDataJson } from "@/lib/sse-parser";
 import { buildMarketingChatPrompt } from "@/lib/marketing-prompt";
 import { marketingDashboardSchema } from "@/lib/marketing-schema";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const CHAT_MODEL = "anthropic/claude-haiku-4.5";
 
@@ -29,6 +30,7 @@ export async function POST(
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const user = guard.data.user;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
 
   const { id: projectId } = await params;
 
@@ -59,7 +61,7 @@ export async function POST(
     content: m.content,
   }));
 
-  const messages = buildMarketingChatPrompt(dashboard, body.message, history);
+  const messages = buildMarketingChatPrompt(dashboard, body.message, history, uiLanguage);
 
   const routerRes = await requestRouterAIStream({
     messages,

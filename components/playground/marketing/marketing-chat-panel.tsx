@@ -13,7 +13,7 @@ interface Props {
 }
 
 export function MarketingChatPanel({ projectId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
@@ -37,7 +37,7 @@ export function MarketingChatPanel({ projectId }: Props) {
     addChatMessage(userMsg);
     setIsChatStreaming(true);
     try {
-      const res = await fetch(`/api/marketing/${projectId}/chat`, {
+      const res = await fetch(`/api/marketing/${projectId}/chat?lang=${encodeURIComponent(lang)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ message, history: historySnapshot }),

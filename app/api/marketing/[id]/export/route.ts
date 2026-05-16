@@ -7,6 +7,7 @@ import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { marketingDashboardSchema } from "@/lib/marketing-schema";
 import { buildMarketingPptx } from "@/lib/marketing-pptx-export";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const exportBodySchema = z.object({
   format: z.literal("marketing-pptx"),
@@ -32,11 +33,13 @@ export async function POST(
 
   const bodyResult = await parseBody(req, exportBodySchema);
   if (!bodyResult.ok) return bodyResult.response;
+  const uiLanguage = resolveUiLanguageFromRequest(req);
 
   const state = await getSandboxProjectState(projectId);
   if (!state) return apiError("No analysis found", 404);
 
-  const raw = state.files["marketing.json"];
+  const localizedKey = `marketing.${uiLanguage}.json`;
+  const raw = state.files[localizedKey] ?? state.files["marketing.json"];
   if (!raw) return apiError("No analysis found", 404);
 
   let report: ReturnType<typeof marketingDashboardSchema.parse>;
@@ -46,7 +49,7 @@ export async function POST(
     return apiError("Marketing data is corrupted.", 422);
   }
 
-  const buffer = await buildMarketingPptx(report);
+  const buffer = await buildMarketingPptx(report, uiLanguage);
   const filename = `${report.meta.companyName.replace(/\s+/g, "_")}_${report.meta.period.replace(/\s+/g, "_")}_Marketing.pptx`;
   return apiFile(buffer, filename, PPTX_MIME);
 }

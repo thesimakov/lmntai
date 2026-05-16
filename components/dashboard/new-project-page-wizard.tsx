@@ -83,7 +83,7 @@ function toastProjectCreateFailure(err: unknown, genericLabel: string) {
 }
 
 export function NewProjectPageWizard() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const router = useRouter();
   const nameFieldId = useId();
   const domainFieldId = useId();
@@ -535,7 +535,7 @@ export function NewProjectPageWizard() {
                 className="mt-auto w-full rounded-full border-violet-300/80 font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-50/50 dark:border-violet-700/60 dark:text-violet-300 dark:hover:bg-violet-950/30"
                 asChild
               >
-                <Link href="/api/analytics/new">{t("projects_template_generate")}</Link>
+                <Link href={`/api/analytics/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -561,7 +561,7 @@ export function NewProjectPageWizard() {
                 className="mt-auto w-full rounded-full border-emerald-300/80 font-semibold text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-emerald-700/60 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
                 asChild
               >
-                <Link href="/api/marketing/new">{t("projects_template_generate")}</Link>
+                <Link href={`/api/marketing/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
               </Button>
             </CardContent>
           </Card>
@@ -586,7 +586,7 @@ export function NewProjectPageWizard() {
                 className="mt-auto w-full rounded-full border-orange-300/80 font-semibold text-orange-700 hover:border-orange-400 hover:bg-orange-50/50 dark:border-orange-700/60 dark:text-orange-300 dark:hover:bg-orange-950/30"
                 asChild
               >
-                <Link href="/api/presentation/new">{t("projects_template_generate")}</Link>
+                <Link href={`/api/presentation/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
               </Button>
             </CardContent>
           </Card>

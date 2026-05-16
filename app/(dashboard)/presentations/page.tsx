@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Presentation, Trash2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PageTransition } from "@/components/page-transition";
+import { useI18n } from "@/components/i18n-provider";
 
 type PresentationItem = {
   id: string;
@@ -17,6 +18,7 @@ type PresentationItem = {
 
 function PresentationsContent() {
   const router = useRouter();
+  const { lang } = useI18n();
   const [items, setItems] = useState<PresentationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -40,14 +42,14 @@ function PresentationsContent() {
   const handleNew = async () => {
     setCreating(true);
     try {
-      const res = await fetch("/api/presentation/new", { redirect: "manual" });
+      const res = await fetch(`/api/presentation/new?lang=${encodeURIComponent(lang)}`, { redirect: "manual" });
       // GET /api/presentation/new redirects; follow the Location header manually
       const location = res.headers.get("location") ?? res.url;
       if (location) { router.push(location); return; }
     } catch {
       // fallback: direct navigation which follows the redirect
     }
-    router.push("/api/presentation/new");
+    router.push(`/api/presentation/new?lang=${encodeURIComponent(lang)}`);
   };
 
   const handleDelete = async (id: string, name: string) => {

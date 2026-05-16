@@ -1,11 +1,13 @@
 "use client";
 
 import type { MarketingDashboard } from "@/lib/marketing-schema";
+import { useI18n } from "@/components/i18n-provider";
 import { MarketingKpiRow } from "./marketing-kpi-row";
 import { MarketingChannelCard } from "./marketing-channel-card";
 import { MarketingChartBlock } from "./marketing-chart-block";
 
 export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboard }) {
+  const { t } = useI18n();
   const { kpis, channels, summary, meta, narrative } = dashboard;
   return (
     <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full">
@@ -26,7 +28,7 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
       <MarketingChartBlock channels={channels} />
 
       <div className="rounded-xl border bg-card p-4 space-y-2">
-        <h3 className="font-semibold text-sm">Executive Summary</h3>
+        <h3 className="font-semibold text-sm">{t("marketing_bi_summary_title")}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
           {summary.executive}
         </p>
@@ -34,7 +36,7 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       {summary.recommendations.length > 0 && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">Recommendations</h3>
+          <h3 className="font-semibold text-sm">{t("marketing_bi_recommendations_title")}</h3>
           <ul className="space-y-1">
             {summary.recommendations.map((rec, i) => (
               <li key={i} className="text-sm text-muted-foreground flex gap-2">
@@ -48,7 +50,7 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       {summary.topFindings.length > 0 && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">Top Findings</h3>
+          <h3 className="font-semibold text-sm">{t("marketing_bi_top_findings_title")}</h3>
           <ul className="space-y-1">
             {summary.topFindings.map((finding, i) => (
               <li key={i} className="text-sm text-muted-foreground flex gap-2">
@@ -62,7 +64,7 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       {narrative && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">Narrative</h3>
+          <h3 className="font-semibold text-sm">{t("marketing_bi_narrative_title")}</h3>
           <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
             {narrative}
           </p>

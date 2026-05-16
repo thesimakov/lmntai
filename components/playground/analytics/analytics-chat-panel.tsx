@@ -11,7 +11,7 @@ import { useI18n } from "@/components/i18n-provider";
 interface Props { projectId: string }
 
 export function AnalyticsChatPanel({ projectId }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const {
@@ -38,7 +38,7 @@ export function AnalyticsChatPanel({ projectId }: Props) {
     setIsChatStreaming(true);
 
     try {
-      const res = await fetch(`/api/analytics/${projectId}/chat`, {
+      const res = await fetch(`/api/analytics/${projectId}/chat?lang=${encodeURIComponent(lang)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

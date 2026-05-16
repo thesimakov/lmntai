@@ -143,6 +143,10 @@ function SidebarBody({ className }: { className?: string }) {
         <div className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
+            const hrefWithLang =
+              item.fullNav && item.href.startsWith("/api/")
+                ? `${item.href}?lang=${encodeURIComponent(lang)}`
+                : item.href;
             const isActive =
               (item.activePath && pathname.startsWith(item.activePath)) ||
               (!item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
@@ -171,7 +175,7 @@ function SidebarBody({ className }: { className?: string }) {
               </>
             );
             return item.fullNav ? (
-              <a key={item.href} href={item.href} className={itemClass}>
+              <a key={item.href} href={hrefWithLang} className={itemClass}>
                 {itemContent}
               </a>
             ) : (

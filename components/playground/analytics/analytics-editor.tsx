@@ -77,7 +77,7 @@ export function AnalyticsEditor() {
     setProgress(10);
 
     try {
-      const analyzeRes = await fetch(`/api/analytics/${projectId}/analyze`, {
+      const analyzeRes = await fetch(`/api/analytics/${projectId}/analyze?lang=${encodeURIComponent(lang)}`, {
         method: "POST",
       });
 
@@ -135,7 +135,7 @@ export function AnalyticsEditor() {
       setError(msg);
       setStatus("idle");
     }
-  }, [projectId, setStatus, setProgress, setDashboard, setError]);
+  }, [lang, projectId, setStatus, setProgress, setDashboard, setError]);
 
   const handleFile = useCallback(
     async (file: File) => {

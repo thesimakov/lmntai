@@ -29,6 +29,11 @@ describe("buildMarketingPrompt", () => {
     const messages = buildMarketingPrompt("data");
     expect(messages[0].content).toContain("JSON");
   });
+
+  it("uses russian output instructions by default", () => {
+    const messages = buildMarketingPrompt("data");
+    expect(messages[0].content).toContain("Russian");
+  });
 });
 
 describe("buildMarketingChatPrompt", () => {
@@ -44,5 +49,10 @@ describe("buildMarketingChatPrompt", () => {
     const last = messages[messages.length - 1];
     expect(last.role).toBe("user");
     expect(last.content).toBe("new question");
+  });
+
+  it("supports explicit output language in chat", () => {
+    const messages = buildMarketingChatPrompt(minimalDashboard, "new question", [], "en");
+    expect(messages[0].content).toContain("Respond in English");
   });
 });

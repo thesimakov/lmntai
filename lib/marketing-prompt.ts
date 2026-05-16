@@ -1,4 +1,5 @@
 import type { MarketingDashboard } from "./marketing-schema";
+import type { UiLanguage } from "./i18n";
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
@@ -67,10 +68,24 @@ const CHAT_SYSTEM_PROMPT_PREFIX = `You are a marketing analytics assistant. You 
 --- MARKETING DATA ---
 `;
 
-export function buildMarketingPrompt(rawText: string): Message[] {
+function promptLanguageLabel(lang: UiLanguage): string {
+  if (lang === "en") return "English";
+  if (lang === "tg") return "Tajik";
+  return "Russian";
+}
+
+function buildAnalyzeSystemPrompt(lang: UiLanguage): string {
+  const responseLanguage = promptLanguageLabel(lang);
+  return `${ANALYZE_SYSTEM_PROMPT}
+
+All human-readable text fields in output JSON must be in ${responseLanguage}.
+Do not translate enum values "up", "down", "neutral".`;
+}
+
+export function buildMarketingPrompt(rawText: string, lang: UiLanguage = "ru"): Message[] {
   const now = new Date().toISOString();
   return [
-    { role: "system", content: ANALYZE_SYSTEM_PROMPT },
+    { role: "system", content: buildAnalyzeSystemPrompt(lang) },
     {
       role: "user",
       content: `Current timestamp: ${now}\n\n--- MARKETING DATA ---\n\n${rawText}`,
@@ -81,13 +96,16 @@ export function buildMarketingPrompt(rawText: string): Message[] {
 export function buildMarketingChatPrompt(
   dashboard: MarketingDashboard,
   message: string,
-  history: Array<{ role: "user" | "assistant"; content: string }>
+  history: Array<{ role: "user" | "assistant"; content: string }>,
+  lang: UiLanguage = "ru"
 ): Message[] {
   const context = JSON.stringify(dashboard, null, 2);
+  const responseLanguage = promptLanguageLabel(lang);
   const systemContent =
     CHAT_SYSTEM_PROMPT_PREFIX +
     context +
-    "\n\nAnswer questions about channel performance, KPIs, spend, revenue, and recommendations. Be concise and cite specific numbers from the data.";
+    `\n\nAnswer questions about channel performance, KPIs, spend, revenue, and recommendations. ` +
+    `Be concise and cite specific numbers from the data. Respond in ${responseLanguage}.`;
 
   return [
     { role: "system", content: systemContent },

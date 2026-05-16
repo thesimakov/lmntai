@@ -14,9 +14,9 @@ import type { MarketingDashboard as MarketingDashboardType } from "@/lib/marketi
 
 type LeftTab = "upload" | "chat";
 
-function ExportButton({ projectId, label }: { projectId: string; label: string }) {
+function ExportButton({ projectId, label, lang }: { projectId: string; label: string; lang: string }) {
   const handleExport = async () => {
-    const res = await fetch(`/api/marketing/${projectId}/export`, {
+    const res = await fetch(`/api/marketing/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ format: "marketing-pptx" }),
@@ -41,7 +41,7 @@ function ExportButton({ projectId, label }: { projectId: string; label: string }
 }
 
 export function MarketingEditor() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId") ?? "";
   const [leftTab, setLeftTab] = useState<LeftTab>("upload");
@@ -59,7 +59,7 @@ export function MarketingEditor() {
   useEffect(() => {
     if (!projectId) return;
     setProjectId(projectId);
-    fetch(`/api/marketing/${projectId}`)
+    fetch(`/api/marketing/${projectId}?lang=${encodeURIComponent(lang)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { report?: MarketingDashboardType } | null) => {
         if (data?.report) {
@@ -67,13 +67,13 @@ export function MarketingEditor() {
         }
       })
       .catch(() => {});
-  }, [projectId, setProjectId, setDashboard]);
+  }, [lang, projectId, setProjectId, setDashboard]);
 
   const handleAnalyze = useCallback(async () => {
     if (!projectId) return;
     setStatus("analyzing");
     try {
-      const res = await fetch(`/api/marketing/${projectId}/analyze`, { method: "POST" });
+      const res = await fetch(`/api/marketing/${projectId}/analyze?lang=${encodeURIComponent(lang)}`, { method: "POST" });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
         setError(err.error ?? "Analysis failed");
@@ -88,7 +88,7 @@ export function MarketingEditor() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unexpected error");
     }
-  }, [projectId, setStatus, setError, setDashboard]);
+  }, [lang, projectId, setStatus, setError, setDashboard]);
 
   const isUploading = status === "uploading";
   const isAnalyzing = status === "analyzing";
@@ -130,7 +130,7 @@ export function MarketingEditor() {
         <div className="flex-1" />
 
         {hasDashboard && (
-          <ExportButton projectId={projectId} label={t("marketing_bi_export_pptx")} />
+          <ExportButton projectId={projectId} label={t("marketing_bi_export_pptx")} lang={lang} />
         )}
       </header>
 
