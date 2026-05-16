@@ -24,12 +24,12 @@ export function AnalyticsKpiGrid({ kpis }: Props) {
         return (
           <div
             key={kpi.label}
-            className="rounded-xl border bg-card p-4 flex flex-col gap-1"
+            className="rounded-xl border bg-card p-4 flex flex-col gap-1 min-h-[96px]"
           >
-            <span className="text-xs text-muted-foreground truncate">{kpi.label}</span>
-            <span className="text-xl font-bold tracking-tight">{kpi.value}</span>
+            <span className="text-xs text-muted-foreground leading-snug whitespace-normal break-words line-clamp-2">{kpi.label}</span>
+            <span className="text-lg font-bold tracking-tight leading-snug whitespace-normal break-words">{kpi.value}</span>
             {kpi.change && (
-              <div className={cn("flex items-center gap-1 text-xs", TREND_COLOR[kpi.trend])}>
+              <div className={cn("flex items-center gap-1 text-xs whitespace-normal break-words", TREND_COLOR[kpi.trend])}>
                 <Icon className="w-3 h-3" />
                 {kpi.change}
               </div>

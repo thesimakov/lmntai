@@ -11,6 +11,7 @@ import { buildChatPrompt } from "@/lib/analytics-prompt";
 import { hybridSearch } from "@/lib/analytics-embedding-store";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely, estimateUsageFromText } from "@/lib/token-billing";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 const CHAT_MODEL = "anthropic/claude-haiku-4.5";
 
@@ -65,7 +66,8 @@ export async function POST(
     ? await hybridSearch(projectId, rawText, body.message)
     : [];
 
-  const messages = buildChatPrompt(dashboard, body.message, history, ragChunks);
+  const uiLanguage = resolveUiLanguageFromRequest(req);
+  const messages = buildChatPrompt(dashboard, body.message, history, ragChunks, uiLanguage);
 
   const routerRes = await requestRouterAIStream({
     messages,

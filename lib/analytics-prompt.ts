@@ -1,6 +1,15 @@
 import type { AnalysisDashboard } from "./analytics-schema";
+import type { UiLanguage } from "./i18n";
 
-const SYSTEM_PROMPT = `You are a senior financial analyst AI. Analyze the provided document and extract key financial information.
+function languageLabel(lang: UiLanguage): string {
+  if (lang === "ru") return "Russian";
+  if (lang === "tg") return "Tajik";
+  return "English";
+}
+
+function buildAnalysisSystemPrompt(lang: UiLanguage): string {
+  const outputLanguage = languageLabel(lang);
+  return `You are a senior financial analyst AI. Analyze the provided document and extract key financial information.
 
 Return ONLY a valid JSON object matching this exact TypeScript interface (no markdown, no code fences):
 
@@ -50,14 +59,16 @@ Rules:
 - Use ONLY data present in the document. Do not fabricate numbers.
 - All monetary values in "value" fields must be formatted with currency symbol and unit (K/M/B).
 - If a field cannot be determined, use an empty array [] or "Unknown" string as appropriate.
+- All human-readable fields in the output JSON MUST be in ${outputLanguage} (summary, findings, red flags, opportunities, KPI labels/changes, chart titles/descriptions/labels, table titles/headers/cells, narrative).
 - Return ONLY the JSON — no preamble, no explanation, no markdown.`;
+}
 
 type Message = { role: "system" | "user" | "assistant"; content: string };
 
-export function buildAnalysisPrompt(documentText: string): Message[] {
+export function buildAnalysisPrompt(documentText: string, lang: UiLanguage = "ru"): Message[] {
   const now = new Date().toISOString();
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: buildAnalysisSystemPrompt(lang) },
     {
       role: "user",
       content: `Current timestamp: ${now}\n\n--- DOCUMENT ---\n\n${documentText}`,
@@ -69,9 +80,11 @@ export function buildChatPrompt(
   dashboard: AnalysisDashboard,
   userMessage: string,
   history: Array<{ role: "user" | "assistant"; content: string }>,
-  ragChunks: string[] = []
+  ragChunks: string[] = [],
+  lang: UiLanguage = "ru"
 ): Message[] {
   const contextJson = JSON.stringify(dashboard, null, 2);
+  const responseLanguage = languageLabel(lang);
 
   const ragSection = ragChunks.length > 0
     ? `\n\n## Relevant excerpts from the source document\n\n${ragChunks.map((c, i) => `[Excerpt ${i + 1}]\n${c}`).join("\n\n")}`
@@ -84,7 +97,8 @@ ${contextJson}
 \`\`\`
 ${ragSection}
 
-Answer the user's questions using the structured analysis and source excerpts above. Be concise, accurate, and cite specific numbers. Format your responses in Markdown.`;
+Answer the user's questions using the structured analysis and source excerpts above. Be concise, accurate, and cite specific numbers.
+Respond in ${responseLanguage}. Format your responses in Markdown.`;
 
   return [
     { role: "system", content: system },

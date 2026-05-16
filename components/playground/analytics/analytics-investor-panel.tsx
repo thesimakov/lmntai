@@ -5,6 +5,7 @@ import { TrendingUp, Loader2, Download, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { useI18n } from "@/components/i18n-provider";
+import { investorReportSchema } from "@/lib/investor-schema";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -81,9 +82,8 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
         setInvestorError(err.error ?? "Generation failed");
         return;
       }
-      const data = await res.json() as { data?: { report?: unknown } };
-      const { investorReportSchema } = await import("@/lib/investor-schema");
-      const parsed = investorReportSchema.safeParse(data.data?.report);
+      const data = await res.json() as { report?: unknown; data?: { report?: unknown } };
+      const parsed = investorReportSchema.safeParse(data.report ?? data.data?.report);
       if (!parsed.success) {
         setInvestorStatus("idle");
         setInvestorError("Invalid response from server");
@@ -91,6 +91,10 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       }
       setInvestorReport(parsed.data);
     } catch (err) {
+      if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
+        setInvestorError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        return;
+      }
       setInvestorError(err instanceof Error ? err.message : "Generation failed");
     }
   }, [projectId, setInvestorReport, setInvestorStatus, setInvestorError]);

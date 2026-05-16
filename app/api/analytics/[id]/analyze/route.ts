@@ -7,6 +7,7 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildAnalysisPrompt } from "@/lib/analytics-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
+import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 
 function sseEncode(controller: ReadableStreamDefaultController, payload: unknown) {
   controller.enqueue(
@@ -40,7 +41,8 @@ export async function POST(
   const truncatedText = rawText.length > MAX_CHARS
     ? rawText.slice(0, MAX_CHARS) + "\n\n[Document truncated for analysis — first 200k characters shown]"
     : rawText;
-  const messages = buildAnalysisPrompt(truncatedText);
+  const uiLanguage = resolveUiLanguageFromRequest(req);
+  const messages = buildAnalysisPrompt(truncatedText, uiLanguage);
 
   const stream = new ReadableStream({
     async start(controller) {
