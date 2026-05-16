@@ -42,9 +42,9 @@ export function AnalyticsDashboard({ dashboard }: Props) {
       )}
 
       {tables.map((table) => (
-        <div key={table.title} className="rounded-xl border bg-card p-4 overflow-x-auto overflow-y-visible">
+        <div key={table.title} className="rounded-xl border bg-card p-4 h-auto overflow-visible">
           <h3 className="font-semibold text-sm mb-3 whitespace-normal break-words">{table.title}</h3>
-          <table className="w-full min-w-[640px] text-xs table-fixed">
+          <table className="w-full text-xs table-auto">
             <thead>
               <tr className="border-b">
                 {table.headers.map((h) => (
