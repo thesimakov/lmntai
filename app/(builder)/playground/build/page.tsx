@@ -28,6 +28,7 @@ import { useAiSession } from "@/hooks/use-ai-session";
 import { usePromptCoach } from "@/hooks/use-prompt-coach";
 import { useBuildHandoff } from "@/hooks/use-build-handoff";
 import { useBuildEditorStore } from "@/lib/stores/use-build-editor-store";
+import { useSandboxFilesStore } from "@/lib/stores/use-sandbox-files-store";
 import {
   coalesceSandboxIdFromBridgePreview,
   resolvePublishOpenUrl,
@@ -126,7 +127,10 @@ export default function PromptBuildPage() {
         return;
       }
       s.setSandboxId(projectId);
-      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
+      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}?t=${Date.now()}`);
+      s.setProgress(100);
+      s.setStage("ready");
+      useSandboxFilesStore.getState().notifyFilesUpdated(projectId);
       s.appendMessage({ id: createId(), role: "assistant", content: "Сайт сгенерирован. Вы можете редактировать его в Lemnity Box.", sentAt: Date.now() });
     } catch {
       toast.error(t("playground_generation_failed"));
@@ -156,7 +160,10 @@ export default function PromptBuildPage() {
         return;
       }
       s.setSandboxId(projectId);
-      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}`);
+      s.setPreviewUrl(`/api/sandbox/${encodeURIComponent(projectId)}?t=${Date.now()}`);
+      s.setProgress(100);
+      s.setStage("ready");
+      useSandboxFilesStore.getState().notifyFilesUpdated(projectId);
       s.appendMessage({ id: createId(), role: "assistant", content: "Презентация сгенерирована. Кликайте по слайдам для редактирования.", sentAt: Date.now() });
     } catch {
       toast.error(t("playground_generation_failed"));

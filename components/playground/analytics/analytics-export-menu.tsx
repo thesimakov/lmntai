@@ -132,12 +132,12 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
   }
 
   async function exportPdf() {
-    if (!dashboardRef.current) return;
+    if (!dashboard) return;
     try {
-      const { downloadHtmlAsPdf } = await import("@/lib/export-html-pdf");
-      await downloadHtmlAsPdf(
-        dashboardRef.current,
-        `${dashboard?.meta.companyName ?? "report"}_analysis.pdf`
+      const { downloadAnalyticsPdf } = await import("@/lib/analytics-pdf-export");
+      await downloadAnalyticsPdf(
+        dashboard,
+        `${dashboard.meta.companyName}_${dashboard.meta.period}_analysis`.replace(/\s+/g, "_"),
       );
     } catch (err) {
       console.error("[analytics] PDF export failed:", err);

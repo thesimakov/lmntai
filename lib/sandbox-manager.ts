@@ -34,6 +34,7 @@ import { mergeFilesPreservingUserPuck, mergePuckForApply } from "@/lib/puck-merg
 import {
   getSandboxProjectState,
   listSandboxProjectStatesByOwner,
+  mergeSandboxIndexHtml,
   removeSandboxProjectState,
   upsertSandboxProjectState
 } from "@/lib/sandbox-project-state-db";
@@ -884,10 +885,12 @@ export const sandboxManager = {
       const dockerFiles = await exportDockerFiles(sandboxId);
       if (Object.keys(dockerFiles).length > 0) return dockerFiles;
       const row = await getSandboxProjectState(sandboxId);
-      return row?.files ?? {};
+      if (!row) return {};
+      return mergeSandboxIndexHtml(row.files, row.html);
     }
     const state = memoryStore.get(sandboxId) ?? (await hydrateMemoryStateFromDb(sandboxId));
-    return state?.files ?? {};
+    if (!state) return {};
+    return mergeSandboxIndexHtml(state.files, state.html);
   },
 
   /**

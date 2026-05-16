@@ -13,6 +13,18 @@ function sanitizeFiles(input: unknown): Record<string, string> {
   return out;
 }
 
+/** Превью читает `files["index.html"]`; SlideGraph/ComponentGraph пишут HTML в поле `html`. */
+export function mergeSandboxIndexHtml(
+  files: Record<string, string>,
+  html: string | undefined
+): Record<string, string> {
+  const merged = sanitizeFiles(files);
+  if ((merged["index.html"]?.trim() ?? "").length > 0) return merged;
+  const fallback = typeof html === "string" ? html.trim() : "";
+  if (fallback.length > 0) merged["index.html"] = fallback;
+  return merged;
+}
+
 export type SandboxProjectStateRow = {
   projectId: string;
   sandboxId: string;
@@ -32,6 +44,7 @@ export async function upsertSandboxProjectState(input: {
   html: string;
   files: Record<string, string>;
 }): Promise<void> {
+  const files = mergeSandboxIndexHtml(input.files, input.html);
   try {
     await prisma.sandboxProjectState.upsert({
       where: { projectId: input.projectId },
@@ -41,17 +54,17 @@ export async function upsertSandboxProjectState(input: {
         ownerId: input.ownerId,
         title: input.title,
         html: input.html,
-        files: input.files
+        files
       },
       update: {
         sandboxId: input.sandboxId,
         ownerId: input.ownerId,
         title: input.title,
         html: input.html,
-        files: input.files
+        files
       }
     });
-    await persistProjectFilesSnapshot(input.projectId, input.files);
+    await persistProjectFilesSnapshot(input.projectId, files);
   } catch (err) {
     // Как список шаблонов в getBuildTemplateBySlug: живой превью на одном Node-процессе всё равно в memoryStore；
     // без БД — нельзя восстановить после рестарта / на втором инстансе.
@@ -78,7 +91,8 @@ export async function getSandboxProjectState(projectId: string): Promise<Sandbox
   });
   if (!row) return null;
   const filesFromStorage = await readProjectFilesSnapshot(row.projectId);
-  const files = Object.keys(filesFromStorage).length > 0 ? filesFromStorage : sanitizeFiles(row.files);
+  const rawFiles = Object.keys(filesFromStorage).length > 0 ? filesFromStorage : sanitizeFiles(row.files);
+  const files = mergeSandboxIndexHtml(rawFiles, row.html);
   return {
     projectId: row.projectId,
     sandboxId: row.sandboxId,
@@ -116,7 +130,7 @@ export async function listSandboxProjectStatesByOwner(ownerId: string): Promise<
     ownerId: row.ownerId,
     title: row.title,
     html: row.html,
-    files: sanitizeFiles(row.files),
+    files: mergeSandboxIndexHtml(sanitizeFiles(row.files), row.html),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt
   }));

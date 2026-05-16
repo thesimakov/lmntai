@@ -64,7 +64,7 @@ export async function POST(
   const baseFilename = `${dashboard.meta.companyName.replace(/\s+/g, "_")}_${dashboard.meta.period.replace(/\s+/g, "_")}`;
 
   if (format === "pptx") {
-    const buffer = await buildAnalysisPptx(dashboard);
+    const buffer = await buildAnalysisPptx(dashboard, uiLanguage);
     return pptxResponse(buffer, `${baseFilename}.pptx`);
   }
 
@@ -82,7 +82,7 @@ export async function POST(
       return apiError("Forecast data is corrupted.", 422);
     }
 
-    const buffer = await buildForecastPptx(forecastReport, dashboard);
+    const buffer = await buildForecastPptx(forecastReport, dashboard, uiLanguage);
     return pptxResponse(buffer, `${baseFilename}_Forecast.pptx`);
   }
 
