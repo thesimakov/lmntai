@@ -38,17 +38,24 @@ export function AnalyticsAgentsPanel({ projectId }: AnalyticsAgentsPanelProps) {
     setError(null);
     try {
       const res = await fetch(`/api/analytics/${projectId}/agents`, { method: "POST", signal: controller.signal });
-      const data = await res.json() as { data?: { insights: AgentInsights }; error?: string };
+      const data = await res.json() as { insights?: AgentInsights; data?: { insights?: AgentInsights }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Agents failed");
-      } else if (data.data?.insights) {
-        setInsights(data.data.insights);
+      } else if (data.insights ?? data.data?.insights) {
+        const resolvedInsights = (data.insights ?? data.data?.insights) as AgentInsights;
+        setInsights(resolvedInsights);
         if (isFirstRun) {
-          setExpandedAgent(data.data.insights.agents[0]?.name ?? null);
+          setExpandedAgent(resolvedInsights.agents[0]?.name ?? null);
         }
+      } else {
+        setError("Invalid response from server");
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
+      if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
+        setError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        return;
+      }
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setRunning(false);

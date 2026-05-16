@@ -161,5 +161,5 @@ Max 250 words. Be structured.`,
     },
   });
 
-  return apiOk({ insights: agentInsights });
+  return apiOk({ insights: agentInsights, data: { insights: agentInsights } });
 }

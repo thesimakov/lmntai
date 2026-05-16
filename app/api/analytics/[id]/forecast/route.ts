@@ -7,6 +7,7 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildForecastPrompt } from "@/lib/forecast-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { forecastReportSchema } from "@/lib/forecast-schema";
+import { normalizeForecastReport } from "@/lib/forecast-report-normalize";
 import { chargeTokensSafely } from "@/lib/token-billing";
 
 const FORECAST_MODEL = "anthropic/claude-sonnet-4.5";
@@ -14,7 +15,7 @@ const FORECAST_MODEL = "anthropic/claude-sonnet-4.5";
 const RETRY_MESSAGE =
   "Your response was not valid JSON or did not match the required schema. " +
   "Return ONLY the JSON object, no markdown, no code fences. " +
-  "Ensure metrics has 3-5 items, each with at least 1 point, and generatedAt is a valid ISO timestamp.";
+  "Ensure metrics has 3-5 items, each with at least 1 point, generatedAt is a valid ISO timestamp, and trend is only up/down/neutral.";
 
 function tryParseReport(text: string): ReturnType<typeof forecastReportSchema.safeParse> | null {
   try {
@@ -22,7 +23,11 @@ function tryParseReport(text: string): ReturnType<typeof forecastReportSchema.sa
     const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fenceMatch) jsonText = fenceMatch[1].trim();
     const parsed = JSON.parse(jsonText) as unknown;
-    return forecastReportSchema.safeParse(parsed);
+    const strict = forecastReportSchema.safeParse(parsed);
+    if (strict.success) return strict;
+    const repaired = normalizeForecastReport(parsed);
+    if (!repaired) return strict;
+    return forecastReportSchema.safeParse(repaired);
   } catch {
     return null;
   }
@@ -116,7 +121,7 @@ export async function POST(
       html: state.html,
       files: { ...freshFiles1, "forecast.json": JSON.stringify(reportWithTimestamp) },
     });
-    return apiOk({ report: reportWithTimestamp });
+    return apiOk({ report: reportWithTimestamp, data: { report: reportWithTimestamp } });
   }
 
   // Retry once
@@ -150,5 +155,5 @@ export async function POST(
     files: { ...freshFiles2, "forecast.json": JSON.stringify(reportWithTimestamp) },
   });
 
-  return apiOk({ report: reportWithTimestamp });
+  return apiOk({ report: reportWithTimestamp, data: { report: reportWithTimestamp } });
 }

@@ -86,8 +86,8 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
         setForecastError(err.error ?? "Generation failed");
         return;
       }
-      const data = (await res.json()) as { data?: { report?: unknown } };
-      const parsed = forecastReportSchema.safeParse(data.data?.report);
+      const data = (await res.json()) as { report?: unknown; data?: { report?: unknown } };
+      const parsed = forecastReportSchema.safeParse(data.report ?? data.data?.report);
       if (!parsed.success) {
         setForecastStatus("idle");
         setForecastError("Invalid response from server");
@@ -95,6 +95,10 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
       }
       setForecastReport(parsed.data);
     } catch (err) {
+      if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
+        setForecastError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        return;
+      }
       setForecastError(
         err instanceof Error ? err.message : "Generation failed"
       );

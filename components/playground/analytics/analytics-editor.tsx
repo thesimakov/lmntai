@@ -34,7 +34,7 @@ import type { AnalysisDashboard } from "@/lib/analytics-schema";
 type LeftTab = "chat" | "investor" | "forecast" | "agents" | "benchmark";
 
 export function AnalyticsEditor() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId") ?? "";
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,7 @@ export function AnalyticsEditor() {
     if (!projectId) return;
     setProjectId(projectId);
 
-    fetch(`/api/analytics/${projectId}`)
+    fetch(`/api/analytics/${projectId}?lang=${lang}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { dashboard?: AnalysisDashboard; data?: { dashboard?: AnalysisDashboard } } | null) => {
         const resolvedDashboard = data?.dashboard ?? data?.data?.dashboard;
@@ -66,7 +66,7 @@ export function AnalyticsEditor() {
         }
       })
       .catch(() => {});
-  }, [projectId, setProjectId, setDashboard]);
+  }, [projectId, lang, setProjectId, setDashboard]);
 
   const runAnalysis = useCallback(async () => {
     setStatus("analyzing");

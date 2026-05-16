@@ -105,14 +105,20 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
     setError(null);
     try {
       const res = await fetch(`/api/analytics/${projectId}/benchmark`, { method: "POST", signal: controller.signal });
-      const data = await res.json() as { data?: { report: BenchmarkReport }; error?: string };
+      const data = await res.json() as { report?: BenchmarkReport; data?: { report?: BenchmarkReport }; error?: string };
       if (!res.ok || data.error) {
         setError(data.error ?? "Benchmark failed");
-      } else if (data.data?.report) {
-        setReport(data.data.report);
+      } else if (data.report ?? data.data?.report) {
+        setReport((data.report ?? data.data?.report) as BenchmarkReport);
+      } else {
+        setError("Invalid response from server");
       }
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") return;
+      if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
+        setError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        return;
+      }
       setError(err instanceof Error ? err.message : "Unexpected error");
     } finally {
       setRunning(false);

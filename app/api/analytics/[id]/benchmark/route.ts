@@ -151,5 +151,5 @@ ${kpiText}`;
     },
   });
 
-  return apiOk({ report });
+  return apiOk({ report, data: { report } });
 }

@@ -7,6 +7,7 @@ import { requestRouterAIJson } from "@/lib/routerai-client";
 import { buildInvestorPrompt } from "@/lib/investor-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { investorReportSchema } from "@/lib/investor-schema";
+import { normalizeInvestorReport } from "@/lib/investor-report-normalize";
 import { chargeTokensSafely } from "@/lib/token-billing";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +18,8 @@ const INVESTOR_MODEL = "anthropic/claude-sonnet-4.5";
 const RETRY_MESSAGE =
   "Your response was not valid JSON or did not match the required schema. " +
   "Return ONLY the JSON object, no markdown, no code fences. " +
-  "Ensure vcPitch has 10 slides, boardReport has 14 slides, dueDiligence has 8 slides.";
+  "Ensure vcPitch has 10 slides, boardReport has 14 slides, dueDiligence has 8 slides. " +
+  "Use riskLabel only: Low, Medium, High, Critical. Use severity only: low, medium, high.";
 
 function tryParseReport(text: string): ReturnType<typeof investorReportSchema.safeParse> | null {
   try {
@@ -25,7 +27,11 @@ function tryParseReport(text: string): ReturnType<typeof investorReportSchema.sa
     const fenceMatch = jsonText.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fenceMatch) jsonText = fenceMatch[1].trim();
     const parsed = JSON.parse(jsonText) as unknown;
-    return investorReportSchema.safeParse(parsed);
+    const strict = investorReportSchema.safeParse(parsed);
+    if (strict.success) return strict;
+    const repaired = normalizeInvestorReport(parsed);
+    if (!repaired) return strict;
+    return investorReportSchema.safeParse(repaired);
   } catch {
     return null;
   }
@@ -119,7 +125,7 @@ export async function POST(
         html: state.html,
         files: { ...freshFiles1, "investor.json": JSON.stringify(reportWithTimestamp) },
       });
-      return apiOk({ report: reportWithTimestamp });
+      return apiOk({ report: reportWithTimestamp, data: { report: reportWithTimestamp } });
     }
 
     // Retry once with corrective prompt
@@ -152,7 +158,7 @@ export async function POST(
       files: { ...freshFiles2, "investor.json": JSON.stringify(reportWithTimestamp) },
     });
 
-    return apiOk({ report: reportWithTimestamp });
+    return apiOk({ report: reportWithTimestamp, data: { report: reportWithTimestamp } });
   } catch (err) {
     console.error("[analytics/investor] unexpected error:", err);
     return apiError("Failed to generate investor report", 500);
