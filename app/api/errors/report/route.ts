@@ -13,10 +13,26 @@ const WINDOW_MS   = 60_000;
 function isRateLimited(ip: string): boolean {
   const now    = Date.now();
   const cutoff = now - WINDOW_MS;
-  const prev   = (ipWindows.get(ip) ?? []).filter((t) => t > cutoff);
-  if (prev.length >= RATE_LIMIT) return true;
-  ipWindows.set(ip, [...prev, now]);
+  const hits   = (ipWindows.get(ip) ?? []).filter((t) => t > cutoff);
+  if (hits.length >= RATE_LIMIT) return true;
+  hits.push(now);
+  ipWindows.set(ip, hits);
   return false;
+}
+
+// Periodically prune stale Map entries to prevent unbounded growth.
+// Runs at most once per 5 minutes regardless of request volume.
+let lastPruneMs = 0;
+function pruneStaleIpWindows(): void {
+  const now = Date.now();
+  if (now - lastPruneMs < 5 * 60_000) return;
+  lastPruneMs = now;
+  const cutoff = now - WINDOW_MS;
+  for (const [ip, timestamps] of ipWindows) {
+    if (timestamps.every((t) => t <= cutoff)) {
+      ipWindows.delete(ip);
+    }
+  }
 }
 
 const ReportBody = z.object({
@@ -33,6 +49,7 @@ const ReportBody = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  pruneStaleIpWindows();
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
     req.headers.get("x-real-ip") ??
