@@ -50,32 +50,14 @@ class ErrorTracker {
     this.initialized = true;
     this.attachGlobalHandlers();
     this.interceptFetch();
+    window.addEventListener("online", () => this.drainQueue());
   }
 
-  report(input: RawInput): void {
-    this.flush(buildPayload(input));
+  report(payload: ErrorReportPayload): void {
+    this.flush(payload);
   }
 
-  private attachGlobalHandlers(): void {
-    window.addEventListener("error", (ev: ErrorEvent) => {
-      if (!(ev.error instanceof Error)) return; // skip resource load errors
-      this.report({
-        source:    "client",
-        errorType: "js_exception",
-        message:   ev.message || ev.error.message || "Unknown JS error",
-        stack:     ev.error.stack,
-      });
-    });
-
-    window.addEventListener("unhandledrejection", (ev: PromiseRejectionEvent) => {
-      const err = ev.reason;
-      const message = err instanceof Error ? err.message : String(err ?? "Unhandled rejection");
-      const stack   = err instanceof Error ? err.stack   : undefined;
-      this.report({ source: "client", errorType: "unhandled_rejection", message, stack });
-    });
-  }
-
-  private interceptFetch(): void {
+  interceptFetch(): void {
     const original = window.fetch.bind(window);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
@@ -89,17 +71,43 @@ class ErrorTracker {
           : "unknown";
         const init = args[1];
         const method = (typeof init === "object" && init?.method) ? init.method : "GET";
-        this.report({
+        this.report(buildPayload({
           source:     "client",
           errorType:  "api_5xx",
           message:    `HTTP ${response.status} ${response.statusText || "Error"}`,
           url,
           statusCode: response.status,
           meta:       { method },
-        });
+        }));
       }
       return response;
     };
+  }
+
+  private attachGlobalHandlers(): void {
+    window.addEventListener("error", (ev: ErrorEvent) => {
+      if (!(ev.error instanceof Error)) return; // skip resource load errors
+      this.report(buildPayload({
+        source:    "client",
+        errorType: "js_exception",
+        message:   ev.message || ev.error.message || "Unknown JS error",
+        stack:     ev.error.stack,
+      }));
+    });
+
+    window.addEventListener("unhandledrejection", (ev: PromiseRejectionEvent) => {
+      const err = ev.reason;
+      const message = err instanceof Error ? err.message : String(err ?? "Unhandled rejection");
+      const stack   = err instanceof Error ? err.stack   : undefined;
+      this.report(buildPayload({ source: "client", errorType: "unhandled_rejection", message, stack }));
+    });
+  }
+
+  private drainQueue(): void {
+    const items = this.queue.splice(0);
+    for (const payload of items) {
+      this.flush(payload);
+    }
   }
 
   private flush(payload: ErrorReportPayload): void {
@@ -107,13 +115,18 @@ class ErrorTracker {
       const body = JSON.stringify(payload);
       if (typeof navigator !== "undefined" && navigator.sendBeacon) {
         const sent = navigator.sendBeacon(ENDPOINT, new Blob([body], { type: "application/json" }));
-        if (sent) return;
+        if (sent) {
+          if (this.queue.length > 0) this.drainQueue();
+          return;
+        }
       }
       void fetch(ENDPOINT, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body,
         keepalive: true,
+      }).then(() => {
+        if (this.queue.length > 0) this.drainQueue();
       }).catch(() => this.enqueue(payload));
     } catch {
       this.enqueue(payload);
