@@ -17,7 +17,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   const source = sp.get("source") ?? undefined;
   const errorType = sp.get("errorType") ?? undefined;
-  const module = sp.get("module") ?? undefined;
+  const moduleFilter = sp.get("module") ?? undefined;
   const resolvedParam = sp.get("resolved");
   const from = sp.get("from") ?? undefined;
   const to = sp.get("to") ?? undefined;
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const where: Prisma.ErrorLogWhereInput = {};
   if (source) where.source = source;
   if (errorType) where.errorType = errorType;
-  if (module) where.module = module;
+  if (moduleFilter) where.module = moduleFilter;
   if (resolvedParam !== null) where.resolved = resolvedParam === "true";
   if (from && isNaN(new Date(from).getTime())) return apiError("Invalid from date", 400);
   if (to && isNaN(new Date(to).getTime())) return apiError("Invalid to date", 400);
