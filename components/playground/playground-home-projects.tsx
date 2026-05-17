@@ -247,7 +247,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
             <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
             {t("projects_add")}
           </Button>
-          {selectedCount > 0 ? (
+          {selectedCount >= 2 ? (
             <Button
               type="button"
               variant="outline"
@@ -261,7 +261,8 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
               ) : (
                 <Trash2 className="size-4 shrink-0" aria-hidden />
               )}
-              {selectedCount === 1 ? t("projects_delete") : t("projects_delete_selected")}
+              {t("projects_delete_selected")}
+              <span className="tabular-nums text-rose-600/90">({selectedCount})</span>
             </Button>
           ) : null}
         </div>

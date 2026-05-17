@@ -7,6 +7,9 @@ import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 import { localizeAnalysisDashboard, applyDashboardLanguageFallback } from "@/lib/analytics-dashboard-localization";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -24,12 +27,20 @@ export async function GET(
   }
 
   const state = await getSandboxProjectState(projectId);
-  if (!state) return apiError("No analysis found", 404);
+  if (!state) {
+    return apiOk({ dashboard: null, hasAnalysis: false, hasRawText: false });
+  }
 
   const lang = resolveUiLanguageFromRequest(req);
   const localizedKey = `analysis.${lang}.json`;
   const raw = state.files[localizedKey] ?? state.files["analysis.json"];
-  if (!raw) return apiError("No analysis found", 404);
+  if (!raw) {
+    return apiOk({
+      dashboard: null,
+      hasAnalysis: false,
+      hasRawText: Boolean(state.files["raw_text.txt"]?.trim()),
+    });
+  }
 
   let parsed: unknown;
   try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback, useState, type MouseEvent as ReactMouseEvent } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   MessageSquare,
   TrendingUp,
@@ -36,8 +36,23 @@ const DEFAULT_LEFT_PANEL_WIDTH = 375;
 const MIN_LEFT_PANEL_WIDTH = 280;
 const MAX_LEFT_PANEL_WIDTH = 480;
 
+async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
+  const contentType = res.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    if (typeof body?.error === "string" && body.error.trim().length > 0) {
+      return body.error.trim();
+    }
+  } else {
+    const text = (await res.text().catch(() => "")).trim();
+    if (text.length > 0) return text.slice(0, 240);
+  }
+  return `${fallback} (${res.status})`;
+}
+
 export function AnalyticsEditor() {
   const { t, lang } = useI18n();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId") ?? "";
   const dashboardRef = useRef<HTMLDivElement>(null);
@@ -59,10 +74,33 @@ export function AnalyticsEditor() {
   } = useAnalyticsStore();
 
   useEffect(() => {
+    if (projectId) return;
+    void (async () => {
+      try {
+        const res = await fetch(`/api/analytics/new?lang=${encodeURIComponent(lang)}`, {
+          redirect: "manual",
+          credentials: "include",
+        });
+        const location = res.headers.get("location") ?? res.url;
+        if (location && !location.includes("/api/analytics/new")) {
+          router.replace(location);
+          return;
+        }
+      } catch {
+        /* fallback below */
+      }
+      router.replace(`/api/analytics/new?lang=${encodeURIComponent(lang)}`);
+    })();
+  }, [projectId, lang, router]);
+
+  useEffect(() => {
     if (!projectId) return;
     setProjectId(projectId);
 
-    fetch(`/api/analytics/${projectId}?lang=${lang}`)
+    fetch(`/api/analytics/${encodeURIComponent(projectId)}?lang=${encodeURIComponent(lang)}`, {
+      credentials: "include",
+      cache: "no-store",
+    })
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { dashboard?: AnalysisDashboard; data?: { dashboard?: AnalysisDashboard } } | null) => {
         const resolvedDashboard = data?.dashboard ?? data?.data?.dashboard;
@@ -74,17 +112,22 @@ export function AnalyticsEditor() {
   }, [projectId, lang, setProjectId, setDashboard]);
 
   const runAnalysis = useCallback(async () => {
+    if (!projectId) {
+      setError(t("analytics_bi_no_project"));
+      return;
+    }
     setStatus("analyzing");
     setProgress(10);
 
     try {
-      const analyzeRes = await fetch(`/api/analytics/${projectId}/analyze?lang=${encodeURIComponent(lang)}`, {
-        method: "POST",
-      });
+      const analyzeRes = await fetch(
+        `/api/analytics/${encodeURIComponent(projectId)}/analyze?lang=${encodeURIComponent(lang)}`,
+        { method: "POST", credentials: "include" }
+      );
 
       if (!analyzeRes.ok || !analyzeRes.body) {
-        const err = await analyzeRes.json().catch(() => ({})) as { error?: string };
-        setError(err.error ?? "Analysis failed");
+        const message = await readApiErrorMessage(analyzeRes, t("analytics_bi_analyze_error"));
+        setError(message);
         return;
       }
 
@@ -108,7 +151,7 @@ export function AnalyticsEditor() {
             setDashboard(payload.dashboard);
             return true;
           } else if (payload.type === "error") {
-            setError(payload.message ?? "Analysis failed");
+            setError(payload.message ?? t("analytics_bi_analyze_error"));
           }
         } catch { /* ignore malformed SSE frame */ }
         return false;
@@ -136,10 +179,14 @@ export function AnalyticsEditor() {
       setError(msg);
       setStatus("idle");
     }
-  }, [lang, projectId, setStatus, setProgress, setDashboard, setError]);
+  }, [lang, projectId, setStatus, setProgress, setDashboard, setError, t]);
 
   const handleFile = useCallback(
     async (file: File) => {
+      if (!projectId) {
+        setError(t("analytics_bi_no_project"));
+        return;
+      }
       setStatus("uploading");
       setProgress(5);
 
@@ -147,25 +194,26 @@ export function AnalyticsEditor() {
         const form = new FormData();
         form.append("file", file);
 
-        const uploadRes = await fetch(`/api/analytics/${projectId}/upload`, {
+        const uploadRes = await fetch(`/api/analytics/${encodeURIComponent(projectId)}/upload`, {
           method: "POST",
           body: form,
+          credentials: "include",
         });
 
         if (!uploadRes.ok) {
-          const err = await uploadRes.json().catch(() => ({})) as { error?: string };
-          setError(err.error ?? "Upload failed");
+          const message = await readApiErrorMessage(uploadRes, t("analytics_bi_upload_error"));
+          setError(message);
           return;
         }
 
         await runAnalysis();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unexpected error";
+        const msg = err instanceof Error ? err.message : t("analytics_bi_upload_error");
         setError(msg);
         setStatus("idle");
       }
     },
-    [projectId, setStatus, setProgress, setError, runAnalysis]
+    [projectId, setStatus, setProgress, setError, runAnalysis, t]
   );
 
   const isLoading = status === "uploading" || status === "analyzing";

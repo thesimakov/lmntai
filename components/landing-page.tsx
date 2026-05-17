@@ -224,10 +224,27 @@ export function LandingPage() {
     router.push(authed ? "/playground/build" : "/login");
   }, [authed, prompt, router]);
 
-  const goAnalytics = useCallback(() => {
-    setPostLoginRedirect("/playground/analytics");
-    router.push(authed ? "/playground/analytics" : "/login");
-  }, [authed, router]);
+  const goAnalytics = useCallback(async () => {
+    if (!authed) {
+      setPostLoginRedirect("/api/analytics/new");
+      router.push("/login");
+      return;
+    }
+    try {
+      const res = await fetch(`/api/analytics/new?lang=${encodeURIComponent(lang)}`, {
+        redirect: "manual",
+        credentials: "include",
+      });
+      const location = res.headers.get("location") ?? res.url;
+      if (location && !location.includes("/api/analytics/new")) {
+        router.push(location);
+        return;
+      }
+    } catch {
+      /* fallback */
+    }
+    router.push(`/api/analytics/new?lang=${encodeURIComponent(lang)}`);
+  }, [authed, lang, router]);
 
   const goMarketing = useCallback(async () => {
     const text = prompt.trim();
@@ -466,14 +483,14 @@ export function LandingPage() {
                       />
                     </motion.div>
                   ) : (
-                    <motion.div
+                      <motion.div
                       key={mode}
                       initial={{ opacity: 0, y: 6 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -4 }}
                       transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
                     >
-                      <div className="relative min-h-[10px]">
+                      <div className="relative min-h-[79px]">
                         <textarea
                           value={prompt}
                           onChange={(e) => setPrompt(e.target.value)}
@@ -490,7 +507,7 @@ export function LandingPage() {
                           placeholder=""
                           rows={4}
                           aria-label={t(promptPlaceholderKey)}
-                          className="h-[10px] min-h-[10px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
+                          className="h-[79px] min-h-[79px] w-full resize-none border-0 bg-transparent text-[15px] leading-snug text-zinc-900 placeholder:text-zinc-400 focus:outline-none focus:ring-0 sm:text-base sm:leading-relaxed"
                         />
                         <AnimatePresence mode="wait">
                           {!prompt.trim() && !isFocused ? (

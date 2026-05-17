@@ -12,6 +12,9 @@ import { ocrPdfBuffer } from "@/lib/ocr-pdf";
 import { docxToText } from "@/lib/docx-parser";
 import { upsertChunks } from "@/lib/analytics-embedding-store";
 
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
 const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 const ACCEPTED_TYPES = new Set([
@@ -156,6 +159,16 @@ export async function POST(
     },
     title: baseName,
   });
+
+  const saved = await getSandboxProjectState(projectId);
+  const savedText = saved?.files?.["raw_text.txt"]?.trim() ?? "";
+  if (savedText.length < 10) {
+    return apiError(
+      "Could not save the uploaded file. Check your connection and try again.",
+      500,
+      { code: "SANDBOX_PERSIST_FAILED" }
+    );
+  }
 
   // Embed chunks in the background — non-blocking, failures are silent
   upsertChunks(projectId, extractedText).catch((err) => {
