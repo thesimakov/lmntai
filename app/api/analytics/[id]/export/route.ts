@@ -5,7 +5,7 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiFile, apiServerError } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
-import { analysisDashboardSchema } from "@/lib/analytics-schema";
+import { analysisDashboardSchema, type AnalysisDashboard } from "@/lib/analytics-schema";
 import { investorReportSchema } from "@/lib/investor-schema";
 import { forecastReportSchema } from "@/lib/forecast-schema";
 import { buildAnalysisPptx } from "@/lib/analytics-pptx-export";
@@ -76,8 +76,10 @@ export async function POST(
   const state = await getSandboxProjectState(projectId);
   const files = state?.files ?? {};
 
-  let dashboard = dashboardFromBody;
-  if (!dashboard) {
+  let dashboard: AnalysisDashboard;
+  if (dashboardFromBody) {
+    dashboard = analysisDashboardSchema.parse(dashboardFromBody);
+  } else {
     const rawDashboard = resolveAnalysisRaw(files, uiLanguage);
     if (!rawDashboard) return apiError("No analysis found", 404);
     try {

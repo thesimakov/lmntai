@@ -178,6 +178,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
   return (
     <ReadyState
       projectId={projectId}
+      dashboard={dashboard}
       report={forecastReport}
       handleGenerate={handleGenerate}
     />
@@ -186,10 +187,12 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
 
 function ReadyState({
   projectId,
+  dashboard,
   report,
   handleGenerate,
 }: {
   projectId: string;
+  dashboard: AnalysisDashboard;
   report: ForecastReport;
   handleGenerate: () => Promise<void>;
 }) {
@@ -349,12 +352,11 @@ function ReadyState({
             setDownloading(true);
             setDownloadError(null);
             try {
-              if (!dashboard || !forecastReport) return;
               await downloadForecastPptx(
                 projectId,
                 lang,
                 dashboard,
-                forecastReport,
+                report,
                 t("analytics_bi_download_error")
               );
             } catch (err) {

@@ -3,7 +3,10 @@ import { z } from "zod";
 export const kpiSchema = z.object({
   label: z.string(),
   value: z.string(),
-  change: z.string().nullish().transform((v) => v ?? undefined),
+  change: z.preprocess(
+    (val) => (val === null || val === undefined ? undefined : val),
+    z.string().optional(),
+  ),
   trend: z.enum(["up", "down", "neutral"]),
   category: z.enum(["revenue", "profitability", "liquidity", "growth", "efficiency"]),
 });
@@ -42,7 +45,7 @@ export const analysisDashboardSchema = z.object({
   narrative: z.string(),
 });
 
-export type AnalysisDashboard = z.infer<typeof analysisDashboardSchema>;
-export type Kpi = z.infer<typeof kpiSchema>;
+export type AnalysisDashboard = z.output<typeof analysisDashboardSchema>;
+export type Kpi = z.output<typeof kpiSchema>;
 export type Chart = z.infer<typeof chartSchema>;
 export type AnalysisTable = z.infer<typeof tableSchema>;
