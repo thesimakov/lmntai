@@ -88,10 +88,10 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
   useEffect(() => {
     let cancelled = false;
     fetch(`/api/projects/${encodeURIComponent(projectId)}/brand-kit`)
-      .then((r) => r.ok ? r.json() as Promise<{ data: { library: { manifest: { colors: Array<{ hex: string }> } } | null } }> : null)
+      .then((r) => r.ok ? r.json() as Promise<{ library: { manifest: { colors: Array<{ hex: string }> } } | null }> : null)
       .then((json) => {
         if (cancelled || !json) return;
-        const colors = json?.data?.library?.manifest?.colors ?? [];
+        const colors = json?.library?.manifest?.colors ?? [];
         brandColorsRef.current = {
           accentHex: colors[0]?.hex,
           primaryHex: colors[1]?.hex,

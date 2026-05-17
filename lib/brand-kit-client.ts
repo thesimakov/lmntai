@@ -15,14 +15,30 @@ type BrandKitGetResponse = {
   state: ProjectBrandKitState | null;
 };
 
+/** apiOk returns `{ library, state }` — not wrapped in `data`. */
+function parseBrandKitApiBody(json: unknown): BrandKitGetResponse {
+  if (!json || typeof json !== "object") {
+    return { library: null, state: null };
+  }
+  const body = json as Record<string, unknown>;
+  const payload =
+    body.data && typeof body.data === "object"
+      ? (body.data as BrandKitGetResponse)
+      : (body as BrandKitGetResponse);
+  return {
+    library: payload.library ?? null,
+    state: payload.state ?? null,
+  };
+}
+
 export async function fetchBrandKitLibrary(): Promise<BrandKitGetResponse> {
   const res = await fetch("/api/brand-kit", { credentials: "include" });
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? "Failed to load brand kit");
   }
-  const json = (await res.json()) as { data: BrandKitGetResponse };
-  return json.data ?? { library: null, state: null };
+  const json = await res.json();
+  return parseBrandKitApiBody(json);
 }
 
 export async function saveBrandKitLibrary(
@@ -52,9 +68,13 @@ export async function saveBrandKitLibrary(
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     throw new Error(body?.error ?? "Failed to save brand kit");
   }
-  const json = (await res.json()) as { data: { library: BrandKitLibraryDto } };
+  const json = await res.json();
+  const { library } = parseBrandKitApiBody(json);
+  if (!library) {
+    throw new Error("Failed to save brand kit");
+  }
   dispatchBrandKitUpdated();
-  return json.data.library;
+  return library;
 }
 
 export async function deleteBrandKitLibrary(): Promise<void> {
