@@ -31,7 +31,7 @@ const styleTokensSchema = z.object({
   textAlign: z.enum(["left", "center", "right"]).optional(),
   letterSpacing: z.string().optional(),
   textTransform: z.enum(["none", "uppercase", "lowercase", "capitalize"]).optional(),
-}).strict();
+}).strip();
 
 const componentNodeTypeSchema = z.enum([
   "Section", "Container", "Row", "Column", "Grid",

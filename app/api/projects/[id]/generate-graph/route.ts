@@ -6,7 +6,7 @@ import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { buildComponentGraphPrompt, COMPONENT_GRAPH_RETRY_MESSAGE } from "@/lib/component-graph/prompt";
-import { componentGraphSchema } from "@/lib/component-graph/schema";
+import { parseComponentGraphFromAiText } from "@/lib/component-graph/normalize";
 import { renderComponentGraph } from "@/lib/component-graph/renderer";
 import type { ComponentGraph } from "@/lib/component-graph/types";
 import {
@@ -23,17 +23,6 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   prompt: z.string().min(1).max(4000),
 });
-
-function tryParseGraph(text: string) {
-  try {
-    let json = text.trim();
-    const fence = json.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fence) json = fence[1].trim();
-    return componentGraphSchema.safeParse(JSON.parse(json));
-  } catch {
-    return null;
-  }
-}
 
 export async function POST(
   req: NextRequest,
@@ -104,7 +93,7 @@ export async function POST(
     return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
-  const v1 = tryParseGraph(result1.text);
+  const v1 = parseComponentGraphFromAiText(result1.text);
   if (v1?.success) {
     return saveGraph(v1.data);
   }
@@ -123,11 +112,16 @@ export async function POST(
     return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
-  const v2 = tryParseGraph(result2.text);
+  const v2 = parseComponentGraphFromAiText(result2.text);
   if (!v2?.success) {
+    console.error(
+      "[generate-graph] schema validation failed",
+      v2?.error.flatten() ?? "parse failed"
+    );
     return apiError(
-      "AI response did not match expected schema after retry. Please try again.",
-      422
+      "Не удалось разобрать ответ AI. Попробуйте упростить описание сайта или повторить запрос.",
+      422,
+      { code: "GRAPH_SCHEMA_MISMATCH" }
     );
   }
 
