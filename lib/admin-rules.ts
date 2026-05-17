@@ -32,6 +32,7 @@ export function canAccessAdminSection(
   section: AdminSectionRule
 ) {
   if (!section.permission) {
+    if (section.superOnly) return role === "ADMIN";
     return role === "ADMIN" || role === "MANAGER";
   }
   return canAccessStaff(role, permissions, section.permission, Boolean(section.superOnly));
