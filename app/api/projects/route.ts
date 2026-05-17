@@ -27,8 +27,6 @@ async function getProjects(req: NextRequest) {
   }
 
   try {
-    const quota = await getUserProjectQuota(guard.data.user.id, guard.data.user.plan);
-
     if (isLemnityAiBridgeEnabledServer()) {
       const sessions = await listLemnityAiSessionsForUser(guard.data.user.id);
     const ids = Array.from(
@@ -115,6 +113,7 @@ async function getProjects(req: NextRequest) {
     const merged = [...aiProjects, ...orphanProjects].sort(
       (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
     );
+    const quota = await getUserProjectQuota(guard.data.user.id, guard.data.user.plan);
     return Response.json({ projects: merged, quota });
     }
 
@@ -134,6 +133,7 @@ async function getProjects(req: NextRequest) {
       openUrl: `/api/sandbox/${row.sandboxId}`
     }));
 
+    const quota = await getUserProjectQuota(guard.data.user.id, guard.data.user.plan);
     return Response.json({ projects: sandboxProjects, quota });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

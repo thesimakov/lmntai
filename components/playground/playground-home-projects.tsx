@@ -18,8 +18,9 @@ type RuntimeProject = {
 };
 
 type ProjectQuota = {
-  current: number;
+  used: number;
   limit: number;
+  remaining: number;
   canCreate: boolean;
 };
 
@@ -64,7 +65,16 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
       }
       const data = JSON.parse(text) as { projects?: RuntimeProject[]; quota?: ProjectQuota };
       setProjects(data.projects ?? []);
-      setQuota(data.quota ?? null);
+      if (data.quota && typeof data.quota.used === "number" && typeof data.quota.remaining === "number") {
+        setQuota({
+          used: data.quota.used,
+          limit: typeof data.quota.limit === "number" ? data.quota.limit : data.quota.used + data.quota.remaining,
+          remaining: data.quota.remaining,
+          canCreate: Boolean(data.quota.canCreate),
+        });
+      } else {
+        setQuota(null);
+      }
     } catch (e) {
       setError(t("projects_load_failed"));
       setErrorDetail(e instanceof Error ? e.message.slice(0, 600) : String(e));
@@ -105,6 +115,16 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
     });
   }, []);
 
+  const applyQuotaAfterRemovals = useCallback((removedCount: number) => {
+    if (removedCount <= 0) return;
+    setQuota((prev) => {
+      if (!prev) return prev;
+      const used = Math.max(0, prev.used - removedCount);
+      const remaining = Math.max(0, prev.limit - used);
+      return { ...prev, used, remaining, canCreate: used < prev.limit };
+    });
+  }, []);
+
   const deleteProjectById = useCallback(async (projectId: string) => {
     const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}`, {
       method: "DELETE",
@@ -121,12 +141,8 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
       setDeletingId(project.id);
       try {
         await deleteProjectById(project.id);
+        applyQuotaAfterRemovals(1);
         setProjects((prev) => prev.filter((p) => p.id !== project.id));
-        setQuota((prev) => {
-          if (!prev) return prev;
-          const current = Math.max(0, prev.current - 1);
-          return { ...prev, current, canCreate: current < prev.limit };
-        });
         setSelectedIds((prev) => {
           if (!prev.has(project.id)) return prev;
           const next = new Set(prev);
@@ -139,7 +155,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
         setDeletingId(null);
       }
     },
-    [deleteProjectById, t]
+    [applyQuotaAfterRemovals, deleteProjectById, t]
   );
 
   const deleteSelected = useCallback(async () => {
@@ -168,13 +184,9 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
         window.alert(t("projects_delete_error"));
         return;
       }
+      applyQuotaAfterRemovals(removed.length);
       const removedSet = new Set(removed);
       setProjects((prev) => prev.filter((p) => !removedSet.has(p.id)));
-      setQuota((prev) => {
-        if (!prev) return prev;
-        const current = Math.max(0, prev.current - removed.length);
-        return { ...prev, current, canCreate: current < prev.limit };
-      });
       setSelectedIds((prev) => {
         const next = new Set(prev);
         for (const id of removed) next.delete(id);
@@ -186,7 +198,7 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
     } finally {
       setBulkDeleting(false);
     }
-  }, [deleteProjectById, projects, selectedIds, t]);
+  }, [applyQuotaAfterRemovals, deleteProjectById, projects, selectedIds, t]);
 
   function formatCreatedAt(raw: string) {
     const date = new Date(raw);
@@ -209,24 +221,23 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
       aria-labelledby="playground-home-projects-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 gap-y-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-2">
           <h2 id="playground-home-projects-heading" className="text-lg font-semibold tracking-tight text-slate-900">
             {t("projects_title")}
           </h2>
-          {!loading && quota ? (
+          {!loading && quota !== null ? (
             <span
-              className="rounded-md bg-slate-100 px-2.5 py-0.5 text-sm font-medium tabular-nums text-slate-600"
-              aria-label={t("projects_quota_aria")
-                .replace("{current}", String(quota.current))
-                .replace("{limit}", String(quota.limit))}
+              className="tabular-nums text-sm font-medium text-slate-500"
+              title={t("projects_quota_aria")
+                .replace("{used}", String(quota.used))
+                .replace("{remaining}", String(quota.remaining))}
             >
-              {quota.current}/{quota.limit}
+              {quota.used}/{quota.remaining}
             </span>
           ) : null}
         </div>
-        <div className="flex min-w-0 flex-col items-end gap-1">
-          <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-2.5">
-            <Button
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-2.5">
+          <Button
             type="button"
             size="sm"
             className="h-9 shrink-0 gap-2 border-0 bg-primary px-3 font-semibold text-white shadow-sm hover:bg-primary/90"
@@ -236,37 +247,36 @@ export function PlaygroundHomeProjects({ className }: { className?: string }) {
             <Plus className="size-4 shrink-0" strokeWidth={2.5} aria-hidden />
             {t("projects_add")}
           </Button>
-            {selectedCount > 0 ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-9 shrink-0 gap-1.5 border-rose-200/90 bg-rose-50 text-rose-700 hover:bg-rose-100/90"
-                disabled={busyDeleting}
-                onClick={() => void deleteSelected()}
-              >
-                {bulkDeleting ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-                ) : (
-                  <Trash2 className="size-4 shrink-0" aria-hidden />
-                )}
-                {selectedCount === 1 ? t("projects_delete") : t("projects_delete_selected")}
-              </Button>
-            ) : null}
-          </div>
-          {atProjectLimit ? (
+          {selectedCount > 0 ? (
             <Button
-              asChild
               type="button"
-              variant="link"
+              variant="outline"
               size="sm"
-              className="h-auto px-0 text-sm font-semibold text-primary"
+              className="h-9 shrink-0 gap-1.5 border-rose-200/90 bg-rose-50 text-rose-700 hover:bg-rose-100/90"
+              disabled={busyDeleting}
+              onClick={() => void deleteSelected()}
             >
-              <Link href="/pricing">{t("projects_upgrade_plan")}</Link>
+              {bulkDeleting ? (
+                <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
+              ) : (
+                <Trash2 className="size-4 shrink-0" aria-hidden />
+              )}
+              {selectedCount === 1 ? t("projects_delete") : t("projects_delete_selected")}
             </Button>
           ) : null}
         </div>
       </div>
+
+      {atProjectLimit ? (
+        <p className="-mt-1 mb-1 text-sm">
+          <Link
+            href="/pricing"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            {t("projects_upgrade_tariff")}
+          </Link>
+        </p>
+      ) : null}
 
       {loading ? (
         <div className="mt-4 flex items-center gap-2 text-sm text-slate-600">
