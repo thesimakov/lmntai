@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import type { Session } from "next-auth";
 import { NextUIProvider } from "@nextui-org/react";
 import { SessionProvider } from "next-auth/react";
 import { ThemeProvider } from "next-themes";
 import { useRouter } from "next/navigation";
+import { errorTracker } from "@/lib/error-tracker";
 
 import NextTopLoader from "nextjs-toploader";
 
@@ -47,6 +49,10 @@ function NextUIRouterProvider({
 }
 
 export function Providers({ children, initialLang, session }: ProvidersProps) {
+  useEffect(() => {
+    errorTracker.init();
+  }, []);
+
   const isProd = process.env.NODE_ENV === "production";
   /* Явный basePath: иначе клиент берёт path из NEXTAUTH_URL; при некорректном URL приложения
      запросы уходят не на /api/auth/* → HTML вместо JSON → CLIENT_FETCH_ERROR. */
