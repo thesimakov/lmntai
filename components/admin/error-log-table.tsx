@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -165,9 +165,8 @@ export function ErrorLogTable({
             </TableRow>
           )}
           {items.map((item) => (
-            <>
+            <React.Fragment key={item.id}>
               <TableRow
-                key={item.id}
                 className={`cursor-pointer ${item.resolved ? "opacity-50" : ""}`}
                 onClick={() => toggleExpand(item.id)}
               >
@@ -208,8 +207,8 @@ export function ErrorLogTable({
                   </Button>
                 </TableCell>
               </TableRow>
-              {expandedId === item.id && <ExpandedRow key={`${item.id}-expanded`} item={item} />}
-            </>
+              {expandedId === item.id && <ExpandedRow item={item} />}
+            </React.Fragment>
           ))}
         </TableBody>
       </Table>
