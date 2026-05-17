@@ -16,8 +16,8 @@ type HandoffDeps = {
   lemnityAiBridgeReady: boolean;
   /** True when GET /api/projects/current finished (success or failure) */
   projectScopeReady: boolean;
-  /** ?sessionId from URL — if present, handoff is skipped */
-  requestedSessionId: string | null;
+  /** ?sessionId | ?projectId | ?sandboxId from URL — if present, handoff is skipped */
+  requestedProjectId: string | null;
   /** Run template preview by slug (from build/page.tsx) */
   runBuildTemplatePreview: (slug: string) => Promise<void>;
   /** runPromptCoach from usePromptCoach */
@@ -31,14 +31,14 @@ function createMessageId(): string {
 export function useBuildHandoff({
   lemnityAiBridgeReady,
   projectScopeReady,
-  requestedSessionId,
+  requestedProjectId,
   runBuildTemplatePreview,
   runPromptCoach,
 }: HandoffDeps): void {
   const firedRef = useRef(false);
 
   useEffect(() => {
-    if (!lemnityAiBridgeReady || !projectScopeReady || requestedSessionId) return;
+    if (!lemnityAiBridgeReady || !projectScopeReady || requestedProjectId) return;
     if (firedRef.current) return;
 
     const handoff = readBuilderHandoff();
@@ -101,5 +101,5 @@ export function useBuildHandoff({
     };
     setMessages([msg]);
     void runPromptCoach([msg]);
-  }, [lemnityAiBridgeReady, projectScopeReady, requestedSessionId, runBuildTemplatePreview, runPromptCoach]);
+  }, [lemnityAiBridgeReady, projectScopeReady, requestedProjectId, runBuildTemplatePreview, runPromptCoach]);
 }
