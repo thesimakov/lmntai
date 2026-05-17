@@ -9,8 +9,7 @@ import {
   upsertSandboxProjectState,
   getSandboxProjectState,
 } from "@/lib/sandbox-project-state-db";
-
-const MAX_FILE_BYTES = 50 * 1024 * 1024;
+import { BI_UPLOAD_MAX_BYTES, BI_UPLOAD_MAX_MB } from "@/lib/bi-upload-limits";
 const MAX_FILES = 5;
 const SUPPORTED_TYPES = new Set([
   "text/csv",
@@ -105,8 +104,8 @@ export async function POST(
   const textParts: string[] = [];
 
   for (const file of files) {
-    if (file.size > MAX_FILE_BYTES) {
-      return apiError(`File "${file.name}" exceeds 50 MB limit`, 413);
+    if (file.size > BI_UPLOAD_MAX_BYTES) {
+      return apiError(`File "${file.name}" exceeds ${BI_UPLOAD_MAX_MB} MB limit`, 413);
     }
     if (!SUPPORTED_TYPES.has(file.type) && !isCsvOrXlsx(file) && !isPdf(file) && !isDocx(file)) {
       return apiError(

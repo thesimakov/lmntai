@@ -62,3 +62,5 @@ fi
 
 pm2 save
 echo "==> [deploy] готово"
+echo "==> [deploy] nginx: для загрузки PDF/XLSX (analytics, marketing) нужен client_max_body_size 10m;"
+echo "    см. scripts/reverse-proxy-body-size-snippet.txt и deploy/nginx/lemnity-unified-tls.example.conf"

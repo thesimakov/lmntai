@@ -29,26 +29,14 @@ const AnalyticsForecastPanel = dynamic(
 import { AnalyticsAgentsPanel } from "./analytics-agents-panel";
 import { AnalyticsBenchmarkPanel } from "./analytics-benchmark-panel";
 import { cn } from "@/lib/utils";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
+import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 
 type LeftTab = "chat" | "investor" | "forecast" | "agents" | "benchmark";
 const DEFAULT_LEFT_PANEL_WIDTH = 375;
 const MIN_LEFT_PANEL_WIDTH = 280;
 const MAX_LEFT_PANEL_WIDTH = 480;
-
-async function readApiErrorMessage(res: Response, fallback: string): Promise<string> {
-  const contentType = res.headers.get("content-type") ?? "";
-  if (contentType.includes("application/json")) {
-    const body = (await res.json().catch(() => null)) as { error?: string } | null;
-    if (typeof body?.error === "string" && body.error.trim().length > 0) {
-      return body.error.trim();
-    }
-  } else {
-    const text = (await res.text().catch(() => "")).trim();
-    if (text.length > 0) return text.slice(0, 240);
-  }
-  return `${fallback} (${res.status})`;
-}
 
 export function AnalyticsEditor() {
   const { t, lang } = useI18n();
@@ -126,7 +114,10 @@ export function AnalyticsEditor() {
       );
 
       if (!analyzeRes.ok || !analyzeRes.body) {
-        const message = await readApiErrorMessage(analyzeRes, t("analytics_bi_analyze_error"));
+        const message = await readUploadApiErrorMessage(analyzeRes, {
+          fallback: t("analytics_bi_analyze_error"),
+          tooLarge: t("analytics_bi_upload_too_large"),
+        });
         setError(message);
         return;
       }
@@ -187,6 +178,10 @@ export function AnalyticsEditor() {
         setError(t("analytics_bi_no_project"));
         return;
       }
+      if (file.size > BI_UPLOAD_MAX_BYTES) {
+        setError(t("analytics_bi_file_too_large"));
+        return;
+      }
       setStatus("uploading");
       setProgress(5);
 
@@ -201,7 +196,10 @@ export function AnalyticsEditor() {
         });
 
         if (!uploadRes.ok) {
-          const message = await readApiErrorMessage(uploadRes, t("analytics_bi_upload_error"));
+          const message = await readUploadApiErrorMessage(uploadRes, {
+            fallback: t("analytics_bi_upload_error"),
+            tooLarge: t("analytics_bi_upload_too_large"),
+          });
           setError(message);
           return;
         }
@@ -330,7 +328,7 @@ export function AnalyticsEditor() {
         {!hasDashboard && (status === "idle" || status === "error") ? (
           /* ── Empty / upload state ── */
           <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8 bg-[#FAFAFA]">
-            <div className="flex flex-col items-center gap-3 text-center max-w-sm">
+            <div className="flex flex-col items-center gap-3 text-center max-w-md">
               <div className="w-10 h-10 rounded-xl border border-border bg-white flex items-center justify-center shadow-sm">
                 <BarChart2 className="w-5 h-5 text-foreground/70" />
               </div>
@@ -338,7 +336,7 @@ export function AnalyticsEditor() {
                 <h1 className="text-base font-semibold text-foreground">
                   {t("analytics_bi_empty_title")}
                 </h1>
-                <p className="mt-1.5 text-sm text-muted-foreground leading-relaxed">
+                <p className="mt-1.5 text-base text-muted-foreground leading-relaxed">
                   {t("analytics_bi_empty_desc")}
                 </p>
               </div>

@@ -40,10 +40,10 @@ export function AnalyticsDashboard({ dashboard, forecastReport }: Props) {
 
       {forecastReport && (
         <div className="rounded-xl border bg-card p-4 space-y-3">
-          <h3 className="font-semibold text-sm">
+          <h3 className="text-lg font-semibold">
             {lang === "en" ? "Financial Forecast (24 months)" : lang === "tg" ? "Пешгӯии молиявӣ (24 моҳ)" : "Финансовый прогноз (24 месяца)"}
           </h3>
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
+          <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
             {forecastReport.executiveSummary}
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -51,13 +51,13 @@ export function AnalyticsDashboard({ dashboard, forecastReport }: Props) {
               const latestPoint = [...metric.points].reverse().find((p) => !p.isHistorical) ?? metric.points[metric.points.length - 1];
               return (
                 <div key={metric.key} className="rounded-lg border border-border/60 p-3 space-y-1">
-                  <p className="text-xs text-muted-foreground break-words">{localizedMetricLabel(metric, lang)}</p>
+                  <p className="text-sm text-muted-foreground break-words">{localizedMetricLabel(metric, lang)}</p>
                   <p className="text-base font-semibold break-words">
                     {metric.unit}
                     {latestPoint?.value.toLocaleString() ?? "—"}
                   </p>
                   {metric.projectedCagr && (
-                    <p className="text-xs text-primary">{metric.projectedCagr}</p>
+                    <p className="text-sm text-primary">{metric.projectedCagr}</p>
                   )}
                 </div>
               );
@@ -67,18 +67,18 @@ export function AnalyticsDashboard({ dashboard, forecastReport }: Props) {
       )}
 
       <div className="rounded-xl border bg-card p-4 space-y-2">
-        <h3 className="font-semibold text-sm">{t("analytics_bi_summary_title")}</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+        <h3 className="text-lg font-semibold">{t("analytics_bi_summary_title")}</h3>
+        <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-line">
           {summary.executive}
         </p>
       </div>
 
       {summary.redFlags.length > 0 && (
         <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-4 space-y-2">
-          <h3 className="font-semibold text-sm text-red-500">{t("analytics_bi_red_flags_title")}</h3>
+          <h3 className="text-lg font-semibold text-red-500">{t("analytics_bi_red_flags_title")}</h3>
           <ul className="space-y-1">
             {summary.redFlags.map((flag, i) => (
-              <li key={i} className="text-sm text-muted-foreground flex gap-2 break-words">
+              <li key={i} className="text-base text-muted-foreground flex gap-2 break-words">
                 <span className="text-red-500 shrink-0">⚠</span>
                 {flag}
               </li>
@@ -89,12 +89,12 @@ export function AnalyticsDashboard({ dashboard, forecastReport }: Props) {
 
       {tables.map((table) => (
         <div key={table.title} className="rounded-xl border bg-card p-4 h-auto overflow-visible">
-          <h3 className="font-semibold text-sm mb-3 whitespace-normal break-words">{table.title}</h3>
-          <table className="w-full text-xs table-auto">
+          <h3 className="text-lg font-semibold mb-3 whitespace-normal break-words">{table.title}</h3>
+          <table className="w-full text-base table-auto">
             <thead>
               <tr className="border-b">
                 {table.headers.map((h) => (
-                  <th key={h} className="text-left py-1.5 pr-4 text-muted-foreground font-medium whitespace-normal break-words align-top">{h}</th>
+                  <th key={h} className="text-left py-1.5 pr-4 text-sm text-muted-foreground font-medium whitespace-normal break-words align-top">{h}</th>
                 ))}
               </tr>
             </thead>

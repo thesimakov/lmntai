@@ -5,7 +5,9 @@ import { TrendingUp, Loader2, Download, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { useI18n } from "@/components/i18n-provider";
-import { investorReportSchema } from "@/lib/investor-schema";
+import { investorReportSchema, type InvestorReport } from "@/lib/investor-schema";
+import type { AnalysisDashboard } from "@/lib/analytics-schema";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -30,15 +32,30 @@ function riskBg(score: number) {
   return "bg-red-500/10 border-red-500/30";
 }
 
-async function downloadPptx(projectId: string, format: string, label: string, lang: string) {
-  const res = await fetch(`/api/analytics/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
+async function downloadPptx(
+  projectId: string,
+  format: string,
+  label: string,
+  lang: string,
+  payload: { dashboard: AnalysisDashboard; investorReport: InvestorReport },
+  downloadFailedLabel: string
+) {
+  const res = await fetch(`/api/analytics/${encodeURIComponent(projectId)}/export?lang=${encodeURIComponent(lang)}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format }),
+    body: JSON.stringify({
+      format,
+      dashboard: payload.dashboard,
+      investorReport: payload.investorReport,
+    }),
   });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: string };
-    throw new Error(err.error ?? "Download failed");
+    const message = await readUploadApiErrorMessage(res, {
+      fallback: downloadFailedLabel,
+      tooLarge: downloadFailedLabel,
+    });
+    throw new Error(message);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -101,23 +118,31 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
 
   const handleDownload = useCallback(
     async (format: string, label: string) => {
+      if (!dashboard || !investorReport) return;
       setDownloadingFormat(format);
       setDownloadError(null);
       try {
-        await downloadPptx(projectId, format, label, lang);
+        await downloadPptx(
+          projectId,
+          format,
+          label,
+          lang,
+          { dashboard, investorReport },
+          t("analytics_bi_download_error")
+        );
       } catch (err) {
-        setDownloadError(err instanceof Error ? err.message : "Download failed");
+        setDownloadError(err instanceof Error ? err.message : t("analytics_bi_download_error"));
       } finally {
         setDownloadingFormat(null);
       }
     },
-    [lang, projectId]
+    [dashboard, investorReport, lang, projectId, t]
   );
 
   if (!dashboard) {
     return (
       <div className="flex flex-col gap-3 p-4">
-        <p className="text-xs text-muted-foreground">
+        <p className="text-base text-muted-foreground leading-relaxed">
           {t("analytics_bi_investor_need_pdf")}
         </p>
       </div>
@@ -127,7 +152,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
   if (investorStatus === "idle" || investorStatus === "error") {
     return (
       <div className="flex flex-col gap-3 p-4">
-        <p className="text-xs text-muted-foreground leading-relaxed">
+        <p className="text-base text-muted-foreground leading-relaxed">
           {t("analytics_bi_investor_desc")}
         </p>
 
@@ -137,22 +162,21 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
               key={card.id}
               className={cn("rounded-md border p-3", card.bgColor, card.borderColor)}
             >
-              <p className={cn("text-xs font-semibold", card.color)}>{card.label}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{card.description}</p>
+              <p className={cn("text-base font-semibold", card.color)}>{card.label}</p>
+              <p className="mt-1 text-base text-muted-foreground leading-snug">{card.description}</p>
             </div>
           ))}
         </div>
 
         {investorStatus === "error" && investorError && (
-          <p className="text-xs text-red-500">{investorError}</p>
+          <p className="text-base text-red-500">{investorError}</p>
         )}
 
         <Button
-          size="sm"
-          className="w-full gap-1.5"
+          className="w-full gap-1.5 text-base h-10"
           onClick={() => void handleGenerate()}
         >
-          <TrendingUp className="w-3.5 h-3.5" />
+          <TrendingUp className="w-4 h-4" />
           {t("analytics_bi_investor_generate")}
         </Button>
       </div>
@@ -163,7 +187,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 p-6">
         <Loader2 className="w-6 h-6 animate-spin text-primary" />
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="text-base text-muted-foreground text-center leading-relaxed">
           {t("analytics_bi_investor_generating")}
           <br />
           {t("analytics_bi_forecast_wait")}
@@ -181,17 +205,17 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
     <div className="flex flex-col gap-3 p-4">
       {/* Risk score */}
       <div className={cn("rounded-md border p-3", riskBgCls)}>
-        <p className="text-[11px] text-muted-foreground mb-1">{t("analytics_bi_investor_risk_label")}</p>
+        <p className="text-base text-muted-foreground mb-1">{t("analytics_bi_investor_risk_label")}</p>
         <div className="flex items-baseline gap-2">
           <span className={cn("text-2xl font-bold", riskCls)}>{report.riskScore}</span>
-          <span className="text-xs text-muted-foreground">/100 · {report.riskLabel}</span>
+          <span className="text-base text-muted-foreground">/100 · {report.riskLabel}</span>
         </div>
       </div>
 
       {/* Forecast preview */}
-      <div className="rounded-md border border-border p-3 text-xs">
-        <p className="text-[11px] font-medium text-foreground mb-1.5">{t("analytics_bi_investor_forecast_label")}</p>
-        <div className="flex flex-col gap-1">
+      <div className="rounded-md border border-border p-3 text-base">
+        <p className="text-base font-medium text-foreground mb-2">{t("analytics_bi_investor_forecast_label")}</p>
+        <div className="flex flex-col gap-1.5">
           {(["optimistic", "base", "pessimistic"] as const).map((key) => {
             const s = report.forecast.scenarios[key];
             const color = key === "optimistic" ? "text-green-400" : key === "pessimistic" ? "text-red-400" : "text-muted-foreground";
@@ -208,37 +232,35 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
 
       {/* Download buttons */}
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] text-muted-foreground font-medium">{t("analytics_bi_investor_download_pptx")}</p>
+        <p className="text-base text-muted-foreground font-medium">{t("analytics_bi_investor_download_pptx")}</p>
         {FORMAT_CARDS.map((card) => (
           <Button
             key={card.id}
             variant="outline"
-            size="sm"
-            className="w-full justify-between text-xs h-8"
+            className="w-full justify-between text-base h-10"
             disabled={downloadingFormat === card.id}
             onClick={() => void handleDownload(card.id, card.label)}
           >
             <span>{card.label}</span>
             {downloadingFormat === card.id ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Download className="w-3 h-3 text-muted-foreground" />
+              <Download className="w-4 h-4 text-muted-foreground" />
             )}
           </Button>
         ))}
         {downloadError && (
-          <p className="text-xs text-red-500 mt-1">{downloadError}</p>
+          <p className="text-base text-red-500 mt-1">{downloadError}</p>
         )}
       </div>
 
       {/* Regenerate */}
       <Button
         variant="ghost"
-        size="sm"
-        className="w-full gap-1.5 text-xs text-muted-foreground"
+        className="w-full gap-1.5 text-base text-muted-foreground h-10"
         onClick={() => void handleGenerate()}
       >
-        <ChevronRight className="w-3 h-3" />
+        <ChevronRight className="w-4 h-4" />
         {t("analytics_bi_investor_regenerate")}
       </Button>
     </div>

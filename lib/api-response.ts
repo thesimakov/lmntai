@@ -50,9 +50,8 @@ export function apiFile(
   mimeType: string,
 ): Response {
   const safeFilename = filename.replace(/[";\r\n\\]/g, "_");
-  // Copy into a fresh ArrayBuffer so TypeScript's BodyInit constraint is satisfied.
-  const ab = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
-  return new Response(ab, {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  return new Response(new Uint8Array(bytes), {
     headers: {
       "Content-Type": mimeType,
       "Content-Disposition": `attachment; filename="${safeFilename}"`,

@@ -73,10 +73,10 @@ function AnalyticsChartTooltip({
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border/80 bg-white/95 px-3 py-2 shadow-md backdrop-blur-sm">
-      {label ? <p className="mb-1.5 text-xs font-semibold text-foreground">{label}</p> : null}
+      {label ? <p className="mb-1.5 text-sm font-semibold text-foreground">{label}</p> : null}
       <ul className="space-y-1">
         {payload.map((entry) => (
-          <li key={String(entry.name)} className="flex items-center justify-between gap-4 text-xs">
+          <li key={String(entry.name)} className="flex items-center justify-between gap-4 text-sm">
             <span className="flex items-center gap-1.5 text-muted-foreground">
               <span
                 className="inline-block h-2 w-2 shrink-0 rounded-full"
@@ -116,9 +116,9 @@ export function AnalyticsChartBlock({ chart }: Props) {
   return (
     <div className="rounded-xl border border-border/70 bg-gradient-to-b from-white to-zinc-50/80 p-4 shadow-sm">
       <div className="mb-3 space-y-1">
-        <h3 className="text-sm font-semibold leading-snug text-foreground">{title}</h3>
+        <h3 className="text-lg font-semibold leading-snug text-foreground">{title}</h3>
         {description ? (
-          <p className="text-xs leading-relaxed text-muted-foreground">{description}</p>
+          <p className="text-sm leading-relaxed text-muted-foreground">{description}</p>
         ) : null}
       </div>
 
@@ -156,7 +156,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
                 align="right"
                 verticalAlign="middle"
                 iconType="circle"
-                wrapperStyle={{ fontSize: 11, paddingLeft: 8 }}
+                wrapperStyle={{ fontSize: 14, lineHeight: "18px", paddingLeft: 8 }}
               />
             </PieChart>
           ) : type === "line" ? (
@@ -170,7 +170,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
               <CartesianGrid stroke="#E4E4E7" strokeDasharray="4 6" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 interval={0}
@@ -179,7 +179,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
                 height={rows.length > 5 ? 52 : 28}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => formatAxisNumber(Number(v), locale)}
@@ -206,12 +206,12 @@ export function AnalyticsChartBlock({ chart }: Props) {
               <CartesianGrid stroke="#E4E4E7" strokeDasharray="4 6" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => formatAxisNumber(Number(v), locale)}
@@ -237,7 +237,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
               <CartesianGrid stroke="#E4E4E7" strokeDasharray="4 6" horizontal={false} />
               <XAxis
                 type="number"
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => formatAxisNumber(Number(v), locale)}
@@ -245,7 +245,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
               <YAxis
                 type="category"
                 dataKey="name"
-                tick={{ fontSize: 11, fill: "#52525B" }}
+                tick={{ fontSize: 14, fill: "#52525B" }}
                 axisLine={false}
                 tickLine={false}
                 width={Math.min(140, Math.max(72, ...rows.map((r) => r.name.length * 6)))}
@@ -264,7 +264,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
               <CartesianGrid stroke="#E4E4E7" strokeDasharray="4 6" vertical={false} />
               <XAxis
                 dataKey="name"
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 interval={0}
@@ -273,7 +273,7 @@ export function AnalyticsChartBlock({ chart }: Props) {
                 height={rows.length > 4 ? 48 : 28}
               />
               <YAxis
-                tick={{ fontSize: 11, fill: "#71717A" }}
+                tick={{ fontSize: 14, fill: "#71717A" }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={(v) => formatAxisNumber(Number(v), locale)}

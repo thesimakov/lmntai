@@ -4,6 +4,8 @@ import { useRef, useState } from "react";
 import { UploadCloud, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
+import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
 import { useI18n } from "@/components/i18n-provider";
 
 interface Props {
@@ -41,14 +43,22 @@ export function MarketingUploadPanel({ onAnalyze, isUploading, isAnalyzing, proj
 
   const handleAnalyze = async () => {
     if (files.length === 0 || isUploading || isAnalyzing) return;
+    const oversized = files.find((f) => f.size > BI_UPLOAD_MAX_BYTES);
+    if (oversized) {
+      setError(t("analytics_bi_file_too_large"));
+      return;
+    }
     setError(null);
     const body = new FormData();
     files.forEach((f) => body.append("files", f));
     try {
       const res = await fetch(`/api/marketing/${projectId}/upload`, { method: "POST", body });
       if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(json.error ?? `Upload failed (${res.status})`);
+        const message = await readUploadApiErrorMessage(res, {
+          fallback: t("marketing_bi_upload_error"),
+          tooLarge: t("analytics_bi_upload_too_large"),
+        });
+        throw new Error(message);
       }
       onAnalyze();
     } catch (err) {

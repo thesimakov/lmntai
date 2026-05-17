@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import { FileText, FileSpreadsheet, FileJson, FileType, UploadCloud } from "lucide-react";
+import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
 
@@ -13,7 +14,6 @@ interface Props {
 const ACCEPTED_EXTENSIONS = [".pdf", ".xlsx", ".xls", ".csv", ".json", ".docx"];
 const ACCEPT_ATTR =
   "application/pdf,.xlsx,.xls,text/csv,application/json,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-const MAX_BYTES = 50 * 1024 * 1024;
 
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
@@ -32,7 +32,7 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
       const name = file.name.toLowerCase();
       const ok = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
       if (!ok) return;
-      if (file.size > MAX_BYTES) return;
+      if (file.size > BI_UPLOAD_MAX_BYTES) return;
       onFile(file);
     },
     [onFile]
@@ -70,7 +70,7 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
       </div>
       <div className="text-center">
         <p className="text-sm font-medium text-foreground">{t("analytics_bi_drop_hint")}</p>
-        <p className="text-xs text-muted-foreground mt-1">{t("analytics_bi_format_hint")}</p>
+        <p className="mt-1 text-xs leading-[10px] text-muted-foreground">{t("analytics_bi_format_hint")}</p>
       </div>
       <div className="flex items-center gap-3 text-[11px] text-muted-foreground/70">
         <span className="flex items-center gap-1">

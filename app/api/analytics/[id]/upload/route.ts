@@ -11,11 +11,10 @@ import {
 import { ocrPdfBuffer } from "@/lib/ocr-pdf";
 import { docxToText } from "@/lib/docx-parser";
 import { upsertChunks } from "@/lib/analytics-embedding-store";
+import { BI_UPLOAD_MAX_BYTES, BI_UPLOAD_MAX_MB } from "@/lib/bi-upload-limits";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 const ACCEPTED_TYPES = new Set([
   "application/pdf",
@@ -87,7 +86,9 @@ export async function POST(
     return apiError("Unsupported file type. Accepted: PDF, XLSX, XLS, CSV, JSON", 400);
   }
 
-  if (file.size > MAX_FILE_BYTES) return apiError("File too large (max 50 MB)", 413);
+  if (file.size > BI_UPLOAD_MAX_BYTES) {
+    return apiError(`File too large (max ${BI_UPLOAD_MAX_MB} MB)`, 413);
+  }
 
   const buffer = Buffer.from(await file.arrayBuffer());
 

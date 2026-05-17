@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { forecastReportSchema } from "@/lib/forecast-schema";
 import type { ForecastReport, ForecastMetric } from "@/lib/forecast-schema";
+import type { AnalysisDashboard } from "@/lib/analytics-schema";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
 import { cn } from "@/lib/utils";
 
 interface Props {
@@ -57,15 +59,25 @@ function buildChartData(metric: ForecastMetric, horizon: Horizon) {
   }));
 }
 
-async function downloadForecastPptx(projectId: string, lang: string) {
-  const res = await fetch(`/api/analytics/${projectId}/export?lang=${encodeURIComponent(lang)}`, {
+async function downloadForecastPptx(
+  projectId: string,
+  lang: string,
+  dashboard: AnalysisDashboard,
+  forecastReport: ForecastReport,
+  downloadFailedLabel: string
+) {
+  const res = await fetch(`/api/analytics/${encodeURIComponent(projectId)}/export?lang=${encodeURIComponent(lang)}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ format: "forecast-pptx" }),
+    body: JSON.stringify({ format: "forecast-pptx", dashboard, forecastReport }),
   });
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? "Download failed");
+    const message = await readUploadApiErrorMessage(res, {
+      fallback: downloadFailedLabel,
+      tooLarge: downloadFailedLabel,
+    });
+    throw new Error(message);
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
@@ -337,10 +349,17 @@ function ReadyState({
             setDownloading(true);
             setDownloadError(null);
             try {
-              await downloadForecastPptx(projectId, lang);
+              if (!dashboard || !forecastReport) return;
+              await downloadForecastPptx(
+                projectId,
+                lang,
+                dashboard,
+                forecastReport,
+                t("analytics_bi_download_error")
+              );
             } catch (err) {
               setDownloadError(
-                err instanceof Error ? err.message : t("analytics_bi_forecast_download")
+                err instanceof Error ? err.message : t("analytics_bi_download_error")
               );
             } finally {
               setDownloading(false);

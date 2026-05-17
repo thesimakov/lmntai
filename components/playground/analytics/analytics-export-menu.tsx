@@ -110,10 +110,11 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
     if (!dashboard) return;
     setLoadingPptx(true);
     try {
-      const res = await fetch(`/api/analytics/${projectId}/export`, {
+      const res = await fetch(`/api/analytics/${encodeURIComponent(projectId)}/export`, {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format: "pptx" }),
+        body: JSON.stringify({ format: "pptx", dashboard }),
       });
       if (!res.ok) throw new Error(t("analytics_bi_export"));
       const blob = await res.blob();
