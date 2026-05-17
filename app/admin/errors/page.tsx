@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { ErrorLogFilters } from "@/components/admin/error-log-filters";
 import { ErrorLogTable, type ErrorLog } from "@/components/admin/error-log-table";
 
@@ -40,6 +41,7 @@ export default function AdminErrorsPage() {
   const [page, setPage] = useState(1);
   const [data, setData] = useState<ErrorLogResponse>({ items: [], total: 0 });
   const [loading, setLoading] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
 
   const fetchErrors = useCallback(
     async (currentFilters: Filters, currentPage: number) => {
@@ -61,29 +63,49 @@ export default function AdminErrorsPage() {
     fetchErrors(filters, page);
   }, [filters, page, fetchErrors]);
 
-  function handleFilterChange(key: string, value: string) {
+  function handleFilterChange(key: keyof Filters, value: string) {
     setFilters((prev) => ({ ...prev, [key]: value }));
     setPage(1);
   }
 
+  function toggleResolved() {
+    const next = !showResolved;
+    setShowResolved(next);
+    handleFilterChange("resolved", next ? "all" : "false");
+  }
+
   function handleReset() {
     setFilters(DEFAULT_FILTERS);
+    setShowResolved(false);
     setPage(1);
   }
 
   async function handleResolve(id: string, resolved: boolean) {
-    await fetch(`/api/admin/errors/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ resolved }),
-    });
-    fetchErrors(filters, page);
+    try {
+      const res = await fetch(`/api/admin/errors/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resolved }),
+      });
+      if (!res.ok) {
+        console.error("Failed to update error:", res.status);
+        return;
+      }
+      fetchErrors(filters, page);
+    } catch (e) {
+      console.error("Failed to update error:", e);
+    }
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Ошибки платформы</h1>
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-2xl font-semibold text-foreground">Ошибки платформы</h1>
+          <Button variant={showResolved ? "default" : "outline"} size="sm" onClick={toggleResolved}>
+            Показать разобранные
+          </Button>
+        </div>
         <p className="text-sm text-muted-foreground">
           Журнал ошибок клиента, сервера и AI-модулей.
         </p>
@@ -96,7 +118,7 @@ export default function AdminErrorsPage() {
         resolved={filters.resolved}
         from={filters.from}
         to={filters.to}
-        onChange={handleFilterChange}
+        onChange={handleFilterChange as (key: string, value: string) => void}
         onReset={handleReset}
       />
 
