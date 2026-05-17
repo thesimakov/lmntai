@@ -1,6 +1,6 @@
 import { canAccessStaff, type StaffPermission } from "@/lib/staff-permissions";
 
-export type AdminSectionId = "users" | "tariffs" | "promocodes" | "team" | "settings";
+export type AdminSectionId = "users" | "tariffs" | "promocodes" | "team" | "settings" | "errors";
 
 export type AdminSectionRule = {
   id: AdminSectionId;
@@ -22,7 +22,8 @@ export const ADMIN_SECTION_RULES: readonly AdminSectionRule[] = [
     superOnly: true
   },
   { id: "team", href: "/admin/team", label: "Команда", permission: "team", superOnly: true },
-  { id: "settings", href: "/admin/settings", label: "Профиль / пароль", permission: "settings" }
+  { id: "settings", href: "/admin/settings", label: "Профиль / пароль", permission: "settings" },
+  { id: "errors", href: "/admin/errors", label: "Ошибки", superOnly: true }
 ];
 
 export function canAccessAdminSection(
