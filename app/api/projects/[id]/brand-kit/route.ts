@@ -88,10 +88,20 @@ async function putHandler(
   const body = bodyResult.data;
   const uploads = [];
   for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("asset_") || !(value instanceof File)) continue;
+    if (!key.startsWith("asset_")) continue;
+    if (typeof value === "string") continue;
+    const file = value as File;
+    if (file.size === 0) continue;
     const assetId = key.slice("asset_".length);
-    const upload = await parseProjectBrandKitAssetUpload(value, assetId);
-    if (!upload) return apiError("Unsupported or invalid asset upload", 415);
+    const upload = await parseProjectBrandKitAssetUpload(file, assetId);
+    if (!upload) {
+      const label = file.name?.trim() || assetId;
+      return apiError(
+        `Unsupported file "${label}". Use PNG, JPEG, WebP, SVG, or PDF (brandbook).`,
+        415,
+        { code: "UNSUPPORTED_MEDIA" }
+      );
+    }
     uploads.push(upload);
   }
 

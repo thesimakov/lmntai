@@ -68,11 +68,19 @@ async function putBrandKit(req: NextRequest): Promise<Response> {
   const body = bodyResult.data;
   const uploads = [];
   for (const [key, value] of formData.entries()) {
-    if (!key.startsWith("asset_") || !(value instanceof File)) continue;
+    if (!key.startsWith("asset_")) continue;
+    if (typeof value === "string") continue;
+    const file = value as File;
+    if (file.size === 0) continue;
     const assetId = key.slice("asset_".length);
-    const upload = await parseBrandKitAssetUpload(value, assetId);
+    const upload = await parseBrandKitAssetUpload(file, assetId);
     if (!upload) {
-      return apiError("Unsupported or invalid image upload", 415);
+      const label = file.name?.trim() || assetId;
+      return apiError(
+        `Unsupported file "${label}". Use PNG, JPEG, WebP, or SVG up to 6 MB.`,
+        415,
+        { code: "UNSUPPORTED_MEDIA" }
+      );
     }
     uploads.push(upload);
   }

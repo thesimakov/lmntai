@@ -8,10 +8,9 @@ import {
   type BrandKitManifest,
 } from "@/lib/brand-kit-library";
 import {
-  detectUploadImageMime,
-  normalizeUploadImageMime,
-  uploadImageExtensionFromMime,
-  type UploadImageMime,
+  brandKitAssetExtensionFromMime,
+  detectBrandKitAssetMime,
+  type BrandKitAssetMime,
 } from "@/lib/image-content-validation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -34,8 +33,9 @@ function assetUrlsFromManifest(manifest: BrandKitManifest): Record<string, strin
   return urls;
 }
 
-function mimeFromFileName(fileName: string): UploadImageMime {
+function mimeFromFileName(fileName: string): BrandKitAssetMime {
   const lower = fileName.toLowerCase();
+  if (lower.endsWith(".svg")) return "image/svg+xml";
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".webp")) return "image/webp";
   return "image/jpeg";
@@ -70,7 +70,7 @@ export async function getBrandKitPromptBlock(userId: string): Promise<string | n
 export type SaveAssetUpload = {
   id: string;
   buffer: Buffer;
-  mime: UploadImageMime;
+  mime: BrandKitAssetMime;
 };
 
 export async function saveBrandKitLibrary(
@@ -85,7 +85,7 @@ export async function saveBrandKitLibrary(
     assets.map((asset) => {
       const upload = uploadById.get(asset.id);
       if (upload) {
-        const fileName = newBrandAssetFileName(asset.id, uploadImageExtensionFromMime(upload.mime));
+        const fileName = newBrandAssetFileName(asset.id, brandKitAssetExtensionFromMime(upload.mime));
         return { id: asset.id, name: asset.name, fileName };
       }
       if (asset.fileName) {
@@ -105,7 +105,7 @@ export async function saveBrandKitLibrary(
   await ensureBrandKitDirs(userId);
 
   for (const upload of uploads) {
-    const fileName = newBrandAssetFileName(upload.id, uploadImageExtensionFromMime(upload.mime));
+    const fileName = newBrandAssetFileName(upload.id, brandKitAssetExtensionFromMime(upload.mime));
     await writeBrandKitAsset(userId, fileName, upload.buffer);
   }
 
@@ -141,19 +141,17 @@ export async function parseBrandKitAssetUpload(
   file: File,
   assetId: string
 ): Promise<SaveAssetUpload | null> {
-  if (file.size > 6 * 1024 * 1024) return null;
+  if (file.size === 0 || file.size > 6 * 1024 * 1024) return null;
   const buf = Buffer.from(await file.arrayBuffer());
-  const detectedMime = detectUploadImageMime(buf);
-  if (!detectedMime) return null;
-  const claimedMime = normalizeUploadImageMime(file.type);
-  if (claimedMime && claimedMime !== detectedMime) return null;
-  return { id: assetId, buffer: buf, mime: detectedMime };
+  const mime = detectBrandKitAssetMime(buf);
+  if (!mime) return null;
+  return { id: assetId, buffer: buf, mime };
 }
 
 export async function getBrandKitAssetResponse(
   userId: string,
   assetId: string
-): Promise<{ buffer: Buffer; mime: UploadImageMime } | null> {
+): Promise<{ buffer: Buffer; mime: BrandKitAssetMime } | null> {
   const library = await getBrandKitLibrary(userId);
   if (!library) return null;
 

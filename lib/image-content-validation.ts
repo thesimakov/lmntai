@@ -7,6 +7,8 @@ const WEBP_WEBP_PREFIX = [0x57, 0x45, 0x42, 0x50];
 
 export type UploadImageMime = "image/png" | "image/jpeg" | "image/webp";
 export type RasterImageMime = UploadImageMime | "image/gif";
+/** Raster + SVG for brand-kit logos and gallery images */
+export type BrandKitAssetMime = UploadImageMime | "image/svg+xml";
 
 const MIME_ALIASES: Record<string, UploadImageMime> = {
   "image/jpg": "image/jpeg",
@@ -50,6 +52,29 @@ export function uploadImageExtensionFromMime(mime: UploadImageMime): "png" | "jp
   if (mime === "image/png") return "png";
   if (mime === "image/webp") return "webp";
   return "jpg";
+}
+
+function detectSvgMarkup(buf: Uint8Array): boolean {
+  if (buf.length < 4) return false;
+  const sample = new TextDecoder("utf-8", { fatal: false }).decode(
+    buf.subarray(0, Math.min(buf.length, 4096))
+  );
+  const trimmed = sample.trimStart();
+  if (trimmed.startsWith("<svg")) return true;
+  return trimmed.startsWith("<?xml") && /<svg[\s>]/i.test(trimmed);
+}
+
+/** Magic-byte detection for brand-kit uploads (ignores unreliable browser MIME). */
+export function detectBrandKitAssetMime(buf: Uint8Array): BrandKitAssetMime | null {
+  const raster = detectUploadImageMime(buf);
+  if (raster) return raster;
+  if (detectSvgMarkup(buf)) return "image/svg+xml";
+  return null;
+}
+
+export function brandKitAssetExtensionFromMime(mime: BrandKitAssetMime): string {
+  if (mime === "image/svg+xml") return "svg";
+  return uploadImageExtensionFromMime(mime);
 }
 
 export function isSvgMime(mime: string | null | undefined): boolean {

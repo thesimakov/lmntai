@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import {
   PLATFORM_FEATURE_CATALOG,
   type PlatformPlanDataV1,
-} from "@/lib/platform-plan-settings";
+} from "@/lib/platform-plan-catalog";
 import type { PlanId } from "@/lib/plan-config";
 
 const PLANS: PlanId[] = ["FREE", "PRO", "TEAM"];

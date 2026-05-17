@@ -1,8 +1,7 @@
 import {
-  detectUploadImageMime,
-  normalizeUploadImageMime,
-  uploadImageExtensionFromMime,
-  type UploadImageMime,
+  brandKitAssetExtensionFromMime,
+  detectBrandKitAssetMime,
+  type BrandKitAssetMime,
 } from "@/lib/image-content-validation";
 import { prisma } from "@/lib/prisma";
 import {
@@ -26,12 +25,12 @@ import {
 export type ProjectBrandKitAssetUpload = {
   id: string;
   buffer: Buffer;
-  mime: UploadImageMime | "application/pdf";
+  mime: BrandKitAssetMime | "application/pdf";
 };
 
-function assetExtension(mime: UploadImageMime | "application/pdf"): string {
+function assetExtension(mime: BrandKitAssetMime | "application/pdf"): string {
   if (mime === "application/pdf") return "pdf";
-  return uploadImageExtensionFromMime(mime);
+  return brandKitAssetExtensionFromMime(mime);
 }
 
 function assetUrlsFromManifest(
@@ -172,11 +171,9 @@ export async function parseProjectBrandKitAssetUpload(
     return { id: assetId, buffer: buf, mime: "application/pdf" };
   }
 
-  const detectedMime = detectUploadImageMime(buf);
-  if (!detectedMime) return null;
-  const claimedMime = normalizeUploadImageMime(file.type);
-  if (claimedMime && claimedMime !== detectedMime) return null;
-  return { id: assetId, buffer: buf, mime: detectedMime };
+  const mime = detectBrandKitAssetMime(buf);
+  if (!mime) return null;
+  return { id: assetId, buffer: buf, mime };
 }
 
 export async function getProjectBrandKitAssetResponse(

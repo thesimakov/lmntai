@@ -313,7 +313,7 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
 
       <UploadTile
         label={t("projects_brand_logos")}
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
         previews={value.logos}
         onAdd={(files) => addMediaFiles(files, "logos")}
         onRemove={(id) => removeMedia("logos", id)}
@@ -363,7 +363,7 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
 
       <UploadTile
         label={t("projects_brand_images")}
-        accept="image/*"
+        accept="image/png,image/jpeg,image/webp,image/svg+xml,.svg"
         previews={value.images}
         onAdd={(files) => addMediaFiles(files, "images")}
         onRemove={(id) => removeMedia("images", id)}
