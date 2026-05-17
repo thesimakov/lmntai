@@ -20,7 +20,8 @@ import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 import type { UiLanguage } from "@/lib/i18n";
 import { getProjectBrandKit } from "@/lib/project-brand-kit-service";
 import { readProjectBrandKitAsset } from "@/lib/project-brand-kit-storage";
-import type { PptxBrandAssets } from "@/lib/analytics-pptx-export";
+import { sanitizePptxBrandAssets, type PptxBrandAssets } from "@/lib/pptx-sanitize";
+import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -104,7 +105,7 @@ export async function POST(
         logoData = { base64: buf.toString("base64"), mime };
       }
     }
-    pptxBrand = { primaryHex, accentHex, logoData };
+    pptxBrand = sanitizePptxBrandAssets({ primaryHex, accentHex, logoData });
   }
 
   let dashboard: AnalysisDashboard;
@@ -124,7 +125,7 @@ export async function POST(
 
   try {
     if (format === "pptx") {
-      const buffer = await buildAnalysisPptx(dashboard, uiLanguage, pptxBrand);
+      const buffer = await buildAnalysisPptx(dashboard, uiLanguage, pptxBrand ?? undefined);
       return pptxResponse(buffer, `${baseFilename}.pptx`);
     }
 
@@ -173,6 +174,14 @@ export async function POST(
     const buffer = await buildDueDiligencePptx(report, dashboard, uiLanguage);
     return pptxResponse(buffer, `${baseFilename}_Due_Diligence.pptx`);
   } catch (e) {
-    return apiServerError(e, "analytics/export");
+    const detail = unknownToErrorMessage(e);
+    console.error("[analytics/export]", detail);
+    return apiError(
+      process.env.NODE_ENV === "development"
+        ? `Export failed: ${detail}`
+        : "Failed to generate export. Check analysis data and brand kit assets.",
+      500,
+      { code: "ANALYTICS_EXPORT_FAILED" }
+    );
   }
 }

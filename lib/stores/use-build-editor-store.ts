@@ -150,9 +150,37 @@ export const useBuildEditorStore = create<BuildEditorStore>((set) => ({
   previewUrl: null,
   projectKind: null,
   setSandboxId: (sandboxId) => set({ sandboxId }),
-  setSessionId: (sessionId) => set({ sessionId }),
+  setSessionId: (sessionId) =>
+    set((s) => {
+      if (sessionId && s.sessionId && sessionId !== s.sessionId) {
+        return {
+          sessionId,
+          sandboxId: null,
+          previewUrl: null,
+          messages: [],
+          stage: "idea" as BuildStage,
+          idea: "",
+          finalPrompt: "",
+          versions: [],
+          currentVersionId: null,
+        };
+      }
+      return { sessionId };
+    }),
   setPreviewUrl: (previewUrl) => set({ previewUrl }),
-  setProjectKind: (projectKind) => set({ projectKind }),
+  setProjectKind: (projectKind) =>
+    set((s) => {
+      if (projectKind && s.projectKind && projectKind !== s.projectKind) {
+        return {
+          projectKind,
+          messages: [],
+          stage: "idea" as BuildStage,
+          idea: "",
+          finalPrompt: "",
+        };
+      }
+      return { projectKind };
+    }),
 
   // UI
   activeTab: "chat",

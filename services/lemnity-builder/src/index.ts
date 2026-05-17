@@ -255,11 +255,7 @@ export async function main() {
 
     if (method === "POST" && parts.length === 3 && parts[0] === "sessions" && parts[2] === "chat") {
       const id = parts[1];
-      const rec = await store.getSession(id);
-      if (!rec) {
-        json(res, 404, { code: 404, msg: "not_found", data: null });
-        return;
-      }
+      const rec = await store.ensureSession(id);
 
       const body = (await readJsonBody(req)) as {
         message?: string;

@@ -5,7 +5,7 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { requestRouterAIJson } from "@/lib/routerai-client";
 import { appendBrandKitToSystemPrompt } from "@/lib/brand-kit-library";
-import { getBrandKitPromptBlock } from "@/lib/brand-kit-service";
+import { resolveBrandKitPromptForProject } from "@/lib/brand-kit-prompt";
 import { buildAnalysisPrompt } from "@/lib/analytics-prompt";
 import { analysisDashboardSchema } from "@/lib/analytics-schema";
 import { chargeTokensSafely } from "@/lib/token-billing";
@@ -45,7 +45,7 @@ export async function POST(
     : rawText;
   const uiLanguage = resolveUiLanguageFromRequest(req);
   const messages = buildAnalysisPrompt(truncatedText, uiLanguage);
-  const brandKitBlock = await getBrandKitPromptBlock(user.id);
+  const brandKitBlock = await resolveBrandKitPromptForProject(projectId);
   if (messages[0]?.role === "system") {
     messages[0] = {
       role: "system",

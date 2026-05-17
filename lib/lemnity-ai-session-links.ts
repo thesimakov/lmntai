@@ -165,6 +165,25 @@ export async function resolveLemnityAiSessionAccess(
     if (link && (link.manusSessionId === pathId || link.projectId === pathId)) {
       return { link, upstreamSessionId: link.manusSessionId };
     }
+
+    const ownedHeader = await prisma.project.findFirst({
+      where: { id: headerId, ownerId: userId },
+      select: { id: true }
+    });
+    if (ownedHeader) {
+      try {
+        link = await createLemnityAiSessionLink(userId, pathId, { hostProjectId: ownedHeader.id });
+        return { link, upstreamSessionId: link.manusSessionId };
+      } catch (error) {
+        if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_ALREADY_OWNED") {
+          link = await getLemnityAiSessionForUser(userId, pathId);
+          if (link) {
+            return { link, upstreamSessionId: link.manusSessionId };
+          }
+        }
+        throw error;
+      }
+    }
   }
 
   const ownedProject = await prisma.project.findFirst({

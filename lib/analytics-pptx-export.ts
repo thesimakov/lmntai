@@ -1,6 +1,9 @@
 import PptxGenJS from "pptxgenjs";
 import type { AnalysisDashboard, Chart } from "./analytics-schema";
 import type { UiLanguage } from "./i18n";
+import { sanitizePptxBrandAssets, sanitizePptxHex, type PptxBrandAssets } from "./pptx-sanitize";
+
+export type { PptxBrandAssets };
 
 // ── Corporate Clean Design System ─────────────────────────────────────────────
 const DEFAULT_THEME = {
@@ -15,12 +18,6 @@ const DEFAULT_THEME = {
   green:  "059669",
   red:    "DC2626",
   amber:  "D97706",
-};
-
-export type PptxBrandAssets = {
-  primaryHex?: string;
-  accentHex?: string;
-  logoData?: { base64: string; mime: string };
 };
 
 const SW    = 13.33;
@@ -94,7 +91,7 @@ function analyticsChartToBarData(chart: Chart): BarSeries[] {
 }
 
 function stripHash(hex: string): string {
-  return hex.startsWith("#") ? hex.slice(1) : hex;
+  return sanitizePptxHex(hex, "0F1C35");
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
@@ -103,16 +100,19 @@ export async function buildAnalysisPptx(
   lang: UiLanguage = "ru",
   brand?: PptxBrandAssets | null
 ): Promise<Buffer> {
+  const safeBrand = sanitizePptxBrandAssets(brand ?? undefined);
   const instance = new PptxGenJS();
   instance.layout = "LAYOUT_WIDE";
 
   const T = {
     ...DEFAULT_THEME,
-    ...(brand?.primaryHex ? { navy: stripHash(brand.primaryHex), text: stripHash(brand.primaryHex) } : {}),
-    ...(brand?.accentHex ? { blue: stripHash(brand.accentHex) } : {}),
+    ...(safeBrand?.primaryHex
+      ? { navy: stripHash(safeBrand.primaryHex), text: stripHash(safeBrand.primaryHex) }
+      : {}),
+    ...(safeBrand?.accentHex ? { blue: stripHash(safeBrand.accentHex) } : {}),
   };
-  const CHART_COLORS = brand?.accentHex
-    ? [stripHash(brand.accentHex), T.navy, ...DEFAULT_CHART_COLORS.slice(2)]
+  const CHART_COLORS = safeBrand?.accentHex
+    ? [stripHash(safeBrand.accentHex), T.navy, ...DEFAULT_CHART_COLORS.slice(2)]
     : DEFAULT_CHART_COLORS;
 
   const d      = dashboard;
@@ -149,8 +149,8 @@ export async function buildAnalysisPptx(
     s.addShape(instance.ShapeType.ellipse, { x: SPLIT + 0.60, y: 6.44, w: 0.10, h: 0.10, fill: { color: "FFFFFF", transparency: 70 }, line: { type: "none" } });
 
     // Logo on right panel
-    if (brand?.logoData) {
-      s.addImage({ data: `data:${brand.logoData.mime};base64,${brand.logoData.base64}`, x: SPLIT + 0.36, y: 0.20, w: 1.9, h: 0.52, sizing: { type: "contain", w: 1.9, h: 0.52 } });
+    if (safeBrand?.logoData) {
+      s.addImage({ data: `data:${safeBrand.logoData.mime};base64,${safeBrand.logoData.base64}`, x: SPLIT + 0.36, y: 0.20, w: 1.9, h: 0.52, sizing: { type: "contain", w: 1.9, h: 0.52 } });
     } else {
       s.addShape(instance.ShapeType.rect, { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fill: { color: "FFFFFF", transparency: 88 }, line: { color: "FFFFFF", width: 0.75, transparency: 60 } });
       s.addText("LOGO", { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fontSize: 9, color: "FFFFFF", fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
@@ -176,8 +176,8 @@ export async function buildAnalysisPptx(
 
   const frame = (s: PptxGenJS.Slide, dn: string, pg: number, web: string) => {
     // Logo box
-    if (brand?.logoData) {
-      s.addImage({ data: `data:${brand.logoData.mime};base64,${brand.logoData.base64}`, x: MX, y: 0.12, w: 1.6, h: 0.36, sizing: { type: "contain", w: 1.6, h: 0.36 } });
+    if (safeBrand?.logoData) {
+      s.addImage({ data: `data:${safeBrand.logoData.mime};base64,${safeBrand.logoData.base64}`, x: MX, y: 0.12, w: 1.6, h: 0.36, sizing: { type: "contain", w: 1.6, h: 0.36 } });
     } else {
       s.addShape(instance.ShapeType.rect, { x: MX, y: 0.12, w: 1.6, h: 0.36, fill: { color: T.panel }, line: { color: T.border, width: 0.5 } });
       s.addText("LOGO", { x: MX, y: 0.12, w: 1.6, h: 0.36, fontSize: 8, color: T.navy, fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
@@ -253,15 +253,19 @@ export async function buildAnalysisPptx(
         const cx = MX + gridW + 0.35;
         const cw = SW - cx - MX;
         s.addText(d.charts[0]!.title, { x: cx, y: CY + 0.56, w: cw, h: 0.28, fontSize: 8.5, color: T.sub, bold: true, fontFace: "Calibri" });
-        s.addChart(instance.ChartType.bar, barData, {
-          x: cx, y: CY + 0.88, w: cw, h: FY - CY - 1.04,
-          barDir: "col", barGapWidthPct: 55,
-          chartColors: CHART_COLORS,
-          catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
-          catAxisLabelFontSize: 8, valAxisLabelFontSize: 8,
-          showLegend: barData.length > 1, legendPos: "b", legendFontSize: 8,
-          showTitle: false, showValue: false,
-        } as PptxGenJS.IChartOpts);
+        try {
+          s.addChart(instance.ChartType.bar, barData, {
+            x: cx, y: CY + 0.88, w: cw, h: FY - CY - 1.04,
+            barDir: "col", barGapWidthPct: 55,
+            chartColors: CHART_COLORS,
+            catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
+            catAxisLabelFontSize: 8, valAxisLabelFontSize: 8,
+            showLegend: barData.length > 1, legendPos: "b", legendFontSize: 8,
+            showTitle: false, showValue: false,
+          } as PptxGenJS.IChartOpts);
+        } catch {
+          /* пропускаем график с несовместимыми данными */
+        }
       }
     }
   }
@@ -277,15 +281,19 @@ export async function buildAnalysisPptx(
       s.addText(chart.description, { x: MX, y: CY + 0.56, w: CW, h: 0.30, fontSize: 9.5, color: T.mute, italic: true, fontFace: "Calibri" });
     }
     const chartY = chart.description ? CY + 0.94 : CY + 0.58;
-    s.addChart(instance.ChartType.bar, barData, {
-      x: MX, y: chartY, w: CW, h: FY - chartY - 0.16,
-      barDir: "col", barGapWidthPct: 55,
-      chartColors: CHART_COLORS,
-      catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
-      catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
-      showLegend: barData.length > 1, legendPos: "b", legendFontSize: 9,
-      showTitle: false, showValue: false,
-    } as PptxGenJS.IChartOpts);
+    try {
+      s.addChart(instance.ChartType.bar, barData, {
+        x: MX, y: chartY, w: CW, h: FY - chartY - 0.16,
+        barDir: "col", barGapWidthPct: 55,
+        chartColors: CHART_COLORS,
+        catAxisLabelColor: T.mute, valAxisLabelColor: T.mute,
+        catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
+        showLegend: barData.length > 1, legendPos: "b", legendFontSize: 9,
+        showTitle: false, showValue: false,
+      } as PptxGenJS.IChartOpts);
+    } catch {
+      /* пропускаем график с несовместимыми данными */
+    }
   }
 
   // ── 5. Key Findings & Red Flags ───────────────────────────────────────────
@@ -358,6 +366,6 @@ export async function buildAnalysisPptx(
     }
   }
 
-  const output = await instance.write({ outputType: "arraybuffer" });
-  return Buffer.from(output as ArrayBuffer);
+  const output = await instance.write({ outputType: "nodebuffer" });
+  return Buffer.isBuffer(output) ? output : Buffer.from(output as ArrayBuffer);
 }

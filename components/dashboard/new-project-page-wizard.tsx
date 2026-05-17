@@ -39,7 +39,7 @@ import {
   buildPlaygroundBuildEditUrl
 } from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
-import { fetchBrandKitLibrary } from "@/lib/brand-kit-client";
+import { persistBrandKitDraftToProject } from "@/lib/brand-kit-client";
 import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
@@ -116,22 +116,15 @@ export function NewProjectPageWizard() {
   /** Остаётся в DOM после первого открытия — иначе Radix Select/Dialog ломают React при collapse. */
   const [brandKitMounted, setBrandKitMounted] = useState(false);
   const [brandKit, setBrandKit] = useState<ProjectBrandKitState>(emptyProjectBrandKit);
-  const brandKitHydratedRef = useRef(false);
+  const brandKitPendingFilesRef = useRef<Map<string, File>>(new Map());
   const [mountedBuilderPanels, setMountedBuilderPanels] = useState<Set<BuilderChoice>>(
     () => new Set()
   );
 
   useEffect(() => {
-    if (!showBrandKit || brandKitHydratedRef.current) return;
-    brandKitHydratedRef.current = true;
-    void fetchBrandKitLibrary()
-      .then(({ state }) => {
-        if (state) setBrandKit(state);
-      })
-      .catch(() => {
-        /* библиотека опциональна при первом открытии */
-      });
-  }, [showBrandKit]);
+    setBrandKit(emptyProjectBrandKit());
+    brandKitPendingFilesRef.current.clear();
+  }, []);
 
   useEffect(() => {
     if (builderChoice === "none") return;
@@ -227,9 +220,15 @@ export function NewProjectPageWizard() {
       if (!id) {
         throw new Error("no project id");
       }
+      try {
+        await persistBrandKitDraftToProject(id, brandKit, brandKitPendingFilesRef.current);
+        brandKitPendingFilesRef.current.clear();
+      } catch {
+        /* не блокируем создание проекта */
+      }
       return id;
     },
-    [trimmedName, trimmedDomain]
+    [brandKit, trimmedName, trimmedDomain]
   );
 
   const canProceed =
@@ -663,7 +662,11 @@ export function NewProjectPageWizard() {
                   </Button>
                   {brandKitMounted ? (
                     <div className={cn(!showBrandKit && "hidden")} aria-hidden={!showBrandKit}>
-                      <ProjectBrandKitFields value={brandKit} onChange={setBrandKit} />
+                      <ProjectBrandKitFields
+                        value={brandKit}
+                        onChange={setBrandKit}
+                        pendingFilesRef={brandKitPendingFilesRef}
+                      />
                     </div>
                   ) : null}
                 </div>

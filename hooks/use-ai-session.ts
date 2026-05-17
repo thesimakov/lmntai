@@ -243,9 +243,27 @@ export function useAiSession() {
   const ensureSession = useCallback(async (): Promise<
     { ok: true; sessionId: string } | { ok: false; message: string }
   > => {
-    const existingId = store.getState().sessionId;
-    if (existingId?.trim()) {
-      return { ok: true, sessionId: existingId.trim() };
+    const existingId = store.getState().sessionId?.trim();
+    if (existingId) {
+      try {
+        const warm = await fetch(
+          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(existingId)}`,
+          {
+            method: "GET",
+            credentials: "include",
+            headers: { "X-Project-Id": existingId },
+          }
+        );
+        if (warm.ok) {
+          return { ok: true, sessionId: existingId };
+        }
+        if (warm.status === 404) {
+          clearStoredLemnityBuildManusSessionId();
+          store.getState().setSessionId(null);
+        }
+      } catch {
+        return { ok: true, sessionId: existingId };
+      }
     }
     try {
       const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, {

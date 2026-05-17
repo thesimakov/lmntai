@@ -572,11 +572,21 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
       req.headers.get("x-lmnt-ui-lang")
     );
 
-    const upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
+    let upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
       method: "POST",
       headers,
       body: chatBody
     });
+    if (upstream.status === 404) {
+      await lemnityAiUpstreamFetch(`/sessions/${encodeURIComponent(upstreamSessionId)}`, {
+        method: "GET"
+      });
+      upstream = await fetch(buildLemnityAiUpstreamUrl(upstreamPath), {
+        method: "POST",
+        headers,
+        body: chatBody
+      });
+    }
     if (!upstream.ok || !upstream.body) {
       return passthrough(upstream);
     }

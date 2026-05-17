@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Pencil, Plus, X } from "lucide-react";
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useI18n } from "@/components/i18n-provider";
@@ -18,8 +18,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { deleteBrandKitLibrary, saveBrandKitLibrary } from "@/lib/brand-kit-client";
-import { manifestToProjectState } from "@/lib/brand-kit-library";
+import {
+  deleteProjectBrandKit,
+  fetchProjectBrandKit,
+  saveProjectBrandKit,
+} from "@/lib/brand-kit-client";
 import {
   Select,
   SelectContent,
@@ -128,6 +131,10 @@ export const emptyProjectBrandKit = (): ProjectBrandKitState => ({
 type ProjectBrandKitFieldsProps = {
   value: ProjectBrandKitState;
   onChange: (next: ProjectBrandKitState) => void;
+  /** Привязка к проекту; без id — только черновик (сохранение при создании проекта). */
+  projectId?: string | null;
+  /** Файлы логотипов/изображений для отложенного сохранения в мастере. */
+  pendingFilesRef?: React.MutableRefObject<Map<string, File>>;
 };
 
 function UploadTile({
@@ -194,12 +201,37 @@ function UploadTile({
   );
 }
 
-export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFieldsProps) {
+export function ProjectBrandKitFields({
+  value,
+  onChange,
+  projectId = null,
+  pendingFilesRef: externalPendingFilesRef,
+}: ProjectBrandKitFieldsProps) {
   const { t } = useI18n();
-  const pendingFilesRef = useRef<Map<string, File>>(new Map());
+  const internalPendingFilesRef = useRef<Map<string, File>>(new Map());
+  const pendingFilesRef = externalPendingFilesRef ?? internalPendingFilesRef;
+  const isProjectScoped = Boolean(projectId?.trim());
+  const scopedProjectId = projectId?.trim() ?? "";
   const blobUrlsRef = useRef<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const hydratedProjectRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!isProjectScoped) return;
+    if (hydratedProjectRef.current === scopedProjectId) return;
+    hydratedProjectRef.current = scopedProjectId;
+    setLoading(true);
+    void fetchProjectBrandKit(scopedProjectId)
+      .then(({ state }) => {
+        if (state) onChange(state);
+      })
+      .catch(() => {
+        /* пустой kit допустим */
+      })
+      .finally(() => setLoading(false));
+  }, [isProjectScoped, onChange, scopedProjectId]);
 
   const patch = (partial: Partial<ProjectBrandKitState>) => onChange({ ...value, ...partial });
 
@@ -230,15 +262,20 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
   };
 
   const handleSave = async () => {
+    if (!isProjectScoped) {
+      toast.message(t("projects_brand_save_after_create"));
+      return;
+    }
     setSaving(true);
     try {
-      const dto = await saveBrandKitLibrary(value, pendingFilesRef.current);
+      await saveProjectBrandKit(scopedProjectId, value, pendingFilesRef.current);
+      const refreshed = await fetchProjectBrandKit(scopedProjectId);
       pendingFilesRef.current.clear();
       for (const url of blobUrlsRef.current) {
         URL.revokeObjectURL(url);
       }
       blobUrlsRef.current.clear();
-      onChange(manifestToProjectState(dto.manifest, dto.assetUrls));
+      if (refreshed.state) onChange(refreshed.state);
       toast.success(t("projects_brand_save_success"));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : t("projects_brand_save_error"));
@@ -248,9 +285,18 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
   };
 
   const handleDelete = async () => {
+    if (!isProjectScoped) {
+      for (const asset of [...value.logos, ...value.images]) {
+        revokeBlobUrl(asset.url);
+      }
+      pendingFilesRef.current.clear();
+      blobUrlsRef.current.clear();
+      onChange(emptyProjectBrandKit());
+      return;
+    }
     setDeleting(true);
     try {
-      await deleteBrandKitLibrary();
+      await deleteProjectBrandKit(scopedProjectId);
       for (const asset of [...value.logos, ...value.images]) {
         revokeBlobUrl(asset.url);
       }
@@ -300,6 +346,15 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
 
   return (
     <div className="space-y-6 rounded-xl border border-border/70 bg-background/80 p-4 sm:p-5">
+      {loading ? (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          {t("projects_brand_loading")}
+        </p>
+      ) : null}
+      {!isProjectScoped ? (
+        <p className="text-xs text-muted-foreground">{t("projects_brand_save_after_create")}</p>
+      ) : null}
       <div className="space-y-1">
         <h3 className="text-base font-semibold text-foreground">{t("projects_brand_kit_title")}</h3>
         <Textarea
@@ -495,13 +550,17 @@ export function ProjectBrandKitFields({ value, onChange }: ProjectBrandKitFields
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-4">
-        <Button type="button" onClick={() => void handleSave()} disabled={saving || deleting}>
+        <Button
+          type="button"
+          onClick={() => void handleSave()}
+          disabled={saving || deleting || loading}
+        >
           {saving ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
           {t("projects_brand_save")}
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button type="button" variant="destructive" disabled={saving || deleting}>
+            <Button type="button" variant="destructive" disabled={saving || deleting || loading}>
               {deleting ? <Loader2 className="mr-2 size-4 animate-spin" aria-hidden /> : null}
               {t("projects_brand_delete")}
             </Button>

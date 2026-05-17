@@ -11,7 +11,7 @@ import { getEffectiveStreamMinimum } from "@/lib/platform-plan-settings";
 import { hasEnoughTokens } from "@/lib/token-manager";
 import { destroySandbox, getSandboxMode, sandboxManager } from "@/lib/sandbox-manager";
 import { getBuildTemplateBySlug, formatBuildTemplateBlock } from "@/lib/build-templates";
-import { getBrandKitPromptBlock } from "@/lib/brand-kit-service";
+import { resolveBrandKitPromptForProject } from "@/lib/brand-kit-prompt";
 import { buildRouterGenerationPrompt, isProjectKind, shouldUseLovableBundler } from "@/lib/lemnity-ai-prompt-spec";
 import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
@@ -75,7 +75,7 @@ async function postGenerateStream(req: NextRequest) {
       templateBlock = formatBuildTemplateBlock(t.rules, t.files);
     }
   }
-  const brandKitBlock = await getBrandKitPromptBlock(user.id);
+  const brandKitBlock = await resolveBrandKitPromptForProject(projectId);
   const prompt = buildRouterGenerationPrompt(rawPrompt, pk, templateBlock, brandKitBlock);
   const agent = resolveAgentForTask({
     plan: user.plan,
