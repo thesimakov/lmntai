@@ -34,14 +34,17 @@ import {
   ProjectBrandKitFields,
   type ProjectBrandKitState
 } from "@/components/dashboard/project-brand-kit-fields";
-import { buildPlaygroundBuildEditUrl } from "@/lib/playground-project-edit-url";
+import {
+  buildPlaygroundAnalyticsEditUrl,
+  buildPlaygroundBuildEditUrl
+} from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
 import { fetchBrandKitLibrary } from "@/lib/brand-kit-client";
 import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
-type BuilderChoice = "none" | "ai" | "marketing" | "presentation";
+type BuilderChoice = "none" | "ai" | "website" | "analytics" | "marketing" | "presentation";
 
 const TEMPLATE_TAB_IDS = [
   "business",
@@ -201,33 +204,38 @@ export function NewProjectPageWizard() {
     };
   }, [domainInput]);
 
-  const createProjectCell = useCallback(async (preferredEditor: "box" | "build"): Promise<string> => {
-    const subdomain = trimmedDomain;
+  const createProjectCell = useCallback(
+    async (preferredEditor: "box" | "build" | "analytics"): Promise<string> => {
+      const subdomain = trimmedDomain;
 
-    const res = await fetch("/api/projects", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: trimmedName,
-        preferredEditor,
-        subdomain
-      })
-    });
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      throw new Error(errText || "create failed");
-    }
-    const data = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
-    const id = typeof data?.project?.id === "string" ? data.project.id.trim() : "";
-    if (!id) {
-      throw new Error("no project id");
-    }
-    return id;
-  }, [trimmedName, trimmedDomain]);
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: trimmedName,
+          preferredEditor,
+          subdomain
+        })
+      });
+      if (!res.ok) {
+        const errText = await res.text().catch(() => "");
+        throw new Error(errText || "create failed");
+      }
+      const data = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
+      const id = typeof data?.project?.id === "string" ? data.project.id.trim() : "";
+      if (!id) {
+        throw new Error("no project id");
+      }
+      return id;
+    },
+    [trimmedName, trimmedDomain]
+  );
 
   const canProceed =
     nameValid && domainValid && subdomainCheck === "available" && !creatingProject && !domainTakenBlocking;
+
+  const websiteDisabled = creatingProject || subdomainCheck === "checking" || !canProceed;
 
   const navigateNewProjectToLemnityAiBuild = useCallback(
     async (_starter: "empty" | "universal" | "consultation") => {
@@ -336,6 +344,36 @@ export function NewProjectPageWizard() {
     }
   }, [creatingProject, createProjectCell, domainValid, nameValid, presentationSlides, presentationTopic, router, subdomainCheck, t]);
 
+  const navigateNewProjectToAnalytics = useCallback(async () => {
+    setAttemptedSubmit(true);
+    if (!nameValid || !domainValid || subdomainCheck !== "available") {
+      toast.message(t("projects_template_fix_form_toast"));
+      return;
+    }
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const projectId = await createProjectCell("analytics");
+      router.push(`${buildPlaygroundAnalyticsEditUrl(projectId)}&lang=${encodeURIComponent(lang)}`);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+      }
+    } catch (e) {
+      toastProjectCreateFailure(e, t("projects_create_failed"));
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [
+    creatingProject,
+    createProjectCell,
+    domainValid,
+    lang,
+    nameValid,
+    router,
+    subdomainCheck,
+    t
+  ]);
+
   const onNameBlur = () => {
     if (domainInput.trim()) return;
     setDomainInput(suggestDomainFromDisplayName(displayName));
@@ -349,13 +387,11 @@ export function NewProjectPageWizard() {
   };
 
   const renderTemplates = () => {
-    const nav = (starter: "empty" | "universal" | "consultation") => {
-      void navigateNewProjectToLemnityAiBuild(starter);
+    const nav = () => {
+      void navigateNewProjectToLemnityAiBuild("empty");
     };
     const boxGate = !canProceed || creatingProject;
     const emptyDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
-    const pairDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
-    const websiteDisabled = creatingProject || subdomainCheck === "checking" || boxGate;
 
     return (
       <>
@@ -411,7 +447,7 @@ export function NewProjectPageWizard() {
                 variant="outline"
                 className="mt-auto w-full rounded-full font-semibold"
                 disabled={emptyDisabled}
-                onClick={() => nav("empty")}
+                onClick={() => nav()}
               >
                 {t("projects_template_select")}
               </Button>
@@ -440,194 +476,13 @@ export function NewProjectPageWizard() {
                 variant="outline"
                 className="mt-auto w-full rounded-full font-semibold"
                 disabled={emptyDisabled}
-                onClick={() => nav("empty")}
+                onClick={() => nav()}
               >
                 {t("projects_template_generate")}
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div
-                className="flex aspect-[4/3] flex-col justify-end rounded-xl bg-cover bg-center p-4 text-white shadow-inner ring-1 ring-border/40"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to top, rgba(15,23,42,0.82), rgba(15,23,42,0.2)), url(https://images.unsplash.com/photo-1497215728101-856f4ea42174?auto=format&fit=crop&w=900&q=70)"
-                }}
-              >
-                <p className="text-lg font-semibold drop-shadow-sm">{t("projects_template_universal_preview_title")}</p>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">{t("projects_template_universal_title")}</h3>
-                <p className="text-sm text-muted-foreground">{t("projects_template_universal_desc")}</p>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={pairDisabled}
-                  onClick={() => nav("universal")}
-                >
-                  {t("projects_template_select")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={creatingProject}
-                  onClick={() => toast.message(t("projects_template_preview_soon_toast"))}
-                >
-                  {t("projects_template_view")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col gap-0 overflow-hidden border-border/70 py-0 shadow-md transition-shadow hover:shadow-lg">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div
-                className="flex aspect-[4/3] flex-col justify-end rounded-xl bg-cover bg-center p-4 text-white shadow-inner ring-1 ring-border/40"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(to top, rgba(30,58,95,0.88), rgba(30,58,95,0.25)), url(https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&w=900&q=70)",
-                }}
-              >
-                <p className="text-lg font-semibold drop-shadow-sm">{t("projects_template_consultation_preview_title")}</p>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">{t("projects_template_consultation_title")}</h3>
-                <p className="text-sm text-muted-foreground">{t("projects_template_consultation_desc")}</p>
-              </div>
-              <div className="mt-auto flex flex-wrap gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={pairDisabled}
-                  onClick={() => nav("consultation")}
-                >
-                  {t("projects_template_select")}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="min-w-[120px] flex-1 rounded-full font-semibold"
-                  disabled={creatingProject}
-                  onClick={() => toast.message(t("projects_template_preview_soon_toast"))}
-                >
-                  {t("projects_template_view")}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col gap-0 overflow-hidden border-sky-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-sky-800/60">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-sky-500/20 via-cyan-400/10 to-emerald-500/15">
-                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
-                <span className="relative flex flex-col items-center gap-2">
-                  <Globe className="size-12 text-sky-600 dark:text-sky-300" strokeWidth={1.25} aria-hidden />
-                  <Badge className="bg-sky-600 font-bold uppercase tracking-wide text-white hover:bg-sky-600">
-                    NEW
-                  </Badge>
-                </span>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">Сайт (ComponentGraph)</h3>
-                <p className="text-sm text-muted-foreground">
-                  AI генерирует структурированный JSON-граф сайта — легко редактировать отдельные блоки.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-auto w-full rounded-full border-sky-300/80 font-semibold text-sky-700 hover:border-sky-400 hover:bg-sky-50/50 dark:border-sky-700/60 dark:text-sky-300 dark:hover:bg-sky-950/30"
-                disabled={websiteDisabled}
-                onClick={() => void navigateNewProjectToWebsite()}
-              >
-                {t("projects_template_generate")}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Analytics BI */}
-          <Card className="flex flex-col gap-0 overflow-hidden border-violet-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-violet-800/60">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-violet-500/20 via-purple-400/10 to-blue-500/15">
-                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
-                <span className="relative flex flex-col items-center gap-2">
-                  <BarChart2 className="size-12 text-violet-600 dark:text-violet-300" strokeWidth={1.25} aria-hidden />
-                </span>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">Аналитика BI</h3>
-                <p className="text-sm text-muted-foreground">
-                  Загрузите PDF-отчёт — AI построит финансовый дашборд, прогноз и инвестиционную презентацию.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-auto w-full rounded-full border-violet-300/80 font-semibold text-violet-700 hover:border-violet-400 hover:bg-violet-50/50 dark:border-violet-700/60 dark:text-violet-300 dark:hover:bg-violet-950/30"
-                asChild
-              >
-                <Link href={`/api/analytics/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Marketing AI */}
-          <Card className="flex flex-col gap-0 overflow-hidden border-emerald-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-emerald-800/60">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-emerald-500/20 via-teal-400/10 to-cyan-500/15">
-                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
-                <span className="relative flex flex-col items-center gap-2">
-                  <TrendingUp className="size-12 text-emerald-600 dark:text-emerald-300" strokeWidth={1.25} aria-hidden />
-                </span>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">Маркетинг AI</h3>
-                <p className="text-sm text-muted-foreground">
-                  Загрузите данные по каналам — AI проанализирует маркетинг и экспортирует в PPTX.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-auto w-full rounded-full border-emerald-300/80 font-semibold text-emerald-700 hover:border-emerald-400 hover:bg-emerald-50/50 dark:border-emerald-700/60 dark:text-emerald-300 dark:hover:bg-emerald-950/30"
-                asChild
-              >
-                <Link href={`/api/marketing/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="flex flex-col gap-0 overflow-hidden border-orange-200/80 py-0 shadow-md transition-shadow hover:shadow-lg dark:border-orange-800/60">
-            <CardContent className="flex flex-1 flex-col gap-4 p-4">
-              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-orange-500/20 via-amber-400/10 to-yellow-500/15">
-                <div className="absolute inset-2 rounded-lg bg-background/40 blur-sm" aria-hidden />
-                <span className="relative flex flex-col items-center gap-2">
-                  <Presentation className="size-12 text-orange-600 dark:text-orange-300" strokeWidth={1.25} aria-hidden />
-                </span>
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-semibold text-foreground">Презентация AI</h3>
-                <p className="text-sm text-muted-foreground">
-                  Опишите тему — AI сгенерирует слайды. Редактируйте кликом, экспортируйте в PPTX.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="mt-auto w-full rounded-full border-orange-300/80 font-semibold text-orange-700 hover:border-orange-400 hover:bg-orange-50/50 dark:border-orange-700/60 dark:text-orange-300 dark:hover:bg-orange-950/30"
-                asChild
-              >
-                <Link href={`/api/presentation/new?lang=${encodeURIComponent(lang)}`}>{t("projects_template_generate")}</Link>
-              </Button>
-            </CardContent>
-          </Card>
         </div>
       </>
     );
@@ -671,9 +526,6 @@ export function NewProjectPageWizard() {
               <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground md:text-4xl">
                 {t("projects_format_modal_title")}
               </h1>
-              <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground md:text-base">
-                {t("projects_new_page_subtitle")}
-              </p>
             </div>
           </header>
 
@@ -868,6 +720,80 @@ export function NewProjectPageWizard() {
                 </CardContent>
               </Card>
 
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "website"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("website");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("website");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                  "cursor-pointer border-sky-200/90 bg-gradient-to-br from-sky-50 via-background to-background",
+                  "hover:border-sky-400/80 hover:shadow-md dark:border-sky-900/55 dark:from-sky-950/40 dark:hover:border-sky-700",
+                  builderChoice === "website" && "ring-2 ring-sky-500/35",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-900 dark:bg-sky-950/80 dark:text-sky-50">
+                    <Globe className="size-5" aria-hidden />
+                    <Badge className="absolute -right-1 -top-1 border-0 bg-sky-600 px-1 py-0 text-[9px] font-bold uppercase text-white hover:bg-sky-600">
+                      NEW
+                    </Badge>
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      Сайт (ComponentGraph)
+                    </span>
+                    <p className="text-sm font-normal leading-snug text-muted-foreground">
+                      AI генерирует структурированный JSON-граф сайта — легко редактировать отдельные блоки.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card
+                role="button"
+                tabIndex={creatingProject ? -1 : 0}
+                aria-pressed={builderChoice === "analytics"}
+                onClick={() => {
+                  if (creatingProject) return;
+                  setBuilderChoice("analytics");
+                }}
+                onKeyDown={(e) => {
+                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  e.preventDefault();
+                  setBuilderChoice("analytics");
+                }}
+                className={cn(
+                  "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
+                  "cursor-pointer border-violet-200/90 bg-gradient-to-br from-violet-50/80 via-background to-background",
+                  "hover:border-violet-400/80 hover:shadow-md dark:border-violet-900/55 dark:from-violet-950/40 dark:hover:border-violet-700",
+                  builderChoice === "analytics" && "ring-2 ring-violet-500/35",
+                  creatingProject && "pointer-events-none opacity-55"
+                )}
+              >
+                <CardContent className="flex gap-4 p-4">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
+                    <BarChart2 className="size-5" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1 space-y-1 self-center">
+                    <span className="flex items-center gap-2 font-semibold text-foreground">
+                      Аналитика BI
+                    </span>
+                    <p className="text-sm font-normal leading-snug text-muted-foreground">
+                      Загрузите PDF-отчёт — AI построит дашборд, прогноз и инвестиционную презентацию.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
 
               <Card
                 role="button"
@@ -954,6 +880,82 @@ export function NewProjectPageWizard() {
               aria-labelledby="ai-page-templates-heading"
             >
               {renderTemplates()}
+            </section>
+          ) : null}
+
+          {mountedBuilderPanels.has("website") ? (
+            <section
+              className={cn(
+                "space-y-5 rounded-xl border border-sky-200/60 bg-sky-50/30 p-5 dark:border-sky-800/40 dark:bg-sky-950/20 sm:p-6",
+                builderChoice !== "website" && "hidden"
+              )}
+              aria-hidden={builderChoice !== "website"}
+            >
+              <header className="space-y-1">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Globe className="size-5 text-sky-600 dark:text-sky-400" aria-hidden />
+                  Сайт (ComponentGraph)
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  AI генерирует структурированный JSON-граф сайта — легко редактировать отдельные блоки.
+                </p>
+              </header>
+              <Button
+                type="button"
+                disabled={websiteDisabled}
+                onClick={() => void navigateNewProjectToWebsite()}
+                className="w-full rounded-full border-sky-300/80 bg-sky-600 font-semibold text-white hover:bg-sky-700 dark:bg-sky-700 dark:hover:bg-sky-600 sm:w-auto sm:min-w-[200px]"
+              >
+                {creatingProject ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                    Создание...
+                  </>
+                ) : (
+                  <>
+                    <Globe className="mr-2 size-4" aria-hidden />
+                    {t("projects_template_generate")}
+                  </>
+                )}
+              </Button>
+            </section>
+          ) : null}
+
+          {mountedBuilderPanels.has("analytics") ? (
+            <section
+              className={cn(
+                "space-y-5 rounded-xl border border-violet-200/60 bg-violet-50/30 p-5 dark:border-violet-800/40 dark:bg-violet-950/20 sm:p-6",
+                builderChoice !== "analytics" && "hidden"
+              )}
+              aria-hidden={builderChoice !== "analytics"}
+            >
+              <header className="space-y-1">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <BarChart2 className="size-5 text-violet-600 dark:text-violet-400" aria-hidden />
+                  Аналитика BI
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Загрузите PDF или таблицу — AI построит финансовый дашборд, прогноз и инвестиционный отчёт.
+                </p>
+              </header>
+              <Button
+                type="button"
+                disabled={!canProceed || creatingProject}
+                onClick={() => void navigateNewProjectToAnalytics()}
+                className="w-full rounded-full border-violet-300/80 bg-violet-600 font-semibold text-white hover:bg-violet-700 dark:bg-violet-700 dark:hover:bg-violet-600 sm:w-auto sm:min-w-[200px]"
+              >
+                {creatingProject ? (
+                  <>
+                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
+                    Создание...
+                  </>
+                ) : (
+                  <>
+                    <BarChart2 className="mr-2 size-4" aria-hidden />
+                    Создать BI-отчёт
+                  </>
+                )}
+              </Button>
             </section>
           ) : null}
 

@@ -6,24 +6,23 @@ import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  BarChart2,
   BarChart3,
   BookOpen,
   Bot,
-  TrendingUp,
-  Presentation,
   ChevronRight,
   CreditCard,
   HelpCircle,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   Puzzle,
   Settings,
   Users,
   UserCircle2,
   Shield
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useI18n } from "@/components/i18n-provider";
 import { Badge } from "@/components/ui/badge";
@@ -35,18 +34,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { SITE_URL } from "@/lib/site";
 import { normalizePlanId, type PlanId } from "@/lib/plan-config";
 import { cn } from "@/lib/utils";
 import type { MessageKey } from "@/lib/i18n";
 
+const SIDEBAR_COLLAPSED_KEY = "lemnity.sidebar.collapsed";
+
 const navItems: { href: string; labelKey: MessageKey; icon: typeof Bot; fullNav?: boolean; activePath?: string }[] = [
   { href: "/playground", labelKey: "nav_playground", icon: Bot },
   { href: "/pricing", labelKey: "nav_pricing", icon: CreditCard },
   { href: "/analytics", labelKey: "nav_analytics", icon: BarChart3 },
-  { href: "/api/analytics/new", labelKey: "nav_analytics_bi", icon: BarChart2, fullNav: true, activePath: "/playground/analytics" },
-  { href: "/api/marketing/new", labelKey: "nav_marketing_bi", icon: TrendingUp, fullNav: true, activePath: "/playground/marketing" },
-  { href: "/presentations", labelKey: "nav_presentation", icon: Presentation, fullNav: true, activePath: "/presentations" },
   { href: "/integrations", labelKey: "nav_integrations", icon: Puzzle },
   { href: "/profile", labelKey: "nav_profile", icon: UserCircle2 },
   { href: "/team", labelKey: "nav_team", icon: Users },
@@ -60,7 +59,6 @@ type AccountMenuRow =
       icon: typeof UserCircle2;
       labelKey: MessageKey;
       chevron?: boolean;
-      /** Внешняя ссылка (например Telegram) — открывается в новой вкладке */
       external?: boolean;
     }
   | {
@@ -91,9 +89,10 @@ function activePlanLabelKey(plan: PlanId): MessageKey {
   }
 }
 
-const navLinkClass = (isActive: boolean) =>
+const navLinkClass = (isActive: boolean, collapsed: boolean) =>
   cn(
-    "group flex items-center gap-2.5 rounded-md px-2.5 py-2.5 text-[15px] leading-snug transition-colors",
+    "group flex items-center rounded-md py-2.5 text-[15px] leading-snug transition-colors",
+    collapsed ? "justify-center px-2" : "gap-2.5 px-2.5",
     isActive
       ? "bg-zinc-100 font-semibold text-black"
       : "text-black hover:bg-zinc-100"
@@ -105,13 +104,42 @@ const navIconClass = (isActive: boolean) =>
     isActive ? "text-black" : "text-zinc-700 group-hover:text-black"
   );
 
-function SidebarBody({ className }: { className?: string }) {
+function CollapsedHint({
+  collapsed,
+  label,
+  children
+}: {
+  collapsed: boolean;
+  label: string;
+  children: ReactNode;
+}) {
+  if (!collapsed) return <>{children}</>;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent side="right" sideOffset={8}>
+        {label}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SidebarBody({
+  className,
+  collapsed,
+  onToggleCollapsed
+}: {
+  className?: string;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
+}) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const { t, lang } = useI18n();
   const [tokenBalance, setTokenBalance] = useState<number | null>(null);
 
   const activePlan = useMemo(() => normalizePlanId(session?.user?.plan), [session?.user?.plan]);
+  const toggleLabel = collapsed ? t("sidebar_expand") : t("sidebar_collapse");
 
   const numberLocale = lang === "en" ? "en-US" : lang === "tg" ? "tg-TJ" : "ru-RU";
 
@@ -140,20 +168,40 @@ function SidebarBody({ className }: { className?: string }) {
         className
       )}
     >
-      {/* Logo */}
-      <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
-        <Image
-          src="/logo-w.svg"
-          alt="Lemnity"
-          width={110}
-          height={26}
-          priority
-          className="invert"
-        />
+      <div
+        className={cn(
+          "flex h-14 shrink-0 items-center border-b border-border",
+          collapsed ? "justify-center px-2" : "justify-between gap-2 px-3"
+        )}
+      >
+        {!collapsed ? (
+          <Image
+            src="/logo-w.svg"
+            alt="Lemnity"
+            width={110}
+            height={26}
+            priority
+            className="min-w-0 shrink invert"
+          />
+        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-9 shrink-0 text-zinc-700 hover:bg-zinc-100 hover:text-black"
+          onClick={onToggleCollapsed}
+          aria-label={toggleLabel}
+          title={toggleLabel}
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-5" aria-hidden />
+          ) : (
+            <PanelLeftClose className="size-5" aria-hidden />
+          )}
+        </Button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-2 py-3">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         <div className="space-y-0.5">
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -164,26 +212,31 @@ function SidebarBody({ className }: { className?: string }) {
             const isActive =
               (item.activePath && pathname.startsWith(item.activePath)) ||
               (!item.fullNav && (pathname === item.href || pathname.startsWith(`${item.href}/`)));
-            const itemClass = navLinkClass(isActive);
+            const label = t(item.labelKey);
+            const itemClass = navLinkClass(isActive, collapsed);
             const itemContent = (
               <>
                 <Icon className={navIconClass(isActive)} />
-                <span className="min-w-0 flex-1 truncate">{t(item.labelKey)}</span>
-                {item.href === "/pricing" ? (
-                  <Badge
-                    variant="secondary"
-                    className={cn(
-                      "ml-auto shrink-0 truncate px-1.5 py-0 text-[11px] font-medium",
-                      isActive ? "bg-zinc-200 text-black" : "text-zinc-700"
-                    )}
-                    title={t(activePlanLabelKey(activePlan))}
-                  >
-                    {t(activePlanLabelKey(activePlan))}
-                  </Badge>
+                {!collapsed ? (
+                  <>
+                    <span className="min-w-0 flex-1 truncate">{label}</span>
+                    {item.href === "/pricing" ? (
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "ml-auto shrink-0 truncate px-1.5 py-0 text-[11px] font-medium",
+                          isActive ? "bg-zinc-200 text-black" : "text-zinc-700"
+                        )}
+                        title={t(activePlanLabelKey(activePlan))}
+                      >
+                        {t(activePlanLabelKey(activePlan))}
+                      </Badge>
+                    ) : null}
+                  </>
                 ) : null}
               </>
             );
-            return item.fullNav ? (
+            const linkNode = item.fullNav ? (
               <a key={item.href} href={hrefWithLang} className={itemClass}>
                 {itemContent}
               </a>
@@ -192,58 +245,91 @@ function SidebarBody({ className }: { className?: string }) {
                 {itemContent}
               </Link>
             );
+            return (
+              <CollapsedHint key={item.href} collapsed={collapsed} label={label}>
+                {linkNode}
+              </CollapsedHint>
+            );
           })}
           {session?.user?.role === "ADMIN" || session?.user?.role === "MANAGER" ? (
-            <Link
-              href="/admin/users"
-              className={navLinkClass(pathname === "/admin" || pathname.startsWith("/admin/"))}
-            >
-              <Shield
-                className={navIconClass(pathname === "/admin" || pathname.startsWith("/admin/"))}
-              />
-              <span>{t("nav_admin")}</span>
-            </Link>
+            <CollapsedHint collapsed={collapsed} label={t("nav_admin")}>
+              <Link
+                href="/admin/users"
+                className={navLinkClass(
+                  pathname === "/admin" || pathname.startsWith("/admin/"),
+                  collapsed
+                )}
+              >
+                <Shield
+                  className={navIconClass(pathname === "/admin" || pathname.startsWith("/admin/"))}
+                />
+                {!collapsed ? <span>{t("nav_admin")}</span> : null}
+              </Link>
+            </CollapsedHint>
           ) : null}
         </div>
 
-        {/* Upgrade nudge */}
-        <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
-          <p className="text-[15px] font-semibold text-black">{t("profile_upgrade_to_pro")}</p>
-          <p className="mt-0.5 text-sm leading-relaxed text-zinc-800">{t("sidebar_pro_desc")}</p>
-          <Button size="sm" className="mt-2.5 h-8 w-full text-sm" onClick={() => (window.location.href = "/pricing")}>
-            {t("sidebar_open_pricing")}
-          </Button>
-        </div>
+        {!collapsed ? (
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
+            <p className="text-[15px] font-semibold text-black">{t("profile_upgrade_to_pro")}</p>
+            <p className="mt-0.5 text-sm leading-relaxed text-zinc-800">{t("sidebar_pro_desc")}</p>
+            <Button
+              size="sm"
+              className="mt-2.5 h-8 w-full text-sm"
+              onClick={() => {
+                window.location.href = "/pricing";
+              }}
+            >
+              {t("sidebar_open_pricing")}
+            </Button>
+          </div>
+        ) : null}
       </nav>
 
-      {/* Account */}
       <div className="shrink-0 border-t border-border p-2">
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted"
+            <CollapsedHint
+              collapsed={collapsed}
+              label={session?.user?.name ?? t("user_display_fallback")}
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white">
-                {initials}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[15px] font-medium leading-tight text-black">
-                  {session?.user?.name ?? t("user_display_fallback")}
-                </p>
-                <p className="truncate text-[13px] text-zinc-800">
-                  {tokenBalance === null ? (
-                    <>{t("playground_home_tokens")} {t("playground_home_tokens_none")}</>
-                  ) : (
-                    <><span className="font-medium text-black">{tokenBalance.toLocaleString(numberLocale)}</span>{" "}{t("playground_home_tokens_suffix")}</>
-                  )}
-                </p>
-              </div>
-            </button>
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center rounded-md text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted",
+                  collapsed ? "justify-center px-2 py-2" : "gap-2.5 px-2.5 py-2"
+                )}
+              >
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-indigo-600 text-[11px] font-semibold text-white">
+                  {initials}
+                </div>
+                {!collapsed ? (
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[15px] font-medium leading-tight text-black">
+                      {session?.user?.name ?? t("user_display_fallback")}
+                    </p>
+                    <p className="truncate text-[13px] text-zinc-800">
+                      {tokenBalance === null ? (
+                        <>
+                          {t("playground_home_tokens")} {t("playground_home_tokens_none")}
+                        </>
+                      ) : (
+                        <>
+                          <span className="font-medium text-black">
+                            {tokenBalance.toLocaleString(numberLocale)}
+                          </span>{" "}
+                          {t("playground_home_tokens_suffix")}
+                        </>
+                      )}
+                    </p>
+                  </div>
+                ) : null}
+              </button>
+            </CollapsedHint>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            side="top"
-            align="start"
+            side={collapsed ? "right" : "top"}
+            align={collapsed ? "end" : "start"}
             sideOffset={8}
             className="z-[200] w-60 border bg-popover p-1.5 shadow-lg"
           >
@@ -296,10 +382,31 @@ function SidebarBody({ className }: { className?: string }) {
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { t } = useI18n();
 
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const toggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* ignore */
+      }
+      return next;
+    });
+  }, []);
+
   return (
-    <>
+    <TooltipProvider delayDuration={200}>
       <div className="lg:hidden">
         <Button
           variant="outline"
@@ -311,9 +418,14 @@ export function Sidebar() {
         </Button>
       </div>
 
-      <div className="hidden h-full w-[220px] shrink-0 lg:block">
-        <SidebarBody />
-      </div>
+      <motion.div
+        className={cn(
+          "hidden h-full shrink-0 overflow-hidden transition-[width] duration-200 ease-out lg:block",
+          collapsed ? "w-16" : "w-[220px]"
+        )}
+      >
+        <SidebarBody collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      </motion.div>
 
       <AnimatePresence>
         {isOpen ? (
@@ -331,11 +443,15 @@ export function Sidebar() {
               className="flex h-full max-w-[220px] overflow-hidden shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
-              <SidebarBody className="overflow-y-auto border-r border-border bg-white" />
+              <SidebarBody
+                className="overflow-y-auto border-r border-border bg-white"
+                collapsed={false}
+                onToggleCollapsed={() => setIsOpen(false)}
+              />
             </motion.div>
           </motion.div>
         ) : null}
       </AnimatePresence>
-    </>
+    </TooltipProvider>
   );
 }
