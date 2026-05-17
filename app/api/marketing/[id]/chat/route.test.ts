@@ -10,6 +10,9 @@ vi.mock("@/lib/token-billing", () => ({
   chargeTokensSafely: vi.fn(),
   estimateUsageFromText: vi.fn().mockReturnValue({ total_tokens: 100 }),
 }));
+vi.mock("@/lib/brand-kit-service", () => ({
+  getBrandKitPromptBlock: vi.fn().mockResolvedValue(null),
+}));
 
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";

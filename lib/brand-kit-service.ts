@@ -58,9 +58,13 @@ export async function getBrandKitLibrary(userId: string): Promise<BrandKitLibrar
 }
 
 export async function getBrandKitPromptBlock(userId: string): Promise<string | null> {
-  const library = await getBrandKitLibrary(userId);
-  if (!library) return null;
-  return formatBrandKitForAiPrompt(library.manifest);
+  try {
+    const library = await getBrandKitLibrary(userId);
+    if (!library) return null;
+    return formatBrandKitForAiPrompt(library.manifest);
+  } catch {
+    return null;
+  }
 }
 
 export type SaveAssetUpload = {
