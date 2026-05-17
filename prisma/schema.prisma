@@ -34,6 +34,7 @@ model Project {
   cmsSite             CmsSite?
   snapshots           ProjectSnapshot[]
   teamSavedBlocks     UserSavedBlock[]
+  brandKit            ProjectBrandKit?
 
   @@index([ownerId, updatedAt])
 }
@@ -438,6 +439,7 @@ model User {
   cmsMediaAssetsOwned CmsMediaAsset[] @relation("CmsMediaAssetOwner")
   cmsPublishJobs CmsPublishJob[] @relation("CmsPublishJobAuthor")
   savedBlocks   UserSavedBlock[]
+  errorLogs      ErrorLog[]
 
   /// Ключи прав для роли MANAGER: users.read, users.write, tariffs, team, settings.
   adminPermissions  Json?
@@ -469,6 +471,14 @@ model UserVirtualWorkspace {
 model UserBrandKitLibrary {
   userId    String   @id
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  manifest  Json
+  updatedAt DateTime @updatedAt
+}
+
+/// Бренд-кит на уровне проекта: логотип, цвета, типографика, тон голоса, брендбук.
+model ProjectBrandKit {
+  projectId String   @id
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   manifest  Json
   updatedAt DateTime @updatedAt
 }
@@ -890,4 +900,39 @@ model AnalyticsChunkEmbedding {
   createdAt DateTime @default(now())
 
   @@index([projectId])
+}
+
+/// Лог ошибок платформы: клиентские JS-ошибки, серверные API-ошибки, ошибки AI-стримов.
+model ErrorLog {
+  id          String   @id @default(cuid())
+  createdAt   DateTime @default(now())
+
+  source      String
+  errorType   String
+  module      String?
+
+  message     String   @db.Text
+  stack       String?  @db.Text
+
+  url         String?
+  method      String?
+  statusCode  Int?
+
+  userAgent   String?
+  viewport    String?
+  ip          String?
+
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  meta        Json?
+
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+
+  @@index([createdAt])
+  @@index([source, createdAt])
+  @@index([errorType, createdAt])
+  @@index([userId, createdAt])
+  @@index([resolved, createdAt])
 }
