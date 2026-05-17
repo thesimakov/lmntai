@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-**Lemnity** — production SaaS platform for AI-assisted website generation. Users can generate, edit and publish websites via a conversational AI interface or visual canvas editor.
+**Lemnity** — production SaaS platform for AI-assisted website generation and business intelligence. Users can generate, edit and publish websites via a conversational AI interface or visual canvas editor, and analyse financial/marketing data via BI dashboards.
 
 **Tech stack:**
 - **Framework**: Next.js 15 App Router, React 19, TypeScript (strict)
@@ -14,7 +14,7 @@
 - **State management**: Zustand (stores in `lib/stores/`), React Query v5 for server state
 - **AI**: Anthropic Claude, OpenAI, DeepSeek, Gemini, Groq — routed via RouterAI gateway
 - **Sandboxes**: E2B or Docker (Lemnity AI) for code execution
-- **Email**: NotiSend API (transactional), nodemailer (magic links)
+- **Email**: NotiSend API (transactional), nodemailer/SMTP (magic links, verification)
 - **Payments/billing**: Custom billing webhook (`lib/billing-webhook.ts`)
 - **i18n**: `lib/i18n.ts` — ru/en/tg language support
 - **Testing**: Vitest
@@ -54,10 +54,12 @@ npm run lemnity-ai:up  # docker stack for Lemnity AI sandbox
 
 | Route group | Path | Description |
 |---|---|---|
-| `(dashboard)` | `/` | Projects list, settings, analytics, integrations, team, billing |
-| `(builder)` | `/playground/*` | All editors: build, box, cms, puck |
+| `(dashboard)` | `/` | Projects list, settings, integrations, team, billing |
+| `(dashboard)` | `/analytics/*` | Analytics BI dashboard (financial + marketing analysis) |
+| `(dashboard)` | `/presentations/*` | Presentations list and viewer |
+| `(builder)` | `/playground/*` | All editors: build, box, cms, puck, slides, marketing |
 | `(marketing)` | landing, pricing | Public marketing pages |
-| `admin` | `/admin/*` | Admin panel (role-gated): users, tariffs, promo codes, settings |
+| `admin` | `/admin/*` | Admin panel (role-gated): users, tariffs, promo codes, error log, settings |
 | `auth` | `/login`, `/forgot-password`, `/reset-password` | Auth pages |
 | `share` | `/share/:id` | Public sandbox preview |
 
@@ -73,11 +75,13 @@ npm run lemnity-ai:up  # docker stack for Lemnity AI sandbox
 | `cms/page.tsx` | CMS pages list |
 | `cms/playground-cms-page-client.tsx` | Full CMS page editor (~2700 lines) |
 | `puck/page.tsx` | Puck drag-and-drop editor |
+| `slides/page.tsx` | AI slide presentation editor |
+| `marketing/page.tsx` | Marketing analysis / BI editor |
 
 ### API Routes (`app/api/`)
 
 Key groups:
-- `/api/auth/*` — NextAuth + custom forgot/reset password
+- `/api/auth/*` — NextAuth + custom forgot/reset password, email verification
 - `/api/projects/*` — CRUD, export, subdomain check
 - `/api/sandbox/*` — sandbox state, share, file access
 - `/api/box/[id]/*` — box canvas operations (save, preview, status)
@@ -90,7 +94,7 @@ Key groups:
 - `/api/prompt-coach/*` — Prompt coaching API
 - `/api/routerai/*` — RouterAI proxy + health
 - `/api/billing/webhook` — billing events
-- `/api/admin/*` — admin APIs (economics, users, promo-codes, plan-config)
+- `/api/admin/*` — admin APIs (economics, users, promo-codes, plan-config, error log)
 - `/api/lemnity-ai/[...path]` — proxy to Lemnity AI upstream (also aliased `/api/manus/*`)
 - `/api/team/*` — team invitations
 - `/api/referrals/*` — referral wallet and earnings
@@ -100,8 +104,14 @@ Key groups:
 - `/api/profile/*` — user profile (virtual workspace)
 - `/api/pricing/*` — pricing info
 - `/api/export/*` — HTML/PDF export
-- `/api/build-templates/*` — AI build template presets
+- `/api/build-templates/*` — AI build template presets (DB-backed)
 - `/api/showcase-images/*` — showcase image library
+- `/api/analytics/*` — Analytics BI: upload, analyze, report, shared view, assets, chat
+- `/api/errors/*` — Client + server error reporting (`/api/errors/report`)
+- `/api/brand-kit/*` — Brand kit CRUD (user-level and project-level)
+- `/api/presentation/*` — Presentation generation (slides)
+- `/api/presentations/*` — Presentations CRUD
+- `/api/marketing/*` — Marketing analysis BI
 
 ---
 
@@ -113,22 +123,85 @@ Key groups:
 - `lib/api-client/` — typed fetch client: `base.ts`, `cms.ts`, `projects.ts`, `sandbox.ts`, `share.ts`, `index.ts`
 - `lib/auth-guards.ts` — `requireSession()`, `requireAdmin()`, etc. — always use in API routes
 - `lib/with-api-logging.ts` — wrap handlers to log to `RequestLog`
+- `lib/with-error-log.ts` — `withErrorLog(module, handler)` — wraps route handler, catches unhandled errors, logs to `ErrorLog` DB, returns 500
 
 ### AI / routing
-- `lib/routerai-client.ts` — RouterAI gateway client (`getGatewayConfig()`)
+- `lib/routerai-client.ts` — RouterAI gateway client (`getGatewayConfig()`, `requestRouterAIJsonWithFallback()`)
 - `lib/agent-models.ts` — agent model selection per plan and project kind
-- `lib/deepseek-client.ts` — DeepSeek AI client
+- `lib/deepseek-client.ts` — DeepSeek AI client (for specific model routing overrides)
+- `lib/structured-json-ai.ts` — generic RouterAI JSON generation with model fallback chain; used by analytics, marketing, and other BI modules
 - `lib/prompt-coach.ts` — prompt quality coaching
 - `lib/prompt-model-fallback.ts` — model fallback logic
-- `lib/lemnity-ai-prompt-spec.ts` — AI prompt spec for Lemnity AI (includes site footer, stock image, layer rules)
+- `lib/lemnity-ai-prompt-spec.ts` — AI prompt spec for Lemnity AI (includes site footer, stock image, layer rules); defines `ProjectKind` type
 - `lib/lmnt-layer-spec.ts` — LMNT layer prompt rules
 - `lib/affirmative-reply.ts` — detect positive user affirmations in chat
+- `lib/ai-unavailable-message.ts` — standard "AI unavailable" error messages
+- `lib/stream-step-title.ts` — extract step titles from AI stream events
+- `lib/sse-parser.ts` — SSE event stream parser utilities
+
+### Analytics BI (`lib/analytics-*.ts`, `lib/forecast-*.ts`, `lib/investor-*.ts`)
+Full financial analysis pipeline: upload → extract text → RAG → AI dashboard generation → share.
+
+- `lib/analytics-schema.ts` — Zod schemas: `AnalysisDashboard`, `Kpi`, `Chart`, `Table` (KPIs, charts, tables, narrative)
+- `lib/analytics-prompt.ts` — system/user prompt builders for financial analysis
+- `lib/analytics-stats.ts` — dashboard stats computation
+- `lib/analytics-share-db.ts` — `createAnalyticsShare()`, analytics share CRUD
+- `lib/analytics-share-contract.ts` — `AnalyticsRole` (`viewer`/`investor`/`analyst`), role descriptions
+- `lib/analytics-embedding-store.ts` — hybrid BM25 + vector search for analytics chunk retrieval (stores in `AnalyticsChunkEmbedding`)
+- `lib/analytics-benchmarks.ts` — industry benchmark definitions and comparison logic
+- `lib/analytics-pdf-export.ts` — PDF export from analytics dashboard
+- `lib/analytics-pptx-export.ts` — PPTX export from analytics dashboard
+- `lib/analytics-dashboard-localization.ts` — localization helpers for analytics dashboards
+- `lib/benchmark-db.ts` — persist/retrieve anonymised KPI benchmark samples in `BenchmarkSample` table
+- `lib/bi-upload-limits.ts` — `BI_UPLOAD_MAX_BYTES` (10 MB) — max single-file size for BI uploads
+- `lib/forecast-schema.ts` — `ForecastReport` schema (metrics with historical/projected points, CAGR)
+- `lib/forecast-prompt.ts` / `lib/forecast-report-normalize.ts` / `lib/forecast-pptx-export.ts` — forecast pipeline
+- `lib/investor-schema.ts` — `InvestorReport` schema (risk score, VC pitch deck, board report, due diligence)
+- `lib/investor-prompt.ts` / `lib/investor-report-normalize.ts` / `lib/investor-pptx-export.ts` — investor report pipeline
+
+### Marketing BI (`lib/marketing-*.ts`)
+- `lib/marketing-schema.ts` — `MarketingDashboard` schema (channels, KPIs, charts, narrative)
+- `lib/marketing-prompt.ts` — prompt builders for marketing analysis
+- `lib/marketing-pptx-export.ts` — PPTX export from marketing dashboard
+- `lib/marketing-dashboard-localization.ts` / `lib/marketing-docs-sections.ts` — localization and doc section helpers
+
+### Slide/presentation engine (`lib/slide-graph/`)
+Standalone slide graph engine for AI-generated presentations:
+- `types.ts` — `Slide`, `SlideElement`, `SlideLayout`, `SlideTheme` interfaces
+- `schema.ts` / `renderer.ts` — slide schema validation and HTML rendering
+- `prompt.ts` — slide generation prompts
+- `patch.ts` — incremental slide patching
+- `pdf-export.ts` / `pptx-export.ts` — export to PDF/PPTX
+
+### Component graph (`lib/component-graph/`)
+- `types.ts` / `schema.ts` / `renderer.ts` / `prompt.ts` / `patch.ts` — component graph pipeline (used for marketing/analytics UI generation)
+
+### Brand kit (`lib/brand-kit-*.ts`, `lib/project-brand-kit-*.ts`)
+- `lib/brand-kit-library.ts` — `BrandKitManifest` type, `formatBrandKitForAiPrompt()`, manifest ↔ state converters
+- `lib/brand-kit-service.ts` — user-level brand kit CRUD (read/write/delete assets)
+- `lib/brand-kit-storage.ts` — file system storage for brand assets
+- `lib/brand-kit-client.ts` — client-side brand kit API helpers
+- `lib/project-brand-kit-library.ts` / `lib/project-brand-kit-service.ts` / `lib/project-brand-kit-storage.ts` — project-scoped brand kit (same structure, project-level)
+
+### Error tracking (`lib/error-*.ts`, `lib/with-error-log.ts`)
+- `lib/error-tracker-types.ts` — `ErrorReportPayload`, `ErrorSource`, `ErrorType`, `detectModule()`
+- `lib/error-tracker.ts` — client-side error tracker: batches JS errors, failed fetches, streams → `/api/errors/report`
+- `lib/error-log-db.ts` — `logClientError()`, `logServerError()` — persist to `ErrorLog` table
+- `lib/with-error-log.ts` — `withErrorLog(module, handler)` — server handler wrapper
+
+### Document parsing & RAG
+- `lib/docx-parser.ts` — `docxToText(buffer)` — extract raw text from DOCX via mammoth
+- `lib/ocr-pdf.ts` — OCR fallback for image-only PDFs via Claude Haiku (`claude-haiku-4-5-20251001`); max 20 MB
+- `lib/text-rag.ts` — lightweight BM25-style retrieval: chunk text → rank by keyword relevance (no external API)
+- `lib/embeddings.ts` — `embedText()`, `embedBatch()`, `cosineSimilarity()` — OpenAI `text-embedding-3-small` (1536-dim)
 
 ### Database
 - `lib/prisma.ts` — singleton Prisma client
 - `lib/cms-core.ts` — CMS access guards: `requireCmsSiteAccess()`, `requireCmsContentTypeAccess()`
 - `lib/sandbox-share-db.ts` — sandbox share read/write (use `prisma.$transaction()` for mutations)
 - `lib/sandbox-project-state-db.ts` — sandbox file state persistence
+- `lib/project-storage.ts` — file-based project storage (`.project-storage/projects/`): messages, files, images, embeddings
+- `lib/project-context.ts` — `ProjectScope` type, project resolution helpers
 
 ### State management (`lib/stores/`)
 - `use-build-editor-store.ts` — build editor (AI chat + sandbox) global state
@@ -136,10 +209,14 @@ Key groups:
 - `use-projects-store.ts` — projects list + refresh
 - `use-sandbox-files-store.ts` — sandbox file tree state
 - `use-share-store.ts` — share popover state
+- `use-analytics-store.ts` — analytics BI state (dashboard, investor report, forecast, chat messages)
+- `use-marketing-store.ts` — marketing analysis BI state
+- `use-landing-files-store.ts` — pending file uploads on landing/playground page
 
 ### Plans & billing
 - `lib/plan-config.ts` — `PlanId` (`FREE` / `PRO` / `TEAM`), token allowances, per-plan limits
 - `lib/platform-plan-settings.ts` — `PlatformPlanSettings` DB model helpers
+- `lib/platform-plan-catalog.ts` — `PLATFORM_FEATURE_CATALOG` feature IDs, `PlanRow`, admin plan editing
 - `lib/starter-plan.ts` — FREE plan daily quota + 3-day trial logic
 - `lib/project-limits.ts` — per-plan project/page count limits
 - `lib/token-billing.ts` / `lib/token-manager.ts` — token accounting
@@ -168,6 +245,14 @@ Key groups:
 - `lib/visual-html-shrink.ts` — compress GrapesJS HTML before save
 - `lib/visual-preview-editor.ts` — visual preview editor helpers
 - `lib/visual-save-client-body.ts` / `lib/visual-save-decode-patch-body.ts` — visual save payload encoding
+- `lib/lemnity-box-push-sandbox.ts` — push box canvas content to sandbox
+- `lib/lemnity-box-build-index-html.ts` — build final index.html from box canvas
+- `lib/lemnity-box-section-motion.ts` — section motion/animation helpers
+- `lib/lemnity-anchor-runtime.ts` / `lib/lemnity-anchor-slug.ts` — anchor link runtime and slug helpers
+- `lib/lemnity-carousel-nav-runtime.ts` — carousel navigation runtime
+- `lib/lemnity-details-tabs-runtime.ts` — tabs/accordion runtime
+- `lib/lemnity-box-html-embed-expand.ts` — expand HTML embeds in box canvas
+- `lib/lemnity-box-locale-ru.ts` — Russian localization for GrapesJS UI
 
 ### Zero Block editor module (`lib/zero-block-editor/`)
 Full standalone zero-block editor engine:
@@ -192,13 +277,26 @@ Full standalone zero-block editor engine:
 - `lmny-svg-icons.ts` — SVG icon set for the editor
 
 ### Build templates
-- `lib/build-templates.ts` — AI build template definitions
+- `lib/build-templates.ts` — AI build template definitions (DB-backed via `BuildTemplate` model)
 - `lib/build-template-presets/` — preset templates: IT startup landing, lead PR, massage, web studio
+- `lib/playground-templates.ts` — `PLAYGROUND_QUICK_TEMPLATES` — quick-template chips on the playground home
 
 ### Chat / SSE
 - `lib/client-sse.ts` — SSE client for streaming AI responses
 - `lib/chat-attachments.ts` — file attachment handling in build editor chat
 - `lib/chat-artifact-ui.ts` — artifact card UI helpers in build editor
+
+### Lemnity AI bridge (Manus upstream)
+- `lib/lemnity-ai-bridge-config.ts` — `isLemnityAiBridgeEnabledServer/Client()`, upstream URL/token resolution; supports both `LEMNITY_AI_*` and `MANUS_*` env vars
+- `lib/lemnity-ai-upstream-client.ts` — `lemnityAiUpstreamFetch()`, auth header helpers for upstream FastAPI
+- `lib/lemnity-ai-bridge-session-artifact.ts` — extract artifact sandboxId from upstream session events
+- `lib/lemnity-ai-build-session-storage.ts` — localStorage session storage for Lemnity AI build sessions
+- `lib/lemnity-ai-session-links.ts` — session link helpers (`ManusSessionLink` DB)
+- `lib/lemnity-builder-sandbox-api.ts` — HTTP client to FastAPI inside sandbox container (port 8080)
+- `lib/lemnity-puck-build-nav.ts` — navigation helpers for Puck inside Lemnity AI build
+
+### Lovable bundler
+- `lib/lovable-bundler.ts` — "Lovable mode": parse multi-file React+TSX fenced blocks from AI response → single ESM bundle via esbuild for iframe preview; supports ` ```tsx:src/App.tsx` and `// file:` comment conventions
 
 ### CMS utilities
 - `lib/cms-form-bridge.ts` — CMS form → sandbox bridge
@@ -207,12 +305,32 @@ Full standalone zero-block editor engine:
 - `lib/cms-html-robots-meta.ts` — inject robots/SEO meta into CMS HTML
 - `lib/cms-robots-site.ts` — robots.txt generation for CMS sites
 - `lib/cms-editor-client.ts` — CMS editor API client
+- `lib/cms-form-submissions-kanban.ts` / `lib/cms-form-submissions-server.ts` — form submissions kanban board and server helpers
 
 ### Admin
 - `lib/admin-service.ts` — admin operations (token grants, plan changes)
 - `lib/admin-rules.ts` — admin access rule validation
 - `lib/staff-permissions.ts` — MANAGER role granular permissions (`users.read`, `users.write`, `tariffs`, `team`, `stats`, etc.)
 - `lib/admin-env-bootstrap.ts` — bootstrap default admin from env
+
+### Auth
+- `lib/auth.ts` / `lib/auth-guards.ts` / `lib/auth-callbacks.ts` / `lib/auth-providers.ts` — NextAuth config split by concern
+- `lib/auth-constants.ts` — auth magic constants
+- `lib/auth-events.ts` — auth event handlers (login, signup hooks)
+- `lib/auth-normalizers.ts` — normalise provider profile data
+- `lib/email-verification.ts` — email verification token logic (`EmailVerificationToken` model)
+- `lib/password-reset-service.ts` — password reset flow
+- `lib/password-crypto.ts` — bcrypt wrappers
+- `lib/post-login-redirect.ts` — post-login redirect logic
+- `lib/offline-demo-auth.ts` — demo mode authentication bypass
+
+### Images & assets
+- `lib/image-content-validation.ts` — `detectBrandKitAssetMime()`, allowed MIME types for brand assets
+- `lib/project-image-gallery.ts` — project image gallery helpers
+- `lib/materialize-remote-images.ts` — download and store remote images locally
+- `lib/sandbox-image-assets.ts` — manage image assets in sandbox
+- `lib/sandbox-preview-asset-access.ts` — asset access for sandbox preview
+- `lib/sandbox-empty-preview-html.ts` — empty preview HTML placeholder
 
 ### Other
 - `lib/api-keys.ts` — API key management for users
@@ -224,15 +342,34 @@ Full standalone zero-block editor engine:
 - `lib/project-export.ts` — project export to ZIP
 - `lib/sandbox-stores.ts` — sandbox store helpers
 - `lib/sandbox-manager.ts` — sandbox lifecycle management
+- `lib/sandbox-upstream.ts` — sandbox upstream API helpers
+- `lib/sandbox-preview-html-detect.ts` — detect preview HTML type in sandbox
 - `lib/studio-integration-storage.ts` — studio integration settings storage
 - `lib/read-login-features.ts` — feature flags from login response
 - `lib/display-title.ts` — display title extraction from project data
 - `lib/share-branding.ts` — branding on share page
+- `lib/preview-share.ts` — preview share link helpers
 - `lib/starter-cabinet-server.ts` — server-side starter cabinet data
 - `lib/request-log.ts` — request logging helpers
 - `lib/unknown-error-message.ts` — `unknownToErrorMessage()` for safe catch blocks
 - `lib/utils.ts` — `cn()` classnames util
 - `lib/editor-constants.ts` — editor magic numbers
+- `lib/database-url.ts` — DATABASE_URL resolution helpers
+- `lib/prisma-auth-errors.ts` — map Prisma errors to auth error codes
+- `lib/subdomain-input.ts` — subdomain input validation helpers
+- `lib/request-ui-language.ts` — resolve UI language from request headers
+- `lib/user-virtual-storage.ts` — user virtual storage helpers
+- `lib/user-starter-paid-until-raw.ts` — raw paid-until date for starter users
+- `lib/zero-block-grid.ts` — zero block CSS grid helpers
+- `lib/puck-lemnity-data.ts` — `defaultLemnityPuckData()`, `ensureComponentInstanceIds()` for Puck
+- `lib/puck-merge-after-model-apply.ts` — merge Puck data after AI model suggests changes
+- `lib/playground-project-edit-url.ts` — `PreferredPlaygroundEditor` type, URL resolution per editor
+- `lib/landing-handoff.ts` — `BuilderHandoff` type, localStorage handoff from landing → playground
+- `lib/landing-showcase.ts` — landing page showcase data
+- `lib/site.ts` — site-level metadata helpers
+- `lib/smtp-client.ts` — SMTP client wrappers
+- `lib/notisend-email.ts` — NotiSend transactional email client
+- `lib/prompt-site-footer.ts` / `lib/prompt-stock-images.ts` — prompt fragments for footer and stock images
 
 ---
 
@@ -273,6 +410,27 @@ Zero Blocks are `<section class="lemnity-zero-block" data-ln-zero-id="zb_xxx">` 
 - `onOpenZeroBlockEditor?: (blockId: string) => void` — called when user clicks "Редактировать"
 - `autoActivateZeroBlock?: boolean` — auto-enters editing mode for first zero block on load (used in zero editor page)
 
+### Zero Block editor components (`components/zero-block-editor/`)
+Standalone React UI for the zero-block canvas editor:
+- `zb-editor.tsx` — top-level editor component
+- `zb-canvas.tsx` — canvas with absolute-positioned elements
+- `zb-element-layer.tsx` — individual element layer (drag/resize)
+- `zb-add-panel.tsx` — add element panel
+- `zb-layers-panel.tsx` — layers panel
+- `zb-settings-panel.tsx` — element settings panel
+- `zb-snap-guides.tsx` — snap guide overlay
+- `zb-top-bar.tsx` — editor toolbar
+
+### AI Editor components (`components/ai-editor/`)
+Shared AI-assisted editor UI (used in analytics, marketing, slides):
+- `AiEditorShell.tsx` — top-level shell
+- `AiEditorPreview.tsx` — preview panel
+- `AiEditorSidebar.tsx` — sidebar with AI controls
+- `AiEditorVersionHistoryButton.tsx` — version history toggle
+- `AiPromptInput.tsx` — AI prompt input field
+- `AiVersionDiffBadge.tsx` — version diff indicator
+- `AiVersionList.tsx` — version list panel
+
 ---
 
 ## Database Schema (Prisma)
@@ -287,6 +445,10 @@ Zero Blocks are `<section class="lemnity-zero-block" data-ln-zero-id="zb_xxx">` 
 | `PublishDomainBinding` | Custom domain → project binding |
 | `User` | Auth user: email, passwordHash, role, tokenBalance, plan |
 | `UserVirtualWorkspace` / `UserVirtualEntry` | Virtual file storage |
+| `ProjectMessage` | Chat messages stored per project (role, content, metadata) |
+| `ProjectImageAsset` | Uploaded image assets per project (assetKey, mime, bytes, sourceUrl) |
+| `ProjectEmbedding` | Vector embedding refs per project (namespace, vectorRef, metadata) |
+| `BuildTemplate` | DB-backed AI build templates (slug, name, rules, files JSON, defaultUserPrompt) |
 
 ### CMS models
 
@@ -301,6 +463,34 @@ Zero Blocks are `<section class="lemnity-zero-block" data-ln-zero-id="zb_xxx">` 
 | `CmsPublishJob` | Async publish jobs |
 | `CmsFormSubmission` | Form submission records |
 | `WebhookDeliveryLog` | Webhook delivery attempts and retry state |
+
+### Analytics / BI models
+
+| Model | Purpose |
+|---|---|
+| `AnalyticsShare` | Analytics share link with role (`viewer`/`investor`/`analyst`), optional expiry |
+| `AnalyticsChunkEmbedding` | Vector embeddings for analytics RAG (projectId, position, chunkText, vector JSON) |
+| `BenchmarkSample` | Anonymized industry KPI benchmark samples (industry, metricKey, value, unit) |
+
+### Brand kit models
+
+| Model | Purpose |
+|---|---|
+| `UserBrandKitLibrary` | User-level brand kit manifest (JSON) |
+| `ProjectBrandKit` | Project-level brand kit manifest (JSON) |
+
+### Lemnity AI (Manus) models
+
+| Model | Purpose |
+|---|---|
+| `ManusSessionLink` | Lemnity AI session linked to a project (manusSessionId, title, unread count) |
+| `ManusChatCharge` | Token charges per Lemnity AI chat event (model, promptTokens, completionTokens) |
+
+### Error tracking
+
+| Model | Purpose |
+|---|---|
+| `ErrorLog` | Platform error log: source, errorType, module, message, stack, url, userId, viewport, ip |
 
 ### Billing/referrals
 
@@ -320,8 +510,10 @@ Zero Blocks are `<section class="lemnity-zero-block" data-ln-zero-id="zb_xxx">` 
 | `Account` | OAuth provider accounts (NextAuth) |
 | `Session` | Active sessions (NextAuth) |
 | `PasswordResetToken` | Password reset flow |
+| `EmailVerificationToken` | Email verification token (userId, tokenHash, expiresAt) |
 | `TeamInvitation` | Team member invitations |
 | `RequestLog` / `AuthEventLog` | Request and auth event logs |
+| `VerificationToken` | NextAuth magic-link verification |
 
 ---
 
@@ -388,7 +580,7 @@ VK_CLIENT_ID / VK_CLIENT_SECRET
 YANDEX_CLIENT_ID / YANDEX_CLIENT_SECRET
 
 # Other AI providers
-OPENAI_API_KEY
+OPENAI_API_KEY              # required for embeddings (text-embedding-3-small)
 GEMINI_API_KEY
 GROQ_API_KEY
 
@@ -410,10 +602,14 @@ BILLING_WEBHOOK_SECRET=...
 ADMIN_DEFAULT_EMAIL / ADMIN_DEFAULT_PASSWORD
 ADMIN_BOOTSTRAP_ENABLED=0
 
-# Lemnity AI / builder upstream
+# Lemnity AI / builder upstream (two env naming conventions supported)
 LEMNITY_AI_BRIDGE_ENABLED=1
 NEXT_PUBLIC_LEMNITY_AI_BRIDGE_ENABLED=1
 LEMNITY_AI_UPSTREAM_URL=http://127.0.0.1:8787
+# Alternative Manus naming (also supported):
+MANUS_API_BASE_URL=...
+MANUS_FULL_PARITY_ENABLED=1
+NEXT_PUBLIC_MANUS_FULL_PARITY_ENABLED=1
 
 # Misc
 UNSPLASH_ACCESS_KEY=
@@ -455,6 +651,7 @@ Local PostgreSQL for development via `docker compose`.
 - `findFirst` + `upsert` without `prisma.$transaction()` for share mutations
 - `window.dispatchEvent(new CustomEvent(...))` — use Zustand stores instead
 - Hardcoded magic numbers — use `lib/editor-constants.ts` for editor values
+- Direct AI provider calls — all AI goes through RouterAI gateway (`lib/routerai-client.ts`)
 
 ### Prefer
 
@@ -464,6 +661,8 @@ Local PostgreSQL for development via `docker compose`.
 - Zustand stores (`lib/stores/`) for cross-component state instead of prop drilling
 - `parseBody(req, ZodSchema)` from `lib/api-schemas.ts` for request validation
 - `unknownToErrorMessage(e)` from `lib/unknown-error-message.ts` in catch blocks
+- `withErrorLog(module, handler)` from `lib/with-error-log.ts` for high-traffic API routes
+- `structured-json-ai.ts` for any route that needs structured JSON from AI with model fallback
 
 ### TypeScript
 
@@ -496,7 +695,7 @@ Integration tests (e.g., `agent-routing.integration.test.ts`) may require env va
 
 4. **`dev:clean` script**: Use when Next.js serves stale chunks or shows hydration errors after major refactors — it wipes `.next/` before restarting.
 
-5. **Server external packages**: `esbuild`, `nodemailer`, `@prisma/client` are server-only — never import in client components.
+5. **Server external packages**: `esbuild`, `nodemailer`, `@prisma/client`, `mammoth` are server-only — never import in client components.
 
 6. **CMS cross-resource access**: When operating on `typeId` under a `siteId`, always validate with `requireCmsContentTypeAccess(siteId, typeId, userId)` — not just site access.
 
@@ -507,3 +706,15 @@ Integration tests (e.g., `agent-routing.integration.test.ts`) may require env va
 9. **MANAGER role**: Has granular permissions defined in `lib/staff-permissions.ts`. Check `STAFF_PERMISSIONS` keys before gating admin features — ADMIN bypasses all, MANAGER is checked per-permission.
 
 10. **RouterAI gateway**: All AI calls go through the gateway (`lib/routerai-client.ts`). Direct provider clients (`lib/deepseek-client.ts`) are only used for specific model routing overrides.
+
+11. **Lemnity AI bridge env naming**: Both `LEMNITY_AI_*` and `MANUS_*` env var prefixes are supported (see `lib/lemnity-ai-bridge-config.ts`). The bridge routes `/api/lemnity-ai/*` and `/api/manus/*` to the same upstream.
+
+12. **Embeddings require OpenAI**: `lib/embeddings.ts` uses `OPENAI_API_KEY` for `text-embedding-3-small`. The OCR fallback in `lib/ocr-pdf.ts` uses `ANTHROPIC_API_KEY` directly (not the gateway) via Claude Haiku.
+
+13. **`BuildTemplate` is now DB-backed**: Templates are stored in the `BuildTemplate` table, not just in `lib/build-templates.ts`. The admin panel at `/admin/build-templates` manages them. The static definitions in `lib/build-template-presets/` are seed data.
+
+14. **Analytics BI upload limit**: Single-file uploads for analytics/marketing are capped at 10 MB (`BI_UPLOAD_MAX_BYTES` in `lib/bi-upload-limits.ts`).
+
+15. **Analytics share roles**: `AnalyticsRole` has three levels — `viewer` (KPIs/charts), `investor` (+ investor deck), `analyst` (full access including forecast and benchmarks). Always check role before exposing sensitive BI data.
+
+16. **`.project-storage/` directory**: File-based project storage for messages, files, images, embeddings (used by `lib/project-storage.ts`). Not committed to git. Create via `npm run db:setup` or ensure the directory exists locally.

@@ -110,8 +110,13 @@ export function NewProjectPageWizard() {
     "idle" | "checking" | "available" | "taken" | "error"
   >("idle");
   const [showBrandKit, setShowBrandKit] = useState(false);
+  /** Остаётся в DOM после первого открытия — иначе Radix Select/Dialog ломают React при collapse. */
+  const [brandKitMounted, setBrandKitMounted] = useState(false);
   const [brandKit, setBrandKit] = useState<ProjectBrandKitState>(emptyProjectBrandKit);
   const brandKitHydratedRef = useRef(false);
+  const [mountedBuilderPanels, setMountedBuilderPanels] = useState<Set<BuilderChoice>>(
+    () => new Set()
+  );
 
   useEffect(() => {
     if (!showBrandKit || brandKitHydratedRef.current) return;
@@ -124,6 +129,16 @@ export function NewProjectPageWizard() {
         /* библиотека опциональна при первом открытии */
       });
   }, [showBrandKit]);
+
+  useEffect(() => {
+    if (builderChoice === "none") return;
+    setMountedBuilderPanels((prev) => {
+      if (prev.has(builderChoice)) return prev;
+      const next = new Set(prev);
+      next.add(builderChoice);
+      return next;
+    });
+  }, [builderChoice]);
 
   const trimmedName = displayName.trim();
   const trimmedDomain = finalizeSubdomain(domainInput);
@@ -772,7 +787,15 @@ export function NewProjectPageWizard() {
                     variant="outline"
                     className="h-11 w-full justify-between border-border/80 bg-background/80 px-4 font-medium text-foreground shadow-sm"
                     aria-expanded={showBrandKit}
-                    onClick={() => setShowBrandKit((open) => !open)}
+                    onClick={() => {
+                      setShowBrandKit((open) => {
+                        if (!open) setBrandKitMounted(true);
+                        else if (document.activeElement instanceof HTMLElement) {
+                          document.activeElement.blur();
+                        }
+                        return !open;
+                      });
+                    }}
                   >
                     <span className="flex items-center gap-2">
                       <Palette className="size-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
@@ -786,8 +809,10 @@ export function NewProjectPageWizard() {
                       aria-hidden
                     />
                   </Button>
-                  {showBrandKit ? (
-                    <ProjectBrandKitFields value={brandKit} onChange={setBrandKit} />
+                  {brandKitMounted ? (
+                    <div className={cn(!showBrandKit && "hidden")} aria-hidden={!showBrandKit}>
+                      <ProjectBrandKitFields value={brandKit} onChange={setBrandKit} />
+                    </div>
                   ) : null}
                 </div>
               </CardContent>
@@ -919,17 +944,27 @@ export function NewProjectPageWizard() {
             </div>
           </section>
 
-          {builderChoice === "ai" ? (
+          {mountedBuilderPanels.has("ai") ? (
             <section
-              className="space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6"
+              className={cn(
+                "space-y-5 rounded-xl border border-border/50 bg-muted/10 p-5 sm:p-6",
+                builderChoice !== "ai" && "hidden"
+              )}
+              aria-hidden={builderChoice !== "ai"}
               aria-labelledby="ai-page-templates-heading"
             >
               {renderTemplates()}
             </section>
           ) : null}
 
-          {builderChoice === "marketing" ? (
-            <section className="space-y-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20 sm:p-6">
+          {mountedBuilderPanels.has("marketing") ? (
+            <section
+              className={cn(
+                "space-y-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20 sm:p-6",
+                builderChoice !== "marketing" && "hidden"
+              )}
+              aria-hidden={builderChoice !== "marketing"}
+            >
               <header className="space-y-1">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <TrendingUp className="size-5 text-emerald-600 dark:text-emerald-400" aria-hidden />
@@ -984,8 +1019,14 @@ export function NewProjectPageWizard() {
             </section>
           ) : null}
 
-          {builderChoice === "presentation" ? (
-            <section className="space-y-5 rounded-xl border border-orange-200/60 bg-orange-50/30 p-5 dark:border-orange-800/40 dark:bg-orange-950/20 sm:p-6">
+          {mountedBuilderPanels.has("presentation") ? (
+            <section
+              className={cn(
+                "space-y-5 rounded-xl border border-orange-200/60 bg-orange-50/30 p-5 dark:border-orange-800/40 dark:bg-orange-950/20 sm:p-6",
+                builderChoice !== "presentation" && "hidden"
+              )}
+              aria-hidden={builderChoice !== "presentation"}
+            >
               <header className="space-y-1">
                 <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Presentation className="size-5 text-orange-600 dark:text-orange-400" aria-hidden />
