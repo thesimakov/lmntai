@@ -56,6 +56,7 @@ const EN_TO_RU_MONTHS: Array<[RegExp, string]> = [
 
 function applyPhraseFallback(text: string, lang: UiLanguage): string {
   if (lang === "en") return text;
+  if (lang === "tg") return text;
   let out = text;
   for (const [pattern, replacement] of RU_COMMON_REPLACEMENTS) {
     out = out.replace(pattern, replacement);

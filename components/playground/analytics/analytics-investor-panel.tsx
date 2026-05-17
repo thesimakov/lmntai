@@ -109,7 +109,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       setInvestorReport(parsed.data);
     } catch (err) {
       if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
-        setInvestorError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        setInvestorError(t("analytics_bi_server_unavailable"));
         return;
       }
       setInvestorError(err instanceof Error ? err.message : "Generation failed");
@@ -190,7 +190,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
         <p className="text-base text-muted-foreground text-center leading-relaxed">
           {t("analytics_bi_investor_generating")}
           <br />
-          {t("analytics_bi_forecast_wait")}
+          {t("analytics_bi_investor_wait")}
         </p>
       </div>
     );

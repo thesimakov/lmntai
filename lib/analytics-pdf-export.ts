@@ -250,8 +250,17 @@ function buildPages(d: AnalysisDashboard): string[] {
   return pages;
 }
 
+export type PdfBrandColors = {
+  accentHex?: string;   // replaces D.a1 (#1D4ED8)
+  primaryHex?: string;  // replaces D.a2 (#0F1C35)
+};
+
 // ── Main export ───────────────────────────────────────────────────────────────
-export async function downloadAnalyticsPdf(dashboard: AnalysisDashboard, filename: string): Promise<void> {
+export async function downloadAnalyticsPdf(
+  dashboard: AnalysisDashboard,
+  filename: string,
+  brand?: PdfBrandColors | null
+): Promise<void> {
   const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
     import("html2canvas"),
     import("jspdf"),
@@ -266,7 +275,15 @@ export async function downloadAnalyticsPdf(dashboard: AnalysisDashboard, filenam
   document.body.appendChild(wrapper);
 
   try {
-    const htmlPages = buildPages(dashboard);
+    let htmlPages = buildPages(dashboard);
+    if (brand?.accentHex || brand?.primaryHex) {
+      htmlPages = htmlPages.map((html) => {
+        let out = html;
+        if (brand.accentHex) out = out.replaceAll("#1D4ED8", brand.accentHex);
+        if (brand.primaryHex) out = out.replaceAll("#0F1C35", brand.primaryHex);
+        return out;
+      });
+    }
     for (let i = 0; i < htmlPages.length; i++) {
       wrapper.innerHTML = htmlPages[i]!;
       const el = wrapper.firstElementChild as HTMLElement;

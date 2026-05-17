@@ -122,7 +122,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
       setForecastReport(parsed.data);
     } catch (err) {
       if (err instanceof Error && err.message.trim().toLowerCase() === "failed to fetch") {
-        setForecastError("Сервер временно недоступен. Проверьте соединение и попробуйте снова.");
+        setForecastError(t("analytics_bi_server_unavailable"));
         return;
       }
       setForecastError(

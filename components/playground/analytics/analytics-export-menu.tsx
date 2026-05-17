@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Download, FileText, Link2, Loader2, Presentation, TableIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -19,9 +19,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
 import { useI18n } from "@/components/i18n-provider";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
 import type { AnalysisDashboard } from "@/lib/analytics-schema";
 import type { AnalyticsRole } from "@/lib/analytics-share-contract";
 import { ANALYTICS_ROLES } from "@/lib/analytics-share-contract";
+import type { PdfBrandColors } from "@/lib/analytics-pdf-export";
 
 interface Props {
   projectId: string;
@@ -74,13 +76,30 @@ function dashboardToCsv(dashboard: AnalysisDashboard): string {
 }
 
 export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [loadingPptx, setLoadingPptx] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [shareRole, setShareRole] = useState<AnalyticsRole>("viewer");
   const { dashboard } = useAnalyticsStore();
+  const brandColorsRef = useRef<PdfBrandColors | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/projects/${encodeURIComponent(projectId)}/brand-kit`)
+      .then((r) => r.ok ? r.json() as Promise<{ data: { library: { manifest: { colors: Array<{ hex: string }> } } | null } }> : null)
+      .then((json) => {
+        if (cancelled || !json) return;
+        const colors = json?.data?.library?.manifest?.colors ?? [];
+        brandColorsRef.current = {
+          accentHex: colors[0]?.hex,
+          primaryHex: colors[1]?.hex,
+        };
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [projectId]);
 
   async function createShareLink() {
     setShareLoading(true);
@@ -110,13 +129,23 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
     if (!dashboard) return;
     setLoadingPptx(true);
     try {
-      const res = await fetch(`/api/analytics/${encodeURIComponent(projectId)}/export`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ format: "pptx", dashboard }),
-      });
-      if (!res.ok) throw new Error(t("analytics_bi_export"));
+      const res = await fetch(
+        `/api/analytics/${encodeURIComponent(projectId)}/export?lang=${encodeURIComponent(lang)}`,
+        {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ format: "pptx", dashboard }),
+        }
+      );
+      if (!res.ok) {
+        const message = await readUploadApiErrorMessage(res, {
+          fallback: t("analytics_bi_download_error"),
+          tooLarge: t("analytics_bi_download_error"),
+        });
+        toast.error(message);
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       try {
@@ -127,6 +156,9 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
       } finally {
         URL.revokeObjectURL(url);
       }
+    } catch (err) {
+      console.error("[analytics] PPTX export failed:", err);
+      toast.error(t("analytics_bi_download_error"));
     } finally {
       setLoadingPptx(false);
     }
@@ -139,6 +171,7 @@ export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
       await downloadAnalyticsPdf(
         dashboard,
         `${dashboard.meta.companyName}_${dashboard.meta.period}_analysis`.replace(/\s+/g, "_"),
+        brandColorsRef.current,
       );
     } catch (err) {
       console.error("[analytics] PDF export failed:", err);

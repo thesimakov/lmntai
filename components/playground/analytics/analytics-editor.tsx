@@ -11,6 +11,7 @@ import {
   Upload,
   Bot,
   Target,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsStore } from "@/lib/stores/use-analytics-store";
@@ -24,7 +25,7 @@ import { AnalyticsInvestorPanel } from "./analytics-investor-panel";
 import dynamic from "next/dynamic";
 const AnalyticsForecastPanel = dynamic(
   () => import("./analytics-forecast-panel").then((m) => ({ default: m.AnalyticsForecastPanel })),
-  { ssr: false, loading: () => <div className="p-4 text-xs text-muted-foreground">Загрузка…</div> }
+  { ssr: false, loading: () => <div className="p-4 flex items-center justify-center"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div> }
 );
 import { AnalyticsAgentsPanel } from "./analytics-agents-panel";
 import { AnalyticsBenchmarkPanel } from "./analytics-benchmark-panel";
@@ -59,6 +60,7 @@ export function AnalyticsEditor() {
     setStatus,
     setProgress,
     setError,
+    reset,
   } = useAnalyticsStore();
 
   useEffect(() => {
@@ -83,6 +85,7 @@ export function AnalyticsEditor() {
 
   useEffect(() => {
     if (!projectId) return;
+    reset();
     setProjectId(projectId);
 
     fetch(`/api/analytics/${encodeURIComponent(projectId)}?lang=${encodeURIComponent(lang)}`, {
@@ -97,7 +100,7 @@ export function AnalyticsEditor() {
         }
       })
       .catch(() => {});
-  }, [projectId, lang, setProjectId, setDashboard]);
+  }, [projectId, lang, reset, setProjectId, setDashboard]);
 
   const runAnalysis = useCallback(async () => {
     if (!projectId) {

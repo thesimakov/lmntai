@@ -31,11 +31,12 @@ export function buildPlaygroundBuildEditUrl(opts: {
 }): string {
   const id = opts.projectId.trim();
   const kindSuffix = opts.projectKind ? `&projectKind=${encodeURIComponent(opts.projectKind)}` : "";
-  if (opts.sessionId) {
-    return `/playground/build?sessionId=${encodeURIComponent(opts.sessionId)}${kindSuffix}`;
-  }
   if (opts.preferProjectIdQuery) {
     return `/playground/build?projectId=${encodeURIComponent(id)}${kindSuffix}`;
+  }
+  const session = (opts.sessionId ?? id).trim();
+  if (session) {
+    return `/playground/build?sessionId=${encodeURIComponent(session)}${kindSuffix}`;
   }
   return `/playground/build?sandboxId=${encodeURIComponent(id)}${kindSuffix}`;
 }

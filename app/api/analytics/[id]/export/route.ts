@@ -18,6 +18,9 @@ import {
 } from "@/lib/investor-pptx-export";
 import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 import type { UiLanguage } from "@/lib/i18n";
+import { getProjectBrandKit } from "@/lib/project-brand-kit-service";
+import { readProjectBrandKitAsset } from "@/lib/project-brand-kit-storage";
+import type { PptxBrandAssets } from "@/lib/analytics-pptx-export";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -85,6 +88,25 @@ export async function POST(
   const state = await getSandboxProjectState(projectId);
   const files = state?.files ?? {};
 
+  const brandKit = await getProjectBrandKit(projectId);
+  let pptxBrand: PptxBrandAssets | undefined;
+  if (brandKit) {
+    const primaryHex = brandKit.manifest.colors[0]?.hex;
+    const accentHex = brandKit.manifest.colors[1]?.hex;
+    let logoData: PptxBrandAssets["logoData"] | undefined;
+    const logo = brandKit.manifest.logos[0];
+    if (logo?.fileName) {
+      const buf = await readProjectBrandKitAsset(projectId, logo.fileName);
+      if (buf) {
+        const mime = logo.fileName.endsWith(".png") ? "image/png"
+          : logo.fileName.endsWith(".webp") ? "image/webp"
+          : "image/jpeg";
+        logoData = { base64: buf.toString("base64"), mime };
+      }
+    }
+    pptxBrand = { primaryHex, accentHex, logoData };
+  }
+
   let dashboard: AnalysisDashboard;
   try {
     if (dashboardFromBody) {
@@ -102,7 +124,7 @@ export async function POST(
 
   try {
     if (format === "pptx") {
-      const buffer = await buildAnalysisPptx(dashboard, uiLanguage);
+      const buffer = await buildAnalysisPptx(dashboard, uiLanguage, pptxBrand);
       return pptxResponse(buffer, `${baseFilename}.pptx`);
     }
 

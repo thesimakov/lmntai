@@ -55,7 +55,14 @@ export default function PromptBuildPage() {
   const { data: session } = useSession();
   const { ready: lemnityAiBridgeReady } = useLemnityAiBridgeFromServer();
 
-  const requestedSessionId = searchParams.get("sessionId");
+  const requestedProjectId = useMemo(() => {
+    return (
+      searchParams.get("sessionId")?.trim() ||
+      searchParams.get("projectId")?.trim() ||
+      searchParams.get("sandboxId")?.trim() ||
+      null
+    );
+  }, [searchParams]);
   const requestedProjectKind = searchParams.get("projectKind");
 
   // ── Store ──
@@ -106,10 +113,32 @@ export default function PromptBuildPage() {
   const { sendChat, templatePreviewSandboxIdRef } = useAiSession();
   const { runPromptCoach } = usePromptCoach();
 
+  const ensureBuildSessionId = useCallback(async (): Promise<string | null> => {
+    const existing = useBuildEditorStore.getState().sessionId?.trim();
+    if (existing) return existing;
+
+    const ideaTitle = useBuildEditorStore.getState().idea.trim();
+    const res = await fetch("/api/projects", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: ideaTitle.slice(0, 120) || "New project",
+        preferredEditor: projectKind === "presentation" ? "presentation" : "build",
+      }),
+    });
+    if (!res.ok) return null;
+    const payload = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
+    const id = payload?.project?.id?.trim();
+    if (!id) return null;
+    useBuildEditorStore.getState().setSessionId(id);
+    return id;
+  }, [projectKind]);
+
   // ── ComponentGraph generation (website projectKind) ──
   const sendGenerateGraph = useCallback(async (prompt: string) => {
-    const projectId = useBuildEditorStore.getState().sessionId;
-    if (!projectId) { toast.error("Проект не готов"); return; }
+    const projectId = await ensureBuildSessionId();
+    if (!projectId) { toast.error(t("playground_project_not_ready")); return; }
     const s = useBuildEditorStore.getState();
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     s.setIsGenerating(true);
@@ -137,12 +166,12 @@ export default function PromptBuildPage() {
     } finally {
       s.setIsGenerating(false);
     }
-  }, [t]);
+  }, [ensureBuildSessionId, t]);
 
   // ── SlideGraph generation (presentation projectKind) ──
   const sendGenerateSlides = useCallback(async (prompt: string) => {
-    const projectId = useBuildEditorStore.getState().sessionId;
-    if (!projectId) { toast.error("Проект не готов"); return; }
+    const projectId = await ensureBuildSessionId();
+    if (!projectId) { toast.error(t("playground_project_not_ready")); return; }
     const s = useBuildEditorStore.getState();
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     s.setIsGenerating(true);
@@ -170,7 +199,7 @@ export default function PromptBuildPage() {
     } finally {
       s.setIsGenerating(false);
     }
-  }, [t]);
+  }, [ensureBuildSessionId, t]);
 
   // ── SlideGraph chat (presentation projectKind, after slides generated) ──
   const sendSlidesChat = useCallback(async (text: string) => {
@@ -252,7 +281,7 @@ export default function PromptBuildPage() {
     let cancelled = false;
     void fetch("/api/projects/current", { method: "GET", credentials: "include", cache: "no-store" })
       .then(async (res) => {
-        if (!res.ok || cancelled || requestedSessionId) return;
+        if (!res.ok || cancelled || requestedProjectId) return;
         const payload = (await res.json().catch(() => null)) as { project?: { id?: string } } | null;
         const id = typeof payload?.project?.id === "string" ? payload.project.id.trim() : "";
         if (id && !cancelled) useBuildEditorStore.getState().setSessionId(id);
@@ -260,13 +289,13 @@ export default function PromptBuildPage() {
       .catch(() => {})
       .finally(() => { if (!cancelled) setProjectScopeReady(true); });
     return () => { cancelled = true; };
-  }, [requestedSessionId]);
+  }, [requestedProjectId]);
 
-  // ── Load session from URL param ──
+  // ── Load project id from URL (?sessionId | ?projectId | ?sandboxId) ──
   useEffect(() => {
-    if (!requestedSessionId?.trim()) return;
-    setSessionId(requestedSessionId.trim());
-  }, [requestedSessionId, setSessionId]);
+    if (!requestedProjectId) return;
+    setSessionId(requestedProjectId);
+  }, [requestedProjectId, setSessionId]);
 
   // ── Load projectKind from URL param (e.g. ?projectKind=website) ──
   useEffect(() => {
@@ -315,7 +344,7 @@ export default function PromptBuildPage() {
   useBuildHandoff({
     lemnityAiBridgeReady,
     projectScopeReady,
-    requestedSessionId,
+    requestedProjectId,
     runBuildTemplatePreview,
     runPromptCoach,
   });
@@ -396,7 +425,8 @@ export default function PromptBuildPage() {
 
     // Short-circuit for ComponentGraph website projects — skip Bridge and prompt coach entirely
     if (projectKind === "website") {
-      if (!s.sessionId) { toast.error("Проект не готов"); return; }
+      const projectId = await ensureBuildSessionId();
+      if (!projectId) { toast.error(t("playground_project_not_ready")); return; }
       s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       if (sandboxId) {
         const nodeContext = selectedGraphNodeId ? `[Блок: ${selectedGraphNodeId}] ` : "";
@@ -410,7 +440,8 @@ export default function PromptBuildPage() {
 
     // Short-circuit for SlideGraph presentation projects
     if (projectKind === "presentation") {
-      if (!s.sessionId) { toast.error("Проект не готов"); return; }
+      const projectId = await ensureBuildSessionId();
+      if (!projectId) { toast.error(t("playground_project_not_ready")); return; }
       s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       if (sandboxId) {
         const elemContext = selectedGraphNodeId ? `[Элемент: ${selectedGraphNodeId}] ` : "";
@@ -463,7 +494,7 @@ export default function PromptBuildPage() {
   }, [
     buildTemplate, coachAwaitingConfirm, finalPrompt, idea, isGenerating,
     lemnityAiBridgeReady, messages, pendingTechnicalPrompt, projectKind, runPromptCoach,
-    sandboxId, selectedGraphNodeId, sendChat, sendGenerateGraph, sendGenerateSlides,
+    ensureBuildSessionId, sandboxId, selectedGraphNodeId, sendChat, sendGenerateGraph, sendGenerateSlides,
     sendGraphChat, sendSlidesChat, setIdea, setStage, stage, t,
   ]);
 

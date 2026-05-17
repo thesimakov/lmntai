@@ -3,7 +3,7 @@ import type { AnalysisDashboard, Chart } from "./analytics-schema";
 import type { UiLanguage } from "./i18n";
 
 // ── Corporate Clean Design System ─────────────────────────────────────────────
-const T = {
+const DEFAULT_THEME = {
   bg:     "FFFFFF",
   navy:   "0F1C35",   // primary dark navy
   blue:   "1D4ED8",   // accent blue
@@ -17,6 +17,12 @@ const T = {
   amber:  "D97706",
 };
 
+export type PptxBrandAssets = {
+  primaryHex?: string;
+  accentHex?: string;
+  logoData?: { base64: string; mime: string };
+};
+
 const SW    = 13.33;
 const MX    = 0.48;
 const HY    = 0.56;
@@ -25,7 +31,7 @@ const CY    = HY + 0.10;
 const CW    = SW - MX * 2;
 const SPLIT = 7.8;   // cover: left text panel / right navy panel
 
-const CHART_COLORS = ["1D4ED8", "0F1C35", "3B82F6", "60A5FA", "6B7280", "D1D5DB"];
+const DEFAULT_CHART_COLORS = ["1D4ED8", "0F1C35", "3B82F6", "60A5FA", "6B7280", "D1D5DB"];
 
 // ── Localisation ──────────────────────────────────────────────────────────────
 function i18n(lang: UiLanguage) {
@@ -87,10 +93,27 @@ function analyticsChartToBarData(chart: Chart): BarSeries[] {
     }));
 }
 
+function stripHash(hex: string): string {
+  return hex.startsWith("#") ? hex.slice(1) : hex;
+}
+
 // ── Main export ───────────────────────────────────────────────────────────────
-export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLanguage = "ru"): Promise<Buffer> {
+export async function buildAnalysisPptx(
+  dashboard: AnalysisDashboard,
+  lang: UiLanguage = "ru",
+  brand?: PptxBrandAssets | null
+): Promise<Buffer> {
   const instance = new PptxGenJS();
   instance.layout = "LAYOUT_WIDE";
+
+  const T = {
+    ...DEFAULT_THEME,
+    ...(brand?.primaryHex ? { navy: stripHash(brand.primaryHex), text: stripHash(brand.primaryHex) } : {}),
+    ...(brand?.accentHex ? { blue: stripHash(brand.accentHex) } : {}),
+  };
+  const CHART_COLORS = brand?.accentHex
+    ? [stripHash(brand.accentHex), T.navy, ...DEFAULT_CHART_COLORS.slice(2)]
+    : DEFAULT_CHART_COLORS;
 
   const d      = dashboard;
   const tx     = i18n(lang);
@@ -125,9 +148,13 @@ export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLa
     s.addShape(instance.ShapeType.ellipse, { x: SPLIT + 0.38, y: 6.42, w: 0.14, h: 0.14, fill: { color: "FFFFFF", transparency: 60 }, line: { type: "none" } });
     s.addShape(instance.ShapeType.ellipse, { x: SPLIT + 0.60, y: 6.44, w: 0.10, h: 0.10, fill: { color: "FFFFFF", transparency: 70 }, line: { type: "none" } });
 
-    // Logo on right panel (white, frosted)
-    s.addShape(instance.ShapeType.rect, { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fill: { color: "FFFFFF", transparency: 88 }, line: { color: "FFFFFF", width: 0.75, transparency: 60 } });
-    s.addText("LOGO", { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fontSize: 9, color: "FFFFFF", fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    // Logo on right panel
+    if (brand?.logoData) {
+      s.addImage({ data: `data:${brand.logoData.mime};base64,${brand.logoData.base64}`, x: SPLIT + 0.36, y: 0.20, w: 1.9, h: 0.52, sizing: { type: "contain", w: 1.9, h: 0.52 } });
+    } else {
+      s.addShape(instance.ShapeType.rect, { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fill: { color: "FFFFFF", transparency: 88 }, line: { color: "FFFFFF", width: 0.75, transparency: 60 } });
+      s.addText("LOGO", { x: SPLIT + 0.36, y: 0.22, w: 1.9, h: 0.48, fontSize: 9, color: "FFFFFF", fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    }
     // Web on right panel
     s.addText(web, { x: SPLIT + 0.36, y: 6.58, w: SW - SPLIT - 0.72, h: 0.26, fontSize: 7.5, color: "FFFFFF", fontFace: "Calibri", transparency: 40 });
 
@@ -149,8 +176,12 @@ export async function buildAnalysisPptx(dashboard: AnalysisDashboard, lang: UiLa
 
   const frame = (s: PptxGenJS.Slide, dn: string, pg: number, web: string) => {
     // Logo box
-    s.addShape(instance.ShapeType.rect, { x: MX, y: 0.12, w: 1.6, h: 0.36, fill: { color: T.panel }, line: { color: T.border, width: 0.5 } });
-    s.addText("LOGO", { x: MX, y: 0.12, w: 1.6, h: 0.36, fontSize: 8, color: T.navy, fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    if (brand?.logoData) {
+      s.addImage({ data: `data:${brand.logoData.mime};base64,${brand.logoData.base64}`, x: MX, y: 0.12, w: 1.6, h: 0.36, sizing: { type: "contain", w: 1.6, h: 0.36 } });
+    } else {
+      s.addShape(instance.ShapeType.rect, { x: MX, y: 0.12, w: 1.6, h: 0.36, fill: { color: T.panel }, line: { color: T.border, width: 0.5 } });
+      s.addText("LOGO", { x: MX, y: 0.12, w: 1.6, h: 0.36, fontSize: 8, color: T.navy, fontFace: "Calibri", align: "center", valign: "middle", bold: true, charSpacing: 2 });
+    }
     // Website
     s.addText(web, { x: SW - MX - 3.0, y: 0.16, w: 2.6, h: 0.28, fontSize: 8.5, color: T.mute, fontFace: "Calibri", align: "right" });
     // Separator
