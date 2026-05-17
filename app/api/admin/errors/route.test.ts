@@ -90,8 +90,6 @@ describe("GET /api/admin/errors", () => {
     const req = makeRequest({ resolved: "false" });
     await GET(req as never);
 
-    const [[findManyCall]] = mockTransaction.mock.calls as [[Array<{ args?: { where?: { resolved?: boolean } } }>]];
-    const firstQuery = findManyCall[0] as { args?: { where?: { resolved?: boolean } } } | undefined;
     // $transaction receives an array of promises — check the where clause via the findMany mock
     expect(prisma.errorLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ resolved: false }) }),

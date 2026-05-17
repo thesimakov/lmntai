@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import type { Prisma } from "@prisma/client";
 
-import { apiOk, apiGuardError } from "@/lib/api-response";
+import { apiOk, apiError, apiGuardError } from "@/lib/api-response";
 import { requireAdminUser } from "@/lib/auth-guards";
 import { prisma } from "@/lib/prisma";
 
@@ -27,6 +27,9 @@ export async function GET(req: NextRequest): Promise<Response> {
   if (errorType) where.errorType = errorType;
   if (module) where.module = module;
   if (resolvedParam !== null) where.resolved = resolvedParam === "true";
+  if (from && isNaN(new Date(from).getTime())) return apiError("Invalid from date", 400);
+  if (to && isNaN(new Date(to).getTime())) return apiError("Invalid to date", 400);
+
   if (from || to) {
     where.createdAt = {};
     if (from) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(from);
