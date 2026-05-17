@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { buildPayload, errorTracker } from "./error-tracker";
+import { buildPayload, errorTracker, ErrorTracker } from "./error-tracker";
 
 describe("buildPayload", () => {
   it("truncates message longer than 1000 chars", () => {
@@ -66,5 +66,33 @@ describe("errorTracker", () => {
     // Access internal queue via cast to verify enqueue occurred
     const tracker = errorTracker as unknown as { queue: unknown[] };
     expect(tracker.queue.length).toBeGreaterThan(0);
+  });
+
+  it("interceptFetch reports 5xx responses", async () => {
+    const tracker = new ErrorTracker();
+    const reported: import("./error-tracker-types").ErrorReportPayload[] = [];
+    tracker.report = (p) => { reported.push(p); };
+    const mockFetch = async () => new Response(null, { status: 500 });
+    vi.stubGlobal("window", {
+      fetch: mockFetch,
+      location: { pathname: "/", href: "http://localhost/" },
+      innerWidth: 1280,
+      innerHeight: 720,
+    });
+    tracker.interceptFetch();
+    await window.fetch("/some/api");
+    expect(reported.length).toBe(1);
+    expect(reported[0]!.errorType).toBe("api_5xx");
+  });
+
+  it("enqueue drops oldest when queue is full", async () => {
+    const tracker = new ErrorTracker();
+    vi.stubGlobal("navigator", { sendBeacon: () => false });
+    vi.stubGlobal("fetch", async () => { throw new Error("offline"); });
+    const payload = buildPayload({ source: "client", errorType: "js_exception", message: "x" });
+    for (let i = 0; i < 21; i++) tracker.report({ ...payload, message: `msg ${i}` });
+    await new Promise((r) => setTimeout(r, 0));
+    const q = (tracker as unknown as { queue: unknown[] }).queue;
+    expect(q.length).toBeLessThanOrEqual(20);
   });
 });

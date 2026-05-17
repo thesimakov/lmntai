@@ -7,6 +7,8 @@ const STACK_MAX = 8_000;
 const MAX_QUEUE = 20;
 const ENDPOINT  = "/api/errors/report";
 
+let _originalFetch: typeof fetch | undefined;
+
 export type RawInput = {
   source:      ErrorSource;
   errorType:   ErrorType;
@@ -41,7 +43,7 @@ export function buildPayload(input: RawInput): ErrorReportPayload {
   };
 }
 
-class ErrorTracker {
+export class ErrorTracker {
   private initialized = false;
   private queue: ErrorReportPayload[] = [];
 
@@ -58,24 +60,24 @@ class ErrorTracker {
   }
 
   interceptFetch(): void {
-    const original = window.fetch.bind(window);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
+    _originalFetch = window.fetch.bind(window);
+    const original = _originalFetch;
+    window.fetch = async (...args: Parameters<typeof fetch>): Promise<Response> => {
+      const input = args[0];
+      const href =
+        typeof input === "string"  ? input
+        : input instanceof URL     ? input.href
+        : input.url;
+      if (href.endsWith(ENDPOINT)) return original(...args);
       const response = await original(...args);
       if (!response.ok && response.status >= 400) {
-        const input = args[0];
-        const url =
-          typeof input === "string"         ? input
-          : input instanceof URL            ? input.href
-          : input instanceof Request        ? input.url
-          : "unknown";
         const init = args[1];
         const method = (typeof init === "object" && init?.method) ? init.method : "GET";
         this.report(buildPayload({
           source:     "client",
           errorType:  "api_5xx",
           message:    `HTTP ${response.status} ${response.statusText || "Error"}`,
-          url,
+          url:        href,
           statusCode: response.status,
           meta:       { method },
         }));
@@ -120,7 +122,7 @@ class ErrorTracker {
           return;
         }
       }
-      void fetch(ENDPOINT, {
+      void (_originalFetch ?? window.fetch)(ENDPOINT, {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body,
