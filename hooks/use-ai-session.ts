@@ -17,7 +17,11 @@ import {
   looksLikeHtmlGatewayGarbage,
 } from "@/lib/lemnity-bridge-error-format";
 import { LEMNITY_AI_BRIDGE_API_PREFIX } from "@/lib/lemnity-ai-bridge-config";
-import { writeStoredLemnityBuildManusSessionId } from "@/lib/lemnity-ai-build-session-storage";
+import {
+  clearStoredLemnityBuildManusSessionId,
+  readStoredLemnityBuildManusSessionId,
+  writeStoredLemnityBuildManusSessionId,
+} from "@/lib/lemnity-ai-build-session-storage";
 import { useBuildEditorStore, type ProjectSnapshotMeta } from "@/lib/stores/use-build-editor-store";
 import { useSandboxFilesStore } from "@/lib/stores/use-sandbox-files-store";
 
@@ -177,7 +181,12 @@ export function useAiSession() {
       void fetch(
         `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sid)}`,
         { method: "GET", credentials: "include", headers: { "X-Project-Id": sid } }
-      );
+      ).then((res) => {
+        if (res.status === 404) {
+          const stored = readStoredLemnityBuildManusSessionId();
+          if (stored === sid) clearStoredLemnityBuildManusSessionId();
+        }
+      });
     });
   }, [store]);
 
@@ -285,7 +294,13 @@ export function useAiSession() {
             headers: { "X-Project-Id": sessionId },
           }
         );
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (res.status === 404) {
+            const stored = readStoredLemnityBuildManusSessionId();
+            if (stored === sessionId) clearStoredLemnityBuildManusSessionId();
+          }
+          return;
+        }
         if (!mountedRef.current) return;
         const envelope = (await res.json()) as LemnityAiBridgeEnvelope<LemnityAiSessionPayload>;
         const payload = envelope?.data;

@@ -119,11 +119,84 @@ export async function getLemnityAiSessionForUser(userId: string, upstreamSession
 }
 
 export async function ensureLemnityAiSessionOwnership(userId: string, upstreamSessionId: string) {
-  const row = await getLemnityAiSessionForUser(userId, upstreamSessionId);
-  if (!row) {
+  const access = await resolveLemnityAiSessionAccess(userId, upstreamSessionId);
+  if (!access) {
     throw new Error("LEMNITY_AI_SESSION_NOT_FOUND");
   }
-  return row;
+  return access.link;
+}
+
+/**
+ * Разрешает доступ к сессии моста по id из URL (manusSessionId) или по projectId дашборда.
+ * На кастомном домене middleware задаёт x-project-id опубликованного проекта, а путь — upstream session id.
+ */
+export async function resolveLemnityAiSessionAccess(
+  userId: string,
+  pathSessionId: string,
+  headerProjectId?: string
+): Promise<{ link: NonNullable<Awaited<ReturnType<typeof getLemnityAiSessionForUser>>>; upstreamSessionId: string } | null> {
+  const pathId = pathSessionId.trim();
+  if (!pathId) return null;
+
+  const headerId = headerProjectId?.trim() || "";
+
+  let link = await getLemnityAiSessionForUser(userId, pathId);
+  if (link) {
+    return { link, upstreamSessionId: link.manusSessionId };
+  }
+
+  link = await prisma.manusSessionLink.findFirst({
+    where: { userId, projectId: pathId }
+  });
+  if (link) {
+    return { link, upstreamSessionId: link.manusSessionId };
+  }
+
+  if (headerId && headerId !== pathId) {
+    link = await prisma.manusSessionLink.findFirst({
+      where: { userId, projectId: headerId, manusSessionId: pathId }
+    });
+    if (link) {
+      return { link, upstreamSessionId: link.manusSessionId };
+    }
+    link = await prisma.manusSessionLink.findFirst({
+      where: { userId, projectId: headerId }
+    });
+    if (link && (link.manusSessionId === pathId || link.projectId === pathId)) {
+      return { link, upstreamSessionId: link.manusSessionId };
+    }
+  }
+
+  const ownedProject = await prisma.project.findFirst({
+    where: { id: pathId, ownerId: userId },
+    select: { id: true }
+  });
+  if (ownedProject) {
+    try {
+      link = await createLemnityAiSessionLink(userId, pathId, { hostProjectId: ownedProject.id });
+      return { link, upstreamSessionId: link.manusSessionId };
+    } catch (error) {
+      if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_ALREADY_OWNED") {
+        link = await getLemnityAiSessionForUser(userId, pathId);
+        if (link) {
+          return { link, upstreamSessionId: link.manusSessionId };
+        }
+      }
+      throw error;
+    }
+  }
+
+  return null;
+}
+
+export function lemnityAiUpstreamPathForSession(
+  path: string[],
+  effectiveUpstreamSessionId: string
+): string {
+  if (path[0] === "sessions" && path.length >= 2 && path[1] !== effectiveUpstreamSessionId) {
+    return `/${["sessions", effectiveUpstreamSessionId, ...path.slice(2)].join("/")}`;
+  }
+  return `/${path.join("/")}`;
 }
 
 /** HTML-артефакт превью (artifact_…) должен совпадать с привязкой сессии пользователя. */

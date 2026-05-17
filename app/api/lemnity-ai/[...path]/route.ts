@@ -13,7 +13,8 @@ import {
   chargeLemnityAiChatUsage,
   createLemnityAiSessionLink,
   deleteLemnityAiSessionForUser,
-  ensureLemnityAiSessionOwnership,
+  lemnityAiUpstreamPathForSession,
+  resolveLemnityAiSessionAccess,
   ensureUserCanEditLemnityArtifact,
   listLemnityAiSessionsForProject,
   listLemnityAiSessionsForUser,
@@ -456,36 +457,49 @@ async function handleLemnityAiBridge(req: NextRequest, ctx: RouteCtx): Promise<R
     return passthrough(upstream);
   }
 
-  const upstreamSessionId = path[1];
-  const resolvedProject = await resolveProjectFromRequest(req);
+  const pathSessionId = path[1];
   const requestProjectId = req.headers.get("x-project-id")?.trim() ?? "";
+  const access = await resolveLemnityAiSessionAccess(user.id, pathSessionId, requestProjectId);
+  if (!access) {
+    return apiError("Session not found", 404, { code: "LEMNITY_AI_SESSION_NOT_FOUND" });
+  }
+  const { link: sessionLink } = access;
+  const upstreamSessionId = access.upstreamSessionId;
+
+  const resolvedProject = await resolveProjectFromRequest(req);
   if (resolvedProject) {
-    if (resolvedProject.id !== upstreamSessionId) {
+    if (resolvedProject.ownerId !== user.id) {
       return apiError("Not found", 404);
     }
-  } else if (!requestProjectId || requestProjectId !== upstreamSessionId) {
-    return apiError("project_id is required and must match session id", 400);
-  }
-  try {
-    await ensureLemnityAiSessionOwnership(user.id, upstreamSessionId);
-  } catch (error) {
-    if (error instanceof Error && error.message === "LEMNITY_AI_SESSION_NOT_FOUND") {
-      return apiError("Session not found", 404);
+    if (
+      sessionLink.projectId !== resolvedProject.id &&
+      sessionLink.manusSessionId !== resolvedProject.id
+    ) {
+      return apiError("Not found", 404);
     }
-    throw error;
+  } else {
+    const headerOk =
+      !requestProjectId ||
+      requestProjectId === pathSessionId ||
+      requestProjectId === upstreamSessionId ||
+      requestProjectId === sessionLink.projectId;
+    if (!headerOk) {
+      return apiError("project_id is required and must match session", 400);
+    }
   }
 
   const hostMigrateRaw = req.headers.get("x-lemnity-host-project-id")?.trim() ?? "";
   const hostMigrateProject =
     hostMigrateRaw &&
     hostMigrateRaw !== upstreamSessionId &&
+    hostMigrateRaw !== pathSessionId &&
     (await prisma.project.findFirst({
       where: { id: hostMigrateRaw, ownerId: user.id },
       select: { id: true }
     }));
 
   const tail = path.slice(2);
-  const upstreamPath = toUpstreamApiPath(path);
+  const upstreamPath = lemnityAiUpstreamPathForSession(path, upstreamSessionId);
 
   if (tail.length === 0 && req.method === "GET") {
     if (hostMigrateProject) {

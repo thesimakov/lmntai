@@ -240,11 +240,7 @@ export async function main() {
 
     if (method === "GET" && parts.length === 2 && parts[0] === "sessions") {
       const id = parts[1];
-      const rec = await store.getSession(id);
-      if (!rec) {
-        json(res, 404, { code: 404, msg: "not_found", data: null });
-        return;
-      }
+      const rec = await store.ensureSession(id);
       json(res, 200, envelope(toEnvelopeData(rec)));
       return;
     }

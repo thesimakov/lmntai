@@ -5,6 +5,8 @@ import { ARTIFACT_MIME_HTML } from "./types.js";
 
 export interface SessionStore {
   createSession(): Promise<string>;
+  /** Создаёт пустую сессию с заданным id, если её ещё нет (восстановление после рестарта in-memory store). */
+  ensureSession(id: string): Promise<SessionRecord>;
   getSession(id: string): Promise<SessionRecord | null>;
   replaceSession(rec: SessionRecord): Promise<void>;
   deleteSession(id: string): Promise<void>;
@@ -33,6 +35,14 @@ export class MemorySessionStore implements SessionStore {
     const id = randomUUID();
     this.map.set(id, emptyRecord(id));
     return id;
+  }
+
+  async ensureSession(id: string): Promise<SessionRecord> {
+    const existing = await this.getSession(id);
+    if (existing) return existing;
+    const rec = emptyRecord(id);
+    this.map.set(id, rec);
+    return structuredClone(rec);
   }
 
   async getSession(id: string): Promise<SessionRecord | null> {
@@ -137,6 +147,14 @@ export class PgSessionStore implements SessionStore {
       [id, JSON.stringify(rec)]
     );
     return id;
+  }
+
+  async ensureSession(id: string): Promise<SessionRecord> {
+    const existing = await this.getSession(id);
+    if (existing) return existing;
+    const rec = emptyRecord(id);
+    await this.replaceSession(rec);
+    return rec;
   }
 
   async getSession(id: string): Promise<SessionRecord | null> {

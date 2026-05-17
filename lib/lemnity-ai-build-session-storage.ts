@@ -16,10 +16,22 @@ export function readStoredLemnityBuildManusSessionId(): string | null {
 export function writeStoredLemnityBuildManusSessionId(sessionId: string): void {
   if (typeof window === "undefined") return;
   const s = sessionId.trim();
-  if (!s) return;
+  if (!s) {
+    clearStoredLemnityBuildManusSessionId();
+    return;
+  }
   try {
     sessionStorage.setItem(LEMNITY_BUILD_MANUS_SESSION_STORAGE_KEY, s);
   } catch {
     /* quota / private mode */
+  }
+}
+
+export function clearStoredLemnityBuildManusSessionId(): void {
+  if (typeof window === "undefined") return;
+  try {
+    sessionStorage.removeItem(LEMNITY_BUILD_MANUS_SESSION_STORAGE_KEY);
+  } catch {
+    /* private mode */
   }
 }
