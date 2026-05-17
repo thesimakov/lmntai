@@ -5,6 +5,7 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { buildCmsPagePath, buildPageDocumentFromCanvas, normalizeCanvasSnapshot, normalizeCmsSlug, requireCmsSiteAccess } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
+import { withErrorLog } from "@/lib/with-error-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -149,5 +150,5 @@ async function createPage(
   }
 }
 
-export const GET = withApiLogging("/api/cms/sites/[siteId]/pages", listPages);
-export const POST = withApiLogging("/api/cms/sites/[siteId]/pages", createPage);
+export const GET = withApiLogging("/api/cms/sites/[siteId]/pages", withErrorLog("cms", listPages));
+export const POST = withApiLogging("/api/cms/sites/[siteId]/pages", withErrorLog("cms", createPage));

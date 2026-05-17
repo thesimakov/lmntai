@@ -17,6 +17,7 @@ import { checkProjectCreationAllowed } from "@/lib/project-limits";
 import { resolveProjectFromRequest } from "@/lib/project-domain-resolution";
 import { appendProjectMessage } from "@/lib/project-storage";
 import { withApiLogging } from "@/lib/with-api-logging";
+import { withErrorLog } from "@/lib/with-error-log";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
@@ -291,5 +292,5 @@ async function postGenerateStream(req: NextRequest) {
   });
 }
 
-export const POST = withApiLogging("/api/generate-stream", postGenerateStream);
+export const POST = withApiLogging("/api/generate-stream", withErrorLog("build_editor", postGenerateStream));
 

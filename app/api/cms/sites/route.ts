@@ -5,6 +5,7 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { ensureCmsSiteForProject } from "@/lib/cms-core";
 import { prisma } from "@/lib/prisma";
 import { withApiLogging } from "@/lib/with-api-logging";
+import { withErrorLog } from "@/lib/with-error-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,5 +57,5 @@ async function createOrEnsureSite(req: NextRequest) {
   }
 }
 
-export const GET = withApiLogging("/api/cms/sites", listSites);
-export const POST = withApiLogging("/api/cms/sites", createOrEnsureSite);
+export const GET = withApiLogging("/api/cms/sites", withErrorLog("cms", listSites));
+export const POST = withApiLogging("/api/cms/sites", withErrorLog("cms", createOrEnsureSite));

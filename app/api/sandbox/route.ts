@@ -12,6 +12,7 @@ import { injectDetailsTabsIntoHtmlDocument } from "@/lib/lemnity-details-tabs-ru
 import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
 import { isLikelySandboxPreviewHtml } from "@/lib/sandbox-preview-html-detect";
 import { withApiLogging } from "@/lib/with-api-logging";
+import { withErrorLog } from "@/lib/with-error-log";
 
 export const runtime = "nodejs";
 
@@ -125,5 +126,5 @@ async function patchCurrentSandbox(req: NextRequest) {
   });
 }
 
-export const GET = withApiLogging("/api/sandbox", getCurrentSandbox);
-export const PATCH = withApiLogging("/api/sandbox", patchCurrentSandbox);
+export const GET = withApiLogging("/api/sandbox", withErrorLog("sandbox", getCurrentSandbox));
+export const PATCH = withApiLogging("/api/sandbox", withErrorLog("sandbox", patchCurrentSandbox));

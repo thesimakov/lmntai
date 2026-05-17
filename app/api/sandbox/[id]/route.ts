@@ -19,6 +19,7 @@ import { resolveCmsFormBridgeContextByProjectId } from "@/lib/cms-sandbox-form-s
 import { SANDBOX_EMPTY_PREVIEW_HTML } from "@/lib/sandbox-empty-preview-html";
 import { isLikelySandboxPreviewHtml } from "@/lib/sandbox-preview-html-detect";
 import { withApiLogging } from "@/lib/with-api-logging";
+import { withErrorLog } from "@/lib/with-error-log";
 
 export const runtime = "nodejs";
 
@@ -250,5 +251,5 @@ async function patchSandbox(
   });
 }
 
-export const GET = withApiLogging("/api/sandbox/[id]", getSandbox);
-export const PATCH = withApiLogging("/api/sandbox/[id]", patchSandbox);
+export const GET = withApiLogging("/api/sandbox/[id]", withErrorLog("sandbox", getSandbox));
+export const PATCH = withApiLogging("/api/sandbox/[id]", withErrorLog("sandbox", patchSandbox));
