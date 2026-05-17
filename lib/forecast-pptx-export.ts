@@ -82,12 +82,21 @@ function i18n(lang: UiLanguage) {
 }
 
 // ── Chart helpers ─────────────────────────────────────────────────────────────
+function formatMetricValue(unit: string, value: number): string {
+  const n = Number.isFinite(value) ? value : 0;
+  return `${unit}${n.toLocaleString("ru-RU")}`;
+}
+
 function metricToLineSeries(metric: ForecastMetric) {
   const hist = metric.points.filter((p) => p.isHistorical);
   const fore = metric.points.filter((p) => !p.isHistorical);
+  const labels = [...new Set([...hist.map((p) => p.period), ...fore.map((p) => p.period)])];
+  const histValues = labels.map((period) => hist.find((p) => p.period === period)?.value ?? null);
+  const foreValues = labels.map((period) => fore.find((p) => p.period === period)?.value ?? null);
   return {
-    historical: { name: "", labels: hist.map((p) => p.period), values: hist.map((p) => p.value) },
-    forecast:   { name: "", labels: fore.map((p) => p.period), values: fore.map((p) => p.value) },
+    labels,
+    historical: { name: "", labels, values: histValues },
+    forecast: { name: "", labels, values: foreValues },
   };
 }
 
@@ -148,17 +157,16 @@ export async function buildForecastPptx(report: ForecastReport, dashboard: Analy
 
     const chartY = contentY + 0.54;
     const chartH = FY - chartY - 0.12;
-    const { historical, forecast } = metricToLineSeries(metric);
+    const { labels: allLabels, historical, forecast } = metricToLineSeries(metric);
     historical.name = tx.historical;
-    forecast.name   = tx.forecast;
-    const allLabels  = [...historical.labels, ...forecast.labels];
-    const histValues = allLabels.map((l) => { const idx = historical.labels.indexOf(l); return idx >= 0 ? historical.values[idx]! : 0; });
-    const foreValues = allLabels.map((l) => { const idx = forecast.labels.indexOf(l);  return idx >= 0 ? forecast.values[idx]!  : 0; });
+    forecast.name = tx.forecast;
+    const histValues = historical.values.map((v) => (v === null ? 0 : v));
+    const foreValues = forecast.values.map((v) => (v === null ? 0 : v));
 
     if (allLabels.length >= 2) {
       s.addChart(instance.ChartType.line, [
         { name: tx.historical, labels: allLabels, values: histValues },
-        { name: tx.forecast,   labels: allLabels, values: foreValues },
+        { name: tx.forecast, labels: allLabels, values: foreValues },
       ], {
         x: MX, y: chartY, w: CW, h: chartH,
         lineDataSymbol: "none", lineSmooth: false,
@@ -177,7 +185,7 @@ export async function buildForecastPptx(report: ForecastReport, dashboard: Analy
         ],
         ...metric.points.map((p, ri) => [
           { text: p.period,   options: { color: T.sub, fill: { color: ri % 2 === 0 ? T.panel : T.bg } } },
-          { text: `${metric.unit}${p.value.toLocaleString()}`, options: { color: T.sub, fill: { color: ri % 2 === 0 ? T.panel : T.bg } } },
+          { text: formatMetricValue(metric.unit, p.value), options: { color: T.sub, fill: { color: ri % 2 === 0 ? T.panel : T.bg } } },
           { text: p.isHistorical ? tx.historical : tx.forecast, options: { color: p.isHistorical ? T.mute : T.blue, fill: { color: ri % 2 === 0 ? T.panel : T.bg } } },
         ]),
       ];
@@ -253,7 +261,10 @@ export async function buildForecastPptx(report: ForecastReport, dashboard: Analy
       s.addShape(instance.ShapeType.rect, { x: MX, y: yPos, w: CW, h: 0.84, fill: { color: T.bg }, line: { color: T.border, width: 0.75 } });
       s.addShape(instance.ShapeType.rect, { x: MX, y: yPos, w: 0.06, h: 0.84, fill: { color: T.blue }, line: { type: "none" } });
       s.addText(metric.label, { x: MX + 0.14, y: yPos + 0.10, w: 3.0, h: 0.34, fontSize: 13, bold: true, color: T.navy, fontFace: "Calibri" });
-      s.addText(`${metric.unit}${lastPoint?.value.toLocaleString() ?? "—"} ${tx.projected}`, { x: MX + 3.3, y: yPos + 0.10, w: 3.5, h: 0.34, fontSize: 13, color: trendColor, fontFace: "Calibri" });
+      s.addText(
+        lastPoint ? `${formatMetricValue(metric.unit, lastPoint.value)} ${tx.projected}` : "—",
+        { x: MX + 3.3, y: yPos + 0.10, w: 3.5, h: 0.34, fontSize: 13, color: trendColor, fontFace: "Calibri" }
+      );
       if (metric.projectedCagr) {
         s.addText(metric.projectedCagr, { x: MX + 6.9, y: yPos + 0.10, w: 2.5, h: 0.34, fontSize: 12, color: T.blue, fontFace: "Calibri" });
       }

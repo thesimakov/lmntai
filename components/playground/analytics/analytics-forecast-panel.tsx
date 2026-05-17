@@ -208,18 +208,18 @@ function ReadyState({
 
   return (
     <div className="flex flex-col gap-3 py-3">
-      {/* Metric selector pills */}
-      <div className="flex flex-wrap gap-1 p-3 pb-0">
+      {/* Metric selector — vertical list */}
+      <div className="flex flex-col gap-1.5 px-3 pb-0">
         {report.metrics.map((m, i) => (
           <button
             key={m.key}
             type="button"
             onClick={() => setSelectedMetric(i)}
             className={cn(
-              "rounded-full px-2.5 py-0.5 text-[11px] font-medium border transition-colors",
+              "w-full rounded-md px-3 py-2 text-left text-base font-medium border transition-colors",
               selectedMetric === i
                 ? "bg-primary text-primary-foreground border-primary"
-                : "border-border text-muted-foreground hover:text-foreground"
+                : "border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
             )}
           >
             {localizedMetricLabel(m, lang)}
@@ -235,7 +235,7 @@ function ReadyState({
             type="button"
             onClick={() => setHorizon(h)}
             className={cn(
-              "flex-1 rounded text-[11px] py-0.5 border transition-colors",
+              "flex-1 rounded-md text-base py-1.5 border transition-colors",
               horizon === h
                 ? "bg-primary/10 border-primary/40 text-primary"
                 : "border-border text-muted-foreground hover:text-foreground"
@@ -248,20 +248,20 @@ function ReadyState({
 
       {/* Chart */}
       <div className="px-3">
-        <ResponsiveContainer width="100%" height={160}>
+        <ResponsiveContainer width="100%" height={240}>
           <ComposedChart
             data={chartData}
             margin={CHART_MARGIN}
           >
             <XAxis
               dataKey="period"
-              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               tickLine={false}
               axisLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
-              tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               tickLine={false}
               axisLine={false}
               tickFormatter={(v: number) =>
@@ -272,7 +272,7 @@ function ReadyState({
               contentStyle={{
                 background: "hsl(var(--card))",
                 border: "1px solid hsl(var(--border))",
-                fontSize: 11,
+                fontSize: 14,
               }}
               labelStyle={{ color: "hsl(var(--foreground))" }}
             />
@@ -323,7 +323,7 @@ function ReadyState({
       <div className="px-3 flex items-center justify-between">
         <span
           className={cn(
-            "text-[11px] font-medium",
+            "text-base font-medium",
             metric.trend === "up"
               ? "text-green-500"
               : metric.trend === "down"
@@ -337,7 +337,7 @@ function ReadyState({
       </div>
 
       {/* Narrative */}
-      <p className="px-3 text-[11px] text-muted-foreground leading-relaxed">
+      <p className="px-3 text-base text-muted-foreground leading-relaxed">
         {metric.narrative}
       </p>
 
@@ -346,7 +346,7 @@ function ReadyState({
         <Button
           size="sm"
           variant="outline"
-          className="w-full gap-1.5 text-xs"
+          className="w-full gap-1.5 text-base h-10"
           disabled={downloading}
           onClick={async () => {
             setDownloading(true);
@@ -376,7 +376,7 @@ function ReadyState({
           {t("analytics_bi_forecast_download")}
         </Button>
         {downloadError && (
-          <p className="text-xs text-red-500">{downloadError}</p>
+          <p className="text-base text-red-500">{downloadError}</p>
         )}
       </div>
 
@@ -384,7 +384,7 @@ function ReadyState({
       <Button
         variant="ghost"
         size="sm"
-        className="mx-3 gap-1.5 text-xs text-muted-foreground"
+        className="mx-3 gap-1.5 text-base text-muted-foreground h-10"
         onClick={() => void handleGenerate()}
       >
         <ChevronRight className="w-3 h-3" />

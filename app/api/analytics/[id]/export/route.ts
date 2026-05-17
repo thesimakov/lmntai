@@ -7,7 +7,8 @@ import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema, type AnalysisDashboard } from "@/lib/analytics-schema";
 import { investorReportSchema } from "@/lib/investor-schema";
-import { forecastReportSchema } from "@/lib/forecast-schema";
+import { forecastReportSchema, type ForecastReport } from "@/lib/forecast-schema";
+import { normalizeForecastReport } from "@/lib/forecast-report-normalize";
 import { buildAnalysisPptx } from "@/lib/analytics-pptx-export";
 import { buildForecastPptx } from "@/lib/forecast-pptx-export";
 import {
@@ -47,6 +48,14 @@ function pptxResponse(buffer: Buffer, filename: string): Response {
   return apiFile(buffer, filename, PPTX_MIME);
 }
 
+function parseForecastReport(raw: unknown): ForecastReport {
+  const strict = forecastReportSchema.safeParse(raw);
+  if (strict.success) return strict.data;
+  const repaired = normalizeForecastReport(raw);
+  if (repaired) return repaired;
+  throw new Error("Forecast data is corrupted.");
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -77,16 +86,16 @@ export async function POST(
   const files = state?.files ?? {};
 
   let dashboard: AnalysisDashboard;
-  if (dashboardFromBody) {
-    dashboard = analysisDashboardSchema.parse(dashboardFromBody);
-  } else {
-    const rawDashboard = resolveAnalysisRaw(files, uiLanguage);
-    if (!rawDashboard) return apiError("No analysis found", 404);
-    try {
+  try {
+    if (dashboardFromBody) {
+      dashboard = analysisDashboardSchema.parse(dashboardFromBody);
+    } else {
+      const rawDashboard = resolveAnalysisRaw(files, uiLanguage);
+      if (!rawDashboard) return apiError("No analysis found", 404);
       dashboard = analysisDashboardSchema.parse(JSON.parse(rawDashboard));
-    } catch {
-      return apiError("Analysis data is corrupted.", 422);
     }
+  } catch {
+    return apiError("Analysis data is corrupted.", 422);
   }
 
   const baseFilename = safeExportBasename(dashboard.meta.companyName, dashboard.meta.period);
@@ -98,17 +107,19 @@ export async function POST(
     }
 
     if (format === "forecast-pptx") {
-      let forecastReport = forecastFromBody;
-      if (!forecastReport) {
-        const rawForecast = files["forecast.json"];
-        if (!rawForecast) {
-          return apiError("Forecast not generated yet. Click 'Generate Forecast' first.", 400);
+      let forecastReport: ForecastReport;
+      try {
+        if (forecastFromBody) {
+          forecastReport = parseForecastReport(forecastFromBody);
+        } else {
+          const rawForecast = files["forecast.json"];
+          if (!rawForecast) {
+            return apiError("Forecast not generated yet. Click 'Generate Forecast' first.", 400);
+          }
+          forecastReport = parseForecastReport(JSON.parse(rawForecast));
         }
-        try {
-          forecastReport = forecastReportSchema.parse(JSON.parse(rawForecast));
-        } catch {
-          return apiError("Forecast data is corrupted.", 422);
-        }
+      } catch {
+        return apiError("Forecast data is corrupted.", 422);
       }
       const buffer = await buildForecastPptx(forecastReport, dashboard, uiLanguage);
       return pptxResponse(buffer, `${baseFilename}_Forecast.pptx`);

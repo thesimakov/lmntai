@@ -52,12 +52,12 @@ function BenchmarkBar({
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium truncate max-w-[120px]" title={comparison.label}>
+        <span className="text-base font-medium truncate max-w-[200px]" title={comparison.label}>
           {comparison.label}
         </span>
-        <div className={cn("flex items-center gap-1", color)}>
-          <Icon className="w-3 h-3" />
-          <span className="text-xs">{statusLabel}</span>
+        <div className={cn("flex items-center gap-1 shrink-0", color)}>
+          <Icon className="w-4 h-4" />
+          <span className="text-base">{statusLabel}</span>
         </div>
       </div>
 
@@ -80,14 +80,14 @@ function BenchmarkBar({
       </div>
 
       {/* Labels */}
-      <div className="flex justify-between text-[10px] text-muted-foreground">
+      <div className="flex justify-between text-sm text-muted-foreground">
         <span>P25: {fmt(p25)}</span>
         <span>{medianLabel}: {fmt(median)}</span>
         <span>P75: {fmt(p75)}</span>
       </div>
 
       {comparison.companyValue !== null && (
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-base text-muted-foreground">
           {yourValueLabel} <span className={cn("font-medium", color)}>{fmt(comparison.companyValue)}</span>
         </p>
       )}
@@ -225,8 +225,8 @@ export function AnalyticsBenchmarkPanel({ projectId }: AnalyticsBenchmarkPanelPr
         {/* AI narrative */}
         {report!.narrative && (
           <div className="p-3">
-            <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">{t("analytics_bi_benchmark_assessment")}</p>
-            <p className="text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">
+            <p className="text-base font-semibold mb-2 text-muted-foreground uppercase tracking-wide">{t("analytics_bi_benchmark_assessment")}</p>
+            <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">
               {report!.narrative}
             </p>
           </div>
