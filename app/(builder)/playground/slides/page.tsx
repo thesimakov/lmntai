@@ -4,7 +4,7 @@ import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { slideGraphSchema } from "@/lib/slide-graph/schema";
-import { SlideVisualEditor } from "@/components/playground/slides/slide-visual-editor";
+import { PresentationEditorClient } from "@/app/(builder)/playground/presentations/presentation-editor";
 
 interface Props {
   searchParams: Promise<{ projectId?: string }>;
@@ -43,7 +43,7 @@ async function SlidesEditorLoader({ projectId }: { projectId: string }) {
     );
   }
 
-  return <SlideVisualEditor projectId={projectId} initialGraph={parse.data} />;
+  return <PresentationEditorClient projectId={projectId} initialGraph={parse.data} userPlan={null} />;
 }
 
 export default async function SlidesPage({ searchParams }: Props) {
