@@ -44,9 +44,19 @@ export interface SlideElementStyle {
   opacity?: number;
 }
 
+/** Absolute position on the 960×540 slide canvas (editor freeform mode). */
+export interface SlideElementFrame {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  zIndex?: number;
+}
+
 export interface SlideElement {
   id: string;
   type: SlideElementType;
+  frame?: SlideElementFrame;
   // Basic text elements
   content?: string;
   items?: string[];
@@ -83,6 +93,8 @@ export interface SlideBackground {
 export interface Slide {
   id: string;
   layout: SlideLayout;
+  /** When true, elements use `frame` for absolute positioning on the slide. */
+  freeform?: boolean;
   background?: SlideBackground;
   elements: SlideElement[];
   notes?: string;

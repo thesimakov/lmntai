@@ -1,29 +1,96 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, ArrowLeft } from "lucide-react";
+import { Loader2, ArrowLeft, Paperclip, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PRESENTATION_TEMPLATES } from "@/lib/slide-graph/templates";
 import { PLAYGROUND_HOME_PROJECTS_HREF } from "@/lib/playground-project-edit-url";
 import { useI18n } from "@/components/i18n-provider";
+import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
+import { isPresentationSourceFile } from "@/lib/presentation-source-document-client";
+import { readUploadApiErrorMessage } from "@/lib/api-upload-error";
 
 interface TemplatePickerProps {
   projectId: string;
+  projectTitle?: string;
   error?: string;
 }
 
-export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
+type SourceAttachment = {
+  fileName: string;
+  text: string;
+  truncated?: boolean;
+};
+
+export function TemplatePicker({ projectId, projectTitle, error }: TemplatePickerProps) {
   const { t } = useI18n();
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [brief, setBrief] = useState("");
+  const [sourceAttachment, setSourceAttachment] = useState<SourceAttachment | null>(null);
+  const [parsingFile, setParsingFile] = useState(false);
+  const [attachError, setAttachError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(error ?? null);
 
+  const canGenerate = Boolean(selectedId && (brief.trim() || sourceAttachment?.text.trim()));
+
+  async function handleAttachFile(file: File) {
+    setAttachError(null);
+    if (!isPresentationSourceFile(file)) {
+      setAttachError(t("presentations_attach_unsupported"));
+      return;
+    }
+    if (file.size > BI_UPLOAD_MAX_BYTES) {
+      setAttachError(t("analytics_bi_file_too_large"));
+      return;
+    }
+
+    setParsingFile(true);
+    const body = new FormData();
+    body.append("file", file);
+
+    try {
+      const res = await fetch(`/api/projects/${projectId}/presentations/parse-source`, {
+        method: "POST",
+        body,
+      });
+      if (!res.ok) {
+        const message = await readUploadApiErrorMessage(res, {
+          fallback: t("presentations_attach_parse_error"),
+          tooLarge: t("analytics_bi_upload_too_large"),
+        });
+        throw new Error(message);
+      }
+      const data = (await res.json()) as {
+        data?: SourceAttachment;
+        fileName?: string;
+        text?: string;
+        truncated?: boolean;
+      };
+      const payload = data.data ?? data;
+      if (!payload.text?.trim()) {
+        throw new Error(t("presentations_attach_empty"));
+      }
+      setSourceAttachment({
+        fileName: payload.fileName ?? file.name,
+        text: payload.text,
+        truncated: payload.truncated,
+      });
+    } catch (e) {
+      setSourceAttachment(null);
+      setAttachError(e instanceof Error ? e.message : t("presentations_attach_parse_error"));
+    } finally {
+      setParsingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
   async function handleGenerate() {
-    if (!selectedId || !brief.trim()) return;
+    if (!canGenerate) return;
     setGenerating(true);
     setGenError(null);
 
@@ -31,7 +98,16 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
       const res = await fetch(`/api/projects/${projectId}/presentations/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templateId: selectedId, brief: brief.trim() }),
+        body: JSON.stringify({
+          templateId: selectedId,
+          brief: brief.trim(),
+          ...(sourceAttachment
+            ? {
+                sourceText: sourceAttachment.text,
+                sourceFileName: sourceAttachment.fileName,
+              }
+            : {}),
+        }),
       });
       const data = (await res.json()) as {
         error?: string;
@@ -69,8 +145,12 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>
-            <h1 className="text-xl font-semibold">Новая презентация</h1>
-            <p className="text-sm text-muted-foreground">Выберите шаблон и опишите вашу презентацию</p>
+            <h1 className="text-xl font-semibold truncate">
+              {projectTitle?.trim() || t("presentations_new_default_title")}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {t("presentations_template_picker_subtitle")}
+            </p>
           </div>
         </div>
 
@@ -107,15 +187,69 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
 
         {/* Brief input */}
         <div className="space-y-2">
-          <label className="text-sm font-medium">Описание презентации</label>
+          <label className="text-sm font-medium">{t("presentations_brief_label")}</label>
           <textarea
             className="w-full min-h-[120px] rounded-lg border border-border bg-background px-4 py-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30 placeholder:text-muted-foreground"
-            placeholder="Опишите вашу компанию, продукт, аудиторию, ключевые метрики и цели. Чем подробнее — тем лучше результат."
+            placeholder={t("presentations_brief_placeholder")}
             value={brief}
             onChange={(e) => setBrief(e.target.value)}
             maxLength={4000}
           />
-          <p className="text-xs text-muted-foreground text-right">{brief.length}/4000</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".doc,.docx,.pdf,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                className="sr-only"
+                disabled={parsingFile || generating}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleAttachFile(file);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5"
+                disabled={parsingFile || generating}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {parsingFile ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Paperclip className="w-3.5 h-3.5" />
+                )}
+                {t("presentations_attach_doc")}
+              </Button>
+              <span className="text-[11px] text-muted-foreground">{t("presentations_attach_hint")}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">{brief.length}/4000</p>
+          </div>
+
+          {sourceAttachment && (
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2">
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="text-xs truncate flex-1">{sourceAttachment.fileName}</span>
+              {sourceAttachment.truncated && (
+                <span className="text-[10px] text-amber-700 dark:text-amber-400 shrink-0">
+                  {t("presentations_attach_truncated")}
+                </span>
+              )}
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground shrink-0"
+                disabled={parsingFile || generating}
+                onClick={() => setSourceAttachment(null)}
+                aria-label={t("presentations_attach_remove")}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {attachError && <p className="text-xs text-destructive">{attachError}</p>}
         </div>
 
         {genError && (
@@ -124,7 +258,7 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
 
         <Button
           className="w-full h-11"
-          disabled={!selectedId || !brief.trim() || generating}
+          disabled={!canGenerate || generating || parsingFile}
           onClick={handleGenerate}
         >
           {generating ? (

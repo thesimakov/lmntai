@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { renderSlideGraph, renderSlide } from "./renderer";
+import { renderSingleSlide, renderSlideGraph, renderSlide } from "./renderer";
 import type { SlideGraph, Slide } from "./types";
 
 const baseGraph: SlideGraph = {
@@ -77,6 +77,27 @@ describe("renderSlideGraph", () => {
     const html = renderSlideGraph(baseGraph);
     expect(html).toContain("Inter");
   });
+
+  it("includes pre-wrap styles for multiline text", () => {
+    const html = renderSlideGraph(baseGraph);
+    expect(html).toContain("white-space: pre-wrap");
+  });
+
+  it("editor preview includes pre-wrap styles", () => {
+    const graph: SlideGraph = {
+      ...baseGraph,
+      slides: [
+        {
+          id: "slide_1",
+          layout: "content",
+          elements: [{ id: "b1", type: "body", content: "A\nB" }],
+        },
+      ],
+    };
+    const html = renderSingleSlide(graph, 0, { editor: true });
+    expect(html).toContain("white-space: pre-wrap");
+    expect(html).toContain("A\nB");
+  });
 });
 
 describe("renderSlide", () => {
@@ -118,6 +139,21 @@ describe("renderSlide", () => {
     const html = renderSlide(slide, { primaryColor: "#4F8EF7", backgroundColor: "#FFF", textColor: "#000", fontFamily: "Inter" });
     expect(html).toContain("Innovation distinguishes");
     expect(html).toContain("blockquote");
+  });
+
+  it("embeds newline characters in text content", () => {
+    const slide: Slide = {
+      id: "s5",
+      layout: "content",
+      elements: [{ id: "b1", type: "body", content: "Первая строка\nВторая строка" }],
+    };
+    const html = renderSlide(slide, {
+      primaryColor: "#4F8EF7",
+      backgroundColor: "#FFF",
+      textColor: "#000",
+      fontFamily: "Inter",
+    });
+    expect(html).toContain("Первая строка\nВторая строка");
   });
 
   it("applies slide background color", () => {

@@ -3,7 +3,8 @@ import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError } from "@/lib/api-response";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
-import { slideGraphSchema } from "@/lib/slide-graph/schema";
+import { loadSlideGraphFromJson } from "@/lib/slide-graph/normalize";
+import { getTemplate } from "@/lib/slide-graph/templates";
 import { buildSlideGraphPptx } from "@/lib/slide-graph/pptx-export";
 
 export async function POST(
@@ -27,12 +28,21 @@ export async function POST(
     return apiError("No slide graph found. Generate slides first.", 400);
   }
 
-  let graph: ReturnType<typeof slideGraphSchema.parse>;
+  const graphJson = state.files["slide_graph.json"];
+  let metaTemplateId: string | undefined;
   try {
-    graph = slideGraphSchema.parse(JSON.parse(state.files["slide_graph.json"]));
+    const raw = JSON.parse(graphJson) as { meta?: { templateId?: string } };
+    metaTemplateId = raw.meta?.templateId;
   } catch {
     return apiError("Slide graph data is corrupted.", 422);
   }
+
+  const template = metaTemplateId ? getTemplate(metaTemplateId) : undefined;
+  const graphParse = loadSlideGraphFromJson(graphJson, { template });
+  if (!graphParse?.success) {
+    return apiError("Slide graph data is corrupted.", 422);
+  }
+  const graph = graphParse.data;
 
   let pptxBuffer: Buffer;
   try {

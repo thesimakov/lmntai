@@ -77,4 +77,38 @@ describe("applySlidePatchBody", () => {
     expect(next.slides[0].background?.color).toBe("#abc");
     expect(next.slides[0].elements.map((e) => e.id)).toEqual(["b1", "h1"]);
   });
+
+  it("applies initElementFrames and enables freeform", () => {
+    const next = applySlidePatchBody(baseGraph, {
+      initElementFrames: {
+        slideId: "slide_1",
+        frames: [
+          { elemId: "h1", frame: { x: 40, y: 30, w: 400, h: 60 } },
+          { elemId: "b1", frame: { x: 40, y: 110, w: 500, h: 120 } },
+        ],
+      },
+    });
+    expect(next.slides[0].freeform).toBe(true);
+    expect(next.slides[0].elements[0].frame).toMatchObject({ x: 40, y: 30, w: 400, h: 60 });
+  });
+
+  it("clears gradient when solid background color is set", () => {
+    const withGradient: SlideGraph = {
+      ...baseGraph,
+      slides: [
+        {
+          ...baseGraph.slides[0]!,
+          background: {
+            color: "#fff",
+            gradient: "linear-gradient(135deg, #c41e3a 0%, #1a1a2e 100%)",
+          },
+        },
+      ],
+    };
+    const next = applySlidePatchBody(withGradient, {
+      slideBackground: { slideId: "slide_1", background: { color: "#2563eb" } },
+    });
+    expect(next.slides[0].background?.color).toBe("#2563eb");
+    expect(next.slides[0].background?.gradient).toBeUndefined();
+  });
 });

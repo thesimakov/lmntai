@@ -1,4 +1,12 @@
 import type { SlideGraph, Slide, SlideElement, SlideTheme } from "./types";
+import {
+  SLIDE_CANVAS_H,
+  SLIDE_CANVAS_W,
+  defaultElementFrame,
+  isSlideFreeform,
+  slideNeedsFrameCapture,
+} from "./freeform";
+import { SLIDE_EDITOR_INTERACTION_SCRIPT } from "./slide-editor-runtime";
 
 function esc(s: unknown): string {
   if (typeof s !== "string") return "";
@@ -8,6 +16,17 @@ function esc(s: unknown): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+/** Keeps \\n from editor textareas visible on the slide (preview + export). */
+const PRESERVE_LINE_BREAKS_CSS = `
+.lmnt-slide__heading, .lmnt-slide__subheading, .lmnt-slide__body, .lmnt-slide__quote, .lmnt-slide__caption, .lmnt-slide__label,
+.lmnt-slide__bullets li,
+.lmnt-metric-card__label, .lmnt-metric-card__description,
+.lmnt-feature-card__title, .lmnt-feature-card__desc,
+.lmnt-step-card__title, .lmnt-step-card__desc,
+.lmnt-pricing-card__plan, .lmnt-pricing-card__feat,
+.lmnt-timeline-col__title, .lmnt-timeline-col__item { white-space: pre-wrap; }
+`.trim();
 
 function inlineStyle(el: SlideElement): string {
   if (!el.style) return "";
@@ -115,26 +134,60 @@ function partitionElements(elements: SlideElement[]): {
   };
 }
 
-export function renderSlide(slide: Slide, theme: SlideTheme): string {
+function renderFreeformElement(el: SlideElement, theme: SlideTheme, index: number): string {
+  const frame = el.frame ?? defaultElementFrame(index, el.type);
+  const z = frame.zIndex ?? index + 1;
+  const inner = renderElement(el, theme);
+  return `<div class="lmnt-elem-frame" data-lmnt-elem-id="${esc(el.id)}" data-lmnt-frame-wrap="1" style="position:absolute;left:${frame.x}px;top:${frame.y}px;width:${frame.w}px;height:${frame.h}px;z-index:${z};box-sizing:border-box;cursor:grab;overflow:hidden;touch-action:none;">
+  <div class="lmnt-elem-frame__inner" style="width:100%;height:100%;overflow:auto;pointer-events:none">${inner}</div>
+</div>`;
+}
+
+export type RenderSlideOptions = {
+  editor?: boolean;
+  captureFrames?: boolean;
+};
+
+function slideBackgroundStyle(slide: Slide, theme: SlideTheme): string {
   const bgColor = slide.background?.color ?? theme.backgroundColor;
   const bgGradient = slide.background?.gradient ?? "";
   const bgImage = slide.background?.image
     ? `background-image:url('${esc(slide.background.image)}');background-size:cover;`
     : "";
-  const overlay =
-    slide.background?.image && slide.background.overlay != null
-      ? `<div class="lmnt-slide__overlay" style="background:rgba(0,0,0,${slide.background.overlay})"></div>`
-      : "";
-
-  const layoutClass = `lmnt-slide--${slide.layout}`;
-  const bgStyle = bgGradient
+  return bgGradient
     ? `background:${bgGradient};`
     : `background-color:${bgColor};${bgImage}`;
+}
 
-  // Rich layouts use structured inner HTML
+function slideOverlayHtml(slide: Slide): string {
+  if (!slide.background?.image || slide.background.overlay == null) return "";
+  return `<div class="lmnt-slide__overlay" style="background:rgba(0,0,0,${slide.background.overlay})"></div>`;
+}
+
+export function renderSlide(slide: Slide, theme: SlideTheme, opts?: RenderSlideOptions): string {
+  const bgStyle = slideBackgroundStyle(slide, theme);
+  const overlay = slideOverlayHtml(slide);
+  const layoutClass = `lmnt-slide--${slide.layout}`;
+
+  const editor = opts?.editor === true;
+  const capture = editor && (opts?.captureFrames === true || slideNeedsFrameCapture(slide));
+  const useFreeformLayer = editor ? !capture : isSlideFreeform(slide);
+
+  if (useFreeformLayer) {
+    const freeformHtml = slide.elements
+      .map((el, i) => renderFreeformElement(el, theme, i))
+      .join("\n");
+    const freeformAttr = editor ? ` data-lmnt-freeform="1"` : "";
+    return `<div class="lmnt-slide lmnt-slide--freeform ${layoutClass}" data-lmnt-slide-id="${slide.id}"${freeformAttr} style="position:relative;width:${SLIDE_CANVAS_W}px;height:${SLIDE_CANVAS_H}px;${bgStyle}">
+${overlay}
+${freeformHtml}
+</div>`;
+  }
+
+  const captureAttr = capture ? ` data-lmnt-capture-frames="1"` : "";
   const innerHtml = renderLayoutContent(slide, theme);
 
-  return `<div class="lmnt-slide ${layoutClass}" data-lmnt-slide-id="${slide.id}" style="${bgStyle}">
+  return `<div class="lmnt-slide ${layoutClass}" data-lmnt-slide-id="${slide.id}"${captureAttr} style="${bgStyle}">
 ${overlay}
 ${innerHtml}
 </div>`;
@@ -283,6 +336,7 @@ body { font-family: ${theme.fontFamily}; color: ${theme.textColor}; padding: 32p
 .lmnt-slide__quote { font-size: 1.5rem; font-style: italic; border-left: 4px solid ${primary}; padding-left: 20px; opacity: 0.9; }
 .lmnt-slide__caption { font-size: 0.8rem; opacity: 0.55; }
 .lmnt-slide__label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: ${primary}; }
+${PRESERVE_LINE_BREAKS_CSS}
 [data-lmnt-elem-id] { cursor: pointer; transition: outline 0.1s; }
 [data-lmnt-elem-id]:hover { outline: 2px dashed rgba(79,142,247,0.5); outline-offset: 2px; }
 
@@ -439,12 +493,56 @@ ${CLICK_HANDLER_SCRIPT}
 </html>`;
 }
 
+function editorPreviewStyles(theme: SlideTheme): string {
+  return `
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: transparent; }
+body { font-family: ${theme.fontFamily}; color: ${theme.textColor}; }
+.lmnt-deck { display: flex; align-items: center; justify-content: center; min-height: 100%; }
+.lmnt-slide { border-radius: 8px; box-shadow: 0 8px 40px rgba(0,0,0,0.45); overflow: hidden; }
+.lmnt-slide__overlay { position: absolute; inset: 0; z-index: 0; }
+.lmnt-slide__heading { font-size: 2.25rem; font-weight: 800; line-height: 1.15; }
+.lmnt-slide__subheading { font-size: 1.15rem; opacity: 0.75; }
+.lmnt-slide__body { font-size: 1.05rem; line-height: 1.7; }
+.lmnt-slide__bullets { font-size: 1.05rem; padding-left: 1.5em; }
+.lmnt-slide__image { width: 100%; height: 100%; object-fit: cover; }
+.lmnt-card { border-radius: 12px; padding: 12px 16px; background: #fff; }
+${PRESERVE_LINE_BREAKS_CSS}
+`.trim();
+}
+
 /** Render a single slide as a standalone HTML document (for iframe preview) */
-export function renderSingleSlide(graph: SlideGraph, slideIndex: number): string {
+export function renderSingleSlide(
+  graph: SlideGraph,
+  slideIndex: number,
+  options?: { editor?: boolean }
+): string {
   const { meta } = graph;
   const { theme, language } = meta;
   const slide = graph.slides[slideIndex];
   if (!slide) return "<html><body></body></html>";
+
+  if (options?.editor) {
+    const slideHtml = renderSlide(slide, theme, {
+      editor: true,
+      captureFrames: slideNeedsFrameCapture(slide),
+    });
+    return `<!DOCTYPE html>
+<html lang="${esc(language)}">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>${esc(meta.title)}</title>
+<style>${editorPreviewStyles(theme)}</style>
+</head>
+<body>
+<div class="lmnt-deck">
+${slideHtml}
+</div>
+${SLIDE_EDITOR_INTERACTION_SCRIPT}
+</body>
+</html>`;
+  }
 
   const fullHtml = renderSlideGraph({ ...graph, slides: [slide] });
   return fullHtml.replace(

@@ -93,7 +93,8 @@ RICH LAYOUT TYPES:
 
 export function buildTemplateSlidePrompt(
   template: PresentationTemplate,
-  userBrief: string
+  userBrief: string,
+  sourceDocument?: { fileName: string; text: string } | null
 ): Array<{ role: "system" | "user"; content: string }> {
   const structureList = template.slideStructure
     .map(
@@ -135,7 +136,16 @@ IMPORTANT LAYOUT RULES:
 - All content must be filled with real, contextual information from the user brief
 - Make numbers and data specific and realistic based on the brief`;
 
-  const userMessage = `USER BRIEF:\n${userBrief}\n\nGenerate the full ${template.slideCount}-slide ${template.name} presentation following the template structure exactly.`;
+  const briefBlock = userBrief.trim()
+    ? `USER BRIEF:\n${userBrief.trim()}`
+    : "USER BRIEF:\n(не указано — опирайтесь на прикреплённый документ)";
+
+  const sourceBlock =
+    sourceDocument?.text.trim()
+      ? `\n\nATTACHED DOCUMENT (${sourceDocument.fileName}):\nUse this as primary factual source for metrics, names, product details, and narrative. Prefer document facts over invented data.\n\n${sourceDocument.text.trim()}`
+      : "";
+
+  const userMessage = `${briefBlock}${sourceBlock}\n\nGenerate the full ${template.slideCount}-slide ${template.name} presentation following the template structure exactly.`;
 
   return [
     { role: "system", content: systemPrompt },

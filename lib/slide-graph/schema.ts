@@ -1,6 +1,14 @@
 import { z } from "zod";
 import type { SlideGraph } from "./types";
 
+const slideElementFrameSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number().min(24),
+  h: z.number().min(24),
+  zIndex: z.number().optional(),
+});
+
 const slideElementStyleSchema = z.object({
   color: z.string().optional(),
   fontSize: z.string().optional(),
@@ -40,6 +48,7 @@ const slideElementSchema = z.object({
   popular: z.boolean().optional(),
   // timeline-col
   highlighted: z.boolean().optional(),
+  frame: slideElementFrameSchema.optional(),
 });
 
 const slideBackgroundSchema = z.object({
@@ -59,6 +68,7 @@ const slideSchema = z.object({
   background: slideBackgroundSchema.optional(),
   elements: z.array(slideElementSchema).min(1),
   notes: z.string().optional(),
+  freeform: z.boolean().optional(),
 });
 
 const slideThemeSchema = z.object({

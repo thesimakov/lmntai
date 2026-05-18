@@ -17,8 +17,10 @@ async function PresentationsLoader({ projectId }: { projectId: string }) {
   if (!guard.ok) notFound();
   const { user } = guard.data;
 
+  let projectTitle: string;
   try {
-    await requireProjectScopeForOwner(projectId, user.id);
+    const scope = await requireProjectScopeForOwner(projectId, user.id);
+    projectTitle = scope.name;
   } catch {
     notFound();
   }
@@ -27,14 +29,20 @@ async function PresentationsLoader({ projectId }: { projectId: string }) {
   const graphJson = state?.files?.["slide_graph.json"];
 
   if (!graphJson) {
-    return <TemplatePicker projectId={projectId} />;
+    return <TemplatePicker projectId={projectId} projectTitle={projectTitle} />;
   }
 
   let raw: unknown;
   try {
     raw = JSON.parse(graphJson) as unknown;
   } catch {
-    return <TemplatePicker projectId={projectId} error="Данные повреждены — выберите шаблон заново." />;
+    return (
+      <TemplatePicker
+        projectId={projectId}
+        projectTitle={projectTitle}
+        error="Данные повреждены — выберите шаблон заново."
+      />
+    );
   }
 
   const meta =
@@ -45,7 +53,13 @@ async function PresentationsLoader({ projectId }: { projectId: string }) {
 
   const parse = parseSlideGraphPayload(raw, { template });
   if (!parse.success) {
-    return <TemplatePicker projectId={projectId} error="Данные повреждены — выберите шаблон заново." />;
+    return (
+      <TemplatePicker
+        projectId={projectId}
+        projectTitle={projectTitle}
+        error="Данные повреждены — выберите шаблон заново."
+      />
+    );
   }
 
   return <PresentationEditorClient projectId={projectId} initialGraph={parse.data} />;

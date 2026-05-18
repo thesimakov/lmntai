@@ -16,8 +16,7 @@ import {
   Presentation,
   Search,
   Sparkles,
-  TrendingUp,
-  ArrowUpRight
+  TrendingUp
 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -39,6 +38,7 @@ import {
   buildPlaygroundAnalyticsEditUrl,
   buildPlaygroundBuildEditUrl,
   buildPlaygroundMarketingEditUrl,
+  buildPlaygroundPresentationEditUrl,
   type PreferredPlaygroundEditor
 } from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
@@ -334,6 +334,35 @@ export function NewProjectPageWizard() {
     lang,
     marketingChannel,
     marketingGoal,
+    nameValid,
+    router,
+    subdomainCheck,
+    t
+  ]);
+
+  const navigateNewProjectToPresentations = useCallback(async () => {
+    setAttemptedSubmit(true);
+    if (!nameValid || !domainValid || subdomainCheck !== "available") {
+      toast.message(t("projects_template_fix_form_toast"));
+      return;
+    }
+    if (creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const projectId = await createProjectCell("presentation");
+      router.push(buildPlaygroundPresentationEditUrl(projectId));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
+      }
+    } catch (e) {
+      toastProjectCreateFailure(e, t("projects_create_failed"));
+    } finally {
+      setCreatingProject(false);
+    }
+  }, [
+    creatingProject,
+    createProjectCell,
+    domainValid,
     nameValid,
     router,
     subdomainCheck,
@@ -832,16 +861,16 @@ export function NewProjectPageWizard() {
               </Card>
 
               <Card
-                role="link"
+                role="button"
                 tabIndex={creatingProject ? -1 : 0}
                 onClick={() => {
                   if (creatingProject) return;
-                  router.push("/presentations");
+                  void navigateNewProjectToPresentations();
                 }}
                 onKeyDown={(e) => {
                   if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
                   e.preventDefault();
-                  router.push("/presentations");
+                  void navigateNewProjectToPresentations();
                 }}
                 className={cn(
                   "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
@@ -857,7 +886,9 @@ export function NewProjectPageWizard() {
                   <div className="min-w-0 flex-1 space-y-1 self-center">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
                       {t("projects_new_presentations_hub_title")}
-                      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                      {creatingProject ? (
+                        <Loader2 className="size-4 shrink-0 animate-spin text-muted-foreground" aria-hidden />
+                      ) : null}
                     </span>
                     <p className="text-sm font-normal leading-snug text-muted-foreground">
                       {t("projects_new_presentations_hub_desc")}

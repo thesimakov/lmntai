@@ -1,5 +1,14 @@
 import { z } from "zod";
-import type { Slide, SlideBackground, SlideElement, SlideGraph } from "./types";
+import { applyFramesToSlide, clampFrame } from "./freeform";
+import type { Slide, SlideBackground, SlideElement, SlideElementFrame, SlideGraph } from "./types";
+
+const slideElementFrameSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number().min(24),
+  h: z.number().min(24),
+  zIndex: z.number().optional(),
+});
 
 const slideElementStyleSchema = z.object({
   color: z.string().optional(),
@@ -46,10 +55,11 @@ export const slideElementInputSchema = z.object({
   features: z.array(z.string()).optional(),
   popular: z.boolean().optional(),
   highlighted: z.boolean().optional(),
+  frame: slideElementFrameSchema.optional(),
 });
 
 const slideBackgroundInputSchema = z.object({
-  color: z.string().optional(),
+      color: z.string().optional(),
   gradient: z.string().optional(),
   image: z.string().optional(),
   overlay: z.number().min(0).max(1).optional(),
@@ -77,6 +87,7 @@ export const slidePatchSchema = z
     features: z.array(z.string()).optional(),
     popular: z.boolean().optional(),
     highlighted: z.boolean().optional(),
+    frame: slideElementFrameSchema.optional(),
   });
 
 export const slidePatchBodySchema = z
@@ -107,6 +118,19 @@ export const slidePatchBodySchema = z
       })
       .optional(),
     clearAll: z.literal(true).optional(),
+    initElementFrames: z
+      .object({
+        slideId: z.string().min(1),
+        frames: z
+          .array(
+            z.object({
+              elemId: z.string().min(1),
+              frame: slideElementFrameSchema,
+            })
+          )
+          .min(1),
+      })
+      .optional(),
   })
   .refine(
     (body) =>
@@ -116,6 +140,7 @@ export const slidePatchBodySchema = z
           body.addElement ||
           body.deleteElement ||
           body.reorderElements ||
+          body.initElementFrames ||
           body.clearAll
       ),
     { message: "At least one patch operation is required" }
@@ -149,6 +174,7 @@ const PATCH_FIELD_KEYS = [
   "features",
   "popular",
   "highlighted",
+  "frame",
 ] as const satisfies ReadonlyArray<keyof SlidePatch>;
 
 function patchFieldsToElementUpdate(patch: SlidePatch): Partial<SlideElement> {
@@ -170,12 +196,29 @@ export function applySlidePatches(graph: SlideGraph, patches: SlidePatch[]): Sli
     const update = patchFieldsToElementUpdate(patch);
     const elements = slide.elements.map((el): SlideElement => {
       if (el.id !== patch.elemId) return el;
-      return { ...el, ...update };
+      const next = { ...el, ...update };
+      if (patch.frame) {
+        next.frame = clampFrame(patch.frame);
+      }
+      return next;
     });
     slideMap.set(patch.slideId, { ...slide, elements });
   }
 
   return { ...graph, slides: graph.slides.map((s) => slideMap.get(s.id) ?? s) };
+}
+
+/** Solid color overrides gradient/image so the editor color picker is visible on title slides. */
+export function mergeSlideBackground(
+  prev: SlideBackground | undefined,
+  patch: SlideBackground
+): SlideBackground {
+  const next: SlideBackground = { ...(prev ?? {}), ...patch };
+  if (patch.color !== undefined) {
+    delete next.gradient;
+    delete next.image;
+  }
+  return next;
 }
 
 export function applySlideBackgroundPatch(
@@ -187,7 +230,7 @@ export function applySlideBackgroundPatch(
     ...graph,
     slides: graph.slides.map((slide) =>
       slide.id === slideId
-        ? { ...slide, background: { ...slide.background, ...background } }
+        ? { ...slide, background: mergeSlideBackground(slide.background, background) }
         : slide
     ),
   };
@@ -242,11 +285,42 @@ export function applyReorderElementsPatch(
   };
 }
 
+export function applyInitElementFramesPatch(
+  graph: SlideGraph,
+  slideId: string,
+  frames: Array<{ elemId: string; frame: SlideElementFrame }>
+): SlideGraph {
+  return {
+    ...graph,
+    slides: graph.slides.map((slide) =>
+      slide.id === slideId ? applyFramesToSlide(slide, frames, { freeform: true }) : slide
+    ),
+  };
+}
+
 export function applySlidePatchBody(graph: SlideGraph, body: SlidePatchBody): SlideGraph {
   let next = graph;
 
+  if (body.initElementFrames) {
+    next = applyInitElementFramesPatch(
+      next,
+      body.initElementFrames.slideId,
+      body.initElementFrames.frames
+    );
+  }
   if (body.patches?.length) {
     next = applySlidePatches(next, body.patches);
+    if (body.patches.some((p) => p.frame)) {
+      next = {
+        ...next,
+        slides: next.slides.map((slide) => {
+          const touched = body.patches?.some(
+            (p) => p.slideId === slide.id && p.frame !== undefined
+          );
+          return touched ? { ...slide, freeform: true } : slide;
+        }),
+      };
+    }
   }
   if (body.slideBackground) {
     next = applySlideBackgroundPatch(

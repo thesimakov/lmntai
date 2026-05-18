@@ -16,15 +16,22 @@ import {
 import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { SlideGraph } from "@/lib/slide-graph/types";
+import { PRESENTATION_SOURCE_MAX_CHARS } from "@/lib/presentation-source-document";
 
 export const runtime = "nodejs";
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
-const bodySchema = z.object({
-  templateId: z.string().min(1),
-  brief: z.string().min(1).max(4000),
-});
+const bodySchema = z
+  .object({
+    templateId: z.string().min(1),
+    brief: z.string().max(4000).default(""),
+    sourceText: z.string().max(PRESENTATION_SOURCE_MAX_CHARS).optional(),
+    sourceFileName: z.string().max(255).optional(),
+  })
+  .refine((d) => d.brief.trim().length > 0 || (d.sourceText?.trim().length ?? 0) > 0, {
+    message: "Укажите описание или прикрепите документ с текстом",
+  });
 
 export async function POST(
   req: NextRequest,
@@ -44,14 +51,21 @@ export async function POST(
 
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
-  const { templateId, brief } = body.data;
+  const { templateId, brief, sourceText, sourceFileName } = body.data;
 
   const template = getTemplate(templateId);
   if (!template) {
     return apiError(`Unknown template: ${templateId}`, 400);
   }
 
-  const messages = buildTemplateSlidePrompt(template, brief);
+  const sourceDocument =
+    sourceText?.trim() && sourceFileName?.trim()
+      ? { fileName: sourceFileName.trim(), text: sourceText.trim() }
+      : sourceText?.trim()
+        ? { fileName: "document", text: sourceText.trim() }
+        : null;
+
+  const messages = buildTemplateSlidePrompt(template, brief, sourceDocument);
 
   let generated: Awaited<ReturnType<typeof generateSlideGraphFromAi>>;
   try {

@@ -1,6 +1,13 @@
 import { z } from "zod";
 import type { PresentationTemplate } from "./templates";
-import type { Slide, SlideElement, SlideElementType, SlideGraph, SlideLayout } from "./types";
+import type {
+  Slide,
+  SlideElement,
+  SlideElementFrame,
+  SlideElementType,
+  SlideGraph,
+  SlideLayout,
+} from "./types";
 import { slideGraphSchema } from "./schema";
 
 const SLIDE_LAYOUTS: SlideLayout[] = [
@@ -191,6 +198,19 @@ function coerceStringArray(raw: unknown): string[] | undefined {
   return undefined;
 }
 
+function coerceFrame(raw: unknown): SlideElementFrame | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const f = raw as Record<string, unknown>;
+  const x = typeof f.x === "number" && Number.isFinite(f.x) ? f.x : undefined;
+  const y = typeof f.y === "number" && Number.isFinite(f.y) ? f.y : undefined;
+  const w = typeof f.w === "number" && Number.isFinite(f.w) ? f.w : undefined;
+  const h = typeof f.h === "number" && Number.isFinite(f.h) ? f.h : undefined;
+  if (x === undefined || y === undefined || w === undefined || h === undefined) return undefined;
+  const zIndex =
+    typeof f.zIndex === "number" && Number.isFinite(f.zIndex) ? Math.trunc(f.zIndex) : undefined;
+  return { x, y, w, h, zIndex };
+}
+
 function coerceElement(raw: unknown, index: number, slideId: string): SlideElement | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const e = raw as Record<string, unknown>;
@@ -257,6 +277,7 @@ function coerceElement(raw: unknown, index: number, slideId: string): SlideEleme
     features,
     popular: typeof e.popular === "boolean" ? e.popular : undefined,
     highlighted: typeof e.highlighted === "boolean" ? e.highlighted : undefined,
+    frame: coerceFrame(e.frame),
   };
 }
 
@@ -345,6 +366,7 @@ function coerceSlide(
     background,
     elements,
     notes: typeof s.notes === "string" ? s.notes : undefined,
+    freeform: typeof s.freeform === "boolean" ? s.freeform : undefined,
   };
 }
 
