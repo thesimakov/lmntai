@@ -36,7 +36,9 @@ import {
 } from "@/components/dashboard/project-brand-kit-fields";
 import {
   buildPlaygroundAnalyticsEditUrl,
-  buildPlaygroundBuildEditUrl
+  buildPlaygroundBuildEditUrl,
+  buildPlaygroundMarketingEditUrl,
+  type PreferredPlaygroundEditor
 } from "@/lib/playground-project-edit-url";
 import { finalizeSubdomain, formatSubdomainDraft, isCompleteSubdomainSlug } from "@/lib/subdomain-input";
 import { persistBrandKitDraftToProject } from "@/lib/brand-kit-client";
@@ -136,6 +138,14 @@ export function NewProjectPageWizard() {
     });
   }, [builderChoice]);
 
+  useEffect(() => {
+    if (builderChoice === "none") return;
+    const panelId = `builder-panel-${builderChoice}`;
+    requestAnimationFrame(() => {
+      document.getElementById(panelId)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }, [builderChoice]);
+
   const trimmedName = displayName.trim();
   const trimmedDomain = finalizeSubdomain(domainInput);
 
@@ -198,7 +208,7 @@ export function NewProjectPageWizard() {
   }, [domainInput]);
 
   const createProjectCell = useCallback(
-    async (preferredEditor: "box" | "build" | "analytics"): Promise<string> => {
+    async (preferredEditor: PreferredPlaygroundEditor): Promise<string> => {
       const subdomain = trimmedDomain;
 
       const res = await fetch("/api/projects", {
@@ -302,12 +312,14 @@ export function NewProjectPageWizard() {
     if (creatingProject) return;
     setCreatingProject(true);
     try {
-      const projectId = await createProjectCell("build");
-      const params = new URLSearchParams({ projectKind: "marketing" });
-      if (marketingGoal) params.set("goal", marketingGoal);
-      if (marketingChannel) params.set("channel", marketingChannel);
-      clearLemnityBoxCanvasDraft();
-      router.push(`${buildPlaygroundBuildEditUrl({ projectId })}?${params.toString()}`);
+      const projectId = await createProjectCell("marketing");
+      router.push(
+        buildPlaygroundMarketingEditUrl(projectId, {
+          goal: marketingGoal,
+          channel: marketingChannel,
+          lang
+        })
+      );
       if (typeof window !== "undefined") {
         window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
       }
@@ -316,7 +328,18 @@ export function NewProjectPageWizard() {
     } finally {
       setCreatingProject(false);
     }
-  }, [creatingProject, createProjectCell, domainValid, marketingChannel, marketingGoal, nameValid, router, subdomainCheck, t]);
+  }, [
+    creatingProject,
+    createProjectCell,
+    domainValid,
+    lang,
+    marketingChannel,
+    marketingGoal,
+    nameValid,
+    router,
+    subdomainCheck,
+    t
+  ]);
 
   const navigateNewProjectToPresentation = useCallback(async () => {
     setAttemptedSubmit(true);
@@ -964,6 +987,7 @@ export function NewProjectPageWizard() {
 
           {mountedBuilderPanels.has("marketing") ? (
             <section
+              id="builder-panel-marketing"
               className={cn(
                 "space-y-5 rounded-xl border border-emerald-200/60 bg-emerald-50/30 p-5 dark:border-emerald-800/40 dark:bg-emerald-950/20 sm:p-6",
                 builderChoice !== "marketing" && "hidden"

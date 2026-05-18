@@ -52,8 +52,17 @@ export function buildPlaygroundAnalyticsEditUrl(projectId: string): string {
 }
 
 /** Marketing Analytics editor. */
-export function buildPlaygroundMarketingEditUrl(projectId: string): string {
-  return `/playground/marketing?projectId=${encodeURIComponent(projectId)}`;
+export function buildPlaygroundMarketingEditUrl(
+  projectId: string,
+  opts?: { goal?: string; channel?: string; lang?: string }
+): string {
+  const params = new URLSearchParams({ projectId: projectId.trim() });
+  const goal = opts?.goal?.trim();
+  const channel = opts?.channel?.trim();
+  if (goal) params.set("goal", goal);
+  if (channel) params.set("channel", channel);
+  if (opts?.lang) params.set("lang", opts.lang);
+  return `/playground/marketing?${params.toString()}`;
 }
 
 /** Presentation (SlideGraph) editor — uses build page with projectKind=presentation. */

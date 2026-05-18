@@ -97,6 +97,8 @@ export function MarketingEditor() {
   const { t, lang } = useI18n();
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId") ?? "";
+  const campaignGoal = searchParams.get("goal")?.trim() ?? "";
+  const campaignChannels = searchParams.get("channel")?.trim() ?? "";
   const [leftTab, setLeftTab] = useState<LeftTab>("upload");
 
   const {
@@ -231,6 +233,22 @@ export function MarketingEditor() {
                 <p className="text-sm text-muted-foreground mt-1">
                   {status === "error" && errorMessage ? errorMessage : t("marketing_bi_empty_hint")}
                 </p>
+                {(campaignGoal || campaignChannels) && status !== "error" ? (
+                  <dl className="mx-auto mt-4 max-w-sm space-y-2 text-left text-xs text-muted-foreground">
+                    {campaignGoal ? (
+                      <div>
+                        <dt className="font-medium text-foreground/80">Цель кампании</dt>
+                        <dd className="mt-0.5">{campaignGoal}</dd>
+                      </div>
+                    ) : null}
+                    {campaignChannels ? (
+                      <div>
+                        <dt className="font-medium text-foreground/80">Каналы</dt>
+                        <dd className="mt-0.5">{campaignChannels}</dd>
+                      </div>
+                    ) : null}
+                  </dl>
+                ) : null}
               </div>
             </div>
           </div>
