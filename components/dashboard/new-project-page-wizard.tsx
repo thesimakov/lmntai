@@ -16,7 +16,8 @@ import {
   Presentation,
   Search,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  ArrowUpRight
 } from "lucide-react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -46,7 +47,7 @@ import { cn } from "@/lib/utils";
 
 const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
-type BuilderChoice = "none" | "ai" | "website" | "analytics" | "marketing" | "presentation";
+type BuilderChoice = "none" | "ai" | "website" | "analytics" | "marketing";
 
 const TEMPLATE_TAB_IDS = [
   "business",
@@ -105,8 +106,6 @@ export function NewProjectPageWizard() {
   const [activeTemplateTab, setActiveTemplateTab] = useState<TemplateTabId>("business");
   const [marketingGoal, setMarketingGoal] = useState("");
   const [marketingChannel, setMarketingChannel] = useState("");
-  const [presentationTopic, setPresentationTopic] = useState("");
-  const [presentationSlides, setPresentationSlides] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [domainInput, setDomainInput] = useState("");
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -340,31 +339,6 @@ export function NewProjectPageWizard() {
     subdomainCheck,
     t
   ]);
-
-  const navigateNewProjectToPresentation = useCallback(async () => {
-    setAttemptedSubmit(true);
-    if (!nameValid || !domainValid || subdomainCheck !== "available") {
-      toast.message(t("projects_template_fix_form_toast"));
-      return;
-    }
-    if (creatingProject) return;
-    setCreatingProject(true);
-    try {
-      const projectId = await createProjectCell("build");
-      const params = new URLSearchParams({ projectKind: "presentation" });
-      if (presentationTopic) params.set("topic", presentationTopic);
-      if (presentationSlides) params.set("slides", presentationSlides);
-      clearLemnityBoxCanvasDraft();
-      router.push(`${buildPlaygroundBuildEditUrl({ projectId })}?${params.toString()}`);
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new CustomEvent("playground-projects-refresh"));
-      }
-    } catch (e) {
-      toastProjectCreateFailure(e, t("projects_create_failed"));
-    } finally {
-      setCreatingProject(false);
-    }
-  }, [creatingProject, createProjectCell, domainValid, nameValid, presentationSlides, presentationTopic, router, subdomainCheck, t]);
 
   const navigateNewProjectToAnalytics = useCallback(async () => {
     setAttemptedSubmit(true);
@@ -858,36 +832,35 @@ export function NewProjectPageWizard() {
               </Card>
 
               <Card
-                role="button"
+                role="link"
                 tabIndex={creatingProject ? -1 : 0}
-                aria-pressed={builderChoice === "presentation"}
                 onClick={() => {
                   if (creatingProject) return;
-                  setBuilderChoice("presentation");
+                  router.push("/presentations");
                 }}
                 onKeyDown={(e) => {
                   if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
                   e.preventDefault();
-                  setBuilderChoice("presentation");
+                  router.push("/presentations");
                 }}
                 className={cn(
                   "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
-                  "cursor-pointer border-orange-200/90 bg-gradient-to-br from-orange-50 via-background to-background",
-                  "hover:border-orange-400/80 hover:shadow-md dark:border-orange-900/55 dark:from-orange-950/40 dark:hover:border-orange-700",
-                  builderChoice === "presentation" && "ring-2 ring-orange-500/35",
+                  "cursor-pointer border-fuchsia-200/90 bg-gradient-to-br from-fuchsia-50 via-background to-background",
+                  "hover:border-fuchsia-400/80 hover:shadow-md dark:border-fuchsia-900/55 dark:from-fuchsia-950/40 dark:hover:border-fuchsia-700",
                   creatingProject && "pointer-events-none opacity-55"
                 )}
               >
                 <CardContent className="flex gap-4 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-orange-900 dark:bg-orange-950/80 dark:text-orange-50">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/80 dark:text-fuchsia-50">
                     <Presentation className="size-5" aria-hidden />
                   </span>
                   <div className="min-w-0 flex-1 space-y-1 self-center">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
-                      Презентация AI
+                      {t("projects_new_presentations_hub_title")}
+                      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     </span>
                     <p className="text-sm font-normal leading-snug text-muted-foreground">
-                      Опишите тему — AI сгенерирует слайды. Редактируйте и экспортируйте в PPTX.
+                      {t("projects_new_presentations_hub_desc")}
                     </p>
                   </div>
                 </CardContent>
@@ -1048,70 +1021,6 @@ export function NewProjectPageWizard() {
             </section>
           ) : null}
 
-          {mountedBuilderPanels.has("presentation") ? (
-            <section
-              className={cn(
-                "space-y-5 rounded-xl border border-orange-200/60 bg-orange-50/30 p-5 dark:border-orange-800/40 dark:bg-orange-950/20 sm:p-6",
-                builderChoice !== "presentation" && "hidden"
-              )}
-              aria-hidden={builderChoice !== "presentation"}
-            >
-              <header className="space-y-1">
-                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-                  <Presentation className="size-5 text-orange-600 dark:text-orange-400" aria-hidden />
-                  Презентация AI
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Опишите тему и количество слайдов — AI сгенерирует готовую презентацию.
-                </p>
-              </header>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Тема презентации
-                  </label>
-                  <Input
-                    value={presentationTopic}
-                    onChange={(e) => setPresentationTopic(e.target.value)}
-                    placeholder="Стратегия развития компании на 2026 год..."
-                    className="h-11 border-orange-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-orange-500/30 dark:border-orange-800/60"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-foreground">
-                    Количество слайдов
-                  </label>
-                  <Input
-                    value={presentationSlides}
-                    onChange={(e) => setPresentationSlides(e.target.value)}
-                    placeholder="10"
-                    type="number"
-                    min={3}
-                    max={50}
-                    className="h-11 border-orange-200/80 bg-background/80 shadow-inner focus-visible:ring-2 focus-visible:ring-orange-500/30 dark:border-orange-800/60"
-                  />
-                </div>
-              </div>
-              <Button
-                type="button"
-                disabled={!canProceed || creatingProject}
-                onClick={() => void navigateNewProjectToPresentation()}
-                className="w-full rounded-full bg-orange-600 font-semibold text-white hover:bg-orange-700 dark:bg-orange-700 dark:hover:bg-orange-600 sm:w-auto sm:min-w-[200px]"
-              >
-                {creatingProject ? (
-                  <>
-                    <Loader2 className="mr-2 size-4 animate-spin" aria-hidden />
-                    Создание...
-                  </>
-                ) : (
-                  <>
-                    <Presentation className="mr-2 size-4" aria-hidden />
-                    Создать презентацию
-                  </>
-                )}
-              </Button>
-            </section>
-          ) : null}
         </div>
       </div>
     </div>

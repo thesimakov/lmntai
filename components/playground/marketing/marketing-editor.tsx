@@ -2,7 +2,7 @@
 
 import { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { Upload, MessageSquare, RefreshCw, TrendingUp, Loader2 } from "lucide-react";
+import { Upload, MessageSquare, RefreshCw, TrendingUp, Loader2, FileDown } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -13,66 +13,37 @@ import { MarketingChatPanel } from "./marketing-chat-panel";
 import { MarketingDashboard } from "./marketing-dashboard";
 import { MarketingChatInsight } from "./marketing-chat-insight";
 import type { MarketingDashboard as MarketingDashboardType } from "@/lib/marketing-schema";
+import type { UiLanguage } from "@/lib/i18n";
+import type { MarketingChatMessage } from "@/lib/stores/use-marketing-store";
 
 type LeftTab = "upload" | "chat";
 
 function ExportButton({
-  projectId,
-  label,
-  lang,
   report,
+  chatMessages,
+  lang,
+  label,
 }: {
-  projectId: string;
+  report: MarketingDashboardType;
+  chatMessages: MarketingChatMessage[];
+  lang: UiLanguage;
   label: string;
-  lang: string;
-  report: MarketingDashboardType | null;
 }) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
 
   const handleExport = async () => {
-    if (!projectId || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/marketing/${encodeURIComponent(projectId)}/export?lang=${encodeURIComponent(lang)}`, {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          format: "marketing-pptx",
-          ...(report ? { report } : {}),
-        }),
-      });
-
-      if (!res.ok) {
-        let message = t("marketing_bi_export_error");
-        const ct = res.headers.get("content-type") ?? "";
-        if (ct.includes("application/json")) {
-          const data = (await res.json().catch(() => null)) as { error?: string } | null;
-          if (data?.error) message = data.error;
-        }
-        toast.error(message);
-        return;
-      }
-
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      try {
-        const cd = res.headers.get("Content-Disposition");
-        const m = cd?.match(/filename="([^"]+)"/);
-        const filename = m?.[1] ?? "marketing.pptx";
-
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.rel = "noopener";
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      const { downloadMarketingPdf } = await import("@/lib/marketing-pdf-export");
+      const base = report.meta.companyName.replace(/\s+/g, "_");
+      const period = report.meta.period.replace(/\s+/g, "_");
+      const filename = `${base}_${period}_Marketing.pdf`;
+      const messages = chatMessages
+        .filter((m) => m.content.trim())
+        .map((m) => ({ role: m.role, content: m.content }));
+      await downloadMarketingPdf(report, messages, lang, filename);
     } catch {
       toast.error(t("marketing_bi_export_error"));
     } finally {
@@ -85,10 +56,10 @@ function ExportButton({
       size="sm"
       variant="outline"
       className="gap-1.5 h-8 text-xs"
-      disabled={busy || !projectId}
+      disabled={busy}
       onClick={() => void handleExport()}
     >
-      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+      {busy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5" />}
       {label}
     </Button>
   );
@@ -198,12 +169,12 @@ export function MarketingEditor() {
 
         <div className="flex-1" />
 
-        {hasDashboard && (
+        {hasDashboard && dashboard && (
           <ExportButton
-            projectId={projectId}
-            label={t("marketing_bi_export_pptx")}
-            lang={lang}
             report={dashboard}
+            chatMessages={chatMessages}
+            lang={lang}
+            label={t("marketing_bi_export_pdf")}
           />
         )}
       </header>
