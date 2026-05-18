@@ -114,6 +114,8 @@ export function PresentationEditorClient({ projectId, initialGraph, userPlan: _u
   // ── One-time store init ──
   useEffect(() => {
     useSlideStore.getState().init(projectId, initialGraph);
+    useEditorStore.getState().setActiveSlideIndex(0);
+    useEditorStore.getState().setSelectedElemId(null);
     const first = initialGraph.slides[0];
     if (first) useSlideStore.getState().ensureFrames(first.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
