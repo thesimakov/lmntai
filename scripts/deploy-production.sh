@@ -37,10 +37,28 @@ echo "==> [deploy] prisma generate + migrate"
 npm run prisma:generate
 npx prisma migrate deploy
 echo "==> [deploy] next build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ) (часто 5–20+ мин; при «зависании» проверьте free -h, dmesg | tail; при OOM NODE_OPTIONS=--max-old-space-size=3072)"
-rm -rf .next
+NEXT_BACKUP=".next.deploy-backup.$$"
+if [[ -d .next && -f .next/BUILD_ID ]]; then
+  rm -rf "$NEXT_BACKUP"
+  mv .next "$NEXT_BACKUP"
+  echo "==> [deploy] предыдущий .next сохранён в $NEXT_BACKUP (откат при ошибке build)"
+fi
 # Явно production: если в ENV_FILE есть NODE_ENV=development, без этого ломается пререндер /404 (Next 15).
-NODE_ENV=production npm run build
-echo "==> [deploy] next build — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+if ! NODE_ENV=production npm run build; then
+  echo "==> [deploy] ОШИБКА: next build не прошёл. PM2 не перезапускаем."
+  rm -rf .next
+  if [[ -d "$NEXT_BACKUP" ]]; then
+    mv "$NEXT_BACKUP" .next
+    echo "==> [deploy] восстановлен предыдущий .next"
+  fi
+  exit 1
+fi
+rm -rf "$NEXT_BACKUP"
+if [[ ! -f .next/BUILD_ID ]]; then
+  echo "==> [deploy] ОШИБКА: .next/BUILD_ID отсутствует после build"
+  exit 1
+fi
+echo "==> [deploy] next build — конец $(date -u +%Y-%m-%dT%H:%M:%SZ) (BUILD_ID=$(cat .next/BUILD_ID))"
 
 if [[ -f services/lemnity-builder/package.json ]]; then
   echo "==> [deploy] lemnity-builder: npm ci + build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -50,10 +68,12 @@ if [[ -f services/lemnity-builder/package.json ]]; then
 fi
 
 echo "==> [deploy] pm2"
-if pm2 describe "$APP_NAME" >/dev/null 2>&1; then
-  pm2 restart "$APP_NAME" --update-env
-else
+if ! pm2 describe "$APP_NAME" >/dev/null 2>&1; then
   pm2 start ecosystem.config.cjs --only "$APP_NAME" --update-env
+elif pm2 describe "$APP_NAME" 2>/dev/null | grep -q "stopped"; then
+  pm2 start "$APP_NAME" --update-env
+else
+  pm2 restart "$APP_NAME" --update-env
 fi
 
 if pm2 describe lemnity-builder >/dev/null 2>&1; then
