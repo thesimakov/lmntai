@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
-import { slideGraphSchema } from "@/lib/slide-graph/schema";
+import { parseSlideGraphPayload } from "@/lib/slide-graph/normalize";
+import { getTemplate } from "@/lib/slide-graph/templates";
 import { PresentationEditorClient } from "./presentation-editor";
 import { TemplatePicker } from "./template-picker";
 
@@ -29,7 +30,20 @@ async function PresentationsLoader({ projectId }: { projectId: string }) {
     return <TemplatePicker projectId={projectId} />;
   }
 
-  const parse = slideGraphSchema.safeParse(JSON.parse(graphJson));
+  let raw: unknown;
+  try {
+    raw = JSON.parse(graphJson) as unknown;
+  } catch {
+    return <TemplatePicker projectId={projectId} error="Данные повреждены — выберите шаблон заново." />;
+  }
+
+  const meta =
+    raw && typeof raw === "object" && !Array.isArray(raw)
+      ? (raw as { meta?: { templateId?: string } }).meta
+      : undefined;
+  const template = meta?.templateId ? getTemplate(meta.templateId) : undefined;
+
+  const parse = parseSlideGraphPayload(raw, { template });
   if (!parse.success) {
     return <TemplatePicker projectId={projectId} error="Данные повреждены — выберите шаблон заново." />;
   }

@@ -30,11 +30,20 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ templateId: selectedId, brief: brief.trim() }),
       });
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        details?: string;
+      };
       if (!res.ok) {
-        setGenError(data.error ?? "Ошибка генерации. Попробуйте снова.");
+        const hint =
+          data.code === "SCHEMA_MISMATCH"
+            ? "Модель вернула невалидную структуру. Укоротите описание или смените шаблон."
+            : null;
+        setGenError(hint ?? data.error ?? "Ошибка генерации. Попробуйте снова.");
         return;
       }
+      router.replace(`/playground/presentations?projectId=${projectId}&t=${Date.now()}`);
       router.refresh();
     } catch {
       setGenError("Сетевая ошибка. Проверьте соединение.");

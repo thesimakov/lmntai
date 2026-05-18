@@ -28,7 +28,7 @@ SCHEMA:
   "version": 1,
   "meta": {
     "title": "Deck title",
-    "language": "ru" | "en",
+    "language": "ru" or "en" (exactly 2 characters, not full language names),
     "theme": {
       "primaryColor": "#hex",
       "backgroundColor": "#hex",
@@ -116,6 +116,7 @@ RULES:
 - Use EXACTLY the layouts listed in the TEMPLATE STRUCTURE — do not change or reorder them
 - All ids must be unique snake_case strings
 - "generatedAt" field must be empty string ""
+- meta.language must be exactly "ru" or "en" (never "Russian" or "English")
 - templateId must be "${template.id}"
 
 ${RICH_ELEMENT_SCHEMA}
@@ -144,11 +145,12 @@ IMPORTANT LAYOUT RULES:
 
 export const TEMPLATE_SLIDE_RETRY_MESSAGE =
   "Your response was not valid JSON or did not match the required schema. " +
-  "Return ONLY the JSON object. Ensure: " +
-  "1) All slides use EXACTLY the layouts from the template structure in order. " +
-  "2) Rich element types (metric-card, feature-card, step-card, etc.) are used for rich layouts. " +
-  "3) All ids are unique snake_case strings. " +
-  "4) No markdown, no code fences.";
+  "Return ONLY the top-level JSON object (not wrapped in slideGraph/data). Ensure: " +
+  "1) version is number 1; meta.language is exactly \"ru\" or \"en\" (2 chars). " +
+  "2) All slides use EXACTLY the layouts from the template structure in order. " +
+  "3) Rich element types (metric-card, feature-card, step-card, stat-number, pricing-card, timeline-col) for rich layouts. " +
+  "4) Every slide has elements[] with at least one item; all ids unique snake_case. " +
+  "5) No markdown, no code fences, no trailing commas.";
 
 // ============================================================
 // CHAT PROMPT
