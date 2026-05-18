@@ -1,0 +1,149 @@
+<h2>Контекстная панель + Quality Scorer</h2>
+<p class="subtitle">Панель меняется по типу выбранного элемента. Оценка считается локально, без AI.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+
+  <!-- Context panel switching logic -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#60a5fa;margin-bottom:14px">Логика переключения панели</div>
+    <div style="font-family:monospace;font-size:11px;line-height:1.9;background:#0f172a;border-radius:8px;padding:14px">
+      <div style="color:#64748b">// ContextPanel.tsx</div>
+      <div style="color:#e2e8f0">function <span style="color:#60a5fa">ContextPanel</span>() {</div>
+      <div style="padding-left:16px;color:#e2e8f0">const { selectedElemId, rightMode }</div>
+      <div style="padding-left:24px;color:#e2e8f0">= useEditorStore()</div>
+      <div style="padding-left:16px;color:#e2e8f0">const elem = useSlideStore(</div>
+      <div style="padding-left:24px;color:#e2e8f0">s =&gt; findElement(s, selectedElemId)</div>
+      <div style="padding-left:16px;color:#e2e8f0">)</div>
+      <br>
+      <div style="padding-left:16px;color:#64748b">// rightMode из иконок сверху</div>
+      <div style="padding-left:16px;color:#e2e8f0">if (rightMode === <span style="color:#34d399">'slide'</span>)</div>
+      <div style="padding-left:24px;color:#e2e8f0">return &lt;<span style="color:#a78bfa">SlideProperties</span> /&gt;</div>
+      <div style="padding-left:16px;color:#e2e8f0">if (rightMode === <span style="color:#34d399">'theme'</span>)</div>
+      <div style="padding-left:24px;color:#e2e8f0">return &lt;<span style="color:#a78bfa">ThemeEditor</span> /&gt;</div>
+      <div style="padding-left:16px;color:#e2e8f0">if (rightMode === <span style="color:#34d399">'notes'</span>)</div>
+      <div style="padding-left:24px;color:#e2e8f0">return &lt;<span style="color:#a78bfa">NotesPanel</span> /&gt;</div>
+      <br>
+      <div style="padding-left:16px;color:#64748b">// props mode — по типу элемента</div>
+      <div style="padding-left:16px;color:#e2e8f0">if (!elem)</div>
+      <div style="padding-left:24px;color:#e2e8f0">return &lt;<span style="color:#a78bfa">SlideProperties</span> /&gt;</div>
+      <br>
+      <div style="padding-left:16px;color:#e2e8f0">return &lt;<span style="color:#60a5fa">ElementProperties</span></div>
+      <div style="padding-left:24px;color:#e2e8f0">elem={elem} /&gt;</div>
+      <div style="color:#e2e8f0">}</div>
+    </div>
+  </div>
+
+  <!-- Element properties by type -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#a78bfa;margin-bottom:14px">Секции по типу элемента</div>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:11px">
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="background:#3b82f6;border-radius:3px;padding:2px 6px;font-size:9px;color:#fff;font-weight:700">Текст</div>
+          <div style="color:#64748b;font-size:10px">heading · subheading · body · quote · caption · label</div>
+        </div>
+        <div style="color:#94a3b8;line-height:1.7">Содержимое (textarea) → Шрифт + размер + вес → Стиль (B/I/U) → Выравнивание → Цвет → Межстрочный</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="background:#10b981;border-radius:3px;padding:2px 6px;font-size:9px;color:#fff;font-weight:700">Список</div>
+          <div style="color:#64748b;font-size:10px">bullet-list</div>
+        </div>
+        <div style="color:#94a3b8;line-height:1.7">Пункты (добавить/удалить/переупорядочить) → Стиль маркера → Шрифт → Цвет</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="background:#f59e0b;border-radius:3px;padding:2px 6px;font-size:9px;color:#000;font-weight:700">Изображение</div>
+          <div style="color:#64748b;font-size:10px">image</div>
+        </div>
+        <div style="color:#94a3b8;line-height:1.7">URL / загрузка → Alt-текст → Object-fit (cover/contain) → Скругление → Прозрачность</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+          <div style="background:#8b5cf6;border-radius:3px;padding:2px 6px;font-size:9px;color:#fff;font-weight:700">Карточки</div>
+          <div style="color:#64748b;font-size:10px">metric-card · feature-card · step-card · pricing-card</div>
+        </div>
+        <div style="color:#94a3b8;line-height:1.7">Поля по типу (label/value/description/badge) → Фон → Скругление</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px;border:1px solid #1f2937">
+        <div style="color:#64748b;font-size:10px;margin-bottom:4px">Общее для всех типов (всегда снизу)</div>
+        <div style="color:#94a3b8">Позиция X/Y · Размер W/H · Прозрачность · Имя слоя · 🔒 Lock · 👁 Visible</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Quality scorer -->
+<div style="background:#1e293b;border-radius:12px;padding:20px;margin-top:16px">
+  <div class="label" style="color:#22c55e;margin-bottom:14px">Quality Scorer — 4 метрики, считается локально</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;font-size:11px">
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#22c55e;font-weight:700;margin-bottom:6px">Плотность</div>
+      <div style="color:#64748b;line-height:1.6;margin-bottom:8px">Суммарная площадь элементов / площадь слайда. Штраф если &gt; 65% или &lt; 20%</div>
+      <div style="background:#1e293b;border-radius:4px;height:4px">
+        <div style="width:72%;height:100%;background:#22c55e;border-radius:4px"></div>
+      </div>
+      <div style="color:#22c55e;font-size:10px;margin-top:3px">72 / 100</div>
+    </div>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#22c55e;font-weight:700;margin-bottom:6px">Иерархия</div>
+      <div style="color:#64748b;line-height:1.6;margin-bottom:8px">Есть ли heading? Разница размеров heading vs body ≥ 1.4×? Один heading или больше?</div>
+      <div style="background:#1e293b;border-radius:4px;height:4px">
+        <div style="width:90%;height:100%;background:#22c55e;border-radius:4px"></div>
+      </div>
+      <div style="color:#22c55e;font-size:10px;margin-top:3px">90 / 100</div>
+    </div>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#f59e0b;font-weight:700;margin-bottom:6px">Баланс</div>
+      <div style="color:#64748b;line-height:1.6;margin-bottom:8px">Центр масс элементов vs центр слайда. Отклонение &gt; 15% — штраф</div>
+      <div style="background:#1e293b;border-radius:4px;height:4px">
+        <div style="width:60%;height:100%;background:#f59e0b;border-radius:4px"></div>
+      </div>
+      <div style="color:#f59e0b;font-size:10px;margin-top:3px">60 / 100</div>
+    </div>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#22c55e;font-weight:700;margin-bottom:6px">Читаемость</div>
+      <div style="color:#64748b;line-height:1.6;margin-bottom:8px">heading ≥ 28px, body ≥ 14px. Контраст цвета текста vs фона (WCAG AA)</div>
+      <div style="background:#1e293b;border-radius:4px;height:4px">
+        <div style="width:85%;height:100%;background:#22c55e;border-radius:4px"></div>
+      </div>
+      <div style="color:#22c55e;font-size:10px;margin-top:3px">85 / 100</div>
+    </div>
+
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;font-size:11px">
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#60a5fa;font-weight:700;margin-bottom:6px">Итоговый балл</div>
+      <div style="font-family:monospace;font-size:11px;color:#94a3b8;line-height:1.8">
+        score = (<br>
+        &nbsp; density * 0.25 +<br>
+        &nbsp; hierarchy * 0.35 +<br>
+        &nbsp; balance * 0.20 +<br>
+        &nbsp; readability * 0.20<br>
+        ) → 0..100
+      </div>
+    </div>
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#60a5fa;font-weight:700;margin-bottom:6px">Когда считается</div>
+      <div style="color:#64748b;line-height:1.8">
+        • При каждом изменении слайда<br>
+        • Debounce 300ms<br>
+        • Только текущий слайд<br>
+        • Без сетевых запросов<br>
+        • &lt; 1ms на вычисление
+      </div>
+    </div>
+  </div>
+</div>

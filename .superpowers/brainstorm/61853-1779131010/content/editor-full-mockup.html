@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<title>Редактор слайдов — итоговый макет</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0f1a; color: #e2e8f0; }
+
+/* ─── Layout ─────────────────────────────────── */
+.editor { display: flex; flex-direction: column; height: 100vh; }
+
+/* Topbar */
+.topbar {
+  height: 44px; background: #111827; border-bottom: 1px solid #1f2937;
+  display: flex; align-items: center; gap: 8px; padding: 0 12px; flex-shrink: 0;
+}
+.topbar-logo { width: 28px; height: 28px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; color: #fff; }
+.topbar-title { font-size: 13px; font-weight: 600; color: #f1f5f9; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.topbar-sep { width: 1px; height: 20px; background: #1f2937; margin: 0 4px; }
+.tool-btn { height: 28px; padding: 0 8px; border-radius: 6px; border: none; background: transparent; color: #64748b; font-size: 11px; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all 0.15s; }
+.tool-btn:hover { background: #1f2937; color: #cbd5e1; }
+.tool-btn.active { background: #1e3a5f; color: #60a5fa; }
+.tool-icon { width: 16px; height: 16px; background: currentColor; border-radius: 3px; opacity: 0.7; }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.btn-export { height: 28px; padding: 0 12px; background: #3b82f6; color: #fff; border: none; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.btn-export:hover { background: #2563eb; }
+.save-status { font-size: 11px; color: #475569; display: flex; align-items: center; gap: 4px; }
+.save-dot { width: 6px; height: 6px; background: #22c55e; border-radius: 50%; }
+
+/* Body */
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* Left panel */
+.left-panel { width: 172px; flex-shrink: 0; background: #111827; border-right: 1px solid #1f2937; display: flex; flex-direction: column; }
+.panel-tabs { display: flex; border-bottom: 1px solid #1f2937; flex-shrink: 0; }
+.panel-tab { flex: 1; padding: 8px 0; text-align: center; font-size: 11px; font-weight: 500; color: #475569; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.panel-tab.active { color: #93c5fd; border-bottom-color: #3b82f6; }
+
+/* Slide list */
+.slide-list { flex: 1; overflow-y: auto; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.slide-thumb { position: relative; border-radius: 5px; overflow: hidden; border: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+.slide-thumb.active { border-color: #3b82f6; box-shadow: 0 0 0 1px rgba(59,130,246,0.3); }
+.slide-thumb:hover:not(.active) { border-color: #334155; }
+.slide-inner { aspect-ratio: 16/9; background: #1e293b; display: flex; align-items: center; justify-content: center; position: relative; }
+.slide-num { position: absolute; bottom: 3px; right: 4px; font-size: 8px; color: rgba(255,255,255,0.4); }
+
+/* Slide 1 content mock */
+.s1 { background: linear-gradient(135deg, #1e1b4b, #312e81); }
+.s1-h { position: absolute; left: 8%; top: 28%; width: 70%; height: 12%; background: rgba(255,255,255,0.9); border-radius: 2px; }
+.s1-sub { position: absolute; left: 8%; top: 48%; width: 50%; height: 7%; background: rgba(255,255,255,0.4); border-radius: 2px; }
+.s1-tag { position: absolute; left: 8%; top: 18%; width: 25%; height: 6%; background: #6366f1; border-radius: 20px; opacity: 0.8; }
+
+/* Slide 2 content mock */
+.s2 { background: #0f172a; }
+.s2-cards { position: absolute; inset: 12%; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4%; }
+.s2-card { background: rgba(255,255,255,0.06); border-radius: 3px; }
+
+/* Slide 3 */
+.s3 { background: #1a1a2e; }
+.s3-h { position: absolute; left: 8%; top: 20%; width: 55%; height: 10%; background: rgba(255,255,255,0.8); border-radius: 2px; }
+.s3-items { position: absolute; left: 8%; top: 38%; width: 80%; display: flex; flex-direction: column; gap: 4%; }
+.s3-item { height: 8px; background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+/* Slide 4 */
+.s4 { background: linear-gradient(135deg, #064e3b, #065f46); }
+.s4-stat { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); width: 40%; height: 35%; background: rgba(255,255,255,0.1); border-radius: 4px; }
+
+/* Add slide button */
+.add-slide { margin: 0 8px 8px; padding: 8px; border: 1.5px dashed #1f2937; border-radius: 5px; text-align: center; font-size: 11px; color: #374151; cursor: pointer; transition: all 0.15s; }
+.add-slide:hover { border-color: #3b82f6; color: #60a5fa; }
+
+/* Canvas area */
+.canvas-area { flex: 1; background: #080d18; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+
+/* Ruler */
+.ruler-h { position: absolute; top: 0; left: 0; right: 0; height: 20px; background: #0f172a; border-bottom: 1px solid #1f2937; display: flex; align-items: center; padding: 0 8px; overflow: hidden; }
+.ruler-v { position: absolute; top: 20px; left: 0; width: 20px; bottom: 0; background: #0f172a; border-right: 1px solid #1f2937; }
+.ruler-tick { position: absolute; bottom: 0; width: 1px; background: #1f2937; }
+.ruler-label { position: absolute; font-size: 7px; color: #374151; bottom: 2px; }
+
+/* Snap guides */
+.snap-h { position: absolute; left: 20px; right: 0; height: 1px; background: rgba(59,130,246,0.6); pointer-events: none; }
+.snap-v { position: absolute; top: 20px; bottom: 0; width: 1px; background: rgba(59,130,246,0.6); pointer-events: none; }
+
+/* The slide canvas */
+.slide-canvas-wrap { position: relative; margin-top: 20px; margin-left: 20px; }
+.slide-canvas {
+  width: 720px; aspect-ratio: 16/9;
+  background: linear-gradient(135deg, #1e1b4b, #312e81);
+  border-radius: 8px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.05);
+  position: relative; overflow: hidden;
+}
+
+/* Slide elements */
+.el-tag {
+  position: absolute; left: 7%; top: 13%;
+  background: #6366f1; color: #e0e7ff; font-size: 13px; font-weight: 700;
+  padding: 4px 14px; border-radius: 20px; letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.el-heading {
+  position: absolute; left: 7%; top: 26%;
+  color: #fff; font-size: 42px; font-weight: 900; line-height: 1.1;
+  letter-spacing: -0.02em; width: 65%;
+}
+.el-sub {
+  position: absolute; left: 7%; top: 65%;
+  color: rgba(255,255,255,0.6); font-size: 16px; width: 50%;
+}
+
+/* Selected element outline */
+.el-heading.selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+/* Resize handles */
+.handle { position: absolute; width: 8px; height: 8px; background: #fff; border: 1.5px solid #3b82f6; border-radius: 2px; }
+.handle.tl { top: -5px; left: -5px; cursor: nw-resize; }
+.handle.tr { top: -5px; right: -5px; cursor: ne-resize; }
+.handle.bl { bottom: -5px; left: -5px; cursor: sw-resize; }
+.handle.br { bottom: -5px; right: -5px; cursor: se-resize; }
+.handle.tm { top: -5px; left: calc(50% - 4px); cursor: n-resize; }
+.handle.bm { bottom: -5px; left: calc(50% - 4px); cursor: s-resize; }
+.handle.ml { top: calc(50% - 4px); left: -5px; cursor: w-resize; }
+.handle.mr { top: calc(50% - 4px); right: -5px; cursor: e-resize; }
+
+/* Smart guide label */
+.guide-label {
+  position: absolute; background: #3b82f6; color: #fff;
+  font-size: 9px; padding: 1px 4px; border-radius: 3px;
+}
+
+/* Floating toolbar above selected element */
+.float-toolbar {
+  position: absolute; top: -38px; left: 0;
+  background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+  padding: 4px 6px; display: flex; align-items: center; gap: 3px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+.ft-btn {
+  width: 26px; height: 26px; border-radius: 5px; border: none; background: transparent;
+  color: #94a3b8; font-size: 11px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.ft-btn:hover { background: #334155; color: #e2e8f0; }
+.ft-btn.active { background: #1e3a5f; color: #60a5fa; }
+.ft-sep { width: 1px; height: 16px; background: #334155; margin: 0 2px; }
+
+/* AI inline prompt */
+.ai-inline {
+  position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+  background: #1e293b; border: 1px solid #3b82f6; border-radius: 24px;
+  padding: 8px 14px; display: flex; align-items: center; gap: 8px;
+  box-shadow: 0 4px 20px rgba(59,130,246,0.2);
+  min-width: 320px;
+}
+.ai-avatar { width: 22px; height: 22px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 900; color: #fff; }
+.ai-input-mock { flex: 1; font-size: 12px; color: #475569; }
+.ai-send { width: 26px; height: 26px; background: #3b82f6; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.ai-send::after { content: '→'; color: #fff; font-size: 11px; }
+
+/* Zoom controls */
+.zoom-ctrl {
+  position: absolute; bottom: 16px; right: 16px;
+  background: #1e293b; border: 1px solid #334155; border-radius: 8px;
+  padding: 4px; display: flex; align-items: center; gap: 2px;
+}
+.zoom-btn { width: 24px; height: 24px; border-radius: 5px; border: none; background: transparent; color: #64748b; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.zoom-btn:hover { background: #334155; color: #e2e8f0; }
+.zoom-val { font-size: 11px; color: #64748b; padding: 0 4px; }
+
+/* Right panel */
+.right-panel { width: 220px; flex-shrink: 0; background: #111827; border-left: 1px solid #1f2937; display: flex; flex-direction: column; }
+.rp-mode-bar { display: flex; border-bottom: 1px solid #1f2937; padding: 6px; gap: 4px; flex-shrink: 0; }
+.rp-mode-btn { width: 28px; height: 28px; border-radius: 6px; border: none; background: transparent; color: #475569; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.15s; }
+.rp-mode-btn:hover { background: #1f2937; color: #94a3b8; }
+.rp-mode-btn.active { background: #1e3a5f; color: #60a5fa; }
+
+.rp-body { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+.rp-section {}
+.rp-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #475569; margin-bottom: 6px; }
+.rp-ctx-tag { font-size: 11px; font-weight: 600; color: #60a5fa; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+.rp-ctx-tag::before { content: ''; display: inline-block; width: 8px; height: 8px; background: #3b82f6; border-radius: 2px; }
+
+.input-row { display: flex; gap: 6px; }
+.rp-input { flex: 1; background: #0f172a; border: 1px solid #1f2937; border-radius: 6px; padding: 5px 8px; font-size: 11px; color: #e2e8f0; display: flex; align-items: center; }
+.rp-input-label { font-size: 9px; color: #475569; margin-bottom: 2px; }
+
+.font-select { width: 100%; background: #0f172a; border: 1px solid #1f2937; border-radius: 6px; padding: 6px 8px; font-size: 11px; color: #e2e8f0; display: flex; align-items: center; justify-content: space-between; }
+.font-select::after { content: '▾'; color: #475569; }
+
+.size-row { display: flex; gap: 4px; }
+.size-input { flex: 1; background: #0f172a; border: 1px solid #1f2937; border-radius: 6px; padding: 5px 6px; font-size: 11px; color: #e2e8f0; text-align: center; }
+
+.align-btns { display: flex; gap: 3px; }
+.align-btn { flex: 1; height: 28px; background: #0f172a; border: 1px solid #1f2937; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; color: #475569; }
+.align-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+
+.style-btns { display: flex; gap: 3px; }
+.style-btn { width: 28px; height: 28px; background: #0f172a; border: 1px solid #1f2937; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; cursor: pointer; color: #475569; }
+.style-btn.active { background: #1e3a5f; border-color: #3b82f6; color: #60a5fa; }
+
+.color-row { display: flex; align-items: center; gap: 6px; }
+.color-swatch { width: 28px; height: 28px; border-radius: 6px; border: 2px solid rgba(255,255,255,0.15); cursor: pointer; flex-shrink: 0; }
+.color-hex { flex: 1; background: #0f172a; border: 1px solid #1f2937; border-radius: 6px; padding: 5px 8px; font-size: 11px; color: #e2e8f0; font-family: monospace; }
+
+.divider { height: 1px; background: #1f2937; }
+
+/* Position inputs */
+.pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.pos-field { display: flex; flex-direction: column; gap: 2px; }
+
+/* Quality badge */
+.quality-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: #0f172a; border: 1px solid #1f2937; border-radius: 8px; padding: 8px 10px;
+}
+.quality-ring { width: 36px; height: 36px; flex-shrink: 0; }
+.quality-info { flex: 1; }
+.quality-score { font-size: 18px; font-weight: 900; color: #22c55e; line-height: 1; }
+.quality-label { font-size: 9px; color: #475569; margin-top: 1px; }
+.quality-bars { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; }
+.quality-bar-row { display: flex; align-items: center; gap: 6px; }
+.quality-bar-label { font-size: 9px; color: #475569; width: 64px; flex-shrink: 0; }
+.quality-bar-track { flex: 1; height: 4px; background: #1f2937; border-radius: 2px; }
+.quality-bar-fill { height: 100%; border-radius: 2px; }
+
+/* AI button bottom */
+.rp-ai-btn {
+  margin: 0 12px 12px; padding: 8px 12px;
+  background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.3);
+  border-radius: 8px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+  transition: all 0.15s;
+}
+.rp-ai-btn:hover { background: rgba(59,130,246,0.2); border-color: #3b82f6; }
+.rp-ai-dot { width: 18px; height: 18px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff; font-weight: 900; }
+.rp-ai-text { font-size: 11px; color: #60a5fa; font-weight: 500; }
+.rp-ai-kbd { font-size: 9px; color: #334155; background: #0f172a; border: 1px solid #1f2937; border-radius: 3px; padding: 1px 4px; margin-left: auto; }
+</style>
+</head>
+<body>
+<div class="editor">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-logo">L</div>
+    <span class="topbar-title">Pitch Deck — Lemnity AI 2026</span>
+    <div class="topbar-sep"></div>
+
+    <!-- Tool buttons -->
+    <button class="tool-btn active">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="1" y="1" width="10" height="10" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      Выбор
+    </button>
+    <button class="tool-btn">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M2 10 L6 2 L10 10" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+      Текст
+    </button>
+    <button class="tool-btn">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><rect x="2" y="2" width="8" height="8" rx="1" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      Фигура
+    </button>
+    <button class="tool-btn">🖼 Фото</button>
+
+    <div class="topbar-sep"></div>
+
+    <!-- Navigation -->
+    <button class="tool-btn">◀</button>
+    <span style="font-size:12px;color:#64748b;min-width:52px;text-align:center">1 / 4</span>
+    <button class="tool-btn">▶</button>
+
+    <div class="topbar-right">
+      <span class="save-status"><span class="save-dot"></span>Сохранено</span>
+      <div class="topbar-sep"></div>
+      <button class="tool-btn">👁 Превью</button>
+      <button class="btn-export">↓ PPTX</button>
+    </div>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+
+    <!-- Left panel -->
+    <div class="left-panel">
+      <div class="panel-tabs">
+        <div class="panel-tab active">Слайды</div>
+        <div class="panel-tab">Слои</div>
+      </div>
+
+      <div class="slide-list">
+
+        <!-- Slide 1 — active -->
+        <div class="slide-thumb active">
+          <div class="slide-inner s1">
+            <div class="s1-tag"></div>
+            <div class="s1-h"></div>
+            <div class="s1-sub"></div>
+            <span class="slide-num">1</span>
+          </div>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="slide-thumb">
+          <div class="slide-inner s2">
+            <div class="s2-cards">
+              <div class="s2-card"></div>
+              <div class="s2-card"></div>
+              <div class="s2-card"></div>
+            </div>
+            <span class="slide-num">2</span>
+          </div>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="slide-thumb">
+          <div class="slide-inner s3">
+            <div class="s3-h"></div>
+            <div class="s3-items">
+              <div class="s3-item" style="width:90%"></div>
+              <div class="s3-item" style="width:75%"></div>
+              <div class="s3-item" style="width:82%"></div>
+            </div>
+            <span class="slide-num">3</span>
+          </div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="slide-thumb">
+          <div class="slide-inner s4">
+            <div class="s4-stat"></div>
+            <span class="slide-num">4</span>
+          </div>
+        </div>
+
+        <div class="add-slide">+ Слайд</div>
+      </div>
+    </div>
+
+    <!-- Canvas area -->
+    <div class="canvas-area">
+
+      <!-- Rulers -->
+      <div class="ruler-h">
+        <span class="ruler-label" style="left:28px">0</span>
+        <span class="ruler-label" style="left:100px">100</span>
+        <span class="ruler-label" style="left:200px">200</span>
+        <span class="ruler-label" style="left:300px">300</span>
+        <span class="ruler-label" style="left:400px">400</span>
+        <span class="ruler-label" style="left:500px">500</span>
+        <span class="ruler-label" style="left:600px">600</span>
+        <span class="ruler-label" style="left:700px">700</span>
+      </div>
+      <div class="ruler-v"></div>
+
+      <!-- Snap guides -->
+      <div class="snap-h" style="top: calc(50% + 10px)"></div>
+      <div class="snap-v" style="left: calc(50% + 10px)"></div>
+      <div class="guide-label" style="top: calc(50% + 4px); left: 28px">270px</div>
+
+      <!-- Slide canvas -->
+      <div class="slide-canvas-wrap">
+        <div class="slide-canvas">
+          <div class="el-tag">Dating SaaS Platform</div>
+
+          <!-- Heading — selected -->
+          <div class="el-heading selected" style="position:absolute;left:7%;top:26%;width:65%">
+            AI-powered<br>Matchmaking<br>Platform
+            <!-- Handles -->
+            <div class="handle tl"></div>
+            <div class="handle tr"></div>
+            <div class="handle bl"></div>
+            <div class="handle br"></div>
+            <div class="handle tm"></div>
+            <div class="handle bm"></div>
+            <div class="handle ml"></div>
+            <div class="handle mr"></div>
+            <!-- Float toolbar -->
+            <div class="float-toolbar">
+              <button class="ft-btn active">B</button>
+              <button class="ft-btn">I</button>
+              <button class="ft-btn">U</button>
+              <div class="ft-sep"></div>
+              <button class="ft-btn">≡</button>
+              <button class="ft-btn" style="font-style:normal">≡</button>
+              <button class="ft-btn">≡</button>
+              <div class="ft-sep"></div>
+              <button class="ft-btn" style="font-size:9px">Аа</button>
+              <div class="ft-sep"></div>
+              <button class="ft-btn" style="font-size:9px">🗑</button>
+            </div>
+          </div>
+
+          <div class="el-sub">The future of human connection, powered by AI</div>
+        </div>
+      </div>
+
+      <!-- AI inline prompt -->
+      <div class="ai-inline">
+        <div class="ai-avatar">AI</div>
+        <div class="ai-input-mock">Спросите AI или нажмите / для команд…</div>
+        <div class="ai-send"></div>
+      </div>
+
+      <!-- Zoom controls -->
+      <div class="zoom-ctrl">
+        <button class="zoom-btn">−</button>
+        <span class="zoom-val">100%</span>
+        <button class="zoom-btn">+</button>
+      </div>
+    </div>
+
+    <!-- Right panel (context-aware) -->
+    <div class="right-panel">
+      <!-- Mode icons -->
+      <div class="rp-mode-bar">
+        <button class="rp-mode-btn active" title="Свойства">⊡</button>
+        <button class="rp-mode-btn" title="Слайд">⬜</button>
+        <button class="rp-mode-btn" title="Тема">🎨</button>
+        <button class="rp-mode-btn" title="Заметки">📝</button>
+      </div>
+
+      <div class="rp-body">
+
+        <!-- Context label -->
+        <div class="rp-ctx-tag">Заголовок (heading)</div>
+
+        <!-- Text content -->
+        <div class="rp-section">
+          <div class="rp-label">Текст</div>
+          <div style="background:#0f172a;border:1px solid #1f2937;border-radius:6px;padding:6px 8px;font-size:11px;color:#e2e8f0;line-height:1.5;">
+            AI-powered<br>Matchmaking<br>Platform
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Font -->
+        <div class="rp-section">
+          <div class="rp-label">Шрифт</div>
+          <div class="font-select">Inter</div>
+          <div style="margin-top:6px">
+            <div class="size-row">
+              <div style="flex:2">
+                <div class="rp-input-label">Размер</div>
+                <div class="size-input">42px</div>
+              </div>
+              <div style="flex:1">
+                <div class="rp-input-label">Вес</div>
+                <div class="size-input">900</div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:6px;display:flex;gap:6px;align-items:flex-start">
+            <div style="flex:1">
+              <div class="rp-input-label">Стиль</div>
+              <div class="style-btns">
+                <div class="style-btn active">B</div>
+                <div class="style-btn" style="font-style:italic">I</div>
+                <div class="style-btn" style="text-decoration:underline">U</div>
+              </div>
+            </div>
+            <div style="flex:1">
+              <div class="rp-input-label">Выравн.</div>
+              <div class="align-btns">
+                <div class="align-btn active">⬜</div>
+                <div class="align-btn">⬛</div>
+                <div class="align-btn">⬜</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Color -->
+        <div class="rp-section">
+          <div class="rp-label">Цвет</div>
+          <div class="color-row">
+            <div class="color-swatch" style="background:#ffffff"></div>
+            <div class="color-hex">#FFFFFF</div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Position & size -->
+        <div class="rp-section">
+          <div class="rp-label">Позиция и размер</div>
+          <div class="pos-grid">
+            <div class="pos-field">
+              <div class="rp-input-label">X</div>
+              <div class="rp-input">67px</div>
+            </div>
+            <div class="pos-field">
+              <div class="rp-input-label">Y</div>
+              <div class="rp-input">140px</div>
+            </div>
+            <div class="pos-field">
+              <div class="rp-input-label">W</div>
+              <div class="rp-input">467px</div>
+            </div>
+            <div class="pos-field">
+              <div class="rp-input-label">H</div>
+              <div class="rp-input">214px</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Quality score -->
+        <div class="rp-section">
+          <div class="rp-label">Качество слайда</div>
+          <div class="quality-badge">
+            <svg class="quality-ring" viewBox="0 0 36 36">
+              <circle cx="18" cy="18" r="15" fill="none" stroke="#1f2937" stroke-width="3"/>
+              <circle cx="18" cy="18" r="15" fill="none" stroke="#22c55e" stroke-width="3"
+                stroke-dasharray="78 94" stroke-dashoffset="24" stroke-linecap="round"/>
+            </svg>
+            <div class="quality-info">
+              <div class="quality-score">83</div>
+              <div class="quality-label">из 100</div>
+            </div>
+          </div>
+          <div class="quality-bars" style="margin-top:8px">
+            <div class="quality-bar-row">
+              <div class="quality-bar-label">Иерархия</div>
+              <div class="quality-bar-track"><div class="quality-bar-fill" style="width:90%;background:#22c55e"></div></div>
+            </div>
+            <div class="quality-bar-row">
+              <div class="quality-bar-label">Плотность</div>
+              <div class="quality-bar-track"><div class="quality-bar-fill" style="width:75%;background:#22c55e"></div></div>
+            </div>
+            <div class="quality-bar-row">
+              <div class="quality-bar-label">Баланс</div>
+              <div class="quality-bar-track"><div class="quality-bar-fill" style="width:60%;background:#f59e0b"></div></div>
+            </div>
+            <div class="quality-bar-row">
+              <div class="quality-bar-label">Читаемость</div>
+              <div class="quality-bar-track"><div class="quality-bar-fill" style="width:85%;background:#22c55e"></div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- AI button -->
+      <div class="rp-ai-btn">
+        <div class="rp-ai-dot">AI</div>
+        <span class="rp-ai-text">Редактировать с AI</span>
+        <span class="rp-ai-kbd">/</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

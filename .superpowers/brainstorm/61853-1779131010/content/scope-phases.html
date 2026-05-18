@@ -1,0 +1,79 @@
+<h2>Масштаб задачи: 10 deliverables</h2>
+<p class="subtitle">Это несколько независимых подсистем. Давайте определим, что делаем сначала.</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px">
+
+  <div style="background:#1e293b;border-radius:12px;padding:20px;border:2px solid #3b82f6">
+    <div class="label" style="color:#60a5fa;margin-bottom:12px">Фаза 1 — Фундамент</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#1e3a5f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">📐 Slide Scene Graph</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">SlideScene, SceneNode, BackgroundConfig — новая модель данных</p>
+      </div>
+      <div style="background:#1e3a5f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🎨 Theme / Token System</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Дизайн-токены вместо 5 свойств, semantic color roles</p>
+      </div>
+      <div style="background:#1e3a5f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🏗️ Layout Planner (12 шаблонов)</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Детерминированные шаблоны + правила плотности</p>
+      </div>
+      <div style="background:#1e3a5f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🤖 AI Contract</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">AI генерирует semantic intent, движок — layout/spacing</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#1e293b;border-radius:12px;padding:20px;border:2px solid #8b5cf6">
+    <div class="label" style="color:#a78bfa;margin-bottom:12px">Фаза 2 — Редактор</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#2d1f5e;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🖼️ Composition Engine</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Auto-layout, baseline grid, focal point, safe zones</p>
+      </div>
+      <div style="background:#2d1f5e;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">✏️ Slide Editor UI</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Navigator, layer panel, snapping, smart guides</p>
+      </div>
+      <div style="background:#2d1f5e;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">⭐ Visual Quality Evaluator</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Scoring: balance, whitespace, readability, hierarchy</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#1e293b;border-radius:12px;padding:20px;border:2px solid #10b981">
+    <div class="label" style="color:#34d399;margin-bottom:12px">Фаза 3 — Полировка</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#0f3a2d;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🎬 Animation System</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Timeline, transitions, progressive disclosure</p>
+      </div>
+      <div style="background:#0f3a2d;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🎭 Presenter Preview</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Speaker view, timer, notes overlay</p>
+      </div>
+    </div>
+  </div>
+
+  <div style="background:#1e293b;border-radius:12px;padding:20px;border:2px solid #f59e0b">
+    <div class="label" style="color:#fbbf24;margin-bottom:12px">Фаза 4 — Миграция и экспорт</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#3a2a0f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">📦 Export Pipeline</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">PDF, PPTX, HTML — через новый движок</p>
+      </div>
+      <div style="background:#3a2a0f;border-radius:8px;padding:10px 14px">
+        <strong style="font-size:13px">🔄 Migration</strong>
+        <p style="font-size:11px;color:#94a3b8;margin-top:2px">Конвертация старых SlideGraph → SlideScene</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div style="background:#0f172a;border-radius:10px;padding:16px 20px;margin-top:20px;border-left:3px solid #ef4444">
+  <strong style="font-size:13px;color:#f87171">Моя рекомендация:</strong>
+  <p style="font-size:12px;color:#94a3b8;margin-top:6px">Начать с Фазы 1 — это фундамент, от которого зависит всё остальное. Фаза 2 даёт полноценный редактор. Фазы 3–4 можно делать итеративно. Каждая фаза получает отдельный spec → plan → реализацию.</p>
+</div>

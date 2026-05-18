@@ -1,0 +1,145 @@
+<h2>Архитектура редактора — компоненты</h2>
+<p class="subtitle">CSS-scale холст 960×540, React-компоненты, интерфейсы между слоями</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+
+  <!-- Component tree -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#60a5fa;margin-bottom:14px">Дерево компонентов</div>
+    <div style="font-family:monospace;font-size:11px;line-height:1.8;color:#e2e8f0">
+      <div style="color:#60a5fa">PresentationEditor</div>
+      <div style="color:#94a3b8;padding-left:16px">├─ <span style="color:#a78bfa">TopBar</span></div>
+      <div style="color:#94a3b8;padding-left:16px">├─ <span style="color:#a78bfa">LeftPanel</span></div>
+      <div style="padding-left:32px;color:#64748b">├─ SlideNavigator</div>
+      <div style="padding-left:32px;color:#64748b">└─ LayersPanel</div>
+      <div style="color:#94a3b8;padding-left:16px">├─ <span style="color:#34d399">CanvasArea</span> ⬅ главный</div>
+      <div style="padding-left:32px;color:#64748b">├─ Rulers</div>
+      <div style="padding-left:32px;color:#64748b">├─ <span style="color:#34d399">SlideCanvas</span></div>
+      <div style="padding-left:48px;color:#64748b">├─ SlideBackground</div>
+      <div style="padding-left:48px;color:#64748b">└─ SlideElementRenderer[]</div>
+      <div style="padding-left:32px;color:#64748b">├─ <span style="color:#f59e0b">InteractionLayer</span></div>
+      <div style="padding-left:48px;color:#64748b">├─ SelectionBox</div>
+      <div style="padding-left:48px;color:#64748b">├─ ResizeHandles</div>
+      <div style="padding-left:48px;color:#64748b">└─ SnapGuides</div>
+      <div style="padding-left:32px;color:#64748b">└─ FloatingToolbar</div>
+      <div style="color:#94a3b8;padding-left:16px">├─ <span style="color:#f87171">ContextPanel</span></div>
+      <div style="padding-left:32px;color:#64748b">├─ TextProperties</div>
+      <div style="padding-left:32px;color:#64748b">├─ PositionProperties</div>
+      <div style="padding-left:32px;color:#64748b">├─ BackgroundProperties</div>
+      <div style="padding-left:32px;color:#64748b">└─ QualityScoreBadge</div>
+      <div style="color:#94a3b8;padding-left:16px">└─ <span style="color:#a78bfa">AiInlineBar</span></div>
+    </div>
+  </div>
+
+  <!-- Data flow -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#34d399;margin-bottom:14px">Поток данных</div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;font-size:12px">
+
+      <div style="background:#0f172a;border-radius:8px;padding:12px;border-left:3px solid #3b82f6">
+        <div style="color:#60a5fa;font-weight:700;margin-bottom:4px">SlideGraph (Zustand store)</div>
+        <div style="color:#64748b;font-size:11px">Единственный источник истины. Все изменения идут через actions: <code style="color:#94a3b8">updateElement()</code>, <code style="color:#94a3b8">moveElement()</code>, <code style="color:#94a3b8">addSlide()</code></div>
+      </div>
+
+      <div style="text-align:center;color:#334155;font-size:18px">↓ читает</div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:12px;border-left:3px solid #34d399">
+        <div style="color:#34d399;font-weight:700;margin-bottom:4px">SlideCanvas (960×540)</div>
+        <div style="color:#64748b;font-size:11px">Рендерит элементы как React-компоненты. Масштабируется через <code style="color:#94a3b8">transform: scale(ratio)</code> где ratio = containerWidth / 960</div>
+      </div>
+
+      <div style="text-align:center;color:#334155;font-size:18px">↑ пишет</div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:12px;border-left:3px solid #f59e0b">
+        <div style="color:#f59e0b;font-weight:700;margin-bottom:4px">InteractionLayer (поверх холста)</div>
+        <div style="color:#64748b;font-size:11px">Абсолютно позиционирован поверх SlideCanvas в тех же координатах. Обрабатывает drag, resize, click — пишет в store через actions</div>
+      </div>
+
+      <div style="text-align:center;color:#334155;font-size:18px">↕ синхронизирует</div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:12px;border-left:3px solid #f87171">
+        <div style="color:#f87171;font-weight:700;margin-bottom:4px">ContextPanel (реагирует на selection)</div>
+        <div style="color:#64748b;font-size:11px">Читает <code style="color:#94a3b8">selectedElementId</code> из UI-store, показывает нужные контролы, пишет изменения через те же actions</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Scale math -->
+<div style="background:#0f172a;border-radius:12px;padding:20px;margin-top:16px;border:1px solid #1f2937">
+  <div class="label" style="color:#f59e0b;margin-bottom:12px">CSS-scale математика (ключевой момент)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px">
+    <div>
+      <div style="color:#94a3b8;margin-bottom:6px">Холст всегда 960×540</div>
+      <div style="background:#1e293b;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:#e2e8f0">
+        const CANVAS_W = 960<br>
+        const CANVAS_H = 540<br><br>
+        const scale = containerW / 960<br><br>
+        &lt;div style={{<br>
+        &nbsp; width: 960,<br>
+        &nbsp; height: 540,<br>
+        &nbsp; transform: `scale(${scale})`,<br>
+        &nbsp; transformOrigin: 'top left'<br>
+        }}&gt;
+      </div>
+    </div>
+    <div>
+      <div style="color:#94a3b8;margin-bottom:6px">Координаты мыши → холст</div>
+      <div style="background:#1e293b;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:#e2e8f0">
+        function toCanvas(e) {<br>
+        &nbsp; const rect =<br>
+        &nbsp;&nbsp; canvasRef.getBoundingClientRect()<br>
+        &nbsp; return {<br>
+        &nbsp;&nbsp; x: (e.clientX - rect.left) / scale,<br>
+        &nbsp;&nbsp; y: (e.clientY - rect.top) / scale<br>
+        &nbsp; }<br>
+        }
+      </div>
+    </div>
+    <div>
+      <div style="color:#94a3b8;margin-bottom:6px">Snap grid (8px)</div>
+      <div style="background:#1e293b;border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:#e2e8f0">
+        const SNAP = 8<br><br>
+        function snap(v: number) {<br>
+        &nbsp; return Math.round(v / SNAP) * SNAP<br>
+        }<br><br>
+        <span style="color:#64748b">// snap к центру других<br>
+        // элементов + краям слайда</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Two stores -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px">
+  <div style="background:#1e293b;border-radius:12px;padding:16px">
+    <div class="label" style="color:#a78bfa;margin-bottom:10px">useSlideStore (данные)</div>
+    <div style="font-size:11px;color:#64748b;line-height:1.8;font-family:monospace">
+      graph: SlideGraph<br>
+      updateElement(slideId, elemId, patch)<br>
+      moveElement(slideId, elemId, x, y)<br>
+      resizeElement(slideId, elemId, frame)<br>
+      addSlide(afterId?)<br>
+      deleteSlide(slideId)<br>
+      reorderSlides(ids[])<br>
+      updateNotes(slideId, notes)<br>
+      saveToServer() → debounced
+    </div>
+  </div>
+  <div style="background:#1e293b;border-radius:12px;padding:16px">
+    <div class="label" style="color:#f87171;margin-bottom:10px">useEditorStore (UI-состояние)</div>
+    <div style="font-size:11px;color:#64748b;line-height:1.8;font-family:monospace">
+      activeSlideIndex: number<br>
+      selectedElemId: string | null<br>
+      leftTab: 'slides' | 'layers'<br>
+      rightMode: 'props'|'slide'|'theme'|'notes'<br>
+      zoom: number (0.5–2.0)<br>
+      isDragging: boolean<br>
+      snapGuides: SnapGuide[]<br>
+      scale: number (computed)
+    </div>
+  </div>
+</div>

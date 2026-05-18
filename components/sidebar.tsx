@@ -288,15 +288,13 @@ function SidebarBody({
 
       <div className="shrink-0 border-t border-border p-2">
         <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <CollapsedHint
-              collapsed={collapsed}
-              label={session?.user?.name ?? t("user_display_fallback")}
-            >
+          {(() => {
+            const accountLabel = session?.user?.name ?? t("user_display_fallback");
+            const accountTrigger = (
               <button
                 type="button"
                 className={cn(
-                  "flex w-full items-center rounded-md text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted",
+                  "flex w-full cursor-pointer items-center rounded-md text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted",
                   collapsed ? "justify-center px-2 py-2" : "gap-2.5 px-2.5 py-2"
                 )}
               >
@@ -306,7 +304,7 @@ function SidebarBody({
                 {!collapsed ? (
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[15px] font-medium leading-tight text-black">
-                      {session?.user?.name ?? t("user_display_fallback")}
+                      {accountLabel}
                     </p>
                     <p className="truncate text-[13px] text-zinc-800">
                       {tokenBalance === null ? (
@@ -325,8 +323,21 @@ function SidebarBody({
                   </div>
                 ) : null}
               </button>
-            </CollapsedHint>
-          </DropdownMenuTrigger>
+            );
+            if (collapsed) {
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>{accountTrigger}</DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    {accountLabel}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            }
+            return <DropdownMenuTrigger asChild>{accountTrigger}</DropdownMenuTrigger>;
+          })()}
           <DropdownMenuContent
             side={collapsed ? "right" : "top"}
             align={collapsed ? "end" : "start"}

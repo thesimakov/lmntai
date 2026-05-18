@@ -1,0 +1,200 @@
+<h2>Компоновка редактора слайдов</h2>
+<p class="subtitle">Три подхода к расположению панелей. Какой ближе к тому, что вы видите?</p>
+
+<div class="cards" style="grid-template-columns:1fr 1fr 1fr;margin-top:24px">
+
+  <!-- Option A: Canva/Gamma style -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:12px;font-family:monospace;font-size:10px">
+      <!-- Topbar -->
+      <div style="background:#1e293b;border-radius:6px 6px 0 0;height:28px;display:flex;align-items:center;padding:0 8px;gap:6px;margin-bottom:2px">
+        <div style="width:16px;height:16px;background:#3b82f6;border-radius:3px"></div>
+        <div style="flex:1;height:6px;background:#334155;border-radius:3px"></div>
+        <div style="width:40px;height:14px;background:#3b82f6;border-radius:3px"></div>
+        <div style="width:40px;height:14px;background:#334155;border-radius:3px"></div>
+      </div>
+      <!-- Body -->
+      <div style="display:flex;height:140px;gap:2px">
+        <!-- Left: slide navigator -->
+        <div style="width:56px;background:#1e293b;border-radius:0 0 0 6px;padding:6px;display:flex;flex-direction:column;gap:4px">
+          <div style="background:#3b82f6;border-radius:3px;aspect-ratio:16/9;border:1.5px solid #60a5fa"></div>
+          <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+          <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+          <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+          <div style="background:#1e3a5f;border-radius:3px;aspect-ratio:16/9;border:1px dashed #3b82f6;display:flex;align-items:center;justify-content:center;color:#3b82f6;font-size:14px">+</div>
+        </div>
+        <!-- Center: canvas -->
+        <div style="flex:1;background:#111827;display:flex;align-items:center;justify-content:center;border-radius:2px;position:relative">
+          <div style="background:#1e293b;border-radius:6px;width:90%;aspect-ratio:16/9;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center">
+            <div style="color:#475569;font-size:9px">Холст слайда</div>
+          </div>
+          <!-- floating toolbar -->
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:#1e293b;border-radius:20px;padding:4px 8px;display:flex;gap:6px">
+            <div style="width:12px;height:12px;background:#475569;border-radius:2px"></div>
+            <div style="width:12px;height:12px;background:#475569;border-radius:2px"></div>
+            <div style="width:12px;height:12px;background:#475569;border-radius:2px"></div>
+            <div style="width:1px;background:#334155"></div>
+            <div style="width:12px;height:12px;background:#475569;border-radius:2px"></div>
+            <div style="width:12px;height:12px;background:#475569;border-radius:2px"></div>
+          </div>
+        </div>
+        <!-- Right: properties + AI -->
+        <div style="width:64px;background:#1e293b;border-radius:0 0 6px 0;padding:6px;display:flex;flex-direction:column;gap:6px">
+          <div style="display:flex;gap:2px">
+            <div style="flex:1;height:14px;background:#3b82f6;border-radius:2px;font-size:7px;color:#fff;display:flex;align-items:center;justify-content:center">Свойства</div>
+            <div style="flex:1;height:14px;background:#334155;border-radius:2px;font-size:7px;color:#94a3b8;display:flex;align-items:center;justify-content:center">AI</div>
+          </div>
+          <div style="background:#334155;border-radius:3px;height:8px"></div>
+          <div style="background:#334155;border-radius:3px;height:8px;width:70%"></div>
+          <div style="background:#1e3a5f;border-radius:3px;height:8px"></div>
+          <div style="background:#334155;border-radius:3px;height:8px"></div>
+          <div style="background:#334155;border-radius:3px;height:24px;margin-top:4px"></div>
+          <div style="background:#3b82f6;border-radius:3px;height:14px;margin-top:auto;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff">Применить</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Canva / Gamma</h3>
+      <p>Слайды слева, холст по центру, свойства + AI справа. Плавающий тулбар над холстом. Простая и привычная раскладка.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Figma style -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:12px;font-family:monospace;font-size:10px">
+      <!-- Topbar -->
+      <div style="background:#1e293b;border-radius:6px 6px 0 0;height:28px;display:flex;align-items:center;padding:0 8px;gap:6px;margin-bottom:2px">
+        <div style="width:16px;height:16px;background:#8b5cf6;border-radius:3px"></div>
+        <!-- toolbar icons -->
+        <div style="display:flex;gap:4px;flex:1">
+          <div style="width:20px;height:14px;background:#334155;border-radius:3px"></div>
+          <div style="width:20px;height:14px;background:#334155;border-radius:3px"></div>
+          <div style="width:20px;height:14px;background:#334155;border-radius:3px"></div>
+          <div style="width:1px;background:#475569;margin:0 2px"></div>
+          <div style="width:20px;height:14px;background:#8b5cf6;border-radius:3px"></div>
+          <div style="width:20px;height:14px;background:#334155;border-radius:3px"></div>
+        </div>
+        <div style="width:40px;height:14px;background:#8b5cf6;border-radius:3px"></div>
+      </div>
+      <!-- Body -->
+      <div style="display:flex;height:140px;gap:2px">
+        <!-- Left: layers + slides (two sections) -->
+        <div style="width:56px;background:#1e293b;border-radius:0 0 0 6px;padding:6px;display:flex;flex-direction:column;gap:3px">
+          <div style="font-size:7px;color:#8b5cf6;font-weight:700;text-transform:uppercase;margin-bottom:2px">Слои</div>
+          <div style="display:flex;align-items:center;gap:2px"><div style="width:6px;height:6px;background:#334155;border-radius:1px"></div><div style="height:5px;background:#3f3f5a;border-radius:2px;flex:1"></div></div>
+          <div style="display:flex;align-items:center;gap:2px;padding-left:8px"><div style="width:6px;height:6px;background:#334155;border-radius:1px"></div><div style="height:5px;background:#3f3f5a;border-radius:2px;flex:1"></div></div>
+          <div style="display:flex;align-items:center;gap:2px;padding-left:8px"><div style="width:6px;height:6px;background:#8b5cf6;border-radius:1px"></div><div style="height:5px;background:#8b5cf6;border-radius:2px;flex:1"></div></div>
+          <div style="height:1px;background:#334155;margin:4px 0"></div>
+          <div style="font-size:7px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-bottom:2px">Слайды</div>
+          <div style="background:#8b5cf6;border-radius:2px;aspect-ratio:16/9;border:1px solid #a78bfa"></div>
+          <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+        </div>
+        <!-- Center: canvas -->
+        <div style="flex:1;background:#0f172a;display:flex;align-items:center;justify-content:center;position:relative">
+          <!-- rulers -->
+          <div style="position:absolute;top:0;left:0;right:0;height:8px;background:#1e293b"></div>
+          <div style="position:absolute;top:0;left:0;bottom:0;width:8px;background:#1e293b"></div>
+          <div style="background:#1e293b;border-radius:6px;width:85%;aspect-ratio:16/9;box-shadow:0 4px 20px rgba(0,0,0,0.5);margin-left:8px;margin-top:8px;display:flex;align-items:center;justify-content:center">
+            <div style="color:#475569;font-size:9px">Холст слайда</div>
+          </div>
+          <!-- snap guides -->
+          <div style="position:absolute;top:30%;left:8px;right:0;height:1px;background:rgba(139,92,246,0.4)"></div>
+          <div style="position:absolute;top:8px;bottom:0;left:50%;width:1px;background:rgba(139,92,246,0.4)"></div>
+        </div>
+        <!-- Right: design properties (Figma-like) -->
+        <div style="width:68px;background:#1e293b;border-radius:0 0 6px 0;padding:6px;display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:7px;color:#94a3b8;font-weight:700;text-transform:uppercase">Дизайн</div>
+          <div style="background:#334155;border-radius:3px;padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:2px">
+            <div style="height:10px;background:#0f172a;border-radius:2px"></div>
+            <div style="height:10px;background:#0f172a;border-radius:2px"></div>
+            <div style="height:10px;background:#0f172a;border-radius:2px"></div>
+            <div style="height:10px;background:#0f172a;border-radius:2px"></div>
+          </div>
+          <div style="font-size:7px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-top:2px">Тема</div>
+          <div style="display:flex;gap:2px">
+            <div style="width:14px;height:14px;background:#8b5cf6;border-radius:50%"></div>
+            <div style="width:14px;height:14px;background:#ec4899;border-radius:50%"></div>
+            <div style="width:14px;height:14px;background:#06b6d4;border-radius:50%"></div>
+            <div style="width:14px;height:14px;background:#1e293b;border-radius:50%;border:1px dashed #475569;display:flex;align-items:center;justify-content:center;font-size:8px;color:#475569">+</div>
+          </div>
+          <div style="font-size:7px;color:#94a3b8;font-weight:700;text-transform:uppercase;margin-top:2px">Анимация</div>
+          <!-- timeline mini -->
+          <div style="background:#0f172a;border-radius:3px;padding:3px;display:flex;flex-direction:column;gap:1px">
+            <div style="display:flex;gap:2px;align-items:center">
+              <div style="width:16px;height:4px;background:#334155;border-radius:1px;font-size:5px;color:#94a3b8"></div>
+              <div style="flex:1;height:4px;background:#334155;border-radius:1px;position:relative">
+                <div style="position:absolute;left:0;top:0;width:40%;height:100%;background:#8b5cf6;border-radius:1px"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:2px;align-items:center">
+              <div style="width:16px;height:4px;background:#334155;border-radius:1px"></div>
+              <div style="flex:1;height:4px;background:#334155;border-radius:1px;position:relative">
+                <div style="position:absolute;left:20%;top:0;width:50%;height:100%;background:#6d28d9;border-radius:1px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Figma / профессиональный</h3>
+      <p>Топ-тулбар, слои + слайды слева (два раздела), холст с линейками и snap-линиями, панель дизайна + мини-таймлайн справа.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Beautiful.ai / AI-first -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:12px;font-family:monospace;font-size:10px">
+      <!-- Topbar -->
+      <div style="background:#111827;border-radius:6px 6px 0 0;height:28px;display:flex;align-items:center;padding:0 8px;gap:6px;margin-bottom:2px">
+        <div style="width:16px;height:16px;background:#10b981;border-radius:3px"></div>
+        <div style="flex:1;height:6px;background:#1f2937;border-radius:3px"></div>
+        <div style="width:16px;height:16px;background:#1f2937;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#10b981;font-size:8px">AI</div>
+        <div style="width:40px;height:14px;background:#10b981;border-radius:3px"></div>
+      </div>
+      <!-- Body -->
+      <div style="display:flex;height:140px;gap:2px">
+        <!-- Left: slides only (narrow) -->
+        <div style="width:40px;background:#111827;border-radius:0 0 0 6px;padding:4px;display:flex;flex-direction:column;gap:3px">
+          <div style="background:#10b981;border-radius:2px;aspect-ratio:16/9;border:1px solid #34d399"></div>
+          <div style="background:#1f2937;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#1f2937;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#1f2937;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#1f2937;border-radius:2px;aspect-ratio:16/9;border:1px dashed #374151;display:flex;align-items:center;justify-content:center;color:#374151;font-size:10px">+</div>
+        </div>
+        <!-- Center: large canvas with inline AI overlay -->
+        <div style="flex:1;background:#0a0f1a;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;position:relative">
+          <div style="background:#111827;border-radius:6px;width:90%;aspect-ratio:16/9;box-shadow:0 4px 24px rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center">
+            <div style="color:#374151;font-size:9px">Холст слайда</div>
+          </div>
+          <!-- Smart layout badge -->
+          <div style="position:absolute;top:6px;right:6px;background:rgba(16,185,129,0.15);border:1px solid #10b981;border-radius:4px;padding:2px 6px;font-size:7px;color:#10b981">✦ Smart layout</div>
+          <!-- Bottom AI prompt bar -->
+          <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:80%;background:#111827;border:1px solid #374151;border-radius:20px;padding:4px 10px;display:flex;align-items:center;gap:4px">
+            <div style="width:12px;height:12px;background:#10b981;border-radius:50%;flex-shrink:0"></div>
+            <div style="flex:1;height:5px;background:#1f2937;border-radius:3px"></div>
+            <div style="width:14px;height:14px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;color:#000">→</div>
+          </div>
+        </div>
+        <!-- Right: quality + theme (collapsed) -->
+        <div style="width:48px;background:#111827;border-radius:0 0 6px 0;padding:6px;display:flex;flex-direction:column;gap:4px;align-items:center">
+          <!-- Quality score -->
+          <div style="width:32px;height:32px;border-radius:50%;border:2.5px solid #10b981;display:flex;align-items:center;justify-content:center;font-size:9px;color:#10b981;font-weight:700">87</div>
+          <div style="font-size:6px;color:#6b7280;text-align:center">качество</div>
+          <div style="height:1px;background:#1f2937;width:100%;margin:2px 0"></div>
+          <!-- icon buttons -->
+          <div style="width:24px;height:24px;background:#1f2937;border-radius:4px"></div>
+          <div style="width:24px;height:24px;background:#1f2937;border-radius:4px"></div>
+          <div style="width:24px;height:24px;background:#1f2937;border-radius:4px"></div>
+          <div style="width:24px;height:24px;background:#1f2937;border-radius:4px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Beautiful.ai / AI-first</h3>
+      <p>Узкий навигатор слева, максимум холста по центру, AI-строка снизу всегда видна. Справа — компактная панель с оценкой качества.</p>
+    </div>
+  </div>
+
+</div>

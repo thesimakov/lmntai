@@ -1,0 +1,104 @@
+<h2>Изменения модели данных</h2>
+<p class="subtitle">Минимальные расширения существующего SlideGraph — без ломающих изменений</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+
+  <!-- SlideElement changes -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#60a5fa;margin-bottom:14px">SlideElement — добавляем 3 поля</div>
+    <div style="font-family:monospace;font-size:11px;line-height:1.8;background:#0f172a;border-radius:8px;padding:14px">
+      <div style="color:#64748b">export interface SlideElement {</div>
+      <div style="color:#94a3b8;padding-left:16px">id: string</div>
+      <div style="color:#94a3b8;padding-left:16px">type: SlideElementType</div>
+      <div style="color:#94a3b8;padding-left:16px">frame?: SlideElementFrame</div>
+      <div style="color:#94a3b8;padding-left:16px">// ... существующие поля</div>
+      <br>
+      <div style="color:#34d399;padding-left:16px">// ← новые поля для редактора</div>
+      <div style="color:#34d399;padding-left:16px">name?: string</div>
+      <div style="color:#64748b;padding-left:24px;font-size:10px">// "Заголовок", "Логотип" — для панели слоёв</div>
+      <div style="color:#34d399;padding-left:16px">locked?: boolean</div>
+      <div style="color:#64748b;padding-left:24px;font-size:10px">// 🔒 заблокирован от drag/resize</div>
+      <div style="color:#34d399;padding-left:16px">visible?: boolean</div>
+      <div style="color:#64748b;padding-left:24px;font-size:10px">// 👁 скрыт в редакторе (default: true)</div>
+      <div style="color:#64748b">}</div>
+    </div>
+    <div style="margin-top:10px;background:#0a2a1a;border-radius:6px;padding:10px;border-left:3px solid #34d399">
+      <div style="font-size:11px;color:#6ee7b7">✅ Обратно совместимо</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">Старые SlideGraph без этих полей работают без изменений — undefined читается как незаблокировано/видимо</div>
+    </div>
+  </div>
+
+  <!-- SlideTheme expansion -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#a78bfa;margin-bottom:14px">SlideTheme — дизайн-токены</div>
+    <div style="font-family:monospace;font-size:11px;line-height:1.8;background:#0f172a;border-radius:8px;padding:14px">
+      <div style="color:#64748b">export interface SlideTheme {</div>
+      <div style="color:#94a3b8;padding-left:16px">// существующие</div>
+      <div style="color:#94a3b8;padding-left:16px">primaryColor: string</div>
+      <div style="color:#94a3b8;padding-left:16px">accentColor?: string</div>
+      <div style="color:#94a3b8;padding-left:16px">backgroundColor: string</div>
+      <div style="color:#94a3b8;padding-left:16px">textColor: string</div>
+      <div style="color:#94a3b8;padding-left:16px">fontFamily: string</div>
+      <br>
+      <div style="color:#a78bfa;padding-left:16px">// ← новые токены</div>
+      <div style="color:#a78bfa;padding-left:16px">headingFont?: string</div>
+      <div style="color:#a78bfa;padding-left:16px">secondaryColor?: string</div>
+      <div style="color:#a78bfa;padding-left:16px">surfaceColor?: string</div>
+      <div style="color:#64748b;padding-left:24px;font-size:10px">// цвет карточек/панелей</div>
+      <div style="color:#a78bfa;padding-left:16px">borderRadius?: 'none'|'sm'|'md'|'lg'</div>
+      <div style="color:#a78bfa;padding-left:16px">spacing?: 'compact'|'normal'|'spacious'</div>
+      <div style="color:#64748b">}</div>
+    </div>
+    <div style="margin-top:10px;background:#1a1230;border-radius:6px;padding:10px;border-left:3px solid #a78bfa">
+      <div style="font-size:11px;color:#c4b5fd">Все новые поля опциональны</div>
+      <div style="font-size:11px;color:#64748b;margin-top:2px">buildSlideDeckStyles() получает дефолты, если поля отсутствуют</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Slide changes -->
+<div style="background:#1e293b;border-radius:12px;padding:20px;margin-top:16px">
+  <div class="label" style="color:#f59e0b;margin-bottom:14px">Slide — добавляем transition (для анимаций, фаза 3)</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div style="font-family:monospace;font-size:11px;line-height:1.8;background:#0f172a;border-radius:8px;padding:14px">
+      <div style="color:#64748b">export interface Slide {</div>
+      <div style="color:#94a3b8;padding-left:16px">id: string</div>
+      <div style="color:#94a3b8;padding-left:16px">layout: SlideLayout</div>
+      <div style="color:#94a3b8;padding-left:16px">freeform?: boolean</div>
+      <div style="color:#94a3b8;padding-left:16px">background?: SlideBackground</div>
+      <div style="color:#94a3b8;padding-left:16px">elements: SlideElement[]</div>
+      <div style="color:#94a3b8;padding-left:16px">notes?: string</div>
+      <br>
+      <div style="color:#f59e0b;padding-left:16px">// ← фаза 3 (сейчас просто тип)</div>
+      <div style="color:#f59e0b;padding-left:16px">transition?: SlideTransition</div>
+      <div style="color:#64748b">}</div>
+      <br>
+      <div style="color:#64748b">export interface SlideTransition {</div>
+      <div style="color:#f59e0b;padding-left:16px">type: 'none'|'fade'|'slide'|'zoom'</div>
+      <div style="color:#f59e0b;padding-left:16px">duration?: number <span style="color:#64748b">// ms</span></div>
+      <div style="color:#f59e0b;padding-left:16px">direction?: 'left'|'right'|'up'|'down'</div>
+      <div style="color:#64748b">}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div style="background:#0f172a;border-radius:8px;padding:12px">
+        <div style="font-size:12px;color:#fbbf24;font-weight:700;margin-bottom:6px">Что НЕ меняем</div>
+        <div style="font-size:11px;color:#64748b;line-height:1.7">
+          • SlideGraph.version остаётся 1<br>
+          • SlideLayout и SlideElementType — без изменений<br>
+          • API-маршруты /api/projects/[id]/slides/* — совместимы<br>
+          • Существующие PPTX/PDF экспорты — работают
+        </div>
+      </div>
+      <div style="background:#0f172a;border-radius:8px;padding:12px">
+        <div style="font-size:12px;color:#34d399;font-weight:700;margin-bottom:6px">Итог изменений</div>
+        <div style="font-size:11px;color:#64748b;line-height:1.7">
+          • +3 поля в SlideElement<br>
+          • +5 опциональных токенов в SlideTheme<br>
+          • +1 опциональное поле transition в Slide<br>
+          • Нулевая миграция данных
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

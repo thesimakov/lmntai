@@ -1,0 +1,128 @@
+<h2>Левая панель редактора</h2>
+<p class="subtitle">Как совместить навигатор слайдов и панель слоёв?</p>
+
+<div class="cards" style="grid-template-columns:1fr 1fr 1fr;margin-top:24px">
+
+  <!-- Option A: Tabs (slides / layers) -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:10px">
+      <div style="display:flex;height:160px;border-radius:8px;overflow:hidden">
+        <!-- Left panel with tabs -->
+        <div style="width:80px;background:#1e293b;display:flex;flex-direction:column">
+          <!-- Tab bar -->
+          <div style="display:flex;border-bottom:1px solid #334155">
+            <div style="flex:1;padding:5px 0;text-align:center;font-size:7px;color:#fff;border-bottom:2px solid #3b82f6;background:#1e293b">Слайды</div>
+            <div style="flex:1;padding:5px 0;text-align:center;font-size:7px;color:#64748b">Слои</div>
+          </div>
+          <!-- Slide thumbnails -->
+          <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:4px;overflow:hidden">
+            <div style="background:#3b82f6;border-radius:3px;aspect-ratio:16/9;border:1.5px solid #60a5fa"></div>
+            <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+            <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+            <div style="background:#334155;border-radius:3px;aspect-ratio:16/9"></div>
+          </div>
+        </div>
+        <!-- Canvas placeholder -->
+        <div style="flex:1;background:#111827;display:flex;align-items:center;justify-content:center">
+          <div style="color:#374151;font-size:8px">Холст</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Вкладки</h3>
+      <p>«Слайды» и «Слои» — два таба в одной левой панели. Переключаешься по задаче. Экономит ширину.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Split (slides top, layers bottom) -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:10px">
+      <div style="display:flex;height:160px;border-radius:8px;overflow:hidden">
+        <!-- Left panel split -->
+        <div style="width:80px;background:#1e293b;display:flex;flex-direction:column">
+          <!-- Slides (top half) -->
+          <div style="flex:1;padding:6px;border-bottom:1px solid #334155;display:flex;flex-direction:column;gap:3px;overflow:hidden">
+            <div style="font-size:6px;color:#64748b;text-transform:uppercase;margin-bottom:2px">Слайды</div>
+            <div style="background:#3b82f6;border-radius:2px;aspect-ratio:16/9;border:1px solid #60a5fa"></div>
+            <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+            <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+          </div>
+          <!-- Layers (bottom half) -->
+          <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:3px;overflow:hidden">
+            <div style="font-size:6px;color:#64748b;text-transform:uppercase;margin-bottom:2px">Слои</div>
+            <div style="display:flex;align-items:center;gap:3px">
+              <div style="width:6px;height:6px;background:#3b82f6;border-radius:1px"></div>
+              <div style="height:5px;flex:1;background:#3b82f6;border-radius:2px;opacity:0.8"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding-left:6px">
+              <div style="width:5px;height:5px;background:#334155;border-radius:1px"></div>
+              <div style="height:4px;flex:1;background:#334155;border-radius:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding-left:6px">
+              <div style="width:5px;height:5px;background:#334155;border-radius:1px"></div>
+              <div style="height:4px;flex:1;background:#334155;border-radius:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding-left:6px">
+              <div style="width:5px;height:5px;background:#334155;border-radius:1px"></div>
+              <div style="height:4px;flex:1;background:#334155;border-radius:2px"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Canvas -->
+        <div style="flex:1;background:#111827;display:flex;align-items:center;justify-content:center">
+          <div style="color:#374151;font-size:8px">Холст</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Разделённая</h3>
+      <p>Слайды сверху, слои снизу — оба видны одновременно. Можно перетащить разделитель. Как в Figma.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Slides only, layers in right panel -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image" style="background:#0f172a;padding:10px">
+      <div style="display:flex;height:160px;border-radius:8px;overflow:hidden">
+        <!-- Left: slides only (narrow) -->
+        <div style="width:52px;background:#1e293b;display:flex;flex-direction:column;padding:6px;gap:4px">
+          <div style="background:#3b82f6;border-radius:2px;aspect-ratio:16/9;border:1px solid #60a5fa"></div>
+          <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+          <div style="background:#334155;border-radius:2px;aspect-ratio:16/9"></div>
+        </div>
+        <!-- Canvas -->
+        <div style="flex:1;background:#111827;display:flex;align-items:center;justify-content:center">
+          <div style="color:#374151;font-size:8px">Холст</div>
+        </div>
+        <!-- Right: tabs incl. layers -->
+        <div style="width:72px;background:#1e293b;display:flex;flex-direction:column">
+          <div style="display:flex;border-bottom:1px solid #334155">
+            <div style="flex:1;padding:4px 0;text-align:center;font-size:6px;color:#64748b">Св-ва</div>
+            <div style="flex:1;padding:4px 0;text-align:center;font-size:6px;color:#fff;border-bottom:2px solid #3b82f6">Слои</div>
+            <div style="flex:1;padding:4px 0;text-align:center;font-size:6px;color:#64748b">AI</div>
+          </div>
+          <div style="flex:1;padding:6px;display:flex;flex-direction:column;gap:3px">
+            <div style="display:flex;align-items:center;gap:3px">
+              <div style="width:7px;height:7px;background:#3b82f6;border-radius:1px"></div>
+              <div style="height:5px;flex:1;background:#3b82f6;border-radius:2px;opacity:0.8"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding-left:8px">
+              <div style="width:6px;height:6px;background:#334155;border-radius:1px"></div>
+              <div style="height:4px;flex:1;background:#334155;border-radius:2px"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:3px;padding-left:8px">
+              <div style="width:6px;height:6px;background:#334155;border-radius:1px"></div>
+              <div style="height:4px;flex:1;background:#334155;border-radius:2px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Слои справа</h3>
+      <p>Слева только узкий навигатор слайдов, слои переезжают в правую панель как отдельная вкладка рядом со свойствами и AI.</p>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,147 @@
+<h2>Слой взаимодействий</h2>
+<p class="subtitle">Drag, resize, snapping — всё поверх React-холста в координатах 960×540</p>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px">
+
+  <!-- Interaction Layer structure -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#f59e0b;margin-bottom:14px">Структура слоя</div>
+    <div style="font-size:11px;line-height:1.9;font-family:monospace;background:#0f172a;border-radius:8px;padding:14px">
+      <div style="color:#64748b">// Поверх SlideCanvas, те же размеры</div>
+      <div style="color:#e2e8f0">&lt;<span style="color:#60a5fa">InteractionLayer</span></div>
+      <div style="padding-left:16px;color:#e2e8f0">style=<span style="color:#a78bfa">{{</span></div>
+      <div style="padding-left:32px;color:#94a3b8">position: <span style="color:#34d399">'absolute'</span>,</div>
+      <div style="padding-left:32px;color:#94a3b8">inset: 0,</div>
+      <div style="padding-left:32px;color:#94a3b8">width: <span style="color:#34d399">960</span>,</div>
+      <div style="padding-left:32px;color:#94a3b8">height: <span style="color:#34d399">540</span>,</div>
+      <div style="padding-left:32px;color:#94a3b8">pointerEvents: <span style="color:#34d399">'none'</span></div>
+      <div style="padding-left:16px;color:#a78bfa">}}</div>
+      <div style="color:#e2e8f0">&gt;</div>
+      <div style="padding-left:16px;color:#64748b">// элементы включают events сами</div>
+      <div style="padding-left:16px;color:#e2e8f0">&lt;<span style="color:#f59e0b">SelectionBox</span> /&gt;</div>
+      <div style="padding-left:16px;color:#e2e8f0">&lt;<span style="color:#f59e0b">ResizeHandles</span> /&gt;</div>
+      <div style="padding-left:16px;color:#e2e8f0">&lt;<span style="color:#f59e0b">SnapGuides</span> /&gt;</div>
+      <div style="padding-left:16px;color:#e2e8f0">&lt;<span style="color:#f59e0b">FloatingToolbar</span> /&gt;</div>
+      <div style="color:#e2e8f0">&lt;/<span style="color:#60a5fa">InteractionLayer</span>&gt;</div>
+    </div>
+  </div>
+
+  <!-- State machine -->
+  <div style="background:#1e293b;border-radius:12px;padding:20px">
+    <div class="label" style="color:#60a5fa;margin-bottom:14px">Машина состояний drag</div>
+    <div style="display:flex;flex-direction:column;gap:8px;font-size:11px">
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:#1e293b;border:2px solid #475569;display:flex;align-items:center;justify-content:center;font-size:9px;color:#64748b;flex-shrink:0">idle</div>
+        <div style="color:#64748b">↓ onPointerDown на элемент</div>
+      </div>
+
+      <div style="background:#1e3a5f;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:#1e3a5f;border:2px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:9px;color:#60a5fa;flex-shrink:0">ready</div>
+        <div style="color:#94a3b8">setPointerCapture() — мышь «захвачена»<br>записываем startX, startY, originalFrame</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="color:#64748b">↓ onPointerMove (delta &gt; 4px)</div>
+      </div>
+
+      <div style="background:#1a2e1a;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:#1a2e1a;border:2px solid #22c55e;display:flex;align-items:center;justify-content:center;font-size:9px;color:#34d399;flex-shrink:0">drag</div>
+        <div style="color:#94a3b8">newX = snap(orig.x + dx / scale)<br>newY = snap(orig.y + dy / scale)<br>обновляем snapGuides[] в editorStore</div>
+      </div>
+
+      <div style="background:#0f172a;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="color:#64748b">↓ onPointerUp</div>
+      </div>
+
+      <div style="background:#1e293b;border-radius:8px;padding:10px;display:flex;align-items:center;gap:10px">
+        <div style="width:32px;height:32px;border-radius:50%;background:#1e293b;border:2px solid #f59e0b;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fbbf24;flex-shrink:0">commit</div>
+        <div style="color:#94a3b8">moveElement(slideId, elemId, {x, y})<br>сбрасываем snapGuides → idle</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Snap engine -->
+<div style="background:#1e293b;border-radius:12px;padding:20px;margin-top:16px">
+  <div class="label" style="color:#34d399;margin-bottom:14px">Snap Engine — правила приоритетов</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:11px">
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#34d399;font-weight:700;margin-bottom:8px">1. Сетка (8px)</div>
+      <div style="color:#64748b;line-height:1.7">Базовый snap по 8px-сетке. Работает всегда. Удерживай Alt — отключает на время.</div>
+      <div style="margin-top:8px;display:flex;gap:3px;flex-wrap:wrap">
+        <div style="width:8px;height:8px;background:#1e293b;border:1px solid #334155"></div>
+        <div style="width:8px;height:8px;background:#1e293b;border:1px solid #334155"></div>
+        <div style="width:8px;height:8px;background:#1e293b;border:1px solid #334155"></div>
+        <div style="width:8px;height:8px;background:#34d399;border:1px solid #34d399"></div>
+        <div style="width:8px;height:8px;background:#1e293b;border:1px solid #334155"></div>
+        <div style="width:8px;height:8px;background:#1e293b;border:1px solid #334155"></div>
+      </div>
+    </div>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#60a5fa;font-weight:700;margin-bottom:8px">2. Края и центры элементов</div>
+      <div style="color:#64748b;line-height:1.7">Snap к левому/правому/верхнему/нижнему краю и центру каждого элемента на слайде. Радиус захвата = 6px.</div>
+      <div style="margin-top:8px;background:#1e293b;border-radius:4px;height:40px;position:relative">
+        <div style="position:absolute;top:25%;left:10%;right:60%;bottom:25%;background:#334155;border-radius:2px"></div>
+        <div style="position:absolute;top:0;bottom:0;left:40%;width:1px;background:rgba(59,130,246,0.6)"></div>
+        <div style="position:absolute;top:0;bottom:0;right:10%;width:1px;background:rgba(59,130,246,0.3)"></div>
+      </div>
+    </div>
+
+    <div style="background:#0f172a;border-radius:8px;padding:12px">
+      <div style="color:#a78bfa;font-weight:700;margin-bottom:8px">3. Safe zones (края слайда)</div>
+      <div style="color:#64748b;line-height:1.7">Snap к отступам слайда (7% = ~67px). Защищает от выхода за безопасную зону.</div>
+      <div style="margin-top:8px;background:#1e293b;border-radius:4px;height:40px;position:relative;overflow:hidden">
+        <div style="position:absolute;inset:4px;border:1px dashed rgba(167,139,250,0.4);border-radius:2px"></div>
+        <div style="position:absolute;top:0;bottom:0;left:16%;width:1px;background:rgba(167,139,250,0.5)"></div>
+        <div style="position:absolute;top:16%;left:0;right:0;height:1px;background:rgba(167,139,250,0.5)"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Resize handles -->
+<div style="background:#1e293b;border-radius:12px;padding:20px;margin-top:16px">
+  <div class="label" style="color:#f87171;margin-bottom:14px">Resize — 8 хэндлов, правила</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;font-size:11px">
+    <div style="background:#0f172a;border-radius:8px;padding:14px;position:relative">
+      <!-- Visual resize handles demo -->
+      <div style="width:160px;height:90px;margin:20px auto;background:#1e3a5f;border:2px solid #3b82f6;border-radius:4px;position:relative">
+        <!-- handles -->
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;top:-5px;left:-5px;cursor:nw-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;top:-5px;right:-5px;cursor:ne-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;bottom:-5px;left:-5px;cursor:sw-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;bottom:-5px;right:-5px;cursor:se-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;top:-5px;left:calc(50% - 4px);cursor:n-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;bottom:-5px;left:calc(50% - 4px);cursor:s-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;top:calc(50% - 4px);left:-5px;cursor:w-resize"></div>
+        <div style="position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid #3b82f6;border-radius:2px;top:calc(50% - 4px);right:-5px;cursor:e-resize"></div>
+        <!-- size label -->
+        <div style="position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);font-size:9px;color:#60a5fa;white-space:nowrap">467 × 214 px</div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <div style="background:#0f172a;border-radius:6px;padding:10px">
+        <div style="color:#f87171;font-weight:700;margin-bottom:4px">Shift + resize</div>
+        <div style="color:#64748b">Фиксирует пропорции (aspect-ratio lock)</div>
+      </div>
+      <div style="background:#0f172a;border-radius:6px;padding:10px">
+        <div style="color:#f87171;font-weight:700;margin-bottom:4px">Минимальный размер</div>
+        <div style="color:#64748b">W ≥ 40px, H ≥ 20px — защита от схлопывания</div>
+      </div>
+      <div style="background:#0f172a;border-radius:6px;padding:10px">
+        <div style="color:#f87171;font-weight:700;margin-bottom:4px">Граница холста</div>
+        <div style="color:#64748b">Элемент не выходит за 960×540, clamp() на всех координатах</div>
+      </div>
+      <div style="background:#0f172a;border-radius:6px;padding:10px">
+        <div style="color:#f87171;font-weight:700;margin-bottom:4px">Locked элементы</div>
+        <div style="color:#64748b">Хэндлы не рендерятся, pointer-events отключены</div>
+      </div>
+    </div>
+  </div>
+</div>

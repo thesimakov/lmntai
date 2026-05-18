@@ -98,6 +98,26 @@ describe("renderSlideGraph", () => {
     expect(html).toContain("white-space: pre-wrap");
     expect(html).toContain("A\nB");
   });
+
+  it("editor preview includes full layout grid styles", () => {
+    const graph: SlideGraph = {
+      ...baseGraph,
+      slides: [
+        {
+          id: "slide_m",
+          layout: "metrics-cards",
+          elements: [
+            { id: "h1", type: "heading", content: "Metrics" },
+            { id: "c1", type: "metric-card", label: "MRR", description: "Monthly" },
+          ],
+        },
+      ],
+    };
+    const html = renderSingleSlide(graph, 0, { editor: true });
+    expect(html).toContain("lmnt-layout-metrics-cards__cards");
+    expect(html).toContain("grid-template-columns");
+    expect(html).toContain("lmnt-slide--show-grid");
+  });
 });
 
 describe("renderSlide", () => {
