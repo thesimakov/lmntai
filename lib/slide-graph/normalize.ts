@@ -473,3 +473,72 @@ export function parseSlideGraphFromAiText(
   if (!parsed) return null;
   return parseSlideGraphPayload(parsed, options);
 }
+
+export function loadSlideGraphFromJson(
+  graphJson: string,
+  options?: NormalizeSlideGraphOptions
+) {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(graphJson) as unknown;
+  } catch {
+    return null;
+  }
+  return parseSlideGraphPayload(raw, options);
+}
+
+/** Парсит один слайд из ответа AI (op add). */
+export function parseSlideFromAiText(
+  text: string,
+  options?: { layoutFallback?: SlideLayout; forbiddenIds?: Set<string> }
+): Slide | null {
+  const parsed = extractJsonFromAiText(text);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+
+  const root = parsed as Record<string, unknown>;
+  let slideRaw: unknown = root;
+  if (typeof root.id !== "string" || !root.layout) {
+    for (const key of ["slide", "data"] as const) {
+      const nested = root[key];
+      if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+        const n = nested as Record<string, unknown>;
+        if (typeof n.id === "string" && n.layout) {
+          slideRaw = nested;
+          break;
+        }
+      }
+    }
+  }
+
+  const layoutFallback = options?.layoutFallback ?? "content";
+  const coerced = coerceSlide(slideRaw, 0, layoutFallback);
+  if (!coerced) return null;
+
+  const forbidden = options?.forbiddenIds;
+  if (forbidden?.has(coerced.id)) {
+    coerced.id = `slide_${Date.now()}`;
+  }
+  let suffix = 0;
+  while (forbidden?.has(coerced.id)) {
+    suffix += 1;
+    coerced.id = `slide_${Date.now()}_${suffix}`;
+  }
+
+  const validated = slideGraphSchema.safeParse({
+    version: 1 as const,
+    meta: {
+      title: "_",
+      language: "ru",
+      theme: {
+        primaryColor: "#4F8EF7",
+        backgroundColor: "#FFFFFF",
+        textColor: "#1A1A2E",
+        fontFamily: "Inter, sans-serif",
+      },
+      generatedAt: "",
+    },
+    slides: [coerced],
+  });
+  if (!validated.success) return null;
+  return validated.data.slides[0] ?? null;
+}

@@ -609,9 +609,10 @@ export function SlideVisualEditor({ projectId, initialGraph }: SlideVisualEditor
           body: JSON.stringify(body),
         });
         if (!res.ok) return;
-        const data = (await res.json()) as { data?: { graph?: SlideGraph } };
-        if (data.data?.graph) setGraph(data.data.graph);
-        return data.data?.graph;
+        const data = (await res.json()) as { graph?: SlideGraph; data?: { graph?: SlideGraph } };
+        const nextGraph = data.graph ?? data.data?.graph;
+        if (nextGraph) setGraph(nextGraph);
+        return nextGraph;
       } finally {
         setSaving(false);
       }
