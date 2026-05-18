@@ -70,6 +70,9 @@ export interface SlideElement {
   src?: string;
   alt?: string;
   style?: SlideElementStyle;
+  name?: string
+  locked?: boolean
+  visible?: boolean
   // metric-card / stat-number fields
   value?: string;
   label?: string;
@@ -105,6 +108,13 @@ export interface Slide {
   background?: SlideBackground;
   elements: SlideElement[];
   notes?: string;
+  transition?: SlideTransition
+}
+
+export interface SlideTransition {
+  type: "none" | "fade" | "slide" | "zoom"
+  duration?: number
+  direction?: "left" | "right" | "up" | "down"
 }
 
 export interface SlideTheme {
@@ -113,6 +123,11 @@ export interface SlideTheme {
   backgroundColor: string;
   textColor: string;
   fontFamily: string;
+  headingFont?: string
+  secondaryColor?: string
+  surfaceColor?: string
+  borderRadius?: "none" | "sm" | "md" | "lg"
+  spacing?: "compact" | "normal" | "spacious"
 }
 
 export interface SlideGraph {

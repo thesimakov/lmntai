@@ -91,6 +91,9 @@ export const slidePatchSchema = z
     features: z.array(z.string()).optional(),
     popular: z.boolean().optional(),
     highlighted: z.boolean().optional(),
+    name: z.string().optional(),
+    locked: z.boolean().optional(),
+    visible: z.boolean().optional(),
     frame: slideElementFrameSchema.optional(),
   });
 
@@ -222,6 +225,9 @@ const PATCH_FIELD_KEYS = [
   "features",
   "popular",
   "highlighted",
+  "name",
+  "locked",
+  "visible",
   "frame",
 ] as const satisfies ReadonlyArray<keyof SlidePatch>;
 
