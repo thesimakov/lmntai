@@ -53,7 +53,8 @@ describe("slideGraphSchema", () => {
   });
 
   it("rejects missing version", () => {
-    const { version: _, ...noVersion } = minimalGraph;
+    const { version, ...noVersion } = minimalGraph;
+    expect(version).toBe(minimalGraph.version);
     expect(slideGraphSchema.safeParse(noVersion).success).toBe(false);
   });
 
