@@ -310,7 +310,7 @@ function coerceSlide(
   index: number,
   layoutFallback: SlideLayout,
   forceLayout?: boolean
-): Record<string, unknown> | null {
+): Slide | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const s = raw as Record<string, unknown>;
   const id =
@@ -390,7 +390,7 @@ export function normalizeSlideGraphPayload(
       template?.slideStructure[i]?.layout ?? (i === 0 ? "title" : "content");
     const coerced = coerceSlide(slidesRaw[i], i, layoutFallback, forceTemplateLayouts);
     if (coerced) {
-      slides.push(coerced as Slide);
+      slides.push(coerced);
     } else {
       slides.push({
         id: `slide_${i + 1}`,
@@ -403,7 +403,7 @@ export function normalizeSlideGraphPayload(
   if (!slides.length && slidesRaw.length) {
     for (let i = 0; i < slidesRaw.length; i++) {
       const coerced = coerceSlide(slidesRaw[i], i, i === 0 ? "title" : "content");
-      if (coerced) slides.push(coerced as Slide);
+      if (coerced) slides.push(coerced);
     }
   }
 
