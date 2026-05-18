@@ -199,6 +199,7 @@ export function zbExportToHtml(
   return `<section class="lemnity-zero-block" data-ln-zero-id="${blockId}" style="${sectionStyle}">\n  ${canvasWrap}\n</section>`;
 }
 
-export function zbExportToCss(_elements: ZbElement[]): string {
+export function zbExportToCss(elements: ZbElement[]): string {
+  void elements;
   return "";
 }

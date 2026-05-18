@@ -56,7 +56,7 @@ export function parseMarketingChatMarkdown(source: string): MarketingChatMarkdow
     buf.length = 0;
   };
 
-  let paragraphBuf: string[] = [];
+  const paragraphBuf: string[] = [];
 
   while (i < lines.length) {
     const line = lines[i];

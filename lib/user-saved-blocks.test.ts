@@ -26,7 +26,6 @@ import {
   getUserBlockById,
   renameUserBlock,
   deleteUserBlock,
-  type UserSavedBlockMeta,
   type CreateUserBlockInput,
 } from "@/lib/user-saved-blocks";
 
