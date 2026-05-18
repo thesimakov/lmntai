@@ -5,7 +5,6 @@ import { apiError, apiGuardError } from "@/lib/api-response";
 import { requireCmsSiteAccess } from "@/lib/cms-core";
 import {
   collectAllowedKanbanKeys,
-  normalizeSubmissionKanbanKey,
   parseKanbanCustomColumnsJson,
 } from "@/lib/cms-form-submissions-kanban";
 import { prisma } from "@/lib/prisma";

@@ -328,10 +328,6 @@ function traitsCtaLinkLike(comp: Component): TraitProperties[] {
   return [...traitsCtaLabelTrait(comp), ...traitsCtaLinkBlock(), ...traitsCtaVisualTraits()];
 }
 
-function traitsCtaButtonLike(comp: Component): TraitProperties[] {
-  return [...traitsCtaLabelTrait(comp), ...traitsCtaVisualTraits()];
-}
-
 function traitsLinkLike(comp: Component): void {
   try {
     if ((comp.getTraitIndex?.("ln-el-target") ?? -1) >= 0) {

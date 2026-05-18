@@ -129,7 +129,7 @@ export function AnalyticsForecastPanel({ projectId }: Props) {
         err instanceof Error ? err.message : "Generation failed"
       );
     }
-  }, [lang, projectId, setForecastReport, setForecastStatus, setForecastError]);
+  }, [lang, projectId, setForecastReport, setForecastStatus, setForecastError, t]);
 
   if (!dashboard) {
     return (

@@ -94,7 +94,7 @@ export default function ZeroBlockEditorPage() {
     } finally {
       setSavePending(false);
     }
-  }, [blockId, session, router]);
+  }, [blockId, session]);
 
   const handleClose = useCallback(() => {
     const returnUrl = session?.returnUrl;

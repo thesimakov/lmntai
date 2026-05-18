@@ -246,7 +246,7 @@ export function NewProjectPageWizard() {
   const websiteDisabled = creatingProject || subdomainCheck === "checking" || !canProceed;
 
   const navigateNewProjectToLemnityAiBuild = useCallback(
-    async (_starter: "empty" | "universal" | "consultation") => {
+    async () => {
       setAttemptedSubmit(true);
       if (!nameValid || !domainValid || subdomainCheck !== "available") {
         toast.message(t("projects_template_fix_form_toast"));

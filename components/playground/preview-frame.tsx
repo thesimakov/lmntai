@@ -199,13 +199,6 @@ export function PreviewFrame({
     return false;
   }
 
-  function handlePresentationPptxFromHtmlHint() {
-    if (!guardPresentationExportPaid()) return;
-    toast.message(t("build_export_pptx_html_hint_title"), {
-      description: t("build_export_pptx_html_hint_desc")
-    });
-  }
-
   useEffect(() => {
     setIframeSrc((prev) => mergedPreviewIframeSrc(prev, previewUrl));
   }, [previewUrl]);

@@ -305,8 +305,9 @@ function PropertiesPanel({
                 type="button"
                 className="text-[10px] text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  const { color: _, ...rest } = element.style ?? {};
-                  onUpdate({ style: rest });
+                  const next = { ...element.style };
+                  delete next.color;
+                  onUpdate({ style: Object.keys(next).length ? next : undefined });
                 }}
               >
                 Сбросить
@@ -338,11 +339,9 @@ function PropertiesPanel({
 
 function ChatPanel({
   projectId,
-  graph,
   onGraphUpdate,
 }: {
   projectId: string;
-  graph: SlideGraph;
   onGraphUpdate: (g: SlideGraph) => void;
 }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -819,7 +818,6 @@ export function SlideVisualEditor({ projectId, initialGraph }: SlideVisualEditor
             {rightTab === "chat" && (
               <ChatPanel
                 projectId={projectId}
-                graph={graph}
                 onGraphUpdate={handleGraphUpdate}
               />
             )}

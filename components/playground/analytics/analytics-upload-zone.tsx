@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { FileText, FileSpreadsheet, FileJson, FileType, UploadCloud } from "lucide-react";
+import { FileText, FileSpreadsheet, FileJson, UploadCloud } from "lucide-react";
 import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
@@ -26,6 +26,7 @@ function getFileIcon(name: string) {
 export function AnalyticsUploadZone({ onFile, disabled }: Props) {
   const { t } = useI18n();
   const [dragging, setDragging] = useState(false);
+  const DocxIcon = getFileIcon("sample.docx");
 
   const handle = useCallback(
     (file: File) => {
@@ -86,7 +87,7 @@ export function AnalyticsUploadZone({ onFile, disabled }: Props) {
         </span>
         <span className="text-border">·</span>
         <span className="flex items-center gap-1">
-          <FileType className="w-3 h-3" /> DOCX
+          <DocxIcon className="w-3 h-3" /> DOCX
         </span>
       </div>
     </label>

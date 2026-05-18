@@ -114,7 +114,7 @@ export function AnalyticsInvestorPanel({ projectId }: Props) {
       }
       setInvestorError(err instanceof Error ? err.message : "Generation failed");
     }
-  }, [lang, projectId, setInvestorReport, setInvestorStatus, setInvestorError]);
+  }, [lang, projectId, setInvestorReport, setInvestorStatus, setInvestorError, t]);
 
   const handleDownload = useCallback(
     async (format: string, label: string) => {

@@ -60,12 +60,9 @@ export function ZbCanvas() {
     elements,
     selectedIds,
     canvas,
-    breakpoint,
     selectIds,
     toggleSelection,
     clearSelection,
-    updateElements,
-    updateCanvas,
     setSnapGuides,
     setIsDragging,
     setIsResizing,
@@ -215,7 +212,7 @@ export function ZbCanvas() {
       window.addEventListener("mousemove", onMove);
       window.addEventListener("mouseup", onUp);
     },
-    [elements, selectedIds, canvas, toCanvasPt, selectIds, toggleSelection, updateElements, setSnapGuides, setIsDragging, pushHistory],
+    [elements, selectedIds, toCanvasPt, selectIds, toggleSelection, setSnapGuides, setIsDragging, pushHistory],
   );
 
   // ── Element resize ──
@@ -326,10 +323,6 @@ export function ZbCanvas() {
   );
 
   const sorted = [...elements].sort((a, b) => a.zIndex - b.zIndex);
-
-  const canvasBg = canvas.backgroundImage
-    ? `url(${canvas.backgroundImage}) center/cover no-repeat`
-    : canvas.background;
 
   return (
     <div

@@ -76,6 +76,7 @@ function dashboardToCsv(dashboard: AnalysisDashboard): string {
 }
 
 export function AnalyticsExportMenu({ projectId, dashboardRef }: Props) {
+  void dashboardRef;
   const { t, lang } = useI18n();
   const [loadingPptx, setLoadingPptx] = useState(false);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);

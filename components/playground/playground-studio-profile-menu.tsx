@@ -150,7 +150,7 @@ export function PlaygroundStudioProfileMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator className="my-2" />
-        {LOWER_ACCOUNT_ROWS.map((row, idx) => {
+        {LOWER_ACCOUNT_ROWS.map((row) => {
           if (row.type === "logout") {
             return (
               <div key="logout">

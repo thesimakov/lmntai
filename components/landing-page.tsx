@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowUp, ChevronDown, Globe, Image as ImageIcon, Layers, Paperclip, Presentation, Sparkles, BarChart2, TrendingUp, Upload } from "lucide-react";
+import { ArrowUp, Globe, Layers, Paperclip, Presentation, Sparkles, BarChart2, TrendingUp, Upload } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";

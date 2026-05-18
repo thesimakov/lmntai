@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
-import { apiError, apiGuardError, apiFile, apiServerError } from "@/lib/api-response";
+import { apiError, apiGuardError, apiFile } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { analysisDashboardSchema, type AnalysisDashboard } from "@/lib/analytics-schema";

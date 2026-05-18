@@ -606,7 +606,11 @@ function PropertiesPanel({
             />
             {element.style?.color && (
               <button type="button" className="text-xs font-medium text-muted-foreground hover:text-foreground shrink-0 px-1"
-                onClick={() => { const { color: _, ...rest } = element.style ?? {}; onUpdate({ style: rest }); }}>
+                onClick={() => {
+                  const next = { ...element.style };
+                  delete next.color;
+                  onUpdate({ style: Object.keys(next).length ? next : undefined });
+                }}>
                 ✕
               </button>
             )}
@@ -750,7 +754,6 @@ function PresentationAgentChat({
       />
     </div>
   );
-}
 }
 
 // ─── Notes panel ──────────────────────────────────────────────────────────────

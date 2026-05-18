@@ -47,18 +47,15 @@ async function fetchManusSessionIdForEmptySandboxRepair(projectId: string): Prom
   }
 
   const scopedUrl = `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions?projectId=${encodeURIComponent(projectId)}`;
-  let { res, envelope, sessions, textHead } = await loadSessions(scopedUrl);
-  let tried: "project_param" | "project_then_all" = "project_param";
+  let { res, envelope, sessions } = await loadSessions(scopedUrl);
 
   const usable = res.ok && envelope.code === 0 && sessions.length > 0;
   if (!usable) {
     const fullUrl = `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`;
     const second = await loadSessions(fullUrl);
-    tried = "project_then_all";
     res = second.res;
     envelope = second.envelope;
     sessions = second.sessions;
-    textHead = second.textHead;
   }
 
   const ok = res.ok && envelope.code === 0 && sessions.length > 0;
@@ -202,11 +199,9 @@ export function BuildCode({
         !sandboxId.startsWith("artifact_") &&
         (poison || (keyCount === 0 && Boolean(bridgePreviewUrl?.trim())));
       let upstreamForRepair = bridgeSessionRepair?.upstreamSessionId?.trim() ?? "";
-      let repairFromListFallback = false;
       /** Без привязки к fullParity: при пустой песочнице пробуем Prisma‑список сессий; при выключенном мосту GET просто вернёт 404. */
       if (!upstreamForRepair && baseRecoveryNeeds) {
         upstreamForRepair = (await fetchManusSessionIdForEmptySandboxRepair(sandboxId)) ?? "";
-        repairFromListFallback = Boolean(upstreamForRepair);
       }
       const shouldTrySessionArtifactRecovery = Boolean(upstreamForRepair) && baseRecoveryNeeds;
 

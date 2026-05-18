@@ -13,7 +13,6 @@ import { LemnityBoxVisualEditor, type LemnityBoxVisualEditorHandle } from "@/com
 import { PlaygroundStudioChrome } from "@/components/playground/playground-studio-chrome";
 import { PageTransition } from "@/components/page-transition";
 import { useI18n } from "@/components/i18n-provider";
-import { Button } from "@/components/ui/button";
 import { getEmptyBoxStarterCanvas } from "@/lib/box-new-page-starters";
 import { fetchCmsPageDocument, saveCmsPageDraft } from "@/lib/cms-editor-client";
 import { writeLemnityBoxCanvasDraft } from "@/lib/lemnity-box-editor-persistence";

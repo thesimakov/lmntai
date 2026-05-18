@@ -109,9 +109,10 @@ function ElementContent({ el }: { el: ZbElement }) {
         );
       }
       return (
+        // eslint-disable-next-line @next/next/no-img-element -- zero-block canvas uses dynamic/blob URLs
         <img
           src={p.src}
-          alt={p.alt}
+          alt={p.alt ?? ""}
           draggable={false}
           style={{
             width: "100%",
@@ -300,7 +301,8 @@ function ElementContent({ el }: { el: ZbElement }) {
                 <div key={i} style={{ background: "#e2e8f0", borderRadius: 4, aspectRatio: "4/3" }} />
               ))
             : imgs.slice(0, 3).map((src, i) => (
-                <img key={i} src={src} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
+                // eslint-disable-next-line @next/next/no-img-element -- gallery preview URLs are user-provided
+                <img key={i} src={src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 4 }} />
               ))}
         </div>
       );

@@ -83,7 +83,8 @@ export async function POST(
 
   const fileType = detectType(file);
   if (!fileType) {
-    return apiError("Unsupported file type. Accepted: PDF, XLSX, XLS, CSV, JSON", 400);
+    const accepted = [...ACCEPTED_TYPES].join(", ");
+    return apiError(`Unsupported file type. Accepted: PDF, XLSX, XLS, CSV, JSON, DOCX (${accepted})`, 400);
   }
 
   if (file.size > BI_UPLOAD_MAX_BYTES) {

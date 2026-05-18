@@ -155,7 +155,6 @@ export function AgentChat({
   studioToolbarTrailingSlot,
   buildTemplate = null,
   onBuildTemplateChange,
-  initialAttachments,
 }: AgentChatProps) {
   const { t, lang } = useI18n();
   const inputPlaceholder = placeholderProp ?? t("playground_chat_input_placeholder");

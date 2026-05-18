@@ -15,7 +15,7 @@ type State = { hasError: boolean };
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
   state: State = { hasError: false };
 
-  static getDerivedStateFromError(_error: Error): State {
+  static getDerivedStateFromError(): State {
     return { hasError: true };
   }
 
