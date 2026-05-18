@@ -199,7 +199,6 @@ function buildPages(d: AnalysisDashboard): string[] {
   {
     const findings = d.summary.keyFindings;
     const redFlags = d.summary.redFlags;
-    const summaryH = 200;
 
     const content = `
       <div style="display:flex;flex-direction:column;gap:14px;height:100%;">
@@ -220,12 +219,12 @@ function buildPages(d: AnalysisDashboard): string[] {
       const cols = tbl.headers.length;
       const colW = Math.floor((PW - 76) / cols);
       const headerCells = tbl.headers.map((h) =>
-        `<td style="padding:5px 6px;font-size:8px;font-weight:700;color:#FFFFFF;background:${D.a1};border:1px solid ${D.border}">${esc(h)}</td>`
+        `<td style="width:${colW}px;padding:5px 6px;font-size:8px;font-weight:700;color:#FFFFFF;background:${D.a1};border:1px solid ${D.border}">${esc(h)}</td>`
       ).join("");
       const bodyRows = tbl.rows.slice(0, 10).map((row, ri) => {
         const bg = ri % 2 === 0 ? D.panel : D.bg;
         const cells = row.map((c) =>
-          `<td style="padding:4px 6px;font-size:8px;color:${D.text};background:${bg};border:1px solid ${D.border}">${esc((c ?? "").slice(0, 30))}</td>`
+          `<td style="width:${colW}px;padding:4px 6px;font-size:8px;color:${D.text};background:${bg};border:1px solid ${D.border}">${esc((c ?? "").slice(0, 30))}</td>`
         ).join("");
         return `<tr>${cells}</tr>`;
       }).join("");

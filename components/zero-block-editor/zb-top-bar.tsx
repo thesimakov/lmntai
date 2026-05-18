@@ -11,7 +11,7 @@ interface Props {
 }
 
 const BREAKPOINT_LABELS: Record<string, string> = {
-  desktop: "ПК",
+  desktop: "Десктоп",
   "1200": "1200",
   "980": "980",
   "640": "640",
@@ -73,7 +73,6 @@ export function ZbTopBar({ onSave, onClose, onSaveToLibrary }: Props) {
     redo,
     history,
     future,
-    elements,
     selectedIds,
     removeElements,
     duplicateElements,
@@ -121,7 +120,7 @@ export function ZbTopBar({ onSave, onClose, onSaveToLibrary }: Props) {
         {ZB_BREAKPOINTS.map((bp) => (
           <TopButton
             key={bp}
-            title={`${bp === "desktop" ? "Десктоп" : bp + "px"}`}
+            title={bp === "desktop" ? BREAKPOINT_LABELS.desktop : `${BREAKPOINT_LABELS[bp] ?? bp}px`}
             onClick={() => {
               setBreakpoint(bp);
               const preset = ZB_BREAKPOINT_PRESETS[bp];

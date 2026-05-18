@@ -3,7 +3,6 @@ import {
   ERROR_SOURCES,
   ERROR_TYPES,
   detectModule,
-  type ErrorSource,
   type ErrorReportPayload,
 } from "./error-tracker-types";
 

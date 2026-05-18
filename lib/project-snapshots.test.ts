@@ -21,7 +21,6 @@ import {
   createSnapshot,
   getSnapshotById,
   deleteSnapshot,
-  type ProjectSnapshotMeta,
   type CreateSnapshotInput,
 } from "@/lib/project-snapshots";
 

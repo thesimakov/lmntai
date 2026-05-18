@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { getTemplate } from "./templates";
 import {
-  extractJsonFromAiText,
   normalizeSlideGraphPayload,
   parseSlideGraphFromAiText,
   repairTruncatedJson,

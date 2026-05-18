@@ -14,12 +14,6 @@ export interface TrendResult {
   projectedIn3: number | null;
 }
 
-function numericPairs(points: { x: unknown; y: unknown }[]): [number, number][] {
-  return points
-    .map((p, i) => [i, Number(p.y ?? p.x)] as [number, number])
-    .filter(([, y]) => isFinite(y));
-}
-
 function extractChartPoints(data: Record<string, unknown>[]): [number, number][] {
   if (data.length < 2) return [];
   const keys = Object.keys(data[0] ?? {});

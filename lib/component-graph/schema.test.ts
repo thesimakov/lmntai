@@ -59,7 +59,8 @@ describe("componentGraphSchema", () => {
   });
 
   it("rejects missing version", () => {
-    const { version: _, ...noVersion } = minimalGraph;
+    const { version, ...noVersion } = minimalGraph;
+    expect(version).toBe(minimalGraph.version);
     const result = componentGraphSchema.safeParse(noVersion);
     expect(result.success).toBe(false);
   });

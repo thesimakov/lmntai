@@ -1,4 +1,4 @@
-import type { Slide, SlideElement, SlideElementFrame, SlideElementType } from "./types";
+import type { Slide, SlideElementFrame, SlideElementType } from "./types";
 
 export const SLIDE_CANVAS_W = 960;
 export const SLIDE_CANVAS_H = 540;

@@ -22,16 +22,6 @@ function setFill(doc: jsPDF, hex: string) {
   doc.setFillColor(r, g, b);
 }
 
-function setTextCol(doc: jsPDF, hex: string) {
-  const [r, g, b] = hexToRgb(hex);
-  doc.setTextColor(r, g, b);
-}
-
-function setDrawCol(doc: jsPDF, hex: string) {
-  const [r, g, b] = hexToRgb(hex);
-  doc.setDrawColor(r, g, b);
-}
-
 function elementText(el: SlideElement): string {
   if (el.type === "bullet-list") return (el.items ?? []).map((i) => `• ${i}`).join("\n");
   return el.content ?? el.alt ?? "";

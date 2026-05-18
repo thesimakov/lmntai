@@ -46,7 +46,7 @@ function inlineStyle(el: SlideElement): string {
   return parts.length ? ` style="${parts.join(";")}"` : "";
 }
 
-function renderElement(el: SlideElement, theme: SlideTheme): string {
+function renderElement(el: SlideElement): string {
   const id = `data-lmnt-elem-id="${el.id}"`;
   const s = inlineStyle(el);
 
@@ -142,7 +142,7 @@ function partitionElements(elements: SlideElement[]): {
 function renderFreeformElement(el: SlideElement, theme: SlideTheme, index: number): string {
   const frame = el.frame ?? defaultElementFrame(index, el.type);
   const z = frame.zIndex ?? index + 1;
-  const inner = renderElement(el, theme);
+  const inner = renderElement(el);
   return `<div class="lmnt-elem-frame" data-lmnt-elem-id="${esc(el.id)}" data-lmnt-frame-wrap="1" style="position:absolute;left:${frame.x}px;top:${frame.y}px;width:${frame.w}px;height:${frame.h}px;z-index:${z};box-sizing:border-box;cursor:grab;overflow:hidden;touch-action:none;">
   <div class="lmnt-elem-frame__inner" style="width:100%;height:100%;overflow:auto;pointer-events:none">${inner}</div>
 </div>`;
@@ -190,7 +190,7 @@ ${freeformHtml}
   }
 
   const captureAttr = capture ? ` data-lmnt-capture-frames="1"` : "";
-  const innerHtml = renderLayoutContent(slide, theme);
+  const innerHtml = renderLayoutContent(slide);
 
   return `<div class="lmnt-slide ${layoutClass}" data-lmnt-slide-id="${slide.id}"${captureAttr} style="${bgStyle}">
 ${overlay}
@@ -198,19 +198,19 @@ ${innerHtml}
 </div>`;
 }
 
-function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
+function renderLayoutContent(slide: Slide): string {
   const { elements, layout } = slide;
   const { header, cards } = partitionElements(elements);
 
-  const headerHtml = header.map((el) => renderElement(el, theme)).join("\n");
-  const allHtml = elements.map((el) => renderElement(el, theme)).join("\n");
+  const headerHtml = header.map((el) => renderElement(el)).join("\n");
+  const allHtml = elements.map((el) => renderElement(el)).join("\n");
 
   switch (layout) {
     case "metrics-cards": {
       const metricCards = cards.filter((e) => e.type === "metric-card");
       const statNumbers = cards.filter((e) => e.type === "stat-number");
-      const metricsHtml = metricCards.map((e) => renderElement(e, theme)).join("");
-      const statsHtml = statNumbers.map((e) => renderElement(e, theme)).join("");
+      const metricsHtml = metricCards.map((e) => renderElement(e)).join("");
+      const statsHtml = statNumbers.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-metrics-cards">
   <div class="lmnt-layout-metrics-cards__header">${headerHtml}</div>
   <div class="lmnt-layout-metrics-cards__cards">${metricsHtml}</div>
@@ -220,7 +220,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "dark-solution": {
       const featureCards = cards.filter((e) => e.type === "feature-card");
-      const cardsHtml = featureCards.map((e) => renderElement(e, theme)).join("");
+      const cardsHtml = featureCards.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-dark-solution">
   <div class="lmnt-layout-dark-solution__header">${headerHtml}</div>
   <div class="lmnt-layout-dark-solution__cards">${cardsHtml}</div>
@@ -229,7 +229,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "steps-grid": {
       const steps = cards.filter((e) => e.type === "step-card");
-      const stepsHtml = steps.map((e) => renderElement(e, theme)).join("");
+      const stepsHtml = steps.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-steps-grid">
   <div class="lmnt-layout-steps-grid__header">${headerHtml}</div>
   <div class="lmnt-layout-steps-grid__steps">${stepsHtml}</div>
@@ -238,7 +238,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "feature-grid-6": {
       const features = cards.filter((e) => e.type === "feature-card");
-      const featuresHtml = features.map((e) => renderElement(e, theme)).join("");
+      const featuresHtml = features.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-feature-grid-6">
   <div class="lmnt-layout-feature-grid-6__header">${headerHtml}</div>
   <div class="lmnt-layout-feature-grid-6__grid">${featuresHtml}</div>
@@ -248,8 +248,8 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
     case "dark-metrics": {
       const stats = cards.filter((e) => e.type === "stat-number");
       const metrics = cards.filter((e) => e.type === "metric-card");
-      const statsHtml = stats.map((e) => renderElement(e, theme)).join("");
-      const metricsHtml = metrics.map((e) => renderElement(e, theme)).join("");
+      const statsHtml = stats.map((e) => renderElement(e)).join("");
+      const metricsHtml = metrics.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-dark-metrics">
   <div class="lmnt-layout-dark-metrics__header">${headerHtml}</div>
   <div class="lmnt-layout-dark-metrics__stats">${statsHtml}</div>
@@ -259,7 +259,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "pricing-3col": {
       const tiers = cards.filter((e) => e.type === "pricing-card");
-      const tiersHtml = tiers.map((e) => renderElement(e, theme)).join("");
+      const tiersHtml = tiers.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-pricing-3col">
   <div class="lmnt-layout-pricing-3col__header">${headerHtml}</div>
   <div class="lmnt-layout-pricing-3col__tiers">${tiersHtml}</div>
@@ -269,8 +269,8 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
     case "market-split": {
       const stats = cards.filter((e) => e.type === "stat-number");
       const features = cards.filter((e) => e.type === "feature-card");
-      const statsHtml = stats.map((e) => renderElement(e, theme)).join("");
-      const featuresHtml = features.map((e) => renderElement(e, theme)).join("");
+      const statsHtml = stats.map((e) => renderElement(e)).join("");
+      const featuresHtml = features.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-market-split">
   <div class="lmnt-layout-market-split__header">${headerHtml}</div>
   <div class="lmnt-layout-market-split__stats">${statsHtml}</div>
@@ -280,7 +280,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "timeline-4col": {
       const cols = cards.filter((e) => e.type === "timeline-col");
-      const colsHtml = cols.map((e) => renderElement(e, theme)).join("");
+      const colsHtml = cols.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-timeline-4col">
   <div class="lmnt-layout-timeline-4col__header">${headerHtml}</div>
   <div class="lmnt-layout-timeline-4col__cols">${colsHtml}</div>
@@ -289,7 +289,7 @@ function renderLayoutContent(slide: Slide, theme: SlideTheme): string {
 
     case "cta-split": {
       const rightCards = cards.filter((e) => e.type === "metric-card" || e.type === "pricing-card");
-      const rightHtml = rightCards.map((e) => renderElement(e, theme)).join("");
+      const rightHtml = rightCards.map((e) => renderElement(e)).join("");
       return `<div class="lmnt-slide__content lmnt-layout-cta-split">
   <div class="lmnt-layout-cta-split__left">${headerHtml}</div>
   <div class="lmnt-layout-cta-split__right">${rightHtml}</div>

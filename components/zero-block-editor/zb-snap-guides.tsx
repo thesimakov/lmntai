@@ -3,7 +3,7 @@
 import { useZbEditorStore } from "@/lib/zero-block-editor/store";
 
 export function ZbSnapGuides() {
-  const { snapGuides, canvas } = useZbEditorStore();
+  const { snapGuides } = useZbEditorStore();
   if (snapGuides.length === 0) return null;
 
   return (

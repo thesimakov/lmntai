@@ -1,7 +1,6 @@
 import type { ProjectBrandKitState } from "@/components/dashboard/project-brand-kit-fields";
 import { projectStateToManifest } from "@/lib/brand-kit-library";
 import type { BrandKitLibraryDto } from "@/lib/brand-kit-library";
-import { manifestToProjectState } from "@/lib/brand-kit-library";
 import type { ProjectBrandKitLibraryDto } from "@/lib/project-brand-kit-library";
 
 export const BRAND_KIT_LIBRARY_UPDATED_EVENT = "lemnity:brand-kit-library-updated";

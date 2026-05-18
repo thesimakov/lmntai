@@ -66,8 +66,6 @@ export function ZbLayersPanel() {
     lockElements,
     toggleVisibility,
     removeElements,
-    bringToFront,
-    sendToBack,
     renameElement,
     setLayersPanelOpen,
   } = useZbEditorStore();
