@@ -23,6 +23,11 @@ set -a
 source "$ENV_FILE"
 set +a
 
+# production.env часто задаёт NODE_ENV=production — тогда npm ci не ставит devDependencies
+# (autoprefixer, tailwind, typescript, patch-package), и next build падает.
+unset NODE_ENV
+export NPM_CONFIG_PRODUCTION=false
+
 echo "==> [deploy] git pull"
 git pull --ff-only
 echo "==> [deploy] npm ci — старт $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -30,7 +35,7 @@ echo "    Предупреждения «deprecated» — норма. Дальш
 echo "    Это не зависание; на слабом CPU шаг идёт долго. Для детализации: DEBUG_DEPLOY=1 bash $0"
 echo "==> [deploy] npm ci (может занять много минут на слабом CPU/RAM)…"
 if [[ "${DEBUG_DEPLOY:-}" == "1" ]]; then set -x; fi
-npm ci --no-fund --no-audit
+npm ci --no-fund --no-audit --include=dev
 if [[ "${DEBUG_DEPLOY:-}" == "1" ]]; then set +x; fi
 echo "==> [deploy] npm ci — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "==> [deploy] prisma generate + migrate"
