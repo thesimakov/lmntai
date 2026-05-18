@@ -6,13 +6,18 @@ import {
   ArrowLeft, Download, Loader2, ChevronLeft, ChevronRight,
   Bold, Italic, AlignLeft, AlignCenter, AlignRight,
   Trash2, Plus, MessageSquare, FileText, Pencil,
-  ChevronUp, ChevronDown, Send, X, RefreshCw,
+  ChevronUp, ChevronDown, X, RefreshCw,
   Image as ImageIcon, Type, List, Palette, Layers,
 } from "lucide-react";
 import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { ImageUploader } from "@/components/editor/ImageUploader";
 import { cn } from "@/lib/utils";
+import { AgentChat, type ChatMessage as AgentChatMessage } from "@/components/playground/agent-chat";
+import {
+  resolveAgentForTask,
+  type AgentPickerLabel,
+} from "@/lib/agent-models";
 import { PLAYGROUND_HOME_PROJECTS_HREF } from "@/lib/playground-project-edit-url";
 import type { SlideGraph, Slide, SlideElement, SlideBackground } from "@/lib/slide-graph/types";
 import { applyFramesToSlide, clampFrame, defaultElementFrame } from "@/lib/slide-graph/freeform";
@@ -22,11 +27,11 @@ import type { SlideElementFrame } from "@/lib/slide-graph/types";
 
 type Selection = { slideId: string; elemId: string } | null;
 type RightTab = "visual" | "chat" | "notes";
-type ChatMessage = { role: "user" | "assistant"; content: string };
 
 interface Props {
   projectId: string;
   initialGraph: SlideGraph;
+  userPlan: string | null;
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -125,6 +130,104 @@ function Txa({ value, onChange, rows = 3 }: { value: string; onChange: (v: strin
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
+  );
+}
+
+type PartStyleColorKey = "labelColor" | "descriptionColor" | "valueColor" | "changeColor";
+
+const PART_COLOR_SWATCHES = ["#ffffff", "#000000", "#c41e3a", "#2563eb", "#16a34a", "#f59e0b"] as const;
+
+function PartColorPicker({
+  value,
+  pickerFallback,
+  onChange,
+  onClear,
+}: {
+  value: string | undefined;
+  pickerFallback: string;
+  onChange: (color: string) => void;
+  onClear: () => void;
+}) {
+  const pickerValue = value?.startsWith("#") && value.length >= 4 ? value : pickerFallback;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          className="h-8 w-9 rounded-md border border-border cursor-pointer bg-transparent shrink-0"
+          value={pickerValue}
+          onChange={(e) => onChange(e.target.value)}
+          title="Цвет"
+        />
+        <input
+          type="text"
+          className={cn(panelInput, "flex-1 font-mono text-xs py-1.5")}
+          value={value ?? ""}
+          placeholder="авто"
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {value && (
+          <button
+            type="button"
+            className="text-xs font-medium text-muted-foreground hover:text-foreground shrink-0 px-1"
+            onClick={onClear}
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-6 gap-1">
+        {PART_COLOR_SWATCHES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(c)}
+            className="w-full aspect-square rounded border border-border hover:scale-110 transition-transform"
+            style={{ background: c }}
+            title={c}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function FieldWithPartColor({
+  label,
+  colorKey,
+  element,
+  onUpdate,
+  pickerFallback = "#000000",
+  children,
+}: {
+  label: string;
+  colorKey: PartStyleColorKey;
+  element: SlideElement;
+  onUpdate: (patch: Partial<SlideElement>) => void;
+  pickerFallback?: string;
+  children: React.ReactNode;
+}) {
+  const partColor = element.style?.[colorKey];
+  const setPartColor = (color: string) =>
+    onUpdate({ style: { ...element.style, [colorKey]: color } });
+  const clearPartColor = () => {
+    if (!element.style) return;
+    const next = { ...element.style };
+    delete next[colorKey];
+    onUpdate({ style: Object.keys(next).length ? next : undefined });
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <label className={panelFieldLabel}>{label}</label>
+      {children}
+      <PartColorPicker
+        value={partColor}
+        pickerFallback={pickerFallback}
+        onChange={setPartColor}
+        onClear={clearPartColor}
+      />
+    </div>
   );
 }
 
@@ -253,6 +356,7 @@ function PropertiesPanel({
   const features = element.features ?? [];
   const isText = ["heading", "subheading", "body", "quote", "caption", "label"].includes(element.type);
   const isTextOrList = isText || element.type === "bullet-list";
+  const hasPartColors = element.type === "metric-card" || element.type === "stat-number";
 
   return (
     <div className="flex flex-col h-full">
@@ -349,17 +453,27 @@ function PropertiesPanel({
         {/* ── metric-card ── */}
         {element.type === "metric-card" && (
           <>
-            <Field label="Заголовок"><Inp value={s(element.label)} onChange={(v) => onUpdate({ label: v })} /></Field>
-            <Field label="Описание"><Txa value={s(element.description)} onChange={(v) => onUpdate({ description: v })} rows={2} /></Field>
+            <FieldWithPartColor label="Заголовок" colorKey="labelColor" element={element} onUpdate={onUpdate} pickerFallback="#1a1a2e">
+              <Inp value={s(element.label)} onChange={(v) => onUpdate({ label: v })} />
+            </FieldWithPartColor>
+            <FieldWithPartColor label="Описание" colorKey="descriptionColor" element={element} onUpdate={onUpdate} pickerFallback="#666666">
+              <Txa value={s(element.description)} onChange={(v) => onUpdate({ description: v })} rows={2} />
+            </FieldWithPartColor>
           </>
         )}
 
         {/* ── stat-number ── */}
         {element.type === "stat-number" && (
           <>
-            <Field label="Число"><Inp value={s(element.value)} onChange={(v) => onUpdate({ value: v })} placeholder="68%" /></Field>
-            <Field label="Изменение"><Inp value={s(element.change)} onChange={(v) => onUpdate({ change: v })} placeholder="+25%" /></Field>
-            <Field label="Метка"><Inp value={s(element.label)} onChange={(v) => onUpdate({ label: v })} /></Field>
+            <FieldWithPartColor label="Число" colorKey="valueColor" element={element} onUpdate={onUpdate} pickerFallback="#c41e3a">
+              <Inp value={s(element.value)} onChange={(v) => onUpdate({ value: v })} placeholder="68%" />
+            </FieldWithPartColor>
+            <FieldWithPartColor label="Изменение" colorKey="changeColor" element={element} onUpdate={onUpdate} pickerFallback="#22c55e">
+              <Inp value={s(element.change)} onChange={(v) => onUpdate({ change: v })} placeholder="+25%" />
+            </FieldWithPartColor>
+            <FieldWithPartColor label="Метка" colorKey="labelColor" element={element} onUpdate={onUpdate} pickerFallback="#888888">
+              <Inp value={s(element.label)} onChange={(v) => onUpdate({ label: v })} />
+            </FieldWithPartColor>
           </>
         )}
 
@@ -475,7 +589,7 @@ function PropertiesPanel({
           </div>
         )}
 
-        {/* ── Color (all elements) ── */}
+        {!hasPartColors && (
         <div className="space-y-2 pt-2 border-t border-border">
           <p className={panelSectionTitle}>Цвет текста</p>
           <div className="flex items-center gap-2">
@@ -506,6 +620,7 @@ function PropertiesPanel({
             ))}
           </div>
         </div>
+        )}
 
         {/* ── Opacity ── */}
         <div className="space-y-2">
@@ -524,62 +639,118 @@ function PropertiesPanel({
 
 // ─── AI Chat panel ────────────────────────────────────────────────────────────
 
-function ChatPanel({ projectId, graph, onGraphUpdate }: { projectId: string; graph: SlideGraph; onGraphUpdate: (g: SlideGraph) => void }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState("");
+function createChatId() {
+  return `msg_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function PresentationAgentChat({
+  projectId,
+  userPlan,
+  onGraphUpdate,
+}: {
+  projectId: string;
+  userPlan: string | null;
+  onGraphUpdate: (g: SlideGraph) => void;
+}) {
+  const { t } = useI18n();
+  const [messages, setMessages] = useState<AgentChatMessage[]>([]);
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [agentHint, setAgentHint] = useState<AgentPickerLabel>(() =>
+    resolveAgentForTask({
+      plan: userPlan,
+      projectKind: "presentation",
+      task: "generate-stream",
+    }).uiLabel
+  );
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
+  const historyForApi = useCallback(
+    () =>
+      messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .slice(-10)
+        .map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+    [messages]
+  );
 
-  const send = useCallback(async () => {
-    const text = input.trim();
-    if (!text || sending) return;
-    setInput(""); setSending(true);
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
-    try {
-      const res = await fetch(`/api/projects/${projectId}/slides/chat`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, history: messages.slice(-10) }),
-      });
-      if (!res.ok) { setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка. Попробуйте ещё раз." }]); return; }
-      const data = (await res.json()) as { message?: string; graph?: SlideGraph; data?: { message?: string; graph?: SlideGraph } };
-      const msg = data.message ?? data.data?.message ?? "Готово.";
-      setMessages((prev) => [...prev, { role: "assistant", content: msg }]);
-      const nextGraph = data.graph ?? data.data?.graph;
-      if (nextGraph) onGraphUpdate(nextGraph);
-    } catch {
-      setMessages((prev) => [...prev, { role: "assistant", content: "Ошибка соединения." }]);
-    } finally { setSending(false); }
-  }, [input, sending, messages, projectId, onGraphUpdate]);
+  const handleSend = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || sending) return;
+      setSending(true);
+      setMessages((prev) => [
+        ...prev,
+        { id: createChatId(), role: "user", content: trimmed, sentAt: Date.now() },
+      ]);
+      try {
+        const res = await fetch(`/api/projects/${projectId}/slides/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: trimmed,
+            history: historyForApi(),
+            agentHint,
+          }),
+        });
+        const payload = (await res.json()) as {
+          message?: string;
+          graph?: SlideGraph;
+          error?: string;
+          data?: { message?: string; graph?: SlideGraph };
+        };
+        if (!res.ok) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              id: createChatId(),
+              role: "assistant",
+              content: payload.error ?? t("presentations_ai_error"),
+              sentAt: Date.now(),
+            },
+          ]);
+          return;
+        }
+        const msg = payload.message ?? payload.data?.message ?? t("presentations_ai_done");
+        setMessages((prev) => [
+          ...prev,
+          { id: createChatId(), role: "assistant", content: msg, sentAt: Date.now() },
+        ]);
+        const nextGraph = payload.graph ?? payload.data?.graph;
+        if (nextGraph) onGraphUpdate(nextGraph);
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: createChatId(),
+            role: "assistant",
+            content: t("presentations_ai_connection_error"),
+            sentAt: Date.now(),
+          },
+        ]);
+      } finally {
+        setSending(false);
+      }
+    },
+    [sending, projectId, agentHint, historyForApi, onGraphUpdate, t]
+  );
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-3 py-2.5 border-b border-border shrink-0">
-        <p className="text-sm font-semibold text-foreground">AI-редактирование</p>
-        <p className="text-xs text-muted-foreground mt-0.5">Опишите изменения — AI применит их</p>
-      </div>
-      <div className="flex-1 overflow-y-auto p-2.5 space-y-2.5 min-h-0">
-        {messages.length === 0 && <p className="text-sm text-muted-foreground text-center mt-4 px-2 leading-relaxed">Например: «Сделай заголовок синим» или «Добавь метрику про ARR»</p>}
-        {messages.map((m, i) => (
-          <div key={i} className={cn("text-sm rounded-lg px-3 py-2 leading-relaxed", m.role === "user" ? "bg-primary text-primary-foreground ml-3" : "bg-muted text-foreground mr-3")}>
-            {m.content}
-          </div>
-        ))}
-        {sending && <div className="bg-muted rounded-lg px-3 py-2 mr-3 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Обрабатываю…</span></div>}
-        <div ref={bottomRef} />
-      </div>
-      <div className="p-2.5 border-t border-border flex gap-2">
-        <textarea className={cn(panelInput, "flex-1 resize-none min-h-[56px] max-h-[120px]")}
-          placeholder="Напишите инструкцию…" value={input} onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); } }}
-          disabled={sending} />
-        <Button size="icon" className="h-9 w-9 shrink-0 self-end" onClick={() => void send()} disabled={!input.trim() || sending}>
-          <Send className="w-4 h-4" />
-        </Button>
-      </div>
+    <div className="flex flex-col h-full min-h-0">
+      <AgentChat
+        title={t("presentations_ai_title")}
+        subtitle={t("presentations_ai_subtitle")}
+        placeholder={t("presentations_ai_placeholder")}
+        messages={messages}
+        disabled={sending}
+        onSend={handleSend}
+        plan={userPlan}
+        projectKind="presentation"
+        agentTask="generate-stream"
+        onModelHintChange={setAgentHint}
+        threadScrollKey={messages.length}
+      />
     </div>
   );
+}
 }
 
 // ─── Notes panel ──────────────────────────────────────────────────────────────
@@ -603,7 +774,7 @@ function NotesPanel({ slide, onSave, saving }: { slide: Slide; onSave: (notes: s
 
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 
-export function PresentationEditorClient({ projectId, initialGraph }: Props) {
+export function PresentationEditorClient({ projectId, initialGraph, userPlan }: Props) {
   const { t } = useI18n();
   const router = useRouter();
   const [graph, setGraph] = useState<SlideGraph>(initialGraph);
@@ -958,7 +1129,13 @@ export function PresentationEditorClient({ projectId, initialGraph }: Props) {
                 />
               )
             )}
-            {rightTab === "chat" && <ChatPanel projectId={projectId} graph={graph} onGraphUpdate={(g) => setGraph(g)} />}
+            {rightTab === "chat" && (
+              <PresentationAgentChat
+                projectId={projectId}
+                userPlan={userPlan}
+                onGraphUpdate={(g) => setGraph(g)}
+              />
+            )}
             {rightTab === "notes" && <NotesPanel slide={activeSlide} onSave={handleSaveNotes} saving={notesSaving} />}
           </div>
         </div>

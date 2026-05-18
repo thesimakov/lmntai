@@ -1,14 +1,20 @@
 import { type NextRequest } from "next/server";
 import { z } from "zod";
+import { parseAgentPickerLabel } from "@/lib/agent-models";
 import { requireDbUser } from "@/lib/auth-guards";
 import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
+import { loadSlideGraphFromJson } from "@/lib/slide-graph/normalize";
 import { buildSlideChatPrompt, SLIDE_CHAT_RETRY_MESSAGE } from "@/lib/slide-graph/prompt";
-import { slideGraphSchema } from "@/lib/slide-graph/schema";
-import { slidePatchResponseSchema, applySlidePatches } from "@/lib/slide-graph/patch";
+import {
+  slideChatResponseSchema,
+  slideChatResponseToPatchBody,
+  applySlidePatchBody,
+} from "@/lib/slide-graph/patch";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
+import { getTemplate } from "@/lib/slide-graph/templates";
 import {
   chargeStructuredJsonUsageSafely,
   requestStructuredJsonForProjectKind,
@@ -28,25 +34,16 @@ const messageSchema = z.object({
 const bodySchema = z.object({
   message: z.string().min(1).max(2000),
   history: z.array(messageSchema).max(20).default([]),
+  agentHint: z.string().max(64).optional(),
 });
 
-function tryParsePatch(text: string) {
+function tryParseChatResponse(text: string) {
   try {
     let json = text.trim();
     const fence = json.match(/```(?:json)?\s*([\s\S]*?)```/);
     if (fence) json = fence[1].trim();
     const parsed = JSON.parse(json) as unknown;
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      "message" in parsed &&
-      "patches" in parsed &&
-      Array.isArray((parsed as { patches: unknown }).patches) &&
-      (parsed as { patches: unknown[] }).patches.length === 0
-    ) {
-      return { success: true as const, data: { message: (parsed as { message: string }).message, patches: [] } };
-    }
-    return slidePatchResponseSchema.safeParse(parsed);
+    return slideChatResponseSchema.safeParse(parsed);
   } catch {
     return null;
   }
@@ -70,7 +67,8 @@ export async function POST(
 
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
-  const { message, history } = body.data;
+  const { message, history, agentHint: agentHintRaw } = body.data;
+  const agentHint = parseAgentPickerLabel(agentHintRaw) ?? agentHintRaw ?? null;
 
   const state = await getSandboxProjectState(projectId);
   const graphJson = state?.files?.["slide_graph.json"];
@@ -78,8 +76,17 @@ export async function POST(
     return apiError("No SlideGraph found. Generate the presentation first.", 400);
   }
 
-  const graphParse = slideGraphSchema.safeParse(JSON.parse(graphJson));
-  if (!graphParse.success) {
+  let metaTemplateId: string | undefined;
+  try {
+    const raw = JSON.parse(graphJson) as { meta?: { templateId?: string } };
+    metaTemplateId = raw.meta?.templateId;
+  } catch {
+    return apiError("Stored SlideGraph is invalid. Please regenerate.", 422);
+  }
+
+  const template = metaTemplateId ? getTemplate(metaTemplateId) : undefined;
+  const graphParse = loadSlideGraphFromJson(graphJson, { template });
+  if (!graphParse?.success) {
     return apiError("Stored SlideGraph is invalid. Please regenerate.", 422);
   }
 
@@ -90,9 +97,15 @@ export async function POST(
     const result = await requestStructuredJsonForProjectKind(
       {
         messages: msgs,
-        settings: { temperature: 0.2, max_completion_tokens: 2000 },
+        settings: { temperature: 0.2, max_completion_tokens: 4000 },
       },
-      { plan: user.plan, projectKind: "presentation", userId: user.id }
+      {
+        plan: user.plan,
+        projectKind: "presentation",
+        userId: user.id,
+        agentHint,
+        autoFromPrompt: message,
+      }
     );
     await chargeStructuredJsonUsageSafely({
       userId: user.id,
@@ -112,7 +125,7 @@ export async function POST(
     return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
   }
 
-  const v1 = tryParsePatch(result1.text);
+  const v1 = tryParseChatResponse(result1.text);
   if (!v1?.success) {
     const retryMessages = [
       ...messages,
@@ -126,7 +139,7 @@ export async function POST(
       console.error("[slides/chat] retry", unknownToErrorMessage(e));
       return apiError(userFacingAiUnavailableMessage(e), 502, { code: "AI_UNAVAILABLE" });
     }
-    const v2 = tryParsePatch(result2.text);
+    const v2 = tryParseChatResponse(result2.text);
     if (!v2?.success) {
       return apiError("AI response did not match expected format. Please try again.", 422);
     }
@@ -135,18 +148,16 @@ export async function POST(
 
   return applyAndSave(v1.data);
 
-  async function applyAndSave(patchResponse: { message: string; patches: import("@/lib/slide-graph/patch").SlidePatch[] }) {
-    const updatedGraph =
-      patchResponse.patches.length > 0
-        ? applySlidePatches(graph, patchResponse.patches)
-        : graph;
+  async function applyAndSave(chatResponse: z.infer<typeof slideChatResponseSchema>) {
+    const patchBody = slideChatResponseToPatchBody(chatResponse);
+    const updatedGraph = patchBody ? applySlidePatchBody(graph, patchBody) : graph;
 
-    if (patchResponse.patches.length > 0) {
+    if (patchBody) {
       const html = renderSlideGraph(updatedGraph);
       const freshState = await getSandboxProjectState(projectId);
       await upsertSandboxProjectState({
         projectId,
-        sandboxId: state!.sandboxId,
+        sandboxId: state!.sandboxId ?? projectId,
         ownerId: user.id,
         title: state!.title,
         html,
@@ -158,9 +169,10 @@ export async function POST(
     }
 
     return apiOk({
-      message: patchResponse.message,
-      patched: patchResponse.patches.length > 0,
+      message: chatResponse.message,
+      patched: Boolean(patchBody),
       graph: updatedGraph,
+      model: result1.model ?? result1.requestedModel,
     });
   }
 }

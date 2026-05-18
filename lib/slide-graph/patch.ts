@@ -12,6 +12,10 @@ const slideElementFrameSchema = z.object({
 
 const slideElementStyleSchema = z.object({
   color: z.string().optional(),
+  labelColor: z.string().optional(),
+  descriptionColor: z.string().optional(),
+  valueColor: z.string().optional(),
+  changeColor: z.string().optional(),
   fontSize: z.string().optional(),
   fontWeight: z.enum(["normal", "bold"]).optional(),
   textAlign: z.enum(["left", "center", "right"]).optional(),
@@ -151,9 +155,53 @@ export const slidePatchResponseSchema = z.object({
   patches: z.array(slidePatchSchema).min(1),
 });
 
+/** AI chat assistant response — may include patches only, or slide-level operations. */
+export const slideChatResponseSchema = z.object({
+  message: z.string().min(1),
+  patches: z.array(slidePatchSchema).optional(),
+  slideBackground: z
+    .object({
+      slideId: z.string().min(1),
+      background: slideBackgroundInputSchema,
+    })
+    .optional(),
+  addElement: z
+    .object({
+      slideId: z.string().min(1),
+      element: slideElementInputSchema,
+    })
+    .optional(),
+  deleteElement: z
+    .object({
+      slideId: z.string().min(1),
+      elemId: z.string().min(1),
+    })
+    .optional(),
+});
+
 export type SlidePatch = z.infer<typeof slidePatchSchema>;
 export type SlidePatchBody = z.infer<typeof slidePatchBodySchema>;
 export type SlidePatchResponse = z.infer<typeof slidePatchResponseSchema>;
+export type SlideChatResponse = z.infer<typeof slideChatResponseSchema>;
+
+export function slideChatResponseToPatchBody(
+  response: SlideChatResponse
+): SlidePatchBody | null {
+  const patches = response.patches ?? [];
+  const body: SlidePatchBody = {
+    patches: patches.length > 0 ? patches : undefined,
+    slideBackground: response.slideBackground,
+    addElement: response.addElement,
+    deleteElement: response.deleteElement,
+  };
+  const hasChange = Boolean(
+    body.patches?.length ||
+      body.slideBackground ||
+      body.addElement ||
+      body.deleteElement
+  );
+  return hasChange ? body : null;
+}
 
 const PATCH_FIELD_KEYS = [
   "content",

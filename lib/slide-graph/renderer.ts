@@ -28,6 +28,11 @@ const PRESERVE_LINE_BREAKS_CSS = `
 .lmnt-timeline-col__title, .lmnt-timeline-col__item { white-space: pre-wrap; }
 `.trim();
 
+function cssColorAttr(color: string | undefined): string {
+  if (!color?.trim()) return "";
+  return ` style="color:${color.replace(/"/g, "&quot;")}"`;
+}
+
 function inlineStyle(el: SlideElement): string {
   if (!el.style) return "";
   const parts = [
@@ -67,15 +72,15 @@ function renderElement(el: SlideElement, theme: SlideTheme): string {
 
     case "metric-card":
       return `<div class="lmnt-card lmnt-metric-card" ${id}${s}>
-  <p class="lmnt-metric-card__label">${esc(el.label ?? el.content)}</p>
-  <p class="lmnt-metric-card__description">${esc(el.description)}</p>
+  <p class="lmnt-metric-card__label"${cssColorAttr(el.style?.labelColor ?? el.style?.color)}>${esc(el.label ?? el.content)}</p>
+  <p class="lmnt-metric-card__description"${cssColorAttr(el.style?.descriptionColor ?? el.style?.color)}>${esc(el.description)}</p>
 </div>`;
 
     case "stat-number":
       return `<div class="lmnt-stat-number" ${id}${s}>
-  <span class="lmnt-stat-number__value">${esc(el.value)}</span>
-  ${el.change ? `<span class="lmnt-stat-number__change">${esc(el.change)}</span>` : ""}
-  <span class="lmnt-stat-number__label">${esc(el.label)}</span>
+  <span class="lmnt-stat-number__value"${cssColorAttr(el.style?.valueColor ?? el.style?.color)}>${esc(el.value)}</span>
+  ${el.change ? `<span class="lmnt-stat-number__change"${cssColorAttr(el.style?.changeColor)}>${esc(el.change)}</span>` : ""}
+  <span class="lmnt-stat-number__label"${cssColorAttr(el.style?.labelColor ?? el.style?.color)}>${esc(el.label)}</span>
 </div>`;
 
     case "feature-card": {

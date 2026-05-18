@@ -37,6 +37,13 @@ export type SlideElementType =
 
 export interface SlideElementStyle {
   color?: string;
+  /** metric-card label / stat-number label / generic title line */
+  labelColor?: string;
+  descriptionColor?: string;
+  /** stat-number main value */
+  valueColor?: string;
+  /** stat-number change badge */
+  changeColor?: string;
   fontSize?: string;
   fontWeight?: "normal" | "bold";
   textAlign?: "left" | "center" | "right";

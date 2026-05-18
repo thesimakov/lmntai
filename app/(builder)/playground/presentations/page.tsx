@@ -62,7 +62,13 @@ async function PresentationsLoader({ projectId }: { projectId: string }) {
     );
   }
 
-  return <PresentationEditorClient projectId={projectId} initialGraph={parse.data} />;
+  return (
+    <PresentationEditorClient
+      projectId={projectId}
+      initialGraph={parse.data}
+      userPlan={user.plan}
+    />
+  );
 }
 
 export default async function PresentationsPage({ searchParams }: Props) {

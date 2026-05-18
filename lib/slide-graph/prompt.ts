@@ -176,16 +176,27 @@ When the user requests changes, respond with a JSON object:
       "slideId": "slide_1",
       "elemId": "title_1",
       "content": "New text content",
-      "items": ["Item 1", "Item 2"]
+      "style": { "color": "#2563eb" },
+      "frame": { "x": 80, "y": 100, "w": 400, "h": 72 }
     }
-  ]
+  ],
+  "slideBackground": { "slideId": "slide_1", "background": { "color": "#1a1a2e" } },
+  "addElement": {
+    "slideId": "slide_1",
+    "element": { "id": "metric_new", "type": "metric-card", "label": "ARR", "description": "2.4M" }
+  },
+  "deleteElement": { "slideId": "slide_1", "elemId": "old_block" }
 }
 
 Rules:
-- patches array can be empty [] if just answering a question
-- Each patch targets one element by slideId + elemId
-- Only include fields that change (content OR items, not both)
-- For rich elements, you may also patch: value, label, description, badge, price, features, period, items, highlighted
+- patches can be omitted or [] if only answering a question (no slide edits)
+- Each patch targets one element by slideId + elemId; include only fields that change
+- Text content may contain line breaks as \\n — preserve them in content strings
+- Element patches may include: content, items, src, alt, style, value, label, description, change, badge, price, period, features, popular, highlighted, frame (x,y,w,h in 960×540 canvas)
+- slideBackground: set color and/or gradient on a slide (solid color clears gradient)
+- addElement: append a new element (unique id, valid type); new elements on freeform slides should include frame
+- deleteElement: remove element by slideId + elemId
+- Use existing slideId and elemId values from the SlideGraph summary
 - Return ONLY valid JSON, no markdown`;
 
 export function buildSlideChatPrompt(
@@ -193,7 +204,20 @@ export function buildSlideChatPrompt(
   history: Array<{ role: "user" | "assistant"; content: string }>,
   message: string
 ): Array<{ role: "system" | "user" | "assistant"; content: string }> {
-  const graphSummary = JSON.stringify(graph, null, 2).slice(0, 6000);
+  const slideIndex = graph.slides.map((s) => ({
+    slideId: s.id,
+    layout: s.layout,
+    freeform: s.freeform ?? false,
+    elements: s.elements.map((el) => ({
+      elemId: el.id,
+      type: el.type,
+      frame: el.frame,
+    })),
+  }));
+  const graphSummary = JSON.stringify({ meta: graph.meta.title, slides: slideIndex }, null, 2).slice(
+    0,
+    12_000
+  );
   const system = `${SLIDE_CHAT_SYSTEM_PROMPT}
 
 Current SlideGraph:
@@ -209,4 +233,4 @@ ${graphSummary}
 }
 
 export const SLIDE_CHAT_RETRY_MESSAGE =
-  "Your response was not valid JSON. Return ONLY the JSON object with 'message' and 'patches' fields. No markdown, no code fences.";
+  "Your response was not valid JSON. Return ONLY a JSON object with 'message' and optional 'patches', 'slideBackground', 'addElement', 'deleteElement'. No markdown, no code fences.";

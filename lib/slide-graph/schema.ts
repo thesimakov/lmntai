@@ -11,6 +11,10 @@ const slideElementFrameSchema = z.object({
 
 const slideElementStyleSchema = z.object({
   color: z.string().optional(),
+  labelColor: z.string().optional(),
+  descriptionColor: z.string().optional(),
+  valueColor: z.string().optional(),
+  changeColor: z.string().optional(),
   fontSize: z.string().optional(),
   fontWeight: z.enum(["normal", "bold"]).optional(),
   textAlign: z.enum(["left", "center", "right"]).optional(),

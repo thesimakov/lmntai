@@ -247,6 +247,10 @@ function coerceElement(raw: unknown, index: number, slideId: string): SlideEleme
     }
     style = {
       color: typeof s.color === "string" ? s.color : undefined,
+      labelColor: typeof s.labelColor === "string" ? s.labelColor : undefined,
+      descriptionColor: typeof s.descriptionColor === "string" ? s.descriptionColor : undefined,
+      valueColor: typeof s.valueColor === "string" ? s.valueColor : undefined,
+      changeColor: typeof s.changeColor === "string" ? s.changeColor : undefined,
       fontSize: typeof s.fontSize === "string" ? s.fontSize : undefined,
       fontWeight,
       textAlign,

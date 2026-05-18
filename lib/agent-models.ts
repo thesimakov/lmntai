@@ -331,13 +331,15 @@ export function getAgentOptionsForUi(input: {
     task: input.task
   });
 
-  const DEFAULT_PICKER_MODEL: AgentUiLabel = "DeepSeek";
+  const kind = fallbackKind(input.projectKind);
+  const recommendedForKind: AgentUiLabel =
+    kind === "presentation" ? "Gemini 3 Pro" : "DeepSeek";
 
   const rows: AgentOptionRow[] = (Object.keys(AGENT_PROFILES) as AgentUiLabel[]).map((label) => ({
     label,
     proOnly: AGENT_PROFILES[label].proOnly,
     available: canUseAgent(plan, label),
-    recommended: label === DEFAULT_PICKER_MODEL
+    recommended: label === recommendedForKind,
   }));
 
   rows.unshift({

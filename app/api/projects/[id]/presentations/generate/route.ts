@@ -5,6 +5,7 @@ import { requireProjectScopeForOwner } from "@/lib/project-context";
 import { apiError, apiGuardError, apiOk } from "@/lib/api-response";
 import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
+import { parseAgentPickerLabel } from "@/lib/agent-models";
 import { buildTemplateSlidePrompt, TEMPLATE_SLIDE_RETRY_MESSAGE } from "@/lib/slide-graph/prompt";
 import { generateSlideGraphFromAi } from "@/lib/slide-graph/generate-from-ai";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
@@ -28,6 +29,7 @@ const bodySchema = z
     brief: z.string().max(4000).default(""),
     sourceText: z.string().max(PRESENTATION_SOURCE_MAX_CHARS).optional(),
     sourceFileName: z.string().max(255).optional(),
+    agentHint: z.string().max(64).optional(),
   })
   .refine((d) => d.brief.trim().length > 0 || (d.sourceText?.trim().length ?? 0) > 0, {
     message: "Укажите описание или прикрепите документ с текстом",
@@ -51,7 +53,8 @@ export async function POST(
 
   const body = await parseBody(req, bodySchema);
   if (!body.ok) return body.response;
-  const { templateId, brief, sourceText, sourceFileName } = body.data;
+  const { templateId, brief, sourceText, sourceFileName, agentHint: agentHintRaw } = body.data;
+  const agentHint = parseAgentPickerLabel(agentHintRaw) ?? agentHintRaw ?? null;
 
   const template = getTemplate(templateId);
   if (!template) {
@@ -77,7 +80,13 @@ export async function POST(
       callAI: async (msgs, settings) => {
         const result = await requestStructuredJsonForProjectKind(
           { messages: msgs, settings },
-          { plan: user.plan, projectKind: "presentation", userId: user.id }
+          {
+            plan: user.plan,
+            projectKind: "presentation",
+            userId: user.id,
+            agentHint,
+            autoFromPrompt: brief,
+          }
         );
         await chargeStructuredJsonUsageSafely({
           userId: user.id,

@@ -186,11 +186,11 @@ describe("agent models catalog", () => {
     expect(auto?.available).toBe(true);
     expect(auto?.recommended).toBe(false);
     expect(ds?.available).toBe(true);
-    expect(ds?.recommended).toBe(true);
+    expect(ds?.recommended).toBe(false);
     expect(gemini?.available).toBe(true);
+    expect(gemini?.recommended).toBe(true);
     expect(claude?.available).toBe(false);
     expect(gpt?.available).toBe(true);
     expect(kimi?.available).toBe(true);
-    expect(gemini?.recommended).toBe(false);
   });
 });

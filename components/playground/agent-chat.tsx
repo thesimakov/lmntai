@@ -197,7 +197,10 @@ export function AgentChat({
     [modelOptions]
   );
   const modelDisplayLabel = useMemo(() => formatAgentModelDisplayLabel(model, t), [model, t]);
-  const recommendedModel = useMemo<AgentPickerLabel>(() => "DeepSeek", []);
+  const recommendedModel = useMemo<AgentPickerLabel>(() => {
+    if (projectKind === "presentation") return "Gemini 3 Pro";
+    return "DeepSeek";
+  }, [projectKind]);
   const modelPickerTitle = useMemo(() => {
     if (model === "Auto") {
       return `${t("playground_agent_auto")} — ${t("playground_agent_auto_title")}`;

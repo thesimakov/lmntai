@@ -1,4 +1,4 @@
-import { resolveAgentForTask } from "@/lib/agent-models";
+import { resolveAgentForTask, type AgentPickerLabel } from "@/lib/agent-models";
 import type { ProjectKind } from "@/lib/lemnity-ai-prompt-spec";
 import { buildPromptModelFallbackChain } from "@/lib/prompt-model-fallback";
 import {
@@ -31,15 +31,20 @@ function uniqModels(candidates: Array<string | null | undefined>): string[] {
 
 export function buildStructuredJsonModelChain(
   plan: string | null | undefined,
-  projectKind: Extract<ProjectKind, "website" | "presentation">
+  projectKind: Extract<ProjectKind, "website" | "presentation">,
+  options?: {
+    agentHint?: AgentPickerLabel | string | null;
+    autoFromPrompt?: string | null;
+  }
 ): string[] {
   const agent = resolveAgentForTask({
     plan,
     projectKind,
     task: "generate-stream",
+    hint: options?.agentHint ?? null,
+    autoFromPrompt: options?.autoFromPrompt ?? null,
   });
   return uniqModels([
-    "anthropic/claude-sonnet-4.5",
     agent.modelId,
     ...STRUCTURED_JSON_FALLBACK_MODELS,
     ...buildPromptModelFallbackChain(agent.modelId),
@@ -55,15 +60,22 @@ export async function requestStructuredJsonForProjectKind(
     plan: string | null | undefined;
     projectKind: Extract<ProjectKind, "website" | "presentation">;
     userId: string;
+    agentHint?: AgentPickerLabel | string | null;
+    autoFromPrompt?: string | null;
   }
 ): Promise<RouterAIJsonResult & { requestedModel: string; attemptedModels: string[] }> {
   const agent = resolveAgentForTask({
     plan: input.plan,
     projectKind: input.projectKind,
     task: "generate-stream",
+    hint: input.agentHint ?? null,
+    autoFromPrompt: input.autoFromPrompt ?? null,
   });
   const settings = payload.settings ?? agent.settings.json;
-  const modelChain = buildStructuredJsonModelChain(input.plan, input.projectKind);
+  const modelChain = buildStructuredJsonModelChain(input.plan, input.projectKind, {
+    agentHint: input.agentHint,
+    autoFromPrompt: input.autoFromPrompt,
+  });
   return requestRouterAIJsonWithFallback(
     { ...payload, settings, user: input.userId },
     modelChain

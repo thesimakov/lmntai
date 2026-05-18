@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   applySlidePatchBody,
+  slideChatResponseToPatchBody,
   slidePatchBodySchema,
 } from "./patch";
 import type { SlideGraph } from "./types";
@@ -76,6 +77,21 @@ describe("applySlidePatchBody", () => {
     });
     expect(next.slides[0].background?.color).toBe("#abc");
     expect(next.slides[0].elements.map((e) => e.id)).toEqual(["b1", "h1"]);
+  });
+
+  it("converts slide chat response to patch body", () => {
+    const body = slideChatResponseToPatchBody({
+      message: "Added metric",
+      addElement: {
+        slideId: "slide_1",
+        element: { id: "m_new", type: "metric-card", label: "ARR", description: "2M" },
+      },
+    });
+    expect(body?.addElement?.element.id).toBe("m_new");
+  });
+
+  it("returns null when chat response has no mutations", () => {
+    expect(slideChatResponseToPatchBody({ message: "Just a question" })).toBeNull();
   });
 
   it("applies initElementFrames and enables freeform", () => {

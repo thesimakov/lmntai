@@ -4,11 +4,17 @@ import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { buildStructuredJsonModelChain } from "@/lib/structured-json-ai";
 
 describe("buildStructuredJsonModelChain", () => {
-  it("prefers claude-sonnet-4.5 and includes free fallbacks for presentations", () => {
+  it("prefers Gemini 3 Pro for presentations on PRO plan", () => {
     const chain = buildStructuredJsonModelChain("PRO", "presentation");
+    expect(chain[0]).toBe("google/gemini-3.1-pro-preview");
+    expect(chain).toContain("anthropic/claude-sonnet-4.5");
+  });
+
+  it("respects agentHint in model chain", () => {
+    const chain = buildStructuredJsonModelChain("PRO", "presentation", {
+      agentHint: "Claude Sonnet 4.5",
+    });
     expect(chain[0]).toBe("anthropic/claude-sonnet-4.5");
-    expect(chain).toContain("google/gemini-3.1-pro-preview");
-    expect(chain.some((m) => m.includes("free"))).toBe(true);
   });
 });
 
