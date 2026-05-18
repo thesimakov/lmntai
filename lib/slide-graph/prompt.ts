@@ -1,3 +1,5 @@
+import type { PresentationTemplate } from "./templates";
+
 const SYSTEM_PROMPT = `You are a presentation architect. Generate a SlideGraph JSON for the presentation described by the user.
 
 RULES:
@@ -63,6 +65,95 @@ export const SLIDE_GRAPH_RETRY_MESSAGE =
   "Ensure slides array has at least 1 item, all layouts and element types are valid, " +
   "and all ids are unique snake_case strings.";
 
+// ============================================================
+// TEMPLATE-BASED PROMPT
+// ============================================================
+
+const RICH_ELEMENT_SCHEMA = `
+RICH ELEMENT TYPES (for template layouts):
+
+metric-card: { "id": "...", "type": "metric-card", "label": "Card title", "description": "Explanation text" }
+stat-number: { "id": "...", "type": "stat-number", "value": "68%", "change": "+25%", "label": "metric name" }
+feature-card: { "id": "...", "type": "feature-card", "badge": "CORE", "content": "Feature Title", "description": "Short explanation" }
+step-card: { "id": "...", "type": "step-card", "stepNumber": 1, "content": "Step Title", "description": "What happens" }
+pricing-card: { "id": "...", "type": "pricing-card", "planName": "Free", "price": "0", "period": "руб/мес", "features": ["Feature 1", "Feature 2"], "popular": false }
+timeline-col: { "id": "...", "type": "timeline-col", "period": "Q2 2026", "content": "Phase Title", "items": ["Milestone 1", "Milestone 2"], "highlighted": false }
+
+RICH LAYOUT TYPES:
+- "metrics-cards": heading + subheading + metric-card × 3 + stat-number × 3
+- "dark-solution": heading + subheading + feature-card × 4 (use background.color = primaryColor)
+- "steps-grid": heading + step-card × 4
+- "feature-grid-6": heading + feature-card × 6
+- "dark-metrics": heading + stat-number × 3 + metric-card × 4 (use background.color = "#1A1A2E")
+- "pricing-3col": heading + subheading + pricing-card × 3
+- "market-split": heading + stat-number × 3 + feature-card × 3
+- "timeline-4col": heading + timeline-col × 4
+- "cta-split": heading + subheading + body + metric-card × 1-2 (for right panel info)
+`;
+
+export function buildTemplateSlidePrompt(
+  template: PresentationTemplate,
+  userBrief: string
+): Array<{ role: "system" | "user"; content: string }> {
+  const structureList = template.slideStructure
+    .map(
+      (hint, i) =>
+        `Slide ${i + 1}: layout="${hint.layout}" — ${hint.purpose}\n  Elements: ${hint.elementHints}`
+    )
+    .join("\n\n");
+
+  const themeJson = JSON.stringify(template.theme, null, 2);
+
+  const systemPrompt = `You are a presentation architect. Generate a SlideGraph JSON following the EXACT template structure below.
+
+${template.systemPromptAddition}
+
+RULES:
+- Return ONLY valid JSON, no markdown, no code fences, no commentary
+- version must be exactly 1
+- Every element must have a unique id (snake_case)
+- Every slide must have a unique id (snake_case)
+- Use EXACTLY the layouts listed in the TEMPLATE STRUCTURE — do not change or reorder them
+- All ids must be unique snake_case strings
+- "generatedAt" field must be empty string ""
+- templateId must be "${template.id}"
+
+${RICH_ELEMENT_SCHEMA}
+
+THEME (use exactly these colors):
+${themeJson}
+
+TEMPLATE STRUCTURE (follow exactly in this order):
+${structureList}
+
+IMPORTANT LAYOUT RULES:
+- For "dark-solution": set background.color to the primaryColor from theme
+- For "dark-metrics": set background.color to "#1A1A2E"
+- For "cta-split": set background of the slide to the primaryColor (background.color = primaryColor)
+- For "title": you may use gradient via background.gradient (CSS gradient string) for visual appeal
+- All content must be filled with real, contextual information from the user brief
+- Make numbers and data specific and realistic based on the brief`;
+
+  const userMessage = `USER BRIEF:\n${userBrief}\n\nGenerate the full ${template.slideCount}-slide ${template.name} presentation following the template structure exactly.`;
+
+  return [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMessage },
+  ];
+}
+
+export const TEMPLATE_SLIDE_RETRY_MESSAGE =
+  "Your response was not valid JSON or did not match the required schema. " +
+  "Return ONLY the JSON object. Ensure: " +
+  "1) All slides use EXACTLY the layouts from the template structure in order. " +
+  "2) Rich element types (metric-card, feature-card, step-card, etc.) are used for rich layouts. " +
+  "3) All ids are unique snake_case strings. " +
+  "4) No markdown, no code fences.";
+
+// ============================================================
+// CHAT PROMPT
+// ============================================================
+
 export const SLIDE_CHAT_SYSTEM_PROMPT = `You are a presentation editor assistant. The user wants to modify their presentation.
 
 When the user requests changes, respond with a JSON object:
@@ -82,6 +173,7 @@ Rules:
 - patches array can be empty [] if just answering a question
 - Each patch targets one element by slideId + elemId
 - Only include fields that change (content OR items, not both)
+- For rich elements, you may also patch: value, label, description, badge, price, features, period, items, highlighted
 - Return ONLY valid JSON, no markdown`;
 
 export function buildSlideChatPrompt(

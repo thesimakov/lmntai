@@ -46,9 +46,7 @@ export async function GET() {
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
         hasSlides: s?.hasSlides ?? false,
-        editUrl: s?.hasSlides
-          ? `/playground/slides?projectId=${p.id}`
-          : `/playground/build?sessionId=${p.id}&projectKind=presentation`,
+        editUrl: `/playground/presentations?projectId=${p.id}`,
       };
     }),
   });

@@ -1,19 +1,16 @@
-import type { NextRequest } from "next/server";
 import { requireDbUser } from "@/lib/auth-guards";
 import { apiGuardError, apiError } from "@/lib/api-response";
 import { upsertProjectCell } from "@/lib/project-context";
 import { prisma } from "@/lib/prisma";
-import { resolveUiLanguageFromRequest } from "@/lib/request-ui-language";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const guard = await requireDbUser();
   if (!guard.ok) return apiGuardError(guard);
   const { user } = guard.data;
-  const lang = resolveUiLanguageFromRequest(req);
 
   // Reuse existing presentation project instead of always creating new ones
   const existing = await prisma.project.findFirst({
@@ -23,7 +20,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (existing) {
-    redirect(`/playground/build?sessionId=${existing.id}&projectKind=presentation&lang=${lang}`);
+    redirect(`/playground/presentations?projectId=${existing.id}`);
   }
 
   let projectId: string;
@@ -40,5 +37,5 @@ export async function GET(req: NextRequest) {
     return apiError("Failed to create presentation project", 500);
   }
 
-  redirect(`/playground/build?sessionId=${projectId}&projectKind=presentation&lang=${lang}`);
+  redirect(`/playground/presentations?projectId=${projectId}`);
 }
