@@ -9,8 +9,10 @@ import {
   ChevronUp, ChevronDown, Send, X, RefreshCw,
   Image as ImageIcon, Type, List, Palette, Layers,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PLAYGROUND_HOME_PROJECTS_HREF } from "@/lib/playground-project-edit-url";
 import type { SlideGraph, Slide, SlideElement, SlideBackground } from "@/lib/slide-graph/types";
 import { renderSlide, renderSingleSlide } from "@/lib/slide-graph/renderer";
 
@@ -541,6 +543,7 @@ function NotesPanel({ slide, onSave, saving }: { slide: Slide; onSave: (notes: s
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 
 export function PresentationEditorClient({ projectId, initialGraph }: Props) {
+  const { t } = useI18n();
   const router = useRouter();
   const [graph, setGraph] = useState<SlideGraph>(initialGraph);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -657,20 +660,22 @@ export function PresentationEditorClient({ projectId, initialGraph }: Props) {
   // Move element within slide
   const handleMoveElement = useCallback((dir: "up" | "down") => {
     if (!selection) return;
+    const slide = graph.slides.find((s) => s.id === selection.slideId);
+    if (!slide) return;
+    const els = [...slide.elements];
+    const idx = els.findIndex((e) => e.id === selection.elemId);
+    const target = dir === "up" ? idx - 1 : idx + 1;
+    if (target < 0 || target >= els.length) return;
+    [els[idx], els[target]] = [els[target]!, els[idx]!];
+    const elemIds = els.map((e) => e.id);
     setGraph((prev) => ({
       ...prev,
-      slides: prev.slides.map((slide) => {
-        if (slide.id !== selection.slideId) return slide;
-        const els = [...slide.elements];
-        const idx = els.findIndex((e) => e.id === selection.elemId);
-        const target = dir === "up" ? idx - 1 : idx + 1;
-        if (target < 0 || target >= els.length) return slide;
-        [els[idx], els[target]] = [els[target]!, els[idx]!];
-        return { ...slide, elements: els };
-      }),
+      slides: prev.slides.map((s) =>
+        s.id !== selection.slideId ? s : { ...s, elements: els }
+      ),
     }));
-    scheduleSave({ reorderElements: { slideId: selection.slideId } });
-  }, [selection, scheduleSave]);
+    scheduleSave({ reorderElements: { slideId: selection.slideId, elemIds } });
+  }, [graph.slides, selection, scheduleSave]);
 
   const selectedElemIndex = selection
     ? (graph.slides.find((s) => s.id === selection.slideId)?.elements.findIndex((e) => e.id === selection.elemId) ?? -1)
@@ -754,8 +759,13 @@ export function PresentationEditorClient({ projectId, initialGraph }: Props) {
     <div className="flex flex-col w-full h-full bg-background">
       {/* Top bar */}
       <header className="flex items-center gap-2 px-4 h-12 border-b border-border bg-card shrink-0">
-        <Button variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" onClick={() => router.push("/presentations")}>
-          <ArrowLeft className="w-4 h-4" /> Презентации
+        <Button
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-muted-foreground"
+          onClick={() => router.push(PLAYGROUND_HOME_PROJECTS_HREF)}
+        >
+          <ArrowLeft className="w-4 h-4" /> {t("nav_projects")}
         </Button>
         <div className="w-px h-5 bg-border mx-1" />
         <p className="text-sm font-medium truncate max-w-[260px]">{graph.meta.title}</p>

@@ -23,8 +23,10 @@ import {
   Send,
   X,
 } from "lucide-react";
+import { useI18n } from "@/components/i18n-provider";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PLAYGROUND_HOME_PROJECTS_HREF } from "@/lib/playground-project-edit-url";
 import type { SlideGraph, Slide, SlideElement } from "@/lib/slide-graph/types";
 import { renderSlide, renderSlideGraph } from "@/lib/slide-graph/renderer";
 
@@ -495,6 +497,7 @@ function NotesPanel({
 // ─── Main Editor ──────────────────────────────────────────────────────────────
 
 export function SlideVisualEditor({ projectId, initialGraph }: SlideVisualEditorProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [graph, setGraph] = useState<SlideGraph>(initialGraph);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
@@ -681,10 +684,10 @@ export function SlideVisualEditor({ projectId, initialGraph }: SlideVisualEditor
           variant="ghost"
           size="sm"
           className="gap-1.5 text-muted-foreground"
-          onClick={() => router.push("/presentations")}
+          onClick={() => router.push(PLAYGROUND_HOME_PROJECTS_HREF)}
         >
           <ArrowLeft className="w-4 h-4" />
-          Презентации
+          {t("nav_projects")}
         </Button>
         <div className="w-px h-5 bg-border mx-1" />
         <p className="text-sm font-medium truncate max-w-[300px]">{graph.meta.title}</p>

@@ -6,6 +6,8 @@ import { Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PRESENTATION_TEMPLATES } from "@/lib/slide-graph/templates";
+import { PLAYGROUND_HOME_PROJECTS_HREF } from "@/lib/playground-project-edit-url";
+import { useI18n } from "@/components/i18n-provider";
 
 interface TemplatePickerProps {
   projectId: string;
@@ -13,6 +15,7 @@ interface TemplatePickerProps {
 }
 
 export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
+  const { t } = useI18n();
   const router = useRouter();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [brief, setBrief] = useState("");
@@ -56,7 +59,13 @@ export function TemplatePicker({ projectId, error }: TemplatePickerProps) {
     <div className="flex flex-col w-full h-full overflow-y-auto">
       <div className="max-w-3xl mx-auto w-full px-6 py-10 space-y-8">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => router.back()}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.push(PLAYGROUND_HOME_PROJECTS_HREF)}
+            aria-label={t("nav_projects")}
+          >
             <ArrowLeft className="w-4 h-4" />
           </Button>
           <div>

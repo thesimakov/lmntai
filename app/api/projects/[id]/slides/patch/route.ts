@@ -12,13 +12,11 @@ import { parseBody } from "@/lib/api-schemas";
 import { getSandboxProjectState, upsertSandboxProjectState } from "@/lib/sandbox-project-state-db";
 import { loadSlideGraphFromJson } from "@/lib/slide-graph/normalize";
 import { getTemplate } from "@/lib/slide-graph/templates";
-import { slidePatchSchema, applySlidePatches } from "@/lib/slide-graph/patch";
+import { applySlidePatchBody, slidePatchBodySchema } from "@/lib/slide-graph/patch";
 import { renderSlideGraph } from "@/lib/slide-graph/renderer";
-import { z } from "zod";
 
-const bodySchema = z.object({
-  patches: z.array(slidePatchSchema).min(1),
-});
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(
   req: NextRequest,
@@ -37,11 +35,28 @@ export async function POST(
       return apiError("Project not found or access denied", 403);
     }
 
-    const body = await parseBody(req, bodySchema);
+    const body = await parseBody(req, slidePatchBodySchema);
     if (!body.ok) return body.response;
-    const { patches } = body.data;
 
     const state = await getSandboxProjectState(projectId);
+
+    if (body.data.clearAll) {
+      if (!state) {
+        return apiOk({ cleared: true });
+      }
+      const files = { ...state.files };
+      delete files["slide_graph.json"];
+      await upsertSandboxProjectState({
+        projectId,
+        sandboxId: state.sandboxId ?? projectId,
+        ownerId: user.id,
+        title: state.title,
+        html: "",
+        files,
+      });
+      return apiOk({ cleared: true });
+    }
+
     const graphJson = state?.files?.["slide_graph.json"];
     if (!graphJson) {
       return apiError("No SlideGraph found. Generate the presentation first.", 400);
@@ -61,15 +76,15 @@ export async function POST(
       return apiError("Stored SlideGraph is invalid. Please regenerate.", 422);
     }
 
-    const updatedGraph = applySlidePatches(graphParse.data, patches);
+    const updatedGraph = applySlidePatchBody(graphParse.data, body.data);
     const html = renderSlideGraph(updatedGraph);
 
     const freshState = await getSandboxProjectState(projectId);
     await upsertSandboxProjectState({
       projectId,
-      sandboxId: state.sandboxId ?? projectId,
+      sandboxId: state!.sandboxId ?? projectId,
       ownerId: user.id,
-      title: state.title,
+      title: state!.title,
       html,
       files: {
         ...(freshState?.files ?? {}),

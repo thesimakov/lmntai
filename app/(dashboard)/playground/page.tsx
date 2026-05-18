@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
 
 import { HomeHero } from "@/components/playground/home-hero";
@@ -8,6 +8,13 @@ import { PageTransition } from "@/components/page-transition";
 
 export default function PlaygroundPage() {
   const { data: session } = useSession();
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    const el = document.querySelector(hash);
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const username = useMemo(() => {
     const displayName = session?.user?.name?.trim();

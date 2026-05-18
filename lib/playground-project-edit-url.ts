@@ -65,9 +65,12 @@ export function buildPlaygroundMarketingEditUrl(
   return `/playground/marketing?${params.toString()}`;
 }
 
-/** Presentation (SlideGraph) editor — uses build page with projectKind=presentation. */
+/** Playground home — блок «Мои проекты». */
+export const PLAYGROUND_HOME_PROJECTS_HREF = "/playground#playground-home-projects-heading";
+
+/** Presentation (SlideGraph) editor. */
 export function buildPlaygroundPresentationEditUrl(projectId: string): string {
-  return `/playground/build?sessionId=${encodeURIComponent(projectId)}&projectKind=presentation`;
+  return `/playground/presentations?projectId=${encodeURIComponent(projectId.trim())}`;
 }
 
 export function buildPlaygroundEditUrlForStoredEditor(
