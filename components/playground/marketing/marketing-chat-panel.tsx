@@ -60,7 +60,9 @@ export function MarketingChatPanel({ projectId }: Props) {
             accumulated += payload.text;
             updateLastAssistantMessage(accumulated);
           }
-        } catch { /* ignore malformed SSE frame */ }
+        } catch {
+          /* ignore malformed SSE frame */
+        }
       }
 
       while (true) {
@@ -80,39 +82,44 @@ export function MarketingChatPanel({ projectId }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground tracking-wide">
+    <div className="flex h-full flex-col">
+      <div className="border-b px-3 py-2 text-[15px] font-semibold tracking-wide text-muted-foreground">
         {t("marketing_bi_chat_header")}
       </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {chatMessages.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center pt-6">
+          <p className="pt-6 text-center text-[15px] text-muted-foreground">
             {t("marketing_bi_chat_empty")}
           </p>
         )}
         {chatMessages.map((msg) => (
           <div key={msg.id} className={cn("flex gap-2", msg.role === "user" && "flex-row-reverse")}>
-            <div className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center bg-muted mt-0.5">
-              {msg.role === "user" ? <User className="w-3 h-3" /> : <Bot className="w-3 h-3" />}
+            <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted">
+              {msg.role === "user" ? <User className="h-3 w-3" /> : <Bot className="h-3 w-3" />}
             </div>
-            <div
-              className={cn(
-                "text-xs rounded-lg px-3 py-2 max-w-[85%] whitespace-pre-wrap leading-relaxed",
-                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"
-              )}
-            >
-              {msg.content || (isChatStreaming ? "▋" : "")}
-            </div>
+            {msg.role === "user" ? (
+              <div className="max-w-[85%] rounded-lg bg-primary px-3 py-2 text-[15px] leading-relaxed text-primary-foreground">
+                {msg.content}
+              </div>
+            ) : (
+              <div className="max-w-[85%] rounded-lg border border-emerald-200/80 bg-emerald-50/80 px-3 py-2 text-[15px] leading-snug text-emerald-950 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-50">
+                {msg.content.trim()
+                  ? t("marketing_bi_chat_sidebar_assistant_hint")
+                  : isChatStreaming
+                    ? t("marketing_bi_chat_sidebar_streaming")
+                    : ""}
+              </div>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <div className="p-2 border-t flex gap-2">
+      <div className="flex gap-2 border-t p-2">
         <Textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder={t("marketing_bi_chat_placeholder")}
-          className="text-xs resize-none min-h-[60px]"
+          className="min-h-[60px] resize-none text-[15px]"
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
@@ -125,7 +132,7 @@ export function MarketingChatPanel({ projectId }: Props) {
           onClick={() => void sendMessage()}
           disabled={isChatStreaming || !input.trim()}
         >
-          <Send className="w-4 h-4" />
+          <Send className="h-4 w-4" />
         </Button>
       </div>
     </div>

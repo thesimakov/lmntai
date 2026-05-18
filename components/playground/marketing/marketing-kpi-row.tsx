@@ -15,7 +15,7 @@ export function MarketingKpiRow({ kpis }: { kpis: MarketingKpi[] }) {
             key={kpi.label}
             className="rounded-xl border bg-card p-4 flex flex-col gap-1"
           >
-            <span className="text-xs text-muted-foreground whitespace-normal break-words line-clamp-2">
+            <span className="text-[15px] text-muted-foreground whitespace-normal break-words line-clamp-2">
               {localizeMarketingKpiLabel(kpi.label, lang)}
             </span>
             <span className="text-xl font-bold tracking-tight">{kpi.value}</span>

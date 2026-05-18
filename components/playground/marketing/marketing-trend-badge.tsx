@@ -55,7 +55,7 @@ export function MarketingTrendBadge({ trend, showDot = false, suffix }: Marketin
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold shrink-0",
+              "inline-flex shrink-0 items-center gap-2 rounded-md px-2 py-1 text-[15px] font-semibold",
               "cursor-default focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               TREND_COLOR[trend]
             )}
@@ -69,7 +69,7 @@ export function MarketingTrendBadge({ trend, showDot = false, suffix }: Marketin
             {suffix ? <span className="tabular-nums">{suffix}</span> : null}
           </div>
         </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">
+        <TooltipContent side="top" className="text-[15px]">
           {tooltipText}
         </TooltipContent>
       </Tooltip>

@@ -105,7 +105,8 @@ export function buildMarketingChatPrompt(
     CHAT_SYSTEM_PROMPT_PREFIX +
     context +
     `\n\nAnswer questions about channel performance, KPIs, spend, revenue, and recommendations. ` +
-    `Be concise and cite specific numbers from the data. Respond in ${responseLanguage}.`;
+    `Respond in ${responseLanguage}. Format answers in Markdown: use ## and ### headings, bullet lists, and GitHub-style tables for comparisons. ` +
+    `Put numeric comparisons in tables so the UI can render charts. Cite specific numbers from the data.`;
 
   return [
     { role: "system", content: systemContent },

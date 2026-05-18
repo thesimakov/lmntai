@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Upload, MessageSquare, RefreshCw, TrendingUp, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -11,6 +11,7 @@ import { useMarketingStore } from "@/lib/stores/use-marketing-store";
 import { MarketingUploadPanel } from "./marketing-upload-panel";
 import { MarketingChatPanel } from "./marketing-chat-panel";
 import { MarketingDashboard } from "./marketing-dashboard";
+import { MarketingChatInsight } from "./marketing-chat-insight";
 import type { MarketingDashboard as MarketingDashboardType } from "@/lib/marketing-schema";
 
 type LeftTab = "upload" | "chat";
@@ -100,16 +101,29 @@ export function MarketingEditor() {
   const campaignGoal = searchParams.get("goal")?.trim() ?? "";
   const campaignChannels = searchParams.get("channel")?.trim() ?? "";
   const [leftTab, setLeftTab] = useState<LeftTab>("upload");
+  const chatInsightAnchorRef = useRef<HTMLDivElement>(null);
 
   const {
     status,
     dashboard,
     errorMessage,
+    chatMessages,
+    isChatStreaming,
     setProjectId,
     setDashboard,
     setStatus,
     setError,
   } = useMarketingStore();
+
+  const lastAssistantMessage = [...chatMessages].reverse().find((m) => m.role === "assistant");
+  const lastUserMessage = [...chatMessages].reverse().find((m) => m.role === "user");
+  const chatInsightContent = lastAssistantMessage?.content ?? "";
+  const showChatInsight = Boolean(chatInsightContent.trim()) || isChatStreaming;
+
+  useEffect(() => {
+    if (!showChatInsight) return;
+    chatInsightAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [showChatInsight, chatInsightContent, isChatStreaming]);
 
   useEffect(() => {
     if (!projectId) return;
@@ -296,7 +310,18 @@ export function MarketingEditor() {
                   {errorMessage}
                 </div>
               )}
-              {dashboard && <MarketingDashboard dashboard={dashboard} />}
+              <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-4">
+                {dashboard ? <MarketingDashboard dashboard={dashboard} /> : null}
+                {showChatInsight ? (
+                  <div ref={chatInsightAnchorRef}>
+                    <MarketingChatInsight
+                      content={chatInsightContent}
+                      isStreaming={isChatStreaming}
+                      userQuestion={lastUserMessage?.content}
+                    />
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
         )}

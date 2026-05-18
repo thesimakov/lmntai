@@ -10,11 +10,11 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
   const { t } = useI18n();
   const { kpis, channels, summary, meta, narrative } = dashboard;
   return (
-    <div className="flex flex-col gap-6 p-4 overflow-y-auto h-full">
+    <div className="flex flex-col gap-6">
       <div className="space-y-0.5">
         <p className="font-semibold text-base leading-tight">{meta.companyName}</p>
-        <p className="text-sm text-muted-foreground">{meta.period}</p>
-        <p className="text-xs text-muted-foreground">{meta.dataSource}</p>
+        <p className="text-[15px] text-muted-foreground">{meta.period}</p>
+        <p className="text-[15px] text-muted-foreground">{meta.dataSource}</p>
       </div>
 
       <MarketingKpiRow kpis={kpis} />
@@ -28,18 +28,18 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
       <MarketingChartBlock channels={channels} />
 
       <div className="rounded-xl border bg-card p-4 space-y-2">
-        <h3 className="font-semibold text-sm">{t("marketing_bi_summary_title")}</h3>
-        <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+        <h3 className="text-[15px] font-semibold">{t("marketing_bi_summary_title")}</h3>
+        <p className="text-[15px] leading-relaxed whitespace-pre-line text-muted-foreground">
           {summary.executive}
         </p>
       </div>
 
       {summary.recommendations.length > 0 && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">{t("marketing_bi_recommendations_title")}</h3>
+          <h3 className="text-[15px] font-semibold">{t("marketing_bi_recommendations_title")}</h3>
           <ul className="space-y-1">
             {summary.recommendations.map((rec, i) => (
-              <li key={i} className="text-sm text-muted-foreground flex gap-2">
+              <li key={i} className="flex gap-2 text-[15px] text-muted-foreground">
                 <span className="text-primary shrink-0">•</span>
                 {rec}
               </li>
@@ -50,10 +50,10 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       {summary.topFindings.length > 0 && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">{t("marketing_bi_top_findings_title")}</h3>
+          <h3 className="text-[15px] font-semibold">{t("marketing_bi_top_findings_title")}</h3>
           <ul className="space-y-1">
             {summary.topFindings.map((finding, i) => (
-              <li key={i} className="text-sm text-muted-foreground flex gap-2">
+              <li key={i} className="flex gap-2 text-[15px] text-muted-foreground">
                 <span className="text-amber-500 shrink-0">{i + 1}.</span>
                 {finding}
               </li>
@@ -64,8 +64,8 @@ export function MarketingDashboard({ dashboard }: { dashboard: MarketingDashboar
 
       {narrative && (
         <div className="rounded-xl border bg-card p-4 space-y-2">
-          <h3 className="font-semibold text-sm">{t("marketing_bi_narrative_title")}</h3>
-          <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+          <h3 className="text-[15px] font-semibold">{t("marketing_bi_narrative_title")}</h3>
+          <p className="text-[15px] leading-relaxed whitespace-pre-line text-muted-foreground">
             {narrative}
           </p>
         </div>
