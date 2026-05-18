@@ -61,14 +61,18 @@ export async function POST(
     return apiError(`Unknown template: ${templateId}`, 400);
   }
 
-  const sourceDocument =
-    sourceText?.trim() && sourceFileName?.trim()
-      ? { fileName: sourceFileName.trim(), text: sourceText.trim() }
-      : sourceText?.trim()
-        ? { fileName: "document", text: sourceText.trim() }
-        : null;
+  const trimmedBrief = (brief ?? "").trim();
+  const trimmedSource = sourceText?.trim() ?? "";
+  const trimmedSourceFileName = sourceFileName?.trim() ?? "";
 
-  const messages = buildTemplateSlidePrompt(template, brief, sourceDocument);
+  const sourceDocument = trimmedSource
+    ? {
+        fileName: trimmedSourceFileName || "document",
+        text: trimmedSource,
+      }
+    : null;
+
+  const messages = buildTemplateSlidePrompt(template, trimmedBrief, sourceDocument);
 
   let generated: Awaited<ReturnType<typeof generateSlideGraphFromAi>>;
   try {
@@ -85,7 +89,7 @@ export async function POST(
             projectKind: "presentation",
             userId: user.id,
             agentHint,
-            autoFromPrompt: brief,
+            autoFromPrompt: trimmedBrief,
           }
         );
         await chargeStructuredJsonUsageSafely({

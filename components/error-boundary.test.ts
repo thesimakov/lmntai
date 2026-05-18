@@ -25,7 +25,7 @@ beforeEach(() => {
 
 describe("ErrorBoundary.getDerivedStateFromError", () => {
   it("returns hasError: true", () => {
-    const state = ErrorBoundary.getDerivedStateFromError(new Error("boom"));
+    const state = ErrorBoundary.getDerivedStateFromError();
     expect(state).toEqual({ hasError: true });
   });
 });

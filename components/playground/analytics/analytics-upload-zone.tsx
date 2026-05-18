@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { FileText, FileSpreadsheet, FileJson, UploadCloud } from "lucide-react";
+import { FileText, FileSpreadsheet, FileJson, FileType, UploadCloud } from "lucide-react";
 import { BI_UPLOAD_MAX_BYTES } from "@/lib/bi-upload-limits";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/components/i18n-provider";
