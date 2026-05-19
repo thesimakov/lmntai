@@ -209,3 +209,59 @@ describe("renderComponentGraph — Google Fonts + CSS vars", () => {
     expect(html).toContain("scroll-behavior:smooth");
   });
 });
+
+describe("renderNode — animation", () => {
+  it("injects animation style when node.animation is set", () => {
+    const node: ComponentNode = {
+      id: "n1", type: "Section", props: {}, styles: {},
+      animation: { type: "fadeIn", duration: 0.5, delay: 0.2 },
+    };
+    const html = renderNode(node);
+    expect(html).toContain("animation:lmnt-fadeIn");
+    expect(html).toContain("0.5s");
+    expect(html).toContain("0.2s");
+  });
+
+  it("does not add animation when animation is absent", () => {
+    const node: ComponentNode = { id: "n2", type: "Section", props: {}, styles: {} };
+    expect(renderNode(node)).not.toContain("animation:");
+  });
+
+  it("does not duplicate style attribute when node already has inline styles", () => {
+    const node: ComponentNode = {
+      id: "n3", type: "Section", props: {}, styles: { backgroundColor: "#fff" },
+      animation: { type: "slideUp" },
+    };
+    const html = renderNode(node);
+    expect((html.match(/style="/g) ?? []).length).toBe(1);
+  });
+});
+
+describe("renderComponentGraph — responsive styles", () => {
+  it("emits media block for mobile responsiveStyles", () => {
+    const g: ComponentGraph = {
+      ...baseGraph,
+      pages: [{ ...baseGraph.pages[0], nodes: [{
+        id: "hero_1", type: "Hero", props: { title: "Hi" }, styles: {},
+        responsiveStyles: { mobile: { fontSize: "1.5rem" } },
+      }] }],
+    };
+    const html = renderComponentGraph(g);
+    expect(html).toContain("@media (max-width:768px)");
+    expect(html).toContain(`[data-lmnt-node-id="hero_1"]`);
+    expect(html).toContain("font-size:1.5rem");
+  });
+
+  it("emits tablet media block", () => {
+    const g: ComponentGraph = {
+      ...baseGraph,
+      pages: [{ ...baseGraph.pages[0], nodes: [{
+        id: "feat_1", type: "Features", props: {}, styles: {},
+        responsiveStyles: { tablet: { padding: "40px" } },
+      }] }],
+    };
+    const html = renderComponentGraph(g);
+    expect(html).toContain("@media (max-width:1024px)");
+    expect(html).toContain("padding:40px");
+  });
+});

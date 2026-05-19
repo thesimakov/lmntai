@@ -1,4 +1,4 @@
-import type { ComponentGraph, ComponentNode, StyleTokens } from "./types";
+import type { ComponentGraph, ComponentNode, ComponentPage, StyleTokens } from "./types";
 
 const GOOGLE_FONTS: Record<string, string> = {
   "Inter":             "Inter:wght@400;500;600;700",
@@ -102,8 +102,23 @@ function renderChildren(children?: ComponentNode[]): string {
 }
 
 export function renderNode(node: ComponentNode): string {
-  const html = renderNodeInner(node);
-  return html.replace(/^(<[a-zA-Z][a-zA-Z0-9-]*)(\s|>)/, `$1 data-lmnt-node-id="${node.id}"$2`);
+  let html = renderNodeInner(node);
+  // Add data-lmnt-node-id attribute
+  html = html.replace(/^(<[a-zA-Z][a-zA-Z0-9-]*)(\s|>)/, `$1 data-lmnt-node-id="${node.id}"$2`);
+  // Inject animation CSS
+  if (node.animation) {
+    const { type, delay = 0, duration = 0.6 } = node.animation;
+    const animCss = `animation:lmnt-${type} ${duration}s ease both ${delay}s`;
+    if (html.includes(' style="')) {
+      html = html.replace(' style="', ` style="${animCss};`);
+    } else {
+      html = html.replace(
+        /^(<[a-zA-Z][a-zA-Z0-9-]* [^>]*)>/,
+        `$1 style="${animCss}">`
+      );
+    }
+  }
+  return html;
 }
 
 function renderNodeInner(node: ComponentNode): string {
@@ -308,6 +323,25 @@ function renderNodeInner(node: ComponentNode): string {
   }
 }
 
+function collectResponsiveCssNode(node: ComponentNode, acc: string[]): void {
+  const { responsiveStyles } = node;
+  if (responsiveStyles?.tablet) {
+    const css = stylesToCss(responsiveStyles.tablet as StyleTokens);
+    if (css) acc.push(`@media (max-width:1024px){[data-lmnt-node-id="${node.id}"]{${css}}}`);
+  }
+  if (responsiveStyles?.mobile) {
+    const css = stylesToCss(responsiveStyles.mobile as StyleTokens);
+    if (css) acc.push(`@media (max-width:768px){[data-lmnt-node-id="${node.id}"]{${css}}}`);
+  }
+  node.children?.forEach(c => collectResponsiveCssNode(c, acc));
+}
+
+function collectResponsiveCss(pages: ComponentPage[]): string {
+  const acc: string[] = [];
+  pages.forEach(p => p.nodes.forEach(n => collectResponsiveCssNode(n, acc)));
+  return acc.join("\n");
+}
+
 function renderPage(nodes: ComponentNode[]): string {
   return nodes.map(renderNode).join("\n");
 }
@@ -387,9 +421,14 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
   .lmnt-hero__title { font-size: 2rem; }
   .lmnt-header__nav { display: none; }
 }
+@keyframes lmnt-fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes lmnt-slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+@keyframes lmnt-slideLeft{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:translateX(0)}}
+@keyframes lmnt-zoom{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
 `.trim();
 
   const fullStyles = [cssVars, baseStyles].join("\n");
+  const responsiveCss = collectResponsiveCss(pages);
   const fontLinks = googleFontLink(theme.fontFamily);
 
   const bodyContent = multiPage
@@ -407,7 +446,7 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(firstPage.title)}</title>
 ${firstPage.description ? `<meta name="description" content="${esc(firstPage.description)}" />` : ""}
-${fontLinks ? fontLinks + "\n" : ""}<style>${fullStyles}</style>
+${fontLinks ? fontLinks + "\n" : ""}<style>${fullStyles}\n${responsiveCss}</style>
 </head>
 <body>
 ${bodyContent}
