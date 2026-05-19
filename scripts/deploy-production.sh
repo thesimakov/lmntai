@@ -28,6 +28,41 @@ set +a
 unset NODE_ENV
 export NPM_CONFIG_PRODUCTION=false
 
+# next build на VPS <4 GB RAM часто падает с SIGABRT (V8 OOM). Heap задаём явно;
+# при нехватке физической памяти нужен swap (см. scripts/setup-build-swap.sh).
+resolve_build_heap_mb() {
+  if [[ -n "${LEMNITY_NODE_BUILD_HEAP_MB:-}" ]]; then
+    echo "$LEMNITY_NODE_BUILD_HEAP_MB"
+    return
+  fi
+  if [[ -r /proc/meminfo ]]; then
+    local avail_kb avail_mb target
+    avail_kb="$(awk '/^MemAvailable:/ {print $2; exit}' /proc/meminfo)"
+    avail_mb=$((avail_kb / 1024))
+    target=$((avail_mb * 70 / 100))
+    if (( target < 1536 )); then echo 1536; return; fi
+    if (( target > 4096 )); then echo 4096; return; fi
+    echo "$target"
+    return
+  fi
+  echo 3072
+}
+
+BUILD_HEAP_MB="$(resolve_build_heap_mb)"
+export NODE_OPTIONS="${NODE_OPTIONS:+$NODE_OPTIONS }--max-old-space-size=${BUILD_HEAP_MB}"
+# Меньше параллельных воркеров SSG — ниже пик RAM (Next 15).
+export LEMNITY_BUILD_LOW_MEMORY="${LEMNITY_BUILD_LOW_MEMORY:-1}"
+
+if [[ -r /proc/meminfo ]]; then
+  AVAIL_MB="$(awk '/^MemAvailable:/ {print int($2/1024); exit}' /proc/meminfo)"
+  SWAP_MB="$(awk '/^SwapTotal:/ {print int($2/1024); exit}' /proc/meminfo)"
+  echo "==> [deploy] память: MemAvailable≈${AVAIL_MB}MB, swap≈${SWAP_MB}MB, NODE heap=${BUILD_HEAP_MB}MB"
+  if (( AVAIL_MB + SWAP_MB < 2500 )); then
+    echo "==> [deploy] ВНИМАНИЕ: мало RAM+swap для next build. Рекомендуется swap 4G:"
+    echo "    sudo bash scripts/setup-build-swap.sh"
+  fi
+fi
+
 echo "==> [deploy] git pull"
 git pull --ff-only
 echo "==> [deploy] npm ci — старт $(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -41,7 +76,7 @@ echo "==> [deploy] npm ci — конец $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "==> [deploy] prisma generate + migrate"
 npm run prisma:generate
 npx prisma migrate deploy
-echo "==> [deploy] next build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ) (часто 5–20+ мин; при «зависании» проверьте free -h, dmesg | tail; при OOM NODE_OPTIONS=--max-old-space-size=3072)"
+echo "==> [deploy] next build — старт $(date -u +%Y-%m-%dT%H:%M:%SZ) (часто 5–20+ мин; OOM: free -h, dmesg | tail -20; LEMNITY_NODE_BUILD_HEAP_MB=4096)"
 NEXT_BACKUP=".next.deploy-backup.$$"
 if [[ -d .next && -f .next/BUILD_ID ]]; then
   rm -rf "$NEXT_BACKUP"

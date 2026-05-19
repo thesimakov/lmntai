@@ -10,6 +10,10 @@ const nextConfig = {
   /** esbuild — только для серверного бандла превью Lovable; не тянуть .d.ts в client graph. */
   /** Prisma обязан браться из `node_modules` после `generate`; иначе бандлер иногда подмешивает устаревший DMMF (нет `preferredEditor`). */
   serverExternalPackages: ["esbuild", "nodemailer", "@prisma/client", "pdf-parse", "pptxgenjs"],
+  /** На VPS с LEMNITY_BUILD_LOW_MEMORY=1 (deploy-production.sh) — меньше пик RAM при SSG. */
+  ...(process.env.LEMNITY_BUILD_LOW_MEMORY === "1"
+    ? { staticPageGenerationMaxConcurrency: 1 }
+    : {}),
   experimental: {
     /** Lucide — barrel + `sideEffects: false`; без этого в SSR/dev иногда ломается чанк: `Cannot read properties of undefined (reading 'call')`. */
     optimizePackageImports: ["lucide-react"],

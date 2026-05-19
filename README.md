@@ -155,8 +155,15 @@ cd /root/lmntai && set -a && . /etc/lemnity/production.env && set +a && npm run 
 - `npm ci`
 - `npm run prisma:generate`
 - `npx prisma migrate deploy`
-- `npm run build`
+- `npm run build` (с `NODE_OPTIONS=--max-old-space-size=…`, см. ниже)
 - `pm2 restart lemnity --update-env` (или первый старт при отсутствии процесса)
+
+**Если `next build` падает с SIGABRT / `AllocateInYoungGeneration` (OOM на VPS):**
+
+1. На сервере один раз: `sudo bash scripts/setup-build-swap.sh` (swap 4G).
+2. Повторить деплой: `npm run deploy:production`.
+3. При необходимости в `/etc/lemnity/production.env`: `LEMNITY_NODE_BUILD_HEAP_MB=4096` (не больше RAM+swap).
+4. Проверка: `free -h` и `dmesg | tail -20` (строки `Killed process` = OOM killer).
 
 ### 4) Критично важно для сохранности данных
 
