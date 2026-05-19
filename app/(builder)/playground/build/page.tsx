@@ -423,18 +423,14 @@ export default function PromptBuildPage() {
     const createId = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
     const s = useBuildEditorStore.getState();
 
-    // Short-circuit for ComponentGraph website projects — skip Bridge and prompt coach entirely
-    if (projectKind === "website") {
+    // Short-circuit for ComponentGraph website projects in editing mode (after generation)
+    if (projectKind === "website" && sandboxId) {
       const projectId = await ensureBuildSessionId();
       if (!projectId) { toast.error(t("playground_project_not_ready")); return; }
       s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
-      if (sandboxId) {
-        const nodeContext = selectedGraphNodeId ? `[Блок: ${selectedGraphNodeId}] ` : "";
-        setSelectedGraphNodeId(null);
-        void sendGraphChat(nodeContext + userOutbound);
-      } else {
-        void sendGenerateGraph(userOutbound);
-      }
+      const nodeContext = selectedGraphNodeId ? `[Блок: ${selectedGraphNodeId}] ` : "";
+      setSelectedGraphNodeId(null);
+      void sendGraphChat(nodeContext + userOutbound);
       return;
     }
 
@@ -461,7 +457,11 @@ export default function PromptBuildPage() {
         s.setCoachAwaitingConfirm(false);
         s.setPendingTechnicalPrompt(null);
         s.setPromptCoachDebugLine(null);
-        void sendChat(mergeUserMessageWithAttachments(pendingTechnicalPrompt, annex));
+        if (projectKind === "website") {
+          void sendGenerateGraph(pendingTechnicalPrompt);
+        } else {
+          void sendChat(mergeUserMessageWithAttachments(pendingTechnicalPrompt, annex));
+        }
         return;
       }
       s.setCoachAwaitingConfirm(false);
@@ -481,7 +481,11 @@ export default function PromptBuildPage() {
         s.appendMessage({ id: createId(), role: "user", content: displayContent, sentAt: Date.now(), ...userExtras });
       }
       s.setPromptCoachDebugLine(null);
-      void sendChat(userOutbound);
+      if (projectKind === "website") {
+        void sendGenerateGraph(userOutbound);
+      } else {
+        void sendChat(userOutbound);
+      }
       return;
     }
 

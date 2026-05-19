@@ -201,6 +201,7 @@ function SidebarBody({
         </Button>
       </div>
 
+      <div className="flex min-h-0 flex-1 flex-col">
       <nav className="flex-1 overflow-y-auto overflow-x-hidden px-2 py-3">
         <div className="space-y-0.5">
           {navItems.map((item) => {
@@ -269,22 +270,26 @@ function SidebarBody({
           ) : null}
         </div>
 
+      </nav>
+
         {!collapsed ? (
-          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3">
-            <p className="text-[15px] font-semibold text-black">{t("profile_upgrade_to_pro")}</p>
-            <p className="mt-0.5 text-sm leading-relaxed text-zinc-800">{t("sidebar_pro_desc")}</p>
-            <Button
-              size="sm"
-              className="mt-2.5 h-8 w-full text-sm"
-              onClick={() => {
-                window.location.href = "/pricing";
-              }}
-            >
-              {t("sidebar_open_pricing")}
-            </Button>
+          <div className="shrink-0 px-2 pb-2">
+            <div className="rounded-lg border border-border bg-muted/40 p-3">
+              <p className="text-[15px] font-semibold text-black">{t("profile_upgrade_to_pro")}</p>
+              <p className="mt-0.5 text-sm leading-relaxed text-zinc-800">{t("sidebar_pro_desc")}</p>
+              <Button
+                size="sm"
+                className="mt-2.5 h-8 w-full text-sm"
+                onClick={() => {
+                  window.location.href = "/pricing";
+                }}
+              >
+                {t("sidebar_open_pricing")}
+              </Button>
+            </div>
           </div>
         ) : null}
-      </nav>
+      </div>
 
       <div className="shrink-0 border-t border-border p-2">
         <DropdownMenu modal={false}>
