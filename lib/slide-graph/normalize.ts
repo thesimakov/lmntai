@@ -8,6 +8,7 @@ import type {
   SlideGraph,
   SlideLayout,
 } from "./types";
+import { clearMassLockedSlideElements } from "./element-lock";
 import { slideGraphSchema } from "./schema";
 
 const SLIDE_LAYOUTS: SlideLayout[] = [
@@ -260,6 +261,10 @@ function coerceElement(raw: unknown, index: number, slideId: string): SlideEleme
     if (Object.values(style).every((v) => v === undefined)) style = undefined;
   }
 
+  const locked = typeof e.locked === "boolean" ? e.locked : false;
+  const visible = typeof e.visible === "boolean" ? e.visible : true;
+  const name = typeof e.name === "string" ? e.name : undefined;
+
   return {
     id,
     type,
@@ -282,6 +287,9 @@ function coerceElement(raw: unknown, index: number, slideId: string): SlideEleme
     popular: typeof e.popular === "boolean" ? e.popular : undefined,
     highlighted: typeof e.highlighted === "boolean" ? e.highlighted : undefined,
     frame: coerceFrame(e.frame),
+    locked,
+    visible,
+    name,
   };
 }
 
@@ -323,11 +331,11 @@ function applyTemplateSlideDefaults(
 function minimalElements(slideId: string, layout: SlideLayout): SlideElement[] {
   if (layout === "title") {
     return [
-      { id: `${slideId}_heading`, type: "heading", content: "Презентация" },
-      { id: `${slideId}_sub`, type: "subheading", content: "" },
+      { id: `${slideId}_heading`, type: "heading", content: "Презентация", visible: true },
+      { id: `${slideId}_sub`, type: "subheading", content: "", visible: true },
     ];
   }
-  return [{ id: `${slideId}_body`, type: "body", content: "" }];
+  return [{ id: `${slideId}_body`, type: "body", content: "", visible: true }];
 }
 
 function coerceSlide(
@@ -451,7 +459,7 @@ export function normalizeSlideGraphPayload(
         : defaultFont,
   };
 
-  let slidesNormalized = dedupeElementIds(slides);
+  let slidesNormalized = dedupeElementIds(slides).map(clearMassLockedSlideElements);
   if (template) {
     slidesNormalized = applyTemplateSlideDefaults(slidesNormalized, template, themeNormalized);
   }

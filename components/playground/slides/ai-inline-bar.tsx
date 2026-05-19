@@ -53,7 +53,7 @@ export function AiInlineBar({ projectId }: AiInlineBarProps) {
   };
 
   return (
-    <div className="border-t border-border bg-card px-4 py-2.5 flex items-center gap-3">
+    <div className="border-t border-border bg-card flex items-center gap-3 px-4 py-2.5">
       <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-[9px] font-black text-white shrink-0">
         AI
       </div>

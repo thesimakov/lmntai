@@ -6,6 +6,9 @@ export function userFacingAiUnavailableMessage(error: unknown): string {
   if (!msg) return "AI сервис временно недоступен";
 
   if (msg.includes("AI_GATEWAY_BASE_URL") || msg.includes("AI_GATEWAY_API_KEY")) {
+    if (msg.includes("заглушка")) {
+      return "В .env.local указан пример ключа RouterAI. Замените AI_GATEWAY_API_KEY на мастер-ключ из личного кабинета routerai.ru.";
+    }
     return "AI не настроен на сервере. Проверьте AI_GATEWAY_BASE_URL и AI_GATEWAY_API_KEY.";
   }
 

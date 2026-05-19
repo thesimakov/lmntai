@@ -1,11 +1,17 @@
 "use client";
 
+import { ImageUploader } from "@/components/editor/ImageUploader";
 import type { SlideElement } from "@/lib/slide-graph/types";
 import { PositionSection } from "./position-section";
 
-interface Props { element: SlideElement; elementIndex: number; onUpdate: (p: Partial<SlideElement>) => void }
+interface Props {
+  element: SlideElement;
+  elementIndex: number;
+  projectId: string;
+  onUpdate: (p: Partial<SlideElement>) => void;
+}
 
-export function ImagePropertiesPanel({ element, elementIndex, onUpdate }: Props) {
+export function ImagePropertiesPanel({ element, elementIndex, projectId, onUpdate }: Props) {
   return (
     <div className="space-y-4">
       <div className="space-y-1.5">
@@ -15,6 +21,15 @@ export function ImagePropertiesPanel({ element, elementIndex, onUpdate }: Props)
           placeholder="https://..."
           value={element.src ?? ""}
           onChange={(e) => onUpdate({ src: e.target.value })}
+        />
+        <ImageUploader
+          sandboxId={projectId}
+          labels={{
+            upload: "Загрузить файл",
+            uploading: "Загрузка…",
+            errorType: "Поддерживаются PNG, JPEG, WebP, SVG",
+          }}
+          onUploaded={(url) => onUpdate({ src: url })}
         />
       </div>
 

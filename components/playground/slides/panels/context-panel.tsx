@@ -83,7 +83,12 @@ export function ContextPanel({ projectId }: { projectId: string }) {
               <ListPropertiesPanel element={selectedEl} elementIndex={selectedIndex} onUpdate={onUpdate} />
             )}
             {selectedEl && selectedEl.type === "image" && (
-              <ImagePropertiesPanel element={selectedEl} elementIndex={selectedIndex} onUpdate={onUpdate} />
+              <ImagePropertiesPanel
+                element={selectedEl}
+                elementIndex={selectedIndex}
+                projectId={projectId}
+                onUpdate={onUpdate}
+              />
             )}
             {selectedEl && CARD_TYPES.includes(selectedEl.type) && (
               <CardPropertiesPanel element={selectedEl} elementIndex={selectedIndex} onUpdate={onUpdate} />
@@ -95,19 +100,6 @@ export function ContextPanel({ projectId }: { projectId: string }) {
         )}
       </div>
 
-      {/* AI button */}
-      <button
-        type="button"
-        className="m-2 p-2.5 bg-primary/10 border border-primary/30 rounded-lg flex items-center gap-2 hover:bg-primary/20 transition-colors"
-        onClick={() => {
-          const bar = document.getElementById("ai-inline-bar-input");
-          bar?.focus();
-        }}
-      >
-        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-primary to-purple-500 flex items-center justify-center text-[9px] font-black text-white shrink-0">AI</div>
-        <span className="text-xs text-primary font-medium">Edit with AI</span>
-        <kbd className="ml-auto text-[9px] text-muted-foreground bg-muted border border-border rounded px-1">/</kbd>
-      </button>
     </div>
   );
 }

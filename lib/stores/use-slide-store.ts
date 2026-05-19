@@ -13,7 +13,12 @@ import {
   applyReorderElementsPatch,
   applyInitElementFramesPatch,
 } from "@/lib/slide-graph/patch";
-import { clampFrame, defaultElementFrame } from "@/lib/slide-graph/freeform";
+import { clearMassLockedSlideElements } from "@/lib/slide-graph/element-lock";
+import {
+  clampFrame,
+  defaultElementFrame,
+  slideNeedsFrameCapture,
+} from "@/lib/slide-graph/freeform";
 
 let saveTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -66,9 +71,22 @@ export const useSlideStore = create<SlideStoreState>((set, get) => ({
   graph: EMPTY_GRAPH,
   projectId: "",
 
-  init: (projectId, graph) => set({ projectId, graph }),
+  init: (projectId, graph) =>
+    set({
+      projectId,
+      graph: {
+        ...graph,
+        slides: graph.slides.map(clearMassLockedSlideElements),
+      },
+    }),
 
-  setGraph: (graph) => set({ graph }),
+  setGraph: (graph) =>
+    set({
+      graph: {
+        ...graph,
+        slides: graph.slides.map(clearMassLockedSlideElements),
+      },
+    }),
 
   updateElement: (slideId, elemId, patch) => {
     const { graph, projectId } = get();
@@ -146,6 +164,9 @@ export const useSlideStore = create<SlideStoreState>((set, get) => ({
     const { graph } = get();
     const slide = graph.slides.find((s) => s.id === slideId);
     if (!slide) return;
+    // Already in freeform with frames — avoid set() (prevents React update loops).
+    if (!slideNeedsFrameCapture(slide) && slide.freeform) return;
+
     const frames = slide.elements.map((el, i) => ({
       elemId: el.id,
       frame: el.frame ?? defaultElementFrame(i, el.type),

@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
-import type { Slide, SlideTheme } from "@/lib/slide-graph/types";
-import { SLIDE_CANVAS_W, SLIDE_CANVAS_H, defaultElementFrame } from "@/lib/slide-graph/freeform";
+import { useEffect, useCallback, useRef } from "react";
+import type { Slide, SlideTheme, SlideElement, SlideElementFrame } from "@/lib/slide-graph/types";
+import { SLIDE_CANVAS_W, SLIDE_CANVAS_H, defaultElementFrame, clampFrame } from "@/lib/slide-graph/freeform";
+import { isSlideElementLocked } from "@/lib/slide-graph/element-lock";
+import { snapFrame } from "@/lib/slide-graph/snap-engine";
 import { buildSlideDeckStyles } from "@/lib/slide-graph/slide-deck-styles";
 import { SlideElementRenderer } from "./slide-element-renderer";
 import { useEditorStore } from "@/lib/stores/use-editor-store";
+import { useSlideStore } from "@/lib/stores/use-slide-store";
 
 interface SlideCanvasProps {
   slide: Slide;
   theme: SlideTheme;
   containerRef: React.RefObject<HTMLDivElement | null>;
   onSelectElement: (elemId: string) => void;
-  onDeselectElement: () => void;
+  /** LMB drag on empty slide area — pan the viewport (handled by parent). */
+  onBackgroundPanPointerDown?: (e: React.PointerEvent) => void;
   selectedElemId: string | null;
+  children?: React.ReactNode;
 }
 
 export function SlideCanvas({
@@ -21,13 +26,17 @@ export function SlideCanvas({
   theme,
   containerRef,
   onSelectElement,
-  onDeselectElement,
+  onBackgroundPanPointerDown,
   selectedElemId,
+  children,
 }: SlideCanvasProps) {
   const styleId = "lmnt-canvas-styles";
   const setScale = useEditorStore((s) => s.setScale);
   const zoom = useEditorStore((s) => s.zoom);
   const scale = useEditorStore((s) => s.scale);
+  const cleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => { cleanupRef.current?.(); }, []);
 
   // Inject scoped CSS once per theme change
   useEffect(() => {
@@ -40,24 +49,66 @@ export function SlideCanvas({
     tag.textContent = buildSlideDeckStyles(theme, "react");
   }, [theme]);
 
-  // Update scale on container resize
+  // Fit canvas inside container with 48px margin
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const obs = new ResizeObserver(([entry]) => {
-      const w = entry?.contentRect.width ?? el.clientWidth;
-      setScale((w / SLIDE_CANVAS_W) * zoom);
-    });
+    const compute = () => {
+      const w = el.clientWidth;
+      const h = el.clientHeight;
+      const base = Math.min((w - 48) / SLIDE_CANVAS_W, (h - 48) / SLIDE_CANVAS_H);
+      setScale(Math.max(0.05, base) * zoom);
+    };
+    const obs = new ResizeObserver(compute);
     obs.observe(el);
-    setScale((el.clientWidth / SLIDE_CANVAS_W) * zoom);
+    compute();
     return () => obs.disconnect();
   }, [containerRef, setScale, zoom]);
 
-  const handleCanvasClick = useCallback(
-    (e: React.MouseEvent) => {
-      if (e.target === e.currentTarget) onDeselectElement();
+  // Handles both selection AND drag initiation in one gesture
+  const handleElementPointerDown = useCallback(
+    (e: React.PointerEvent, el: SlideElement, frame: SlideElementFrame) => {
+      e.stopPropagation();
+      onSelectElement(el.id);
+
+      const slideId = slide.id;
+      const elemId = el.id;
+      const startClientX = e.clientX;
+      const startClientY = e.clientY;
+      const origFrame = { ...frame };
+      let moved = false;
+
+      useEditorStore.getState().setIsDragging(true);
+
+      const onMove = (me: PointerEvent) => {
+        const s = useEditorStore.getState().scale;
+        const rawDx = (me.clientX - startClientX) / s;
+        const rawDy = (me.clientY - startClientY) / s;
+        if (!moved && Math.hypot(rawDx, rawDy) < 3) return;
+        moved = true;
+
+        const tentative = clampFrame({ ...origFrame, x: origFrame.x + rawDx, y: origFrame.y + rawDy });
+        const currentSlide = useSlideStore.getState().graph.slides.find((s) => s.id === slideId);
+        const others = currentSlide?.elements.filter((e2) => e2.id !== elemId && e2.frame).map((e2) => e2.frame!) ?? [];
+        const { frame: snapped, guides } = snapFrame(tentative, others, me.altKey);
+        useEditorStore.getState().setSnapGuides(guides);
+        useSlideStore.getState().resizeElement(slideId, elemId, snapped);
+      };
+
+      const onUp = () => {
+        useEditorStore.getState().setIsDragging(false);
+        useEditorStore.getState().setSnapGuides([]);
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        cleanupRef.current = null;
+      };
+
+      cleanupRef.current?.();
+      cleanupRef.current = onUp;
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
     },
-    [onDeselectElement]
+    [slide.id, onSelectElement]
   );
 
   const backgroundStyle: React.CSSProperties = slide.background?.gradient
@@ -82,12 +133,15 @@ export function SlideCanvas({
         position: "relative",
         flexShrink: 0,
       }}
-      onClick={handleCanvasClick}
     >
-      {/* Background */}
+      {/* Background — clicking here deselects */}
       <div
         className="lmnt-slide"
         style={{ position: "absolute", inset: 0, ...backgroundStyle }}
+        onPointerDown={(e) => {
+          e.stopPropagation();
+          onBackgroundPanPointerDown?.(e);
+        }}
       />
       {/* Overlay */}
       {slide.background?.image && slide.background.overlay != null && (
@@ -98,13 +152,17 @@ export function SlideCanvas({
             inset: 0,
             background: `rgba(0,0,0,${slide.background.overlay})`,
           }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onBackgroundPanPointerDown?.(e);
+          }}
         />
       )}
       {/* Elements */}
       {slide.elements.map((el, i) => {
         if (el.visible === false) return null;
         const frame = el.frame ?? defaultElementFrame(i, el.type);
-        const isSelected = el.id === selectedElemId;
+        const locked = isSlideElementLocked(el);
         return (
           <div
             key={el.id}
@@ -116,23 +174,22 @@ export function SlideCanvas({
               width: frame.w,
               height: frame.h,
               zIndex: frame.zIndex ?? i + 1,
-              outline: isSelected ? "2px solid #3b82f6" : undefined,
-              outlineOffset: isSelected ? "2px" : undefined,
-              cursor: el.locked ? "default" : "grab",
+              cursor: locked ? "default" : "grab",
               overflow: "hidden",
               boxSizing: "border-box",
-              pointerEvents: el.locked ? "none" : undefined,
+              pointerEvents: locked ? "none" : undefined,
             }}
             onPointerDown={(e) => {
-              if (el.locked) return;
-              e.stopPropagation();
-              onSelectElement(el.id);
+              if (locked) return;
+              handleElementPointerDown(e, el, frame);
             }}
           >
             <SlideElementRenderer el={el} />
           </div>
         );
       })}
+      {/* Overlays (interaction layer, snap guides, toolbar) share the scaled coordinate space */}
+      {children}
     </div>
   );
 }

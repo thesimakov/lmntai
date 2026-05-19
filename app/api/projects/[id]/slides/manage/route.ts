@@ -48,8 +48,8 @@ function fallbackSlide(hint: string): Slide {
     id,
     layout: "content",
     elements: [
-      { id: `${id}_h`, type: "heading", content: hint || "Новый слайд" },
-      { id: `${id}_b`, type: "body", content: "Добавьте содержимое." },
+      { id: `${id}_h`, type: "heading", content: hint || "Новый слайд", visible: true },
+      { id: `${id}_b`, type: "body", content: "Добавьте содержимое.", visible: true },
     ],
   };
 }

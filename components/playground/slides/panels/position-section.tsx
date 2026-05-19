@@ -1,6 +1,7 @@
 "use client";
 
 import type { SlideElement, SlideElementFrame } from "@/lib/slide-graph/types";
+import { isSlideElementLocked } from "@/lib/slide-graph/element-lock";
 import { clampFrame, defaultElementFrame } from "@/lib/slide-graph/freeform";
 
 interface PositionSectionProps {
@@ -43,7 +44,7 @@ export function PositionSection({ element, elementIndex, onUpdate }: PositionSec
         <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
           <input
             type="checkbox"
-            checked={!!element.locked}
+            checked={isSlideElementLocked(element)}
             onChange={(e) => onUpdate({ locked: e.target.checked })}
             className="rounded"
           />

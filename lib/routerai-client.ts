@@ -7,6 +7,9 @@ export function getGatewayConfig() {
   if (!rawBase || !apiKey) {
     throw new Error("AI_GATEWAY_BASE_URL или AI_GATEWAY_API_KEY не заданы.");
   }
+  if (/your_routerai|change_me|example\.com/i.test(apiKey)) {
+    throw new Error("AI_GATEWAY_API_KEY выглядит как заглушка из .env.local.example — укажите реальный ключ RouterAI.");
+  }
 
   const baseUrl = rawBase.replace(/\/+$/, "");
   return { baseUrl, apiKey };

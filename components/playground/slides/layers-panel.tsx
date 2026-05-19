@@ -4,6 +4,7 @@ import { Eye, EyeOff, Lock, Unlock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEditorStore } from "@/lib/stores/use-editor-store";
 import { useSlideStore } from "@/lib/stores/use-slide-store";
+import { isSlideElementLocked } from "@/lib/slide-graph/element-lock";
 import type { SlideElement } from "@/lib/slide-graph/types";
 
 interface LayersPanelProps {
@@ -28,7 +29,7 @@ export function LayersPanel({ slideId, elements }: LayersPanelProps) {
         {sorted.map((el) => {
           const isSelected = el.id === selectedElemId;
           const isVisible = el.visible !== false;
-          const isLocked = !!el.locked;
+          const isLocked = isSlideElementLocked(el);
 
           return (
             <div

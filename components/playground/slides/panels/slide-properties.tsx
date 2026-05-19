@@ -1,11 +1,12 @@
 "use client";
 
+import { ImageUploader } from "@/components/editor/ImageUploader";
 import { useSlideStore } from "@/lib/stores/use-slide-store";
 import type { Slide } from "@/lib/slide-graph/types";
 
 interface Props { slide: Slide; projectId: string }
 
-export function SlidePropertiesPanel({ slide }: Props) {
+export function SlidePropertiesPanel({ slide, projectId }: Props) {
   const updateBackground = useSlideStore((s) => s.updateBackground);
 
   return (
@@ -29,6 +30,17 @@ export function SlidePropertiesPanel({ slide }: Props) {
           placeholder="https://..."
           value={slide.background?.image ?? ""}
           onChange={(e) => updateBackground(slide.id, { ...slide.background, image: e.target.value || undefined })}
+        />
+        <ImageUploader
+          sandboxId={projectId}
+          labels={{
+            upload: "Загрузить файл",
+            uploading: "Загрузка…",
+            errorType: "Поддерживаются PNG, JPEG, WebP, SVG",
+          }}
+          onUploaded={(url) =>
+            updateBackground(slide.id, { ...slide.background, image: url })
+          }
         />
       </div>
 
