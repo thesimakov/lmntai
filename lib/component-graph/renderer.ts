@@ -16,12 +16,15 @@ function googleFontLink(fontFamily: string): string {
   const name = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
   const slug = GOOGLE_FONTS[name];
   if (!slug) return "";
-  const encoded = slug.replace(/ /g, "+");
   return [
     `<link rel="preconnect" href="https://fonts.googleapis.com" />`,
     `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />`,
-    `<link href="https://fonts.googleapis.com/css2?family=${encoded}&display=swap" rel="stylesheet" />`,
+    `<link href="https://fonts.googleapis.com/css2?family=${slug}&display=swap" rel="stylesheet" />`,
   ].join("\n");
+}
+
+function sanitizeCssValue(v: string): string {
+  return v.replace(/[{};]/g, "");
 }
 
 function stylesToCss(styles: StyleTokens): string {
@@ -319,7 +322,14 @@ export function renderComponentGraph(graph: ComponentGraph): string {
   const firstPage = pages[0];
   const multiPage = pages.length > 1;
 
-  const cssVars = `:root{--c-primary:${theme.primaryColor};--c-accent:${theme.accentColor ?? theme.primaryColor};--c-bg:${theme.backgroundColor};--c-text:${theme.textColor};--radius:${theme.borderRadius};--max-w:${theme.maxWidth};}`;
+  const primary = sanitizeCssValue(theme.primaryColor);
+  const accent = sanitizeCssValue(theme.accentColor ?? theme.primaryColor);
+  const bg = sanitizeCssValue(theme.backgroundColor);
+  const text = sanitizeCssValue(theme.textColor);
+  const radius = sanitizeCssValue(theme.borderRadius);
+  const maxW = sanitizeCssValue(theme.maxWidth);
+
+  const cssVars = `:root{--c-primary:${primary};--c-accent:${accent};--c-bg:${bg};--c-text:${text};--radius:${radius};--max-w:${maxW};}`;
 
   const baseStyles = `
 html{scroll-behavior:smooth;}
