@@ -1,5 +1,29 @@
 import type { ComponentGraph, ComponentNode, StyleTokens } from "./types";
 
+const GOOGLE_FONTS: Record<string, string> = {
+  "Inter":             "Inter:wght@400;500;600;700",
+  "Plus Jakarta Sans": "Plus+Jakarta+Sans:wght@400;500;600;700",
+  "Manrope":           "Manrope:wght@400;500;600;700",
+  "Nunito":            "Nunito:wght@400;500;600;700",
+  "Roboto":            "Roboto:wght@400;500;600;700",
+  "Poppins":           "Poppins:wght@400;500;600;700",
+  "Montserrat":        "Montserrat:wght@400;500;600;700",
+  "DM Sans":           "DM+Sans:wght@400;500;600;700",
+  "Geist":             "Geist:wght@400;500;600;700",
+};
+
+function googleFontLink(fontFamily: string): string {
+  const name = fontFamily.split(",")[0].trim().replace(/['"]/g, "");
+  const slug = GOOGLE_FONTS[name];
+  if (!slug) return "";
+  const encoded = slug.replace(/ /g, "+");
+  return [
+    `<link rel="preconnect" href="https://fonts.googleapis.com" />`,
+    `<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />`,
+    `<link href="https://fonts.googleapis.com/css2?family=${encoded}&display=swap" rel="stylesheet" />`,
+  ].join("\n");
+}
+
 function stylesToCss(styles: StyleTokens): string {
   const map: Record<string, string | number | undefined> = {
     width: styles.width,
@@ -295,38 +319,41 @@ export function renderComponentGraph(graph: ComponentGraph): string {
   const firstPage = pages[0];
   const multiPage = pages.length > 1;
 
+  const cssVars = `:root{--c-primary:${theme.primaryColor};--c-accent:${theme.accentColor ?? theme.primaryColor};--c-bg:${theme.backgroundColor};--c-text:${theme.textColor};--radius:${theme.borderRadius};--max-w:${theme.maxWidth};}`;
+
   const baseStyles = `
+html{scroll-behavior:smooth;}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: ${theme.fontFamily}; background-color: ${theme.backgroundColor}; color: ${theme.textColor}; line-height: 1.6; }
-.lmnt-container { max-width: ${theme.maxWidth}; margin: 0 auto; padding: 0 24px; }
-.lmnt-btn { display: inline-block; padding: 12px 28px; border-radius: ${theme.borderRadius}; text-decoration: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: var(--c-text); line-height: 1.6; }
+.lmnt-container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
+.lmnt-btn { display: inline-block; padding: 12px 28px; border-radius: var(--radius); text-decoration: none; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
 .lmnt-btn:hover { opacity: 0.85; }
-.lmnt-btn--primary { background-color: ${theme.primaryColor}; color: #fff; }
-.lmnt-btn--secondary { background-color: transparent; color: ${theme.primaryColor}; border: 2px solid ${theme.primaryColor}; }
-.lmnt-btn--outline { background-color: transparent; color: ${theme.textColor}; border: 2px solid ${theme.textColor}; }
+.lmnt-btn--primary { background-color: var(--c-primary); color: #fff; }
+.lmnt-btn--secondary { background-color: transparent; color: var(--c-primary); border: 2px solid var(--c-primary); }
+.lmnt-btn--outline { background-color: transparent; color: var(--c-text); border: 2px solid var(--c-text); }
 .lmnt-hero { padding: 80px 24px; text-align: center; }
 .lmnt-hero__title { font-size: 3rem; font-weight: 700; margin-bottom: 16px; }
 .lmnt-hero__subtitle { font-size: 1.25rem; margin-bottom: 32px; opacity: 0.8; }
-.lmnt-header { padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,0.08); position: sticky; top: 0; background: ${theme.backgroundColor}; z-index: 100; }
+.lmnt-header { padding: 16px 0; border-bottom: 1px solid rgba(0,0,0,0.08); position: sticky; top: 0; background: var(--c-bg); z-index: 100; }
 .lmnt-header__inner { display: flex; align-items: center; justify-content: space-between; }
-.lmnt-header__logo { font-size: 1.25rem; font-weight: 700; text-decoration: none; color: ${theme.textColor}; }
+.lmnt-header__logo { font-size: 1.25rem; font-weight: 700; text-decoration: none; color: var(--c-text); }
 .lmnt-header__nav { display: flex; gap: 24px; }
-.lmnt-header__nav a { text-decoration: none; color: ${theme.textColor}; opacity: 0.75; font-weight: 500; transition: opacity 0.15s; }
+.lmnt-header__nav a { text-decoration: none; color: var(--c-text); opacity: 0.75; font-weight: 500; transition: opacity 0.15s; }
 .lmnt-header__nav a:hover { opacity: 1; }
 .lmnt-features { padding: 80px 0; }
 .lmnt-features__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 32px; }
-.lmnt-feature-card { padding: 24px; border-radius: ${theme.borderRadius}; border: 1px solid rgba(0,0,0,0.08); }
+.lmnt-feature-card { padding: 24px; border-radius: var(--radius); border: 1px solid rgba(0,0,0,0.08); }
 .lmnt-feature-card__icon { font-size: 2rem; margin-bottom: 12px; }
 .lmnt-feature-card__title { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
 .lmnt-pricing { padding: 80px 0; }
 .lmnt-pricing__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
-.lmnt-pricing-card { padding: 32px; border-radius: ${theme.borderRadius}; border: 2px solid rgba(0,0,0,0.1); text-align: center; }
-.lmnt-pricing-card__price { font-size: 2.5rem; font-weight: 700; color: ${theme.primaryColor}; margin: 16px 0; }
+.lmnt-pricing-card { padding: 32px; border-radius: var(--radius); border: 2px solid rgba(0,0,0,0.1); text-align: center; }
+.lmnt-pricing-card__price { font-size: 2.5rem; font-weight: 700; color: var(--c-primary); margin: 16px 0; }
 .lmnt-pricing-card ul { list-style: none; margin: 16px 0 24px; text-align: left; }
 .lmnt-pricing-card ul li { padding: 4px 0; }
-.lmnt-pricing-card ul li::before { content: "✓ "; color: ${theme.primaryColor}; }
+.lmnt-pricing-card ul li::before { content: "✓ "; color: var(--c-primary); }
 .lmnt-testimonials { padding: 80px 0; }
-.lmnt-testimonial { padding: 24px; border-left: 4px solid ${theme.primaryColor}; margin-bottom: 24px; }
+.lmnt-testimonial { padding: 24px; border-left: 4px solid var(--c-primary); margin-bottom: 24px; }
 .lmnt-testimonial p { font-size: 1.1rem; font-style: italic; margin-bottom: 12px; }
 .lmnt-testimonial cite { font-weight: 600; font-style: normal; }
 .lmnt-faq { padding: 80px 0; }
@@ -338,9 +365,9 @@ body { font-family: ${theme.fontFamily}; background-color: ${theme.backgroundCol
 .lmnt-cta p { font-size: 1.1rem; margin-bottom: 32px; }
 .lmnt-footer { padding: 40px 0; border-top: 1px solid rgba(0,0,0,0.08); text-align: center; }
 .lmnt-footer__links { margin-bottom: 16px; }
-.lmnt-footer__links a { text-decoration: none; color: ${theme.textColor}; opacity: 0.7; }
+.lmnt-footer__links a { text-decoration: none; color: var(--c-text); opacity: 0.7; }
 .lmnt-footer__copy { opacity: 0.5; font-size: 0.875rem; }
-.lmnt-card { border-radius: ${theme.borderRadius}; overflow: hidden; border: 1px solid rgba(0,0,0,0.08); }
+.lmnt-card { border-radius: var(--radius); overflow: hidden; border: 1px solid rgba(0,0,0,0.08); }
 .lmnt-card__image { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
 .lmnt-card__title { font-size: 1.1rem; font-weight: 600; padding: 16px 16px 8px; }
 .lmnt-card__desc { padding: 0 16px 16px; opacity: 0.75; }
@@ -351,6 +378,9 @@ body { font-family: ${theme.fontFamily}; background-color: ${theme.backgroundCol
   .lmnt-header__nav { display: none; }
 }
 `.trim();
+
+  const fullStyles = [cssVars, baseStyles].join("\n");
+  const fontLinks = googleFontLink(theme.fontFamily);
 
   const bodyContent = multiPage
     ? pages
@@ -367,7 +397,7 @@ body { font-family: ${theme.fontFamily}; background-color: ${theme.backgroundCol
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(firstPage.title)}</title>
 ${firstPage.description ? `<meta name="description" content="${esc(firstPage.description)}" />` : ""}
-<style>${baseStyles}</style>
+${fontLinks ? fontLinks + "\n" : ""}<style>${fullStyles}</style>
 </head>
 <body>
 ${bodyContent}

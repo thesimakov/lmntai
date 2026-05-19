@@ -178,3 +178,34 @@ describe("renderNode", () => {
     expect(html).toContain("padding:40px");
   });
 });
+
+describe("renderComponentGraph — Google Fonts + CSS vars", () => {
+  it("injects google fonts link for Inter", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("fonts.googleapis.com");
+    expect(html).toContain(`rel="preconnect"`);
+  });
+
+  it("skips font link for unknown font family", () => {
+    const g = { ...baseGraph, meta: { ...baseGraph.meta, theme: { ...baseGraph.meta.theme, fontFamily: "Arial, sans-serif" } } };
+    expect(renderComponentGraph(g)).not.toContain("fonts.googleapis.com");
+  });
+
+  it("emits :root CSS custom properties", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("--c-primary:");
+    expect(html).toContain("--c-bg:");
+    expect(html).toContain("--c-text:");
+    expect(html).toContain("--radius:");
+  });
+
+  it("uses var(--c-primary) in baseStyles instead of literal color", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("var(--c-primary)");
+  });
+
+  it("includes scroll-behavior smooth", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("scroll-behavior:smooth");
+  });
+});
