@@ -429,7 +429,7 @@ export function useAiSession() {
           }
           return false;
         }
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return false;
         const envelope = (await res.json()) as LemnityAiBridgeEnvelope<LemnityAiSessionPayload>;
         const payload = envelope?.data;
         if (!payload) return false;
@@ -482,7 +482,7 @@ export function useAiSession() {
           };
         });
 
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return false;
         if (nextMessages.length) {
           setMessages(nextMessages);
           setStage("ready");
@@ -519,7 +519,7 @@ export function useAiSession() {
               ? coercedFull
               : undefined;
 
-        if (!mountedRef.current) return;
+        if (!mountedRef.current) return false;
 
         if (lastPreview?.previewUrl && lastPreview.sandboxId) {
           const loadedSbx = String(lastPreview.sandboxId);
