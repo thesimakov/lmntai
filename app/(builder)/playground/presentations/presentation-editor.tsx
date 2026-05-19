@@ -34,7 +34,7 @@ import {
   createTextElement,
   type InsertLineKind,
   type InsertShapeKind,
-  type InsertTextKind,
+  type InsertTextPreset,
 } from "@/lib/slide-graph/create-element";
 
 interface Props {
@@ -457,10 +457,10 @@ export function PresentationEditorClient({ projectId, initialGraph, userPlan: _u
   );
 
   const handleInsertText = useCallback(
-    (kind: InsertTextKind) => {
+    (preset: InsertTextPreset) => {
       if (!activeSlide) return;
       insertOnActiveSlide(
-        createTextElement(kind, activeSlide.elements.length, graph.meta.theme)
+        createTextElement(preset, activeSlide.elements.length, graph.meta.theme)
       );
     },
     [activeSlide, graph.meta.theme, insertOnActiveSlide]

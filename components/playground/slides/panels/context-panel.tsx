@@ -7,6 +7,7 @@ import { useSlideStore } from "@/lib/stores/use-slide-store";
 import type { SlideElement } from "@/lib/slide-graph/types";
 
 import { TextPropertiesPanel } from "./text-properties";
+import { LabelPropertiesPanel } from "./label-properties";
 import { ListPropertiesPanel } from "./list-properties";
 import { ImagePropertiesPanel } from "./image-properties";
 import { CardPropertiesPanel } from "./card-properties";
@@ -15,7 +16,7 @@ import { ThemeEditorPanel } from "./theme-editor";
 import { NotesPanel } from "./notes-panel";
 import { QualityScoreBadge } from "./quality-score-badge";
 
-const TEXT_TYPES: SlideElement["type"][] = ["heading", "subheading", "body", "quote", "caption", "label"];
+const TEXT_TYPES: SlideElement["type"][] = ["heading", "subheading", "body", "quote", "caption"];
 const CARD_TYPES: SlideElement["type"][] = ["metric-card", "feature-card", "step-card", "stat-number", "pricing-card", "timeline-col"];
 
 export function ContextPanel({ projectId }: { projectId: string }) {
@@ -76,6 +77,13 @@ export function ContextPanel({ projectId }: { projectId: string }) {
         {rightMode === "props" && (
           <>
             {!selectedEl && slide && <SlidePropertiesPanel slide={slide} projectId={projectId} />}
+            {selectedEl?.type === "label" && (
+              <LabelPropertiesPanel
+                element={selectedEl}
+                elementIndex={selectedIndex}
+                onUpdate={onUpdate}
+              />
+            )}
             {selectedEl && TEXT_TYPES.includes(selectedEl.type) && (
               <TextPropertiesPanel element={selectedEl} elementIndex={selectedIndex} onUpdate={onUpdate} />
             )}

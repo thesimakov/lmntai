@@ -49,6 +49,10 @@ export interface SlideElementStyle {
   textAlign?: "left" | "center" | "right";
   italic?: boolean;
   opacity?: number;
+  /** Pill / tag background (label elements). */
+  backgroundColor?: string;
+  /** Corner radius, e.g. "9999px" or "12px". */
+  borderRadius?: string;
 }
 
 /** Absolute position on the 960×540 slide canvas (editor freeform mode). */

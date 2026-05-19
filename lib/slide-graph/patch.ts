@@ -320,6 +320,11 @@ export function applyDeleteElementPatch(
   };
 }
 
+function withStackIndex(el: SlideElement, stackIndex: number): SlideElement {
+  if (!el.frame) return el;
+  return { ...el, frame: { ...el.frame, zIndex: stackIndex + 1 } };
+}
+
 export function applyReorderElementsPatch(
   graph: SlideGraph,
   slideId: string,
@@ -332,8 +337,11 @@ export function applyReorderElementsPatch(
       const byId = new Map(slide.elements.map((el) => [el.id, el]));
       const reordered = elemIds
         .map((id) => byId.get(id))
-        .filter((el): el is SlideElement => el !== undefined);
-      const remaining = slide.elements.filter((el) => !elemIds.includes(el.id));
+        .filter((el): el is SlideElement => el !== undefined)
+        .map((el, i) => withStackIndex(el, i));
+      const remaining = slide.elements
+        .filter((el) => !elemIds.includes(el.id))
+        .map((el, i) => withStackIndex(el, reordered.length + i));
       return { ...slide, elements: [...reordered, ...remaining] };
     }),
   };

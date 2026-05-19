@@ -55,7 +55,26 @@ body { font-family: ${theme.fontFamily}; color: ${theme.textColor}; }
 .lmnt-slide__image { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; }
 .lmnt-slide__quote { font-size: 1.5rem; font-style: italic; border-left: 4px solid ${primary}; padding-left: 20px; opacity: 0.9; }
 .lmnt-slide__caption { font-size: 0.8rem; opacity: 0.55; }
-.lmnt-slide__label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: ${primary}; }
+.lmnt-slide__label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 28px;
+  padding: 0 18px;
+  box-sizing: border-box;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, ${primary} 38%, #4a6356);
+  background: color-mix(in srgb, ${primary} 10%, #e9f3ec);
+  border: none;
+  border-radius: 9999px;
+}
 ${PRESERVE_LINE_BREAKS_CSS}
 
 .lmnt-card { border-radius: 12px; padding: 16px 20px; background: #fff; }
@@ -181,11 +200,47 @@ ${PRESERVE_LINE_BREAKS_CSS}
 .lmnt-layout-cta-split__left .lmnt-slide__body { color: rgba(255,255,255,0.8); }
 .lmnt-layout-cta-split__right { flex: 0.9; display: flex; flex-direction: column; justify-content: center; gap: 14px; padding: 48px 40px; background: #fff; }
 
-.lmnt-elem-frame { position: absolute; box-sizing: border-box; }
+.lmnt-elem-frame { position: absolute; box-sizing: border-box; overflow: hidden; }
+.lmnt-elem-frame__inner {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.lmnt-elem-frame [data-lmnt-elem-id] {
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 0;
+  box-sizing: border-box;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: hidden;
+}
+.lmnt-elem-frame .lmnt-slide__label { display: inline-flex; }
+.lmnt-elem-frame .lmnt-slide__image {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.lmnt-elem-frame .lmnt-slide__bullets {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding-left: 1.25em;
+  list-style-position: outside;
+}
 .lmnt-elem-frame .lmnt-card,
 .lmnt-elem-frame .lmnt-metric-card,
 .lmnt-elem-frame .lmnt-feature-card,
-.lmnt-elem-frame .lmnt-pricing-card { height: 100%; }
+.lmnt-elem-frame .lmnt-pricing-card { height: 100%; width: 100%; }
 `.trim();
 
   const editorExtras =

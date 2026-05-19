@@ -1,7 +1,22 @@
+import { defaultLabelElementStyle } from "./label-style";
 import type { SlideElement, SlideElementType, SlideTheme } from "./types";
 import { SLIDE_CANVAS_W, SLIDE_CANVAS_H, clampFrame, defaultElementFrame } from "./freeform";
 
-export type InsertTextKind = "heading" | "subheading" | "body" | "bullet-list";
+/** Presets shown in the text insert picker (toolbar). */
+export type InsertTextPreset =
+  | "title"
+  | "heading-1"
+  | "heading-2"
+  | "heading-3"
+  | "heading-4"
+  | "quote"
+  | "label"
+  | "body"
+  | "bullet-list";
+
+/** @deprecated Use InsertTextPreset */
+export type InsertTextKind = InsertTextPreset;
+
 export type InsertShapeKind = "rect" | "ellipse" | "rounded-rect";
 export type InsertLineKind = "horizontal" | "vertical";
 
@@ -77,32 +92,91 @@ export function placeholderImageSrc(): string {
   );
 }
 
-const TEXT_DEFAULTS: Record<
-  InsertTextKind,
-  { content: string; items?: string[]; fontSize?: string; fontWeight?: "bold" }
-> = {
-  heading: { content: "Заголовок", fontSize: "2.25rem", fontWeight: "bold" },
-  subheading: { content: "Подзаголовок", fontSize: "1.15rem" },
-  body: { content: "Текст", fontSize: "1.05rem" },
-  "bullet-list": { content: "", items: ["Пункт 1", "Пункт 2", "Пункт 3"] },
+type TextPresetDef = {
+  type: SlideElementType;
+  content: string;
+  items?: string[];
+  fontSize?: string;
+  fontWeight?: "bold";
+  frame?: { w: number; h: number };
+};
+
+const TEXT_PRESETS: Record<InsertTextPreset, TextPresetDef> = {
+  title: {
+    type: "heading",
+    content: "Название",
+    fontSize: "3rem",
+    fontWeight: "bold",
+    frame: { w: 680, h: 96 },
+  },
+  "heading-1": {
+    type: "heading",
+    content: "Заголовок 1",
+    fontSize: "2.25rem",
+    fontWeight: "bold",
+    frame: { w: 640, h: 80 },
+  },
+  "heading-2": {
+    type: "subheading",
+    content: "Заголовок 2",
+    fontSize: "1.5rem",
+    fontWeight: "bold",
+    frame: { w: 560, h: 56 },
+  },
+  "heading-3": {
+    type: "body",
+    content: "Заголовок 3",
+    fontSize: "1.25rem",
+    fontWeight: "bold",
+    frame: { w: 520, h: 48 },
+  },
+  "heading-4": {
+    type: "caption",
+    content: "Заголовок 4",
+    fontSize: "1.05rem",
+    frame: { w: 400, h: 40 },
+  },
+  quote: {
+    type: "quote",
+    content: "Цитата",
+    frame: { w: 480, h: 100 },
+  },
+  label: {
+    type: "label",
+    content: "Этикетка",
+    frame: { w: 200, h: 40 },
+  },
+  body: {
+    type: "body",
+    content: "Текст",
+    fontSize: "1.05rem",
+    frame: { w: 560, h: 120 },
+  },
+  "bullet-list": {
+    type: "bullet-list",
+    content: "",
+    items: ["Пункт 1", "Пункт 2", "Пункт 3"],
+    frame: { w: 520, h: 160 },
+  },
 };
 
 export function createTextElement(
-  kind: InsertTextKind,
+  preset: InsertTextPreset,
   elementIndex: number,
   theme: SlideTheme
 ): SlideElement {
-  const defaults = TEXT_DEFAULTS[kind];
+  const def = TEXT_PRESETS[preset];
+  const labelStyle = def.type === "label" ? defaultLabelElementStyle(theme) : undefined;
   return {
     id: newElementId(),
-    type: kind,
-    content: defaults.content,
-    ...(defaults.items ? { items: defaults.items } : {}),
-    frame: stackedCenterFrame(elementIndex, kind),
-    style: {
+    type: def.type,
+    content: def.content,
+    ...(def.items ? { items: def.items } : {}),
+    frame: stackedCenterFrame(elementIndex, def.type, def.frame),
+    style: labelStyle ?? {
       color: theme.textColor,
-      fontSize: defaults.fontSize,
-      fontWeight: defaults.fontWeight,
+      ...(def.fontSize ? { fontSize: def.fontSize } : {}),
+      ...(def.fontWeight ? { fontWeight: def.fontWeight } : {}),
     },
     locked: false,
     visible: true,

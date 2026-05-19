@@ -8,6 +8,7 @@ import {
 } from "./freeform";
 import { SLIDE_EDITOR_INTERACTION_SCRIPT } from "./slide-editor-runtime";
 import { buildSlideDeckStyles } from "./slide-deck-styles";
+import { labelStyleInlineCss } from "./label-style";
 
 function esc(s: unknown): string {
   if (typeof s !== "string") return "";
@@ -32,6 +33,8 @@ function inlineStyle(el: SlideElement): string {
     el.style.italic ? "font-style:italic" : "",
     el.style.textAlign ? `text-align:${el.style.textAlign}` : "",
     el.style.opacity != null ? `opacity:${el.style.opacity}` : "",
+    el.style.backgroundColor ? `background:${el.style.backgroundColor}` : "",
+    el.style.borderRadius ? `border-radius:${el.style.borderRadius}` : "",
   ].filter(Boolean);
   return parts.length ? ` style="${parts.join(";")}"` : "";
 }
@@ -57,8 +60,10 @@ function renderElement(el: SlideElement): string {
       return `<blockquote class="lmnt-slide__quote" ${id}${s}>${esc(el.content)}</blockquote>`;
     case "caption":
       return `<p class="lmnt-slide__caption" ${id}${s}>${esc(el.content)}</p>`;
-    case "label":
-      return `<span class="lmnt-slide__label" ${id}${s}>${esc(el.content)}</span>`;
+    case "label": {
+      const labelS = labelStyleInlineCss(el.style) || s;
+      return `<span class="lmnt-slide__label" ${id}${labelS}>${esc(el.content)}</span>`;
+    }
 
     case "metric-card":
       return `<div class="lmnt-card lmnt-metric-card" ${id}${s}>

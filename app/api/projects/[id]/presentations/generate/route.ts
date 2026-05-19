@@ -14,6 +14,10 @@ import {
   chargeStructuredJsonUsageSafely,
   requestStructuredJsonForProjectKind,
 } from "@/lib/structured-json-ai";
+import {
+  applyBrandKitToSlideGraph,
+  resolveProjectBrandKitForSlides,
+} from "@/lib/brand-kit-prompt";
 import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 import type { SlideGraph } from "@/lib/slide-graph/types";
@@ -72,7 +76,15 @@ export async function POST(
       }
     : null;
 
-  const messages = buildTemplateSlidePrompt(template, trimmedBrief, sourceDocument);
+  const { promptBlock: brandKitBlock, manifest: brandKitManifest } =
+    await resolveProjectBrandKitForSlides(projectId);
+
+  const messages = buildTemplateSlidePrompt(
+    template,
+    trimmedBrief,
+    sourceDocument,
+    brandKitBlock
+  );
 
   let generated: Awaited<ReturnType<typeof generateSlideGraphFromAi>>;
   try {
@@ -116,10 +128,13 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const finalGraph: SlideGraph = {
-    ...generated.graph,
-    meta: { ...generated.graph.meta, generatedAt: now, templateId },
-  };
+  const finalGraph: SlideGraph = applyBrandKitToSlideGraph(
+    {
+      ...generated.graph,
+      meta: { ...generated.graph.meta, generatedAt: now, templateId },
+    },
+    brandKitManifest
+  );
   const html = renderSlideGraph(finalGraph);
   const existing = await getSandboxProjectState(projectId);
   await upsertSandboxProjectState({

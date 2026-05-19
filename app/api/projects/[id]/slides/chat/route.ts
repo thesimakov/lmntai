@@ -19,6 +19,7 @@ import {
   chargeStructuredJsonUsageSafely,
   requestStructuredJsonForProjectKind,
 } from "@/lib/structured-json-ai";
+import { resolveProjectBrandKitForSlides } from "@/lib/brand-kit-prompt";
 import { userFacingAiUnavailableMessage } from "@/lib/ai-unavailable-message";
 import { unknownToErrorMessage } from "@/lib/unknown-error-message";
 
@@ -91,7 +92,8 @@ export async function POST(
   }
 
   const graph = graphParse.data;
-  const messages = buildSlideChatPrompt(graph, history ?? [], message);
+  const { promptBlock: brandKitBlock } = await resolveProjectBrandKitForSlides(projectId);
+  const messages = buildSlideChatPrompt(graph, history ?? [], message, brandKitBlock);
 
   async function callAI(msgs: Array<{ role: "system" | "user" | "assistant"; content: string }>) {
     const result = await requestStructuredJsonForProjectKind(

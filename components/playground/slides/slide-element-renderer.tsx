@@ -100,16 +100,29 @@ export function SlideElementRenderer({ el }: { el: SlideElement }) {
         </p>
       );
 
-    case "label":
+    case "label": {
+      const ls = el.style;
+      const labelStyle: React.CSSProperties = {
+        ...(ls?.fontSize ? { fontSize: ls.fontSize } : {}),
+        ...(ls?.fontWeight === "bold" ? { fontWeight: 700 } : {}),
+        ...(ls?.textAlign
+          ? { textAlign: ls.textAlign as React.CSSProperties["textAlign"] }
+          : {}),
+        ...(ls?.opacity != null ? { opacity: ls.opacity } : {}),
+        ...(ls?.color ? { color: ls.color } : {}),
+        ...(ls?.backgroundColor ? { backgroundColor: ls.backgroundColor } : {}),
+        ...(ls?.borderRadius ? { borderRadius: ls.borderRadius } : {}),
+      };
       return (
         <span
           className="lmnt-slide__label"
           data-lmnt-elem-id={el.id}
-          style={style}
+          style={labelStyle}
         >
           {esc(el.content)}
         </span>
       );
+    }
 
     case "metric-card":
       return (

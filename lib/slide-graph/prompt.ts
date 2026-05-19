@@ -1,3 +1,4 @@
+import { appendProjectBrandKitToSystemPrompt } from "@/lib/project-brand-kit-library";
 import type { PresentationTemplate } from "./templates";
 
 const SYSTEM_PROMPT = `You are a presentation architect. Generate a SlideGraph JSON for the presentation described by the user.
@@ -51,10 +52,17 @@ SCHEMA:
 Generate 6–12 slides for a complete deck. Include an agenda/overview slide if appropriate.`;
 
 export function buildSlideGraphPrompt(
-  userPrompt: string
+  userPrompt: string,
+  brandKitBlock?: string | null
 ): Array<{ role: "system" | "user"; content: string }> {
+  const system = appendProjectBrandKitToSystemPrompt(
+    brandKitBlock?.trim()
+      ? `${SYSTEM_PROMPT}\n\nWhen a project brand kit is provided below, set meta.theme colors and fontFamily from the brand palette and typography. Match tone of voice in slide copy.`
+      : SYSTEM_PROMPT,
+    brandKitBlock
+  );
   return [
-    { role: "system", content: SYSTEM_PROMPT },
+    { role: "system", content: system },
     { role: "user", content: userPrompt },
   ];
 }
@@ -94,7 +102,8 @@ RICH LAYOUT TYPES:
 export function buildTemplateSlidePrompt(
   template: PresentationTemplate,
   userBrief: string,
-  sourceDocument?: { fileName: string; text: string } | null
+  sourceDocument?: { fileName: string; text: string } | null,
+  brandKitBlock?: string | null
 ): Array<{ role: "system" | "user"; content: string }> {
   const structureList = template.slideStructure
     .map(
@@ -105,7 +114,12 @@ export function buildTemplateSlidePrompt(
 
   const themeJson = JSON.stringify(template.theme, null, 2);
 
-  const systemPrompt = `You are a presentation architect. Generate a SlideGraph JSON following the EXACT template structure below.
+  const hasBrandKit = Boolean(brandKitBlock?.trim());
+  const themeSection = hasBrandKit
+    ? `THEME: Use the PROJECT BRAND KIT palette and typography for meta.theme (override template defaults below). Template default reference only:\n${themeJson}`
+    : `THEME (use exactly these colors):\n${themeJson}`;
+
+  let systemPrompt = `You are a presentation architect. Generate a SlideGraph JSON following the EXACT template structure below.
 
 ${template.systemPromptAddition}
 
@@ -122,8 +136,7 @@ RULES:
 
 ${RICH_ELEMENT_SCHEMA}
 
-THEME (use exactly these colors):
-${themeJson}
+${themeSection}
 
 TEMPLATE STRUCTURE (follow exactly in this order):
 ${structureList}
@@ -135,6 +148,12 @@ IMPORTANT LAYOUT RULES:
 - For "title": you may use gradient via background.gradient (CSS gradient string) for visual appeal
 - All content must be filled with real, contextual information from the user brief
 - Make numbers and data specific and realistic based on the brief`;
+
+  systemPrompt = appendProjectBrandKitToSystemPrompt(systemPrompt, brandKitBlock);
+  if (hasBrandKit) {
+    systemPrompt +=
+      "\n\nBrand kit is mandatory: meta.theme must use brand palette colors; copy should follow brand tone of voice and company context.";
+  }
 
   const briefBlock = userBrief.trim()
     ? `USER BRIEF:\n${userBrief.trim()}`
@@ -202,7 +221,8 @@ Rules:
 export function buildSlideChatPrompt(
   graph: import("./types").SlideGraph,
   history: Array<{ role: "user" | "assistant"; content: string }>,
-  message: string
+  message: string,
+  brandKitBlock?: string | null
 ): Array<{ role: "system" | "user" | "assistant"; content: string }> {
   const slideIndex = graph.slides.map((s) => ({
     slideId: s.id,
@@ -218,12 +238,17 @@ export function buildSlideChatPrompt(
     0,
     12_000
   );
-  const system = `${SLIDE_CHAT_SYSTEM_PROMPT}
+  const system = appendProjectBrandKitToSystemPrompt(
+    `${SLIDE_CHAT_SYSTEM_PROMPT}
+
+When editing theme or colors, keep the project brand kit constraints.
 
 Current SlideGraph:
 \`\`\`json
 ${graphSummary}
-\`\`\``;
+\`\`\``,
+    brandKitBlock
+  );
 
   return [
     { role: "system", content: system },

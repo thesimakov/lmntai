@@ -20,6 +20,8 @@ const slideElementStyleSchema = z.object({
   textAlign: z.enum(["left", "center", "right"]).optional(),
   italic: z.boolean().optional(),
   opacity: z.number().min(0).max(1).optional(),
+  backgroundColor: z.string().optional(),
+  borderRadius: z.string().optional(),
 });
 
 const slideElementSchema = z.object({

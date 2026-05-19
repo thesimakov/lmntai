@@ -13,15 +13,16 @@ import { cn } from "@/lib/utils";
 import type {
   InsertLineKind,
   InsertShapeKind,
-  InsertTextKind,
+  InsertTextPreset,
 } from "@/lib/slide-graph/create-element";
+import { TextInsertPicker } from "./text-insert-picker";
 
 export type SlideInsertTool = "select" | "image" | "text" | "shape" | "line";
 
 interface SlideInsertToolbarProps {
   activeTool: SlideInsertTool;
   onToolChange: (tool: SlideInsertTool) => void;
-  onInsertText: (kind: InsertTextKind) => void;
+  onInsertText: (preset: InsertTextPreset) => void;
   onInsertImage: () => void;
   onInsertShape: (kind: InsertShapeKind) => void;
   onInsertLine: (kind: InsertLineKind) => void;
@@ -49,7 +50,7 @@ function ToolBtn({
   title: string;
   children: React.ReactNode;
   showChevron?: boolean;
-  onChevronClick?: () => void;
+  onChevronClick?: (e: React.MouseEvent) => void;
 }) {
   const inner =
     "m-0 flex items-center justify-center border-0 bg-transparent p-0 transition-colors hover:bg-slate-50/80";
@@ -74,7 +75,10 @@ function ToolBtn({
         <button
           type="button"
           title={`${title} — варианты`}
-          onClick={onChevronClick}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChevronClick?.(e);
+          }}
           className={cn(inner, "h-8 w-5 text-slate-500")}
         >
           <ChevronDown className="h-3 w-3" />
@@ -190,22 +194,20 @@ export function SlideInsertToolbar({
           showChevron
           onClick={() => {
             onToolChange("text");
-            onInsertText("heading");
+            onInsertText("body");
           }}
           onChevronClick={() => setMenu((m) => (m === "text" ? null : "text"))}
         >
           <Type className="w-4 h-4" strokeWidth={1.75} />
         </ToolBtn>
-        <DropdownMenu
+        <TextInsertPicker
           open={menu === "text"}
           anchorRef={textRef}
           onClose={closeMenu}
-          items={[
-            { label: "Заголовок", onClick: () => { onToolChange("text"); onInsertText("heading"); } },
-            { label: "Подзаголовок", onClick: () => { onToolChange("text"); onInsertText("subheading"); } },
-            { label: "Текст", onClick: () => { onToolChange("text"); onInsertText("body"); } },
-            { label: "Маркированный список", onClick: () => { onToolChange("text"); onInsertText("bullet-list"); } },
-          ]}
+          onSelect={(preset) => {
+            onToolChange("text");
+            onInsertText(preset);
+          }}
         />
       </div>
 

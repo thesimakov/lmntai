@@ -166,17 +166,15 @@ export function SlideCanvas({
         return (
           <div
             key={el.id}
+            className="lmnt-elem-frame"
             data-lmnt-frame-id={el.id}
             style={{
-              position: "absolute",
               left: frame.x,
               top: frame.y,
               width: frame.w,
               height: frame.h,
               zIndex: frame.zIndex ?? i + 1,
               cursor: locked ? "default" : "grab",
-              overflow: "hidden",
-              boxSizing: "border-box",
               pointerEvents: locked ? "none" : undefined,
             }}
             onPointerDown={(e) => {
@@ -184,7 +182,9 @@ export function SlideCanvas({
               handleElementPointerDown(e, el, frame);
             }}
           >
-            <SlideElementRenderer el={el} />
+            <div className="lmnt-elem-frame__inner">
+              <SlideElementRenderer el={el} />
+            </div>
           </div>
         );
       })}
