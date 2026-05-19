@@ -156,7 +156,7 @@ export function formatProjectBrandKitForAiPrompt(manifest: ProjectBrandKitManife
 
 export function appendProjectBrandKitToSystemPrompt(
   system: string,
-  brandKitBlock: string | null
+  brandKitBlock?: string | null
 ): string {
   if (!brandKitBlock?.trim()) return system;
   return `${system}\n\n${brandKitBlock.trim()}`;
