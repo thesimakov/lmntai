@@ -265,3 +265,31 @@ describe("renderComponentGraph — responsive styles", () => {
     expect(html).toContain("padding:40px");
   });
 });
+
+describe("renderComponentGraph — improved base CSS", () => {
+  it("button has opacity+transform transition", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("transition:opacity 0.18s,transform 0.18s");
+  });
+  it("button hover lifts with transform", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain(".lmnt-btn:hover");
+    expect(html).toContain("translateY(-1px)");
+  });
+  it("card has box-shadow", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("box-shadow:0 2px 16px");
+  });
+  it("header has backdrop-filter", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("backdrop-filter:saturate(1.8) blur(12px)");
+  });
+  it("hero title uses clamp", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("clamp(2rem");
+  });
+  it("cta uses color-mix tint", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("color-mix(in srgb");
+  });
+});
