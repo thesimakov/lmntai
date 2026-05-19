@@ -27,6 +27,11 @@ function sanitizeCssValue(v: string): string {
   return v.replace(/[{};]/g, "");
 }
 
+function sanitizeFontFamily(v: string): string {
+  // Allow letters, digits, spaces, commas, hyphens, apostrophes, quotes
+  return v.replace(/[^a-zA-Z0-9\s,\-'"]/g, "");
+}
+
 function stylesToCss(styles: StyleTokens): string {
   const map: Record<string, string | number | undefined> = {
     width: styles.width,
@@ -405,13 +410,14 @@ export function renderComponentGraph(graph: ComponentGraph): string {
   const text = sanitizeCssValue(theme.textColor);
   const radius = sanitizeCssValue(theme.borderRadius);
   const maxW = sanitizeCssValue(theme.maxWidth);
+  const fontFamily = sanitizeFontFamily(theme.fontFamily);
 
   const cssVars = `:root{--c-primary:${primary};--c-accent:${accent};--c-bg:${bg};--c-text:${text};--radius:${radius};--max-w:${maxW};}`;
 
   const baseStyles = `
 html{scroll-behavior:smooth;}
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: var(--c-text); line-height: 1.6; }
+body { font-family: ${fontFamily}; background-color: var(--c-bg); color: var(--c-text); line-height: 1.6; }
 .lmnt-container { max-width: var(--max-w); margin: 0 auto; padding: 0 24px; }
 .lmnt-btn{display:inline-block;padding:12px 28px;border-radius:var(--radius);text-decoration:none;font-weight:600;cursor:pointer;transition:opacity 0.18s,transform 0.18s;letter-spacing:0.01em;}
 .lmnt-btn:hover{opacity:0.85;transform:translateY(-1px);}
@@ -499,7 +505,7 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
   const fullStyles = [cssVars, baseStyles].join("\n");
   const responsiveCss = collectResponsiveCss(pages);
   const fontLinks = googleFontLink(theme.fontFamily);
-  const tailwindCdn = `<script src="https://cdn.tailwindcss.com"></script>`;
+  const tailwindCdn = `<script src="https://cdn.tailwindcss.com/3.4.17"></script>`;
   const tailwindConfig = `<script>tailwind.config={theme:{extend:{colors:{primary:"${primary}",accent:"${accent}"}}}}</script>`;
 
   const bodyContent = multiPage

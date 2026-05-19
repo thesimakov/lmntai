@@ -69,13 +69,15 @@ async function getProjects(req: NextRequest) {
         embedUrl,
         editUrl: buildPlaygroundEditUrlForStoredEditor(preferredEditorByProjectId.get(projectId) ?? "build", {
           projectId,
-          sessionId
+          sessionId,
+          preferProjectIdQuery: projectId !== sessionId
         }),
         openUrl:
           embedUrl ??
           buildPlaygroundEditUrlForStoredEditor(preferredEditorByProjectId.get(projectId) ?? "build", {
             projectId,
-            sessionId
+            sessionId,
+            preferProjectIdQuery: projectId !== sessionId
           })
       };
     });

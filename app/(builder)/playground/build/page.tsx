@@ -110,7 +110,7 @@ export default function PromptBuildPage() {
 
   // ── Hooks ──
   const { steps: streamSteps, toolLine: streamToolLine } = useBuildStreamLog();
-  const { sendChat, templatePreviewSandboxIdRef } = useAiSession();
+  const { sendChat, restoreBuildSession, templatePreviewSandboxIdRef } = useAiSession();
   const { runPromptCoach } = usePromptCoach();
 
   const ensureBuildSessionId = useCallback(async (): Promise<string | null> => {
@@ -296,6 +296,12 @@ export default function PromptBuildPage() {
     if (!requestedProjectId) return;
     setSessionId(requestedProjectId);
   }, [requestedProjectId, setSessionId]);
+
+  // ── Restore Lemnity AI chat + preview when reopening a project ──
+  useEffect(() => {
+    if (!lemnityAiBridgeReady || !requestedProjectId) return;
+    void restoreBuildSession(requestedProjectId);
+  }, [lemnityAiBridgeReady, requestedProjectId, restoreBuildSession]);
 
   // ── Load projectKind from URL param (e.g. ?projectKind=website) ──
   useEffect(() => {
@@ -625,9 +631,11 @@ export default function PromptBuildPage() {
   }, [sandboxId, shareIsPublic, setShareIsPublic]);
 
   const buildCodeBridgeSessionRepair = useMemo(() => {
-    const id = sessionId?.trim() || readStoredLemnityBuildManusSessionId()?.trim() || "";
-    if (!id) return null;
-    return { upstreamSessionId: id };
+    const host = sessionId?.trim() || "";
+    const stored = readStoredLemnityBuildManusSessionId()?.trim() || "";
+    const upstream = stored && stored !== host ? stored : host || stored;
+    if (!upstream) return null;
+    return { upstreamSessionId: upstream };
   }, [sessionId]);
 
   const handleVersionRestoreHtml = useCallback((html: string) => {

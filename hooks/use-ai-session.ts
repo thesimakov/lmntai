@@ -22,6 +22,14 @@ import {
   readStoredLemnityBuildManusSessionId,
   writeStoredLemnityBuildManusSessionId,
 } from "@/lib/lemnity-ai-build-session-storage";
+import {
+  buildArtifactPreviewUrl,
+  buildSandboxPreviewUrl,
+  extractLastBridgePreviewFromEvents,
+  fetchSessionLinkForPathId,
+  sandboxHasRenderablePreview,
+  toBuildSessionLinkMeta,
+} from "@/lib/lemnity-ai-build-session-restore";
 import { useBuildEditorStore, type ProjectSnapshotMeta } from "@/lib/stores/use-build-editor-store";
 import { useSandboxFilesStore } from "@/lib/stores/use-sandbox-files-store";
 
@@ -33,20 +41,97 @@ function notifySandboxFilesUpdated(sandboxId: string): void {
   useSandboxFilesStore.getState().notifyFilesUpdated(s);
 }
 
+async function bindPreviewToHostProject(
+  hostProjectId: string,
+  sourceSandboxId: string,
+  html?: string
+): Promise<void> {
+  const host = hostProjectId.trim();
+  if (!host) return;
+  const body = html?.trim()
+    ? { html: html.trim() }
+    : (() => {
+        const source = sourceSandboxId.trim();
+        if (!source || host === source) return null;
+        return { sourceSandboxId: source };
+      })();
+  if (!body) return;
+  try {
+    await fetch(`/api/projects/${encodeURIComponent(host)}/bind-preview`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    /* не блокируем основной поток */
+  }
+}
+
+async function restoreFromLatestSnapshot(
+  hostProjectId: string,
+  applySandboxProjectPreview: (sandboxId: string) => void
+): Promise<boolean> {
+  const id = hostProjectId.trim();
+  if (!id) return false;
+  try {
+    const listRes = await fetch(`/api/projects/${encodeURIComponent(id)}/snapshots`, {
+      credentials: "include",
+      cache: "no-store",
+    });
+    if (!listRes.ok) return false;
+    const listData = (await listRes.json().catch(() => null)) as {
+      snapshots?: Array<{ id: string }>;
+    } | null;
+    const latest = listData?.snapshots?.[0];
+    if (!latest?.id) return false;
+
+    const fullRes = await fetch(
+      `/api/projects/${encodeURIComponent(id)}/snapshots/${encodeURIComponent(latest.id)}`,
+      { credentials: "include", cache: "no-store" }
+    );
+    if (!fullRes.ok) return false;
+    const fullPayload = (await fullRes.json().catch(() => null)) as {
+      snapshot?: { sandboxHtml?: string };
+      data?: { snapshot?: { sandboxHtml?: string } };
+    } | null;
+    const html =
+      fullPayload?.snapshot?.sandboxHtml?.trim() ??
+      fullPayload?.data?.snapshot?.sandboxHtml?.trim() ??
+      "";
+    if (!html) return false;
+
+    await bindPreviewToHostProject(id, id, html);
+    applySandboxProjectPreview(id);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function saveSnapshot(
-  sandboxId: string,
+  hostProjectId: string,
+  previewSandboxId: string,
   promptText: string,
   prependVersion: (v: ProjectSnapshotMeta) => void,
   setCurrentVersionId: (id: string) => void
 ): Promise<void> {
+  const projectId = hostProjectId.trim() || previewSandboxId.trim();
+  if (!projectId) return;
   try {
-    const htmlRes = await fetch(`/api/sandbox/${encodeURIComponent(sandboxId)}`);
+    const htmlRes = await fetch(`/api/sandbox/${encodeURIComponent(previewSandboxId)}`);
     if (!htmlRes.ok) return;
     const sandboxHtml = await htmlRes.text();
-    const snapRes = await fetch(`/api/projects/${encodeURIComponent(sandboxId)}/snapshots`, {
+    const snapRes = await fetch(`/api/projects/${encodeURIComponent(projectId)}/snapshots`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ promptText: promptText.slice(0, 500), sandboxHtml, sandboxCss: "", sandboxId }),
+      credentials: "include",
+      body: JSON.stringify({
+        promptText: promptText.slice(0, 500),
+        sandboxHtml,
+        sandboxCss: "",
+        sandboxId: previewSandboxId,
+      }),
     });
     if (!snapRes.ok) return;
     const { snapshot } = (await snapRes.json()) as { snapshot: ProjectSnapshotMeta };
@@ -161,9 +246,6 @@ export function useAiSession() {
       const sessionId = state.sessionId;
       if (sessionId === prevSessionId) return;
       prevSessionId = sessionId;
-      if (sessionId) {
-        writeStoredLemnityBuildManusSessionId(sessionId);
-      }
       lastSsePreviewSandboxIdRef.current = null;
     });
   }, [store]);
@@ -258,17 +340,37 @@ export function useAiSession() {
           return { ok: true, sessionId: existingId };
         }
         if (warm.status === 404) {
-          clearStoredLemnityBuildManusSessionId();
-          store.getState().setSessionId(null);
+          const stored = readStoredLemnityBuildManusSessionId();
+          if (stored && stored !== existingId) {
+            const retry = await fetch(
+              `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(stored)}`,
+              {
+                method: "GET",
+                credentials: "include",
+                headers: { "X-Project-Id": stored },
+              }
+            );
+            if (retry.ok) {
+              return { ok: true, sessionId: stored };
+            }
+          }
+          if (stored === existingId) clearStoredLemnityBuildManusSessionId();
+        } else if (!warm.ok) {
+          return { ok: true, sessionId: existingId };
         }
       } catch {
         return { ok: true, sessionId: existingId };
       }
     }
+    const hostProjectId = store.getState().sessionId?.trim() || "";
     try {
       const res = await fetch(`${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions`, {
         method: "PUT",
         credentials: "include",
+        headers:
+          hostProjectId.length > 0
+            ? { "x-lemnity-host-project-id": hostProjectId }
+            : undefined,
       });
       if (res.status === 403) {
         const j = (await res.json().catch(() => null)) as {
@@ -291,8 +393,14 @@ export function useAiSession() {
         return { ok: false, message: t("playground_session_create_error") };
       }
       writeStoredLemnityBuildManusSessionId(createdId);
-      store.getState().setSessionId(createdId);
-      router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
+      const hostPid = hostProjectId.length > 0 && hostProjectId !== createdId ? hostProjectId : "";
+      if (hostPid) {
+        store.getState().setSessionId(hostPid);
+        router.replace(`/playground/build?projectId=${encodeURIComponent(hostPid)}`);
+      } else {
+        store.getState().setSessionId(createdId);
+        router.replace(`/playground/build?sessionId=${encodeURIComponent(createdId)}`);
+      }
       return { ok: true, sessionId: createdId };
     } catch {
       return { ok: false, message: t("playground_session_create_error") };
@@ -302,28 +410,30 @@ export function useAiSession() {
   // ─── loadSession ────────────────────────────────────────────────────────────
 
   const loadSession = useCallback(
-    async (sessionId: string) => {
+    async (upstreamSessionId: string, hostProjectId?: string): Promise<boolean> => {
+      let previewApplied = false;
+      const headerProjectId = hostProjectId?.trim() || upstreamSessionId;
       try {
         const res = await fetch(
-          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(sessionId)}`,
+          `${LEMNITY_AI_BRIDGE_API_PREFIX}/sessions/${encodeURIComponent(upstreamSessionId)}`,
           {
             method: "GET",
             credentials: "include",
-            headers: { "X-Project-Id": sessionId },
+            headers: { "X-Project-Id": headerProjectId },
           }
         );
         if (!res.ok) {
           if (res.status === 404) {
             const stored = readStoredLemnityBuildManusSessionId();
-            if (stored === sessionId) clearStoredLemnityBuildManusSessionId();
+            if (stored === upstreamSessionId) clearStoredLemnityBuildManusSessionId();
           }
-          return;
+          return false;
         }
         if (!mountedRef.current) return;
         const envelope = (await res.json()) as LemnityAiBridgeEnvelope<LemnityAiSessionPayload>;
         const payload = envelope?.data;
-        if (!payload) return;
-        if (!mountedRef.current) return;
+        if (!payload) return false;
+        if (!mountedRef.current) return false;
 
         const {
           setIdea,
@@ -436,6 +546,7 @@ export function useAiSession() {
             }
             setProgress(100);
             setIsGenerating(false);
+            previewApplied = true;
           }
         } else if (!isGenerating) {
           if (statusIsRunning) {
@@ -445,6 +556,22 @@ export function useAiSession() {
             setIsGenerating(false);
             const currentStage = store.getState().stage;
             if (currentStage === "generating") setStage("ready");
+          }
+        }
+
+        if (!previewApplied) {
+          const fallback = extractLastBridgePreviewFromEvents(events);
+          if (fallback?.previewUrl && fallback.sandboxId) {
+            templatePreviewSandboxIdRef.current = null;
+            setPreviewUrl(fallback.previewUrl);
+            setSandboxId(fallback.sandboxId);
+            notifySandboxFilesUpdated(fallback.sandboxId);
+            setPreviewArtifactMime(fallback.mimeType ?? null);
+            setPreviewDownloadFilename(fallback.filename ?? null);
+            setPresentationPdfExport(null);
+            setProgress(100);
+            setIsGenerating(false);
+            previewApplied = true;
           }
         }
 
@@ -484,8 +611,107 @@ export function useAiSession() {
       } catch {
         // ignore
       }
+      return previewApplied;
     },
     [applyStreamLog, resetStreamLog, store, t]
+  );
+
+  const applyArtifactPreview = useCallback(
+    (artifactId: string) => {
+      const id = artifactId.trim();
+      if (!id.startsWith("artifact_")) return;
+      const {
+        setPreviewUrl,
+        setSandboxId,
+        setPreviewArtifactMime,
+        setPreviewDownloadFilename,
+        setPresentationPdfExport,
+        setProgress,
+        setIsGenerating,
+        setStage,
+      } = store.getState();
+      templatePreviewSandboxIdRef.current = null;
+      setSandboxId(id);
+      setPreviewUrl(buildArtifactPreviewUrl(id));
+      setPreviewArtifactMime("text/html");
+      setPreviewDownloadFilename(null);
+      setPresentationPdfExport(null);
+      setProgress(100);
+      setIsGenerating(false);
+      setStage("ready");
+    },
+    [store]
+  );
+
+  const applySandboxProjectPreview = useCallback(
+    (sandboxId: string) => {
+      const id = sandboxId.trim();
+      if (!id) return;
+      const {
+        setPreviewUrl,
+        setSandboxId,
+        setPreviewArtifactMime,
+        setPreviewDownloadFilename,
+        setPresentationPdfExport,
+        setProgress,
+        setIsGenerating,
+        setStage,
+      } = store.getState();
+      templatePreviewSandboxIdRef.current = null;
+      setSandboxId(id);
+      setPreviewUrl(buildSandboxPreviewUrl(id));
+      notifySandboxFilesUpdated(id);
+      setPreviewArtifactMime(null);
+      setPreviewDownloadFilename(null);
+      setPresentationPdfExport(null);
+      setProgress(100);
+      setIsGenerating(false);
+      setStage("ready");
+    },
+    [store]
+  );
+
+  /** Восстановление чата и превью при повторном входе в проект Lemnity AI. */
+  const restoreBuildSession = useCallback(
+    async (pathId: string) => {
+      const id = pathId.trim();
+      if (!id || !mountedRef.current) return;
+
+      const linkRow = await fetchSessionLinkForPathId(id);
+      const meta = linkRow ? toBuildSessionLinkMeta(linkRow) : null;
+      const upstreamSessionId = meta?.upstreamSessionId ?? id;
+      const hostProjectId = meta?.hostProjectId ?? id;
+
+      if (hostProjectId !== store.getState().sessionId) {
+        store.getState().setSessionId(hostProjectId);
+      }
+      writeStoredLemnityBuildManusSessionId(upstreamSessionId);
+
+      const hadPreview = await loadSession(upstreamSessionId, hostProjectId);
+      if (!mountedRef.current) return;
+
+      if (hadPreview) {
+        const previewSandboxId = store.getState().sandboxId;
+        if (previewSandboxId) {
+          void bindPreviewToHostProject(hostProjectId, String(previewSandboxId));
+        }
+        return;
+      }
+
+      if (meta?.previewArtifactId) {
+        applyArtifactPreview(meta.previewArtifactId);
+        void bindPreviewToHostProject(hostProjectId, meta.previewArtifactId);
+        return;
+      }
+
+      if (await sandboxHasRenderablePreview(hostProjectId)) {
+        applySandboxProjectPreview(hostProjectId);
+        return;
+      }
+
+      await restoreFromLatestSnapshot(hostProjectId, applySandboxProjectPreview);
+    },
+    [applyArtifactPreview, applySandboxProjectPreview, loadSession, store]
   );
 
   // ─── sendChat ────────────────────────────────────────────────────────────────
@@ -797,8 +1023,11 @@ export function useAiSession() {
                     : "✅ Превью готово. Можешь написать, что изменить — я обновлю сборку следующим шагом.",
                   sentAt: Date.now(),
                 });
-                const { prependVersion, setCurrentVersionId } = store.getState();
+                const { prependVersion, setCurrentVersionId, sessionId: hostPid } = store.getState();
+                const hostProjectId = hostPid?.trim() || String(coalescedSandboxId);
+                void bindPreviewToHostProject(hostProjectId, String(coalescedSandboxId));
                 void saveSnapshot(
+                  hostProjectId,
                   String(coalescedSandboxId),
                   message,
                   prependVersion,
@@ -903,6 +1132,7 @@ export function useAiSession() {
   return {
     ensureSession,
     loadSession,
+    restoreBuildSession,
     sendChat,
     cancelStream,
     templatePreviewSandboxIdRef,

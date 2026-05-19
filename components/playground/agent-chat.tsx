@@ -210,6 +210,13 @@ export function AgentChat({
 
   const visible = useMemo(() => messages.filter((m) => m.role !== "system"), [messages]);
 
+  const lastAssistantMessageId = useMemo(() => {
+    for (let i = visible.length - 1; i >= 0; i -= 1) {
+      if (visible[i]?.role === "assistant") return visible[i].id;
+    }
+    return null;
+  }, [visible]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [visible.length, threadScrollKey]);
@@ -513,6 +520,7 @@ export function AgentChat({
                       <TypingAssistantContent
                         text={formatLemnityAssistantStreamText(m.content, t)}
                         messageId={m.id}
+                        streaming={studioStreamActive && m.id === lastAssistantMessageId}
                       />
                     </div>
                     {m.sentAt != null ? (
@@ -558,6 +566,7 @@ export function AgentChat({
                     <TypingAssistantContent
                       text={formatLemnityAssistantStreamText(m.content, t)}
                       messageId={m.id}
+                      streaming={studioStreamActive && m.id === lastAssistantMessageId}
                     />
                   ) : (
                     m.content

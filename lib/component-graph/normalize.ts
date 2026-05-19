@@ -209,7 +209,9 @@ export function normalizeComponentGraphPayload(raw: unknown): unknown {
       theme: {
         primaryColor: coerceHexColor(theme.primaryColor, "#4F8EF7"),
         accentColor:
-          typeof theme.accentColor === "string" ? theme.accentColor : undefined,
+          typeof theme.accentColor === "string"
+            ? (/^#[0-9A-Fa-f]{3,8}$/.test(theme.accentColor.trim()) ? theme.accentColor.trim() : undefined)
+            : undefined,
         backgroundColor: coerceHexColor(theme.backgroundColor, "#FFFFFF"),
         textColor: coerceHexColor(theme.textColor, "#1A1A2E"),
         fontFamily:

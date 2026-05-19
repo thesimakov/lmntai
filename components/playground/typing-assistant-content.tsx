@@ -2,24 +2,49 @@
 
 import { useEffect, useRef, useState } from "react";
 
-const CHARS_PER_INTERVAL = 2;
-const INTERVAL_MS = 22;
+const BASE_CHARS_PER_TICK = 2;
+const BASE_INTERVAL_MS = 24;
+/** В режиме стрима: если отстаём больше — ускоряем набор, но не показываем весь текст сразу. */
+const STREAM_LAG_SOFT = 72;
+const STREAM_LAG_HARD = 160;
+const STREAM_TAIL_CHARS = 40;
 
 type TypingAssistantContentProps = {
   text: string;
   messageId: string;
   className?: string;
+  /** Последнее сообщение ассистента во время SSE — догоняем целевой текст без сброса. */
+  streaming?: boolean;
 };
+
+function charsPerTick(lag: number, streaming: boolean, textLength: number): number {
+  if (streaming) {
+    if (lag > STREAM_LAG_HARD) return 10;
+    if (lag > STREAM_LAG_SOFT) return 5;
+    return BASE_CHARS_PER_TICK;
+  }
+  if (textLength > 2400) return 5;
+  if (textLength > 900) return 3;
+  return BASE_CHARS_PER_TICK;
+}
 
 /**
  * Показывает ответ ассистента с эффектом «набора» (как в мессенджере).
  * При дозаписи в том же сообщении (стрим) догоняет целевую длину без сброса.
  */
-export function TypingAssistantContent({ text, messageId, className }: TypingAssistantContentProps) {
+export function TypingAssistantContent({
+  text,
+  messageId,
+  className,
+  streaming = false,
+}: TypingAssistantContentProps) {
   const [visible, setVisible] = useState(0);
   const messageIdRef = useRef(messageId);
   const tailRef = useRef<HTMLSpanElement | null>(null);
   const scrollEveryRef = useRef(0);
+  const reduceMotion =
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   useEffect(() => {
     if (messageIdRef.current !== messageId) {
@@ -33,22 +58,32 @@ export function TypingAssistantContent({ text, messageId, className }: TypingAss
     if (text.length < visible) {
       setVisible(text.length);
     }
-  }, [text, text.length, visible]);
+  }, [text, visible]);
 
-  /** Стрим отдаёт большие куски — догоняем, иначе «набор» сильно отстаёт. */
+  /** Только в стриме: мягко подтягиваем хвост, чтобы не отставать на минуты. */
   useEffect(() => {
-    if (text.length > visible + 100) {
-      setVisible((v) => Math.max(v, text.length - 48));
+    if (!streaming || reduceMotion) return;
+    const lag = text.length - visible;
+    if (lag > STREAM_LAG_HARD) {
+      setVisible((v) => Math.max(v, text.length - STREAM_TAIL_CHARS));
     }
-  }, [text, text.length, visible]);
+  }, [streaming, text.length, visible, reduceMotion, text]);
 
   useEffect(() => {
+    if (reduceMotion) {
+      setVisible(text.length);
+      return;
+    }
     if (visible >= text.length) return;
     const t = window.setInterval(() => {
-      setVisible((v) => Math.min(v + CHARS_PER_INTERVAL, text.length));
-    }, INTERVAL_MS);
+      setVisible((v) => {
+        const nextLag = text.length - v;
+        const tick = charsPerTick(nextLag, streaming, text.length);
+        return Math.min(v + tick, text.length);
+      });
+    }, BASE_INTERVAL_MS);
     return () => window.clearInterval(t);
-  }, [text, text.length, visible]);
+  }, [text, text.length, visible, streaming, reduceMotion]);
 
   useEffect(() => {
     if (visible < text.length) {
@@ -62,7 +97,7 @@ export function TypingAssistantContent({ text, messageId, className }: TypingAss
   }, [visible, text.length]);
 
   const atEnd = visible >= text.length;
-  const slice = text.slice(0, visible);
+  const slice = reduceMotion ? text : text.slice(0, visible);
 
   return (
     <span className={className}>

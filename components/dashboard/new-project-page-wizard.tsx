@@ -49,6 +49,13 @@ const LEMNITY_PUBLISH_SUFFIX = ".lemnity.com";
 
 type BuilderChoice = "none" | "ai" | "website" | "analytics" | "marketing";
 
+/** Временно недоступные форматы на шаге выбора типа проекта. */
+const WIZARD_BUILDER_COMING_SOON = {
+  analytics: true,
+  marketing: true,
+  presentations: true,
+} as const;
+
 const TEMPLATE_TAB_IDS = [
   "business",
   "store",
@@ -129,6 +136,8 @@ export function NewProjectPageWizard() {
 
   useEffect(() => {
     if (builderChoice === "none") return;
+    if (builderChoice === "analytics" && WIZARD_BUILDER_COMING_SOON.analytics) return;
+    if (builderChoice === "marketing" && WIZARD_BUILDER_COMING_SOON.marketing) return;
     setMountedBuilderPanels((prev) => {
       if (prev.has(builderChoice)) return prev;
       const next = new Set(prev);
@@ -790,29 +799,40 @@ export function NewProjectPageWizard() {
               </Card>
 
               <Card
-                role="button"
-                tabIndex={creatingProject ? -1 : 0}
-                aria-pressed={builderChoice === "analytics"}
+                role={WIZARD_BUILDER_COMING_SOON.analytics ? undefined : "button"}
+                tabIndex={WIZARD_BUILDER_COMING_SOON.analytics || creatingProject ? -1 : 0}
+                aria-disabled={WIZARD_BUILDER_COMING_SOON.analytics || undefined}
+                aria-pressed={!WIZARD_BUILDER_COMING_SOON.analytics && builderChoice === "analytics"}
                 onClick={() => {
-                  if (creatingProject) return;
+                  if (WIZARD_BUILDER_COMING_SOON.analytics || creatingProject) return;
                   setBuilderChoice("analytics");
                 }}
                 onKeyDown={(e) => {
-                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  if (WIZARD_BUILDER_COMING_SOON.analytics || creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
                   e.preventDefault();
                   setBuilderChoice("analytics");
                 }}
                 className={cn(
                   "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
-                  "cursor-pointer border-violet-200/90 bg-gradient-to-br from-violet-50/80 via-background to-background",
-                  "hover:border-violet-400/80 hover:shadow-md dark:border-violet-900/55 dark:from-violet-950/40 dark:hover:border-violet-700",
-                  builderChoice === "analytics" && "ring-2 ring-violet-500/35",
+                  "border-violet-200/90 bg-gradient-to-br from-violet-50/80 via-background to-background",
+                  WIZARD_BUILDER_COMING_SOON.analytics
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:border-violet-400/80 hover:shadow-md dark:hover:border-violet-700",
+                  "dark:border-violet-900/55 dark:from-violet-950/40",
+                  !WIZARD_BUILDER_COMING_SOON.analytics &&
+                    builderChoice === "analytics" &&
+                    "ring-2 ring-violet-500/35",
                   creatingProject && "pointer-events-none opacity-55"
                 )}
               >
                 <CardContent className="flex gap-4 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
+                  <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-violet-100 text-violet-900 dark:bg-violet-950/80 dark:text-violet-50">
                     <BarChart2 className="size-5" aria-hidden />
+                    {WIZARD_BUILDER_COMING_SOON.analytics ? (
+                      <Badge className="absolute -right-1 -top-1 border-0 bg-muted-foreground/90 px-1.5 py-0 text-[9px] font-bold uppercase text-white hover:bg-muted-foreground/90">
+                        {t("projects_new_via_ai_soon_badge")}
+                      </Badge>
+                    ) : null}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1 self-center">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
@@ -826,29 +846,40 @@ export function NewProjectPageWizard() {
               </Card>
 
               <Card
-                role="button"
-                tabIndex={creatingProject ? -1 : 0}
-                aria-pressed={builderChoice === "marketing"}
+                role={WIZARD_BUILDER_COMING_SOON.marketing ? undefined : "button"}
+                tabIndex={WIZARD_BUILDER_COMING_SOON.marketing || creatingProject ? -1 : 0}
+                aria-disabled={WIZARD_BUILDER_COMING_SOON.marketing || undefined}
+                aria-pressed={!WIZARD_BUILDER_COMING_SOON.marketing && builderChoice === "marketing"}
                 onClick={() => {
-                  if (creatingProject) return;
+                  if (WIZARD_BUILDER_COMING_SOON.marketing || creatingProject) return;
                   setBuilderChoice("marketing");
                 }}
                 onKeyDown={(e) => {
-                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  if (WIZARD_BUILDER_COMING_SOON.marketing || creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
                   e.preventDefault();
                   setBuilderChoice("marketing");
                 }}
                 className={cn(
                   "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
-                  "cursor-pointer border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-background to-background",
-                  "hover:border-emerald-400/80 hover:shadow-md dark:border-emerald-900/55 dark:from-emerald-950/40 dark:hover:border-emerald-700",
-                  builderChoice === "marketing" && "ring-2 ring-emerald-500/35",
+                  "border-emerald-200/90 bg-gradient-to-br from-emerald-50 via-background to-background",
+                  WIZARD_BUILDER_COMING_SOON.marketing
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:border-emerald-400/80 hover:shadow-md dark:hover:border-emerald-700",
+                  "dark:border-emerald-900/55 dark:from-emerald-950/40",
+                  !WIZARD_BUILDER_COMING_SOON.marketing &&
+                    builderChoice === "marketing" &&
+                    "ring-2 ring-emerald-500/35",
                   creatingProject && "pointer-events-none opacity-55"
                 )}
               >
                 <CardContent className="flex gap-4 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-50">
+                  <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-900 dark:bg-emerald-950/80 dark:text-emerald-50">
                     <TrendingUp className="size-5" aria-hidden />
+                    {WIZARD_BUILDER_COMING_SOON.marketing ? (
+                      <Badge className="absolute -right-1 -top-1 border-0 bg-muted-foreground/90 px-1.5 py-0 text-[9px] font-bold uppercase text-white hover:bg-muted-foreground/90">
+                        {t("projects_new_via_ai_soon_badge")}
+                      </Badge>
+                    ) : null}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1 self-center">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
@@ -862,27 +893,36 @@ export function NewProjectPageWizard() {
               </Card>
 
               <Card
-                role="button"
-                tabIndex={creatingProject ? -1 : 0}
+                role={WIZARD_BUILDER_COMING_SOON.presentations ? undefined : "button"}
+                tabIndex={WIZARD_BUILDER_COMING_SOON.presentations || creatingProject ? -1 : 0}
+                aria-disabled={WIZARD_BUILDER_COMING_SOON.presentations || undefined}
                 onClick={() => {
-                  if (creatingProject) return;
+                  if (WIZARD_BUILDER_COMING_SOON.presentations || creatingProject) return;
                   void navigateNewProjectToPresentations();
                 }}
                 onKeyDown={(e) => {
-                  if (creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
+                  if (WIZARD_BUILDER_COMING_SOON.presentations || creatingProject || (e.key !== "Enter" && e.key !== " ")) return;
                   e.preventDefault();
                   void navigateNewProjectToPresentations();
                 }}
                 className={cn(
                   "gap-0 overflow-hidden border-2 py-0 shadow-sm transition-[border-color,box-shadow,ring]",
-                  "cursor-pointer border-fuchsia-200/90 bg-gradient-to-br from-fuchsia-50 via-background to-background",
-                  "hover:border-fuchsia-400/80 hover:shadow-md dark:border-fuchsia-900/55 dark:from-fuchsia-950/40 dark:hover:border-fuchsia-700",
+                  "border-fuchsia-200/90 bg-gradient-to-br from-fuchsia-50 via-background to-background",
+                  WIZARD_BUILDER_COMING_SOON.presentations
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer hover:border-fuchsia-400/80 hover:shadow-md dark:hover:border-fuchsia-700",
+                  "dark:border-fuchsia-900/55 dark:from-fuchsia-950/40",
                   creatingProject && "pointer-events-none opacity-55"
                 )}
               >
                 <CardContent className="flex gap-4 p-4">
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/80 dark:text-fuchsia-50">
+                  <span className="relative flex size-11 shrink-0 items-center justify-center rounded-xl bg-fuchsia-100 text-fuchsia-900 dark:bg-fuchsia-950/80 dark:text-fuchsia-50">
                     <Presentation className="size-5" aria-hidden />
+                    {WIZARD_BUILDER_COMING_SOON.presentations ? (
+                      <Badge className="absolute -right-1 -top-1 border-0 bg-muted-foreground/90 px-1.5 py-0 text-[9px] font-bold uppercase text-white hover:bg-muted-foreground/90">
+                        {t("projects_new_via_ai_soon_badge")}
+                      </Badge>
+                    ) : null}
                   </span>
                   <div className="min-w-0 flex-1 space-y-1 self-center">
                     <span className="flex items-center gap-2 font-semibold text-foreground">
@@ -952,7 +992,7 @@ export function NewProjectPageWizard() {
             </section>
           ) : null}
 
-          {mountedBuilderPanels.has("analytics") ? (
+          {!WIZARD_BUILDER_COMING_SOON.analytics && mountedBuilderPanels.has("analytics") ? (
             <section
               className={cn(
                 "space-y-5 rounded-xl border border-violet-200/60 bg-violet-50/30 p-5 dark:border-violet-800/40 dark:bg-violet-950/20 sm:p-6",
@@ -990,7 +1030,7 @@ export function NewProjectPageWizard() {
             </section>
           ) : null}
 
-          {mountedBuilderPanels.has("marketing") ? (
+          {!WIZARD_BUILDER_COMING_SOON.marketing && mountedBuilderPanels.has("marketing") ? (
             <section
               id="builder-panel-marketing"
               className={cn(
