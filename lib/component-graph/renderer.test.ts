@@ -345,3 +345,37 @@ describe("renderNode — new component types", () => {
     expect(html).toContain("Create account");
   });
 });
+
+describe("renderComponentGraph — Tailwind CDN", () => {
+  it("includes Tailwind CDN script", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("cdn.tailwindcss.com");
+  });
+
+  it("includes tailwind.config with primary color", () => {
+    const html = renderComponentGraph(baseGraph);
+    expect(html).toContain("tailwind.config");
+    expect(html).toContain(baseGraph.meta.theme.primaryColor);
+  });
+
+  it("Tailwind CDN script appears before <style> block", () => {
+    const html = renderComponentGraph(baseGraph);
+    const twIdx = html.indexOf("cdn.tailwindcss.com");
+    const styleIdx = html.indexOf("<style>");
+    expect(twIdx).toBeGreaterThan(-1);
+    expect(twIdx).toBeLessThan(styleIdx);
+  });
+
+  it("Stats section contains flex class when rendered in full graph", () => {
+    const g: ComponentGraph = {
+      ...baseGraph,
+      pages: [{ ...baseGraph.pages[0], nodes: [{
+        id: "s1", type: "Stats",
+        props: { items: [{ value: "1M", label: "Tokens" }] },
+        styles: {},
+      }] }],
+    };
+    const html = renderComponentGraph(g);
+    expect(html).toContain("flex");
+  });
+});

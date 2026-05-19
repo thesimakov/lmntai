@@ -318,11 +318,11 @@ function renderNodeInner(node: ComponentNode): string {
 
     case "Stats": {
       const items = (props.items as Array<{ value?: string; label?: string }>) ?? [];
-      const html = items.map(item => `<div class="lmnt-stat-item">
-  <span class="lmnt-stat-item__value">${esc(item.value ?? "")}</span>
-  <span class="lmnt-stat-item__label">${esc(item.label ?? "")}</span>
+      const html = items.map(item => `<div class="lmnt-stat-item flex flex-col items-center gap-2 text-center">
+  <span class="lmnt-stat-item__value text-5xl font-bold leading-none" style="color:var(--c-primary)">${esc(item.value ?? "")}</span>
+  <span class="lmnt-stat-item__label text-sm opacity-60">${esc(item.label ?? "")}</span>
 </div>`).join("\n");
-      return `<section class="lmnt-stats"${style}><div class="lmnt-container"><div class="lmnt-stats__grid">${html}</div>${renderChildren(children)}</div></section>`;
+      return `<section class="lmnt-stats py-16"${style}><div class="lmnt-container"><div class="lmnt-stats__grid grid grid-cols-2 md:grid-cols-4 gap-8">${html}</div>${renderChildren(children)}</div></section>`;
     }
 
     case "Logos": {
@@ -330,33 +330,33 @@ function renderNodeInner(node: ComponentNode): string {
       const items = (props.items as Array<{ name?: string; logo?: string }>) ?? [];
       const logoHtml = items.map(item =>
         item.logo
-          ? `<img src="${esc(item.logo)}" alt="${esc(item.name ?? "")}" class="lmnt-logos__img" />`
-          : `<span class="lmnt-logos__name">${esc(item.name ?? "")}</span>`
+          ? `<img src="${esc(item.logo)}" alt="${esc(item.name ?? "")}" class="lmnt-logos__img h-8 opacity-55 grayscale hover:opacity-100 hover:grayscale-0 transition-all" />`
+          : `<span class="lmnt-logos__name font-semibold opacity-45 text-lg">${esc(item.name ?? "")}</span>`
       ).join("\n");
-      return `<section class="lmnt-logos"${style}><div class="lmnt-container">${label ? `<p class="lmnt-logos__label">${label}</p>` : ""}<div class="lmnt-logos__strip">${logoHtml}</div>${renderChildren(children)}</div></section>`;
+      return `<section class="lmnt-logos py-10"${style}><div class="lmnt-container">${label ? `<p class="lmnt-logos__label text-center text-xs uppercase tracking-widest opacity-50 mb-5">${label}</p>` : ""}<div class="lmnt-logos__strip flex flex-wrap items-center justify-center gap-8">${logoHtml}</div>${renderChildren(children)}</div></section>`;
     }
 
     case "Team": {
       const items = (props.items as Array<{ name?: string; role?: string; avatar?: string; bio?: string }>) ?? [];
-      const membersHtml = items.map(m => `<div class="lmnt-team-card">
-  ${m.avatar ? `<img src="${esc(m.avatar)}" alt="${esc(m.name ?? "")}" class="lmnt-team-card__avatar" />` : ""}
-  ${m.name ? `<h3 class="lmnt-team-card__name">${esc(m.name)}</h3>` : ""}
-  ${m.role ? `<p class="lmnt-team-card__role">${esc(m.role)}</p>` : ""}
-  ${m.bio ? `<p class="lmnt-team-card__bio">${esc(m.bio)}</p>` : ""}
+      const membersHtml = items.map(m => `<div class="lmnt-team-card text-center p-7 rounded-xl border border-black/10 shadow-sm">
+  ${m.avatar ? `<img src="${esc(m.avatar)}" alt="${esc(m.name ?? "")}" class="lmnt-team-card__avatar w-20 h-20 rounded-full object-cover mx-auto mb-4" />` : ""}
+  ${m.name ? `<h3 class="lmnt-team-card__name text-lg font-semibold mb-1">${esc(m.name)}</h3>` : ""}
+  ${m.role ? `<p class="lmnt-team-card__role text-sm mb-2" style="color:var(--c-primary)">${esc(m.role)}</p>` : ""}
+  ${m.bio ? `<p class="lmnt-team-card__bio text-sm opacity-70 leading-relaxed">${esc(m.bio)}</p>` : ""}
 </div>`).join("\n");
-      return `<section class="lmnt-team"${style}><div class="lmnt-container"><div class="lmnt-team__grid">${membersHtml}</div>${renderChildren(children)}</div></section>`;
+      return `<section class="lmnt-team py-20"${style}><div class="lmnt-container"><div class="lmnt-team__grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">${membersHtml}</div>${renderChildren(children)}</div></section>`;
     }
 
     case "Timeline": {
       const items = (props.items as Array<{ step?: number; title?: string; description?: string }>) ?? [];
-      const stepsHtml = items.map(item => `<div class="lmnt-timeline-step">
-  ${item.step !== undefined ? `<div class="lmnt-timeline-step__num">${esc(String(item.step))}</div>` : ""}
+      const stepsHtml = items.map(item => `<div class="lmnt-timeline-step flex gap-5 mb-8 items-start">
+  ${item.step !== undefined ? `<div class="lmnt-timeline-step__num w-10 h-10 shrink-0 rounded-full flex items-center justify-center font-bold text-white" style="background:var(--c-primary)">${esc(String(item.step))}</div>` : ""}
   <div class="lmnt-timeline-step__body">
-    ${item.title ? `<h3 class="lmnt-timeline-step__title">${esc(item.title)}</h3>` : ""}
-    ${item.description ? `<p class="lmnt-timeline-step__desc">${esc(item.description)}</p>` : ""}
+    ${item.title ? `<h3 class="lmnt-timeline-step__title font-semibold mb-1">${esc(item.title)}</h3>` : ""}
+    ${item.description ? `<p class="lmnt-timeline-step__desc opacity-75 leading-relaxed">${esc(item.description)}</p>` : ""}
   </div>
 </div>`).join("\n");
-      return `<section class="lmnt-timeline"${style}><div class="lmnt-container">${stepsHtml}${renderChildren(children)}</div></section>`;
+      return `<section class="lmnt-timeline py-20"${style}><div class="lmnt-container">${stepsHtml}${renderChildren(children)}</div></section>`;
     }
 
     case "Section":
@@ -499,6 +499,8 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
   const fullStyles = [cssVars, baseStyles].join("\n");
   const responsiveCss = collectResponsiveCss(pages);
   const fontLinks = googleFontLink(theme.fontFamily);
+  const tailwindCdn = `<script src="https://cdn.tailwindcss.com"></script>`;
+  const tailwindConfig = `<script>tailwind.config={theme:{extend:{colors:{primary:"${primary}",accent:"${accent}"}}}}</script>`;
 
   const bodyContent = multiPage
     ? pages
@@ -515,7 +517,7 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>${esc(firstPage.title)}</title>
 ${firstPage.description ? `<meta name="description" content="${esc(firstPage.description)}" />` : ""}
-${fontLinks ? fontLinks + "\n" : ""}<style>${fullStyles}\n${responsiveCss}</style>
+${fontLinks ? fontLinks + "\n" : ""}${tailwindCdn}\n${tailwindConfig}\n<style>${fullStyles}\n${responsiveCss}</style>
 </head>
 <body>
 ${bodyContent}
