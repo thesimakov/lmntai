@@ -12,6 +12,7 @@ import {
   buildGraphChatPrompt,
   graphPatchResponseSchema,
   GRAPH_CHAT_RETRY_MESSAGE,
+  type GraphPatchResponse,
 } from "@/lib/component-graph/patch";
 import {
   chargeStructuredJsonUsageSafely,
@@ -142,7 +143,7 @@ export async function POST(
 
   return applyAndSave(v1.data);
 
-  async function applyAndSave(patchResponse: { message: string; patches: { nodeId: string; props?: Record<string, unknown>; styles?: Record<string, unknown>; label?: string }[] }) {
+  async function applyAndSave(patchResponse: GraphPatchResponse) {
     const updatedGraph =
       patchResponse.patches.length > 0
         ? applyPatches(graph, patchResponse.patches)

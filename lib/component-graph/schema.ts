@@ -48,7 +48,7 @@ const animationSchema = z.object({
   duration: z.number().optional(),
 });
 
-const componentNodeSchema: z.ZodType<import("./types").ComponentNode> = z.lazy(() =>
+export const componentNodeSchema: z.ZodType<import("./types").ComponentNode> = z.lazy(() =>
   z.object({
     id: z.string().min(1),
     type: componentNodeTypeSchema,
