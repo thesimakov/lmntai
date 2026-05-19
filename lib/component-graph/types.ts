@@ -3,7 +3,8 @@ export type ComponentNodeType =
   | "Hero" | "Features" | "Pricing" | "Testimonials" | "FAQ" | "CTA"
   | "Header" | "Footer" | "Nav"
   | "Text" | "Heading" | "Image" | "Button" | "Link" | "Icon"
-  | "Video" | "Form" | "Card" | "Divider" | "Spacer";
+  | "Video" | "Form" | "Card" | "Divider" | "Spacer"
+  | "Stats" | "Logos" | "Team" | "Timeline";
 
 export interface StyleTokens {
   width?: string;

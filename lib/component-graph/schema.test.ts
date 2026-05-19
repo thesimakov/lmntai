@@ -64,4 +64,12 @@ describe("componentGraphSchema", () => {
     const result = componentGraphSchema.safeParse(noVersion);
     expect(result.success).toBe(false);
   });
+
+  it("accepts Stats, Logos, Team, Timeline node types", () => {
+    for (const type of ["Stats", "Logos", "Team", "Timeline"]) {
+      const g = { ...minimalGraph, pages: [{ ...minimalGraph.pages[0],
+        nodes: [{ id: "n1", type, props: {}, styles: {} }] }] };
+      expect(componentGraphSchema.safeParse(g).success).toBe(true);
+    }
+  });
 });

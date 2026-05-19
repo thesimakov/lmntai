@@ -316,6 +316,49 @@ function renderNodeInner(node: ComponentNode): string {
       return `<div class="lmnt-container"${style}>${renderChildren(children)}</div>`;
     }
 
+    case "Stats": {
+      const items = (props.items as Array<{ value?: string; label?: string }>) ?? [];
+      const html = items.map(item => `<div class="lmnt-stat-item">
+  <span class="lmnt-stat-item__value">${esc(item.value ?? "")}</span>
+  <span class="lmnt-stat-item__label">${esc(item.label ?? "")}</span>
+</div>`).join("\n");
+      return `<section class="lmnt-stats"${style}><div class="lmnt-container"><div class="lmnt-stats__grid">${html}</div>${renderChildren(children)}</div></section>`;
+    }
+
+    case "Logos": {
+      const label = esc(props.label as string ?? "");
+      const items = (props.items as Array<{ name?: string; logo?: string }>) ?? [];
+      const logoHtml = items.map(item =>
+        item.logo
+          ? `<img src="${esc(item.logo)}" alt="${esc(item.name ?? "")}" class="lmnt-logos__img" />`
+          : `<span class="lmnt-logos__name">${esc(item.name ?? "")}</span>`
+      ).join("\n");
+      return `<section class="lmnt-logos"${style}><div class="lmnt-container">${label ? `<p class="lmnt-logos__label">${label}</p>` : ""}<div class="lmnt-logos__strip">${logoHtml}</div>${renderChildren(children)}</div></section>`;
+    }
+
+    case "Team": {
+      const items = (props.items as Array<{ name?: string; role?: string; avatar?: string; bio?: string }>) ?? [];
+      const membersHtml = items.map(m => `<div class="lmnt-team-card">
+  ${m.avatar ? `<img src="${esc(m.avatar)}" alt="${esc(m.name ?? "")}" class="lmnt-team-card__avatar" />` : ""}
+  ${m.name ? `<h3 class="lmnt-team-card__name">${esc(m.name)}</h3>` : ""}
+  ${m.role ? `<p class="lmnt-team-card__role">${esc(m.role)}</p>` : ""}
+  ${m.bio ? `<p class="lmnt-team-card__bio">${esc(m.bio)}</p>` : ""}
+</div>`).join("\n");
+      return `<section class="lmnt-team"${style}><div class="lmnt-container"><div class="lmnt-team__grid">${membersHtml}</div>${renderChildren(children)}</div></section>`;
+    }
+
+    case "Timeline": {
+      const items = (props.items as Array<{ step?: number; title?: string; description?: string }>) ?? [];
+      const stepsHtml = items.map(item => `<div class="lmnt-timeline-step">
+  ${item.step !== undefined ? `<div class="lmnt-timeline-step__num">${esc(String(item.step))}</div>` : ""}
+  <div class="lmnt-timeline-step__body">
+    ${item.title ? `<h3 class="lmnt-timeline-step__title">${esc(item.title)}</h3>` : ""}
+    ${item.description ? `<p class="lmnt-timeline-step__desc">${esc(item.description)}</p>` : ""}
+  </div>
+</div>`).join("\n");
+      return `<section class="lmnt-timeline"${style}><div class="lmnt-container">${stepsHtml}${renderChildren(children)}</div></section>`;
+    }
+
     case "Section":
     default: {
       return `<section${style}>${renderChildren(children)}</section>`;
@@ -420,6 +463,29 @@ body { font-family: ${theme.fontFamily}; background-color: var(--c-bg); color: v
 .lmnt-card__desc { padding: 0 16px 16px; opacity: 0.75; }
 .lmnt-grid { display: grid; gap: 24px; }
 .lmnt-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.lmnt-stats{padding:60px 0;}
+.lmnt-stats__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:32px;text-align:center;}
+.lmnt-stat-item{display:flex;flex-direction:column;gap:8px;}
+.lmnt-stat-item__value{font-size:3rem;font-weight:700;color:var(--c-primary);line-height:1;}
+.lmnt-stat-item__label{font-size:0.875rem;opacity:0.65;}
+.lmnt-logos{padding:40px 0;}
+.lmnt-logos__label{text-align:center;opacity:0.5;font-size:0.8rem;margin-bottom:20px;letter-spacing:0.08em;text-transform:uppercase;}
+.lmnt-logos__strip{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:32px;}
+.lmnt-logos__img{height:30px;opacity:0.55;filter:grayscale(1);transition:opacity 0.2s,filter 0.2s;}
+.lmnt-logos__img:hover{opacity:1;filter:none;}
+.lmnt-logos__name{font-weight:600;opacity:0.45;font-size:1.1rem;}
+.lmnt-team{padding:80px 0;}
+.lmnt-team__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:32px;}
+.lmnt-team-card{text-align:center;padding:28px;border-radius:var(--radius);border:1px solid rgba(0,0,0,0.08);box-shadow:0 2px 16px rgba(0,0,0,0.05);}
+.lmnt-team-card__avatar{width:80px;height:80px;border-radius:50%;object-fit:cover;margin:0 auto 16px;display:block;}
+.lmnt-team-card__name{font-size:1.1rem;font-weight:600;margin-bottom:4px;}
+.lmnt-team-card__role{color:var(--c-primary);font-size:0.875rem;margin-bottom:8px;}
+.lmnt-team-card__bio{opacity:0.7;font-size:0.875rem;line-height:1.5;}
+.lmnt-timeline{padding:80px 0;}
+.lmnt-timeline-step{display:flex;gap:20px;margin-bottom:32px;align-items:flex-start;}
+.lmnt-timeline-step__num{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:var(--c-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;}
+.lmnt-timeline-step__title{font-size:1.05rem;font-weight:600;margin-bottom:6px;}
+.lmnt-timeline-step__desc{opacity:0.75;line-height:1.5;}
 @media (max-width: 768px) {
   .lmnt-hero__title { font-size: 2rem; }
   .lmnt-header__nav { display: none; }

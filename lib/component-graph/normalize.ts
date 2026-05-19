@@ -27,6 +27,10 @@ const NODE_TYPES: ComponentNodeType[] = [
   "Card",
   "Divider",
   "Spacer",
+  "Stats",
+  "Logos",
+  "Team",
+  "Timeline",
 ];
 
 const NODE_TYPE_SET = new Set<string>(NODE_TYPES);
@@ -94,7 +98,7 @@ function coerceStyleTokens(raw: unknown): StyleTokens {
   return out as StyleTokens;
 }
 
-function coerceNode(raw: unknown): ComponentNode | null {
+export function coerceNode(raw: unknown): ComponentNode | null {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
   const n = raw as Record<string, unknown>;
   const id = typeof n.id === "string" && n.id.trim() ? n.id.trim() : null;

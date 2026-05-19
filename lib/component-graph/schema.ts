@@ -39,6 +39,7 @@ const componentNodeTypeSchema = z.enum([
   "Header", "Footer", "Nav",
   "Text", "Heading", "Image", "Button", "Link", "Icon",
   "Video", "Form", "Card", "Divider", "Spacer",
+  "Stats", "Logos", "Team", "Timeline",
 ]);
 
 const animationSchema = z.object({

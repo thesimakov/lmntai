@@ -293,3 +293,55 @@ describe("renderComponentGraph — improved base CSS", () => {
     expect(html).toContain("color-mix(in srgb");
   });
 });
+
+describe("renderNode — new component types", () => {
+  it("renders Stats with values and labels", () => {
+    const node: ComponentNode = {
+      id: "s1", type: "Stats",
+      props: { items: [{ value: "10K+", label: "Users" }, { value: "99%", label: "Uptime" }] },
+      styles: {},
+    };
+    const html = renderNode(node);
+    expect(html).toContain("10K+");
+    expect(html).toContain("Users");
+    expect(html).toContain("lmnt-stat-item__value");
+    expect(html).toContain("lmnt-stat-item__label");
+  });
+
+  it("renders Logos with text and image items", () => {
+    const node: ComponentNode = {
+      id: "l1", type: "Logos",
+      props: { label: "Trusted by", items: [{ name: "Acme" }, { name: "Globe", logo: "https://x.com/g.svg" }] },
+      styles: {},
+    };
+    const html = renderNode(node);
+    expect(html).toContain("Trusted by");
+    expect(html).toContain("Acme");
+    expect(html).toContain("<img");
+    expect(html).toContain("lmnt-logos__strip");
+  });
+
+  it("renders Team members", () => {
+    const node: ComponentNode = {
+      id: "t1", type: "Team",
+      props: { items: [{ name: "Jane", role: "CEO", bio: "Founder" }] },
+      styles: {},
+    };
+    const html = renderNode(node);
+    expect(html).toContain("Jane");
+    expect(html).toContain("CEO");
+    expect(html).toContain("lmnt-team-card");
+  });
+
+  it("renders Timeline steps with numbers", () => {
+    const node: ComponentNode = {
+      id: "tl1", type: "Timeline",
+      props: { items: [{ step: 1, title: "Sign up", description: "Create account" }] },
+      styles: {},
+    };
+    const html = renderNode(node);
+    expect(html).toContain("Sign up");
+    expect(html).toContain("lmnt-timeline-step__num");
+    expect(html).toContain("Create account");
+  });
+});
